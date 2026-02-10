@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  FaChalkboardTeacher, 
-  FaSearch, 
-  FaEye, 
-  FaCalendarAlt, 
-  FaChevronRight, 
+import {
+  FaChalkboardTeacher,
+  FaSearch,
+  FaEye,
+  FaCalendarAlt,
+  FaChevronRight,
   FaFilter,
   FaArrowLeft,
   FaSpinner,
@@ -41,24 +41,31 @@ export default function KehadiranGuruIndex() {
   const [loading, setLoading] = useState(true);
   const [teacherAttendance, setTeacherAttendance] = useState([]);
 
-  const fetchAttendance = React.useCallback(async () => {
+  const fetchAttendance = React.useCallback(async (signal) => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/attendance/teachers/daily', { params: { date } });
+      const res = await apiClient.get('/attendance/teachers/daily', {
+        params: { date },
+        signal: signal
+      });
       // Items is paginated based on controller
       setTeacherAttendance(res.data.items?.data || res.data.items || []);
     } catch (err) {
-      console.error("Error fetching daily teacher attendance:", err);
+      if (err.name !== 'AbortError') {
+        console.error("Error fetching daily teacher attendance:", err);
+      }
     } finally {
       setLoading(false);
     }
   }, [date]);
 
   useEffect(() => {
-    fetchAttendance();
+    const controller = new AbortController();
+    fetchAttendance(controller.signal);
+    return () => controller.abort();
   }, [fetchAttendance]);
 
-  const filteredTeachers = teacherAttendance.filter(item => 
+  const filteredTeachers = teacherAttendance.filter(item =>
     item.teacher?.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.teacher?.nip?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -67,7 +74,7 @@ export default function KehadiranGuruIndex() {
 
   return (
     <PageWrapper className="max-w-[1600px] mx-auto p-6 md:p-10 space-y-10 font-sans">
-      
+
       {/* HEADER SECTION */}
       <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-white/50 flex flex-col lg:flex-row justify-between items-center gap-8">
         <div className="flex items-center gap-6">
@@ -81,38 +88,38 @@ export default function KehadiranGuruIndex() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-            <div className="relative group flex-1 sm:min-w-[300px]">
-                <FaSearch className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-                <input 
-                    type="text" 
-                    placeholder="Cari nama atau NIP guru..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold text-gray-700 shadow-inner"
-                />
-            </div>
-            <div className="relative group">
-                <FaCalendarAlt className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500" />
-                <input 
-                    type="date" 
-                    value={date} 
-                    onChange={(e) => setDate(e.target.value)}
-                    className="pl-12 pr-6 py-4 bg-white border border-gray-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-xs uppercase tracking-widest text-gray-700 transition-all shadow-sm"
-                />
-            </div>
+          <div className="relative group flex-1 sm:min-w-[300px]">
+            <FaSearch className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Cari nama atau NIP guru..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold text-gray-700 shadow-inner"
+            />
+          </div>
+          <div className="relative group">
+            <FaCalendarAlt className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-500" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="pl-12 pr-6 py-4 bg-white border border-gray-200 rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-xs uppercase tracking-widest text-gray-700 transition-all shadow-sm"
+            />
+          </div>
         </div>
       </div>
 
       {/* TABLE SECTION */}
       <div className="bg-white rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-8 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
-            <h3 className="text-lg font-black text-gray-800 flex items-center gap-3">
-                <span className="w-2 h-6 bg-indigo-600 rounded-full"></span>
-                Daftar Presensi Harian Guru
-            </h3>
-            <span className="text-[10px] font-black text-gray-400 bg-white px-4 py-1.5 rounded-full border border-gray-100 uppercase tracking-widest shadow-sm">
-                TOTAL: {filteredTeachers.length} RECORD
-            </span>
+          <h3 className="text-lg font-black text-gray-800 flex items-center gap-3">
+            <span className="w-2 h-6 bg-indigo-600 rounded-full"></span>
+            Daftar Presensi Harian Guru
+          </h3>
+          <span className="text-[10px] font-black text-gray-400 bg-white px-4 py-1.5 rounded-full border border-gray-100 uppercase tracking-widest shadow-sm">
+            TOTAL: {filteredTeachers.length} RECORD
+          </span>
         </div>
 
         <div className="overflow-x-auto">
@@ -143,12 +150,12 @@ export default function KehadiranGuruIndex() {
                   </td>
                   <td className="px-10 py-6">
                     <div className="flex justify-center">
-                        <button
-                            className="w-full max-w-[120px] py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-2"
-                            onClick={() => navigate(`/waka/kehadiran-guru/${item.teacher.id}`)}
-                        >
-                            <FaEye /> DETAIL
-                        </button>
+                      <button
+                        className="w-full max-w-[120px] py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-2"
+                        onClick={() => navigate(`/waka/kehadiran-guru/${item.teacher.id}`)}
+                      >
+                        <FaEye /> DETAIL
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -158,12 +165,12 @@ export default function KehadiranGuruIndex() {
         </div>
 
         {!loading && filteredTeachers.length === 0 && (
-            <div className="py-24 text-center">
-                <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-gray-200">
-                    <FaChalkboardTeacher size={48} />
-                </div>
-                <p className="text-gray-400 font-black uppercase tracking-widest text-sm italic">Data tenaga pendidik tidak ditemukan</p>
+          <div className="py-24 text-center">
+            <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 text-gray-200">
+              <FaChalkboardTeacher size={48} />
             </div>
+            <p className="text-gray-400 font-black uppercase tracking-widest text-sm italic">Data tenaga pendidik tidak ditemukan</p>
+          </div>
         )}
       </div>
     </PageWrapper>

@@ -87,6 +87,16 @@ export const teacherService = {
     },
 
     /**
+     * Import multiple teachers from array
+     */
+    async importTeachers(teachers: any[]): Promise<any> {
+        const response = await apiClient.post(`${API_ENDPOINTS.TEACHERS}/import`, {
+            teachers
+        });
+        return response.data;
+    },
+
+    /**
      * Get teacher attendance history (for waka)
      */
     async getTeacherAttendance(id: string | number, params?: { month?: number; year?: number }): Promise<any[]> {

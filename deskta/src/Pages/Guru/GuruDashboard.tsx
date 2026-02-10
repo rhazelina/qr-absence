@@ -347,24 +347,31 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
   // ========== FETCH SCHEDULES ==========
   useEffect(() => {
+    const controller = new AbortController();
     const fetchSchedules = async () => {
       try {
         setIsLoadingSchedules(true);
         setError(null);
         const { dashboardService } = await import('../../services/dashboard');
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const data = await dashboardService.getTeacherSchedules({ date: today });
+        const data = await dashboardService.getTeacherSchedules({
+          date: today,
+          signal: controller.signal
+        });
         const formattedSchedules = data.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
-      } catch (error) {
-        console.error('Failed to fetch schedules:', error);
-        setError('Gagal memuat jadwal mengajar hari ini.');
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to fetch schedules:', error);
+          setError('Gagal memuat jadwal mengajar hari ini.');
+        }
       } finally {
         setIsLoadingSchedules(false);
       }
     };
 
     fetchSchedules();
+    return () => controller.abort();
   }, []);
 
   // ========== NAVIGATION HANDLERS ==========

@@ -347,16 +347,16 @@ export default function DashboardWalliKelas({
         const { dashboardService } = await import('../../services/dashboard');
 
         // Fetch homeroom class info
-        const classData = await dashboardService.getMyHomeroom();
+        const classData = await dashboardService.getMyHomeroom({ signal: controller.signal });
         setHomeroomClass(classData.name || 'Kelas');
 
         // Fetch students count
-        const students = await dashboardService.getMyHomeroomStudents();
+        const students = await dashboardService.getMyHomeroomStudents({ signal: controller.signal });
         setTotalStudents(students.length);
 
         // Fetch schedules for today
         const today = new Date().toISOString().split('T')[0];
-        const schedulesData = await dashboardService.getMyHomeroomSchedules({ date: today });
+        const schedulesData = await dashboardService.getMyHomeroomSchedules({ date: today, signal: controller.signal });
         const formattedSchedules = schedulesData.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
       } catch (error: any) {

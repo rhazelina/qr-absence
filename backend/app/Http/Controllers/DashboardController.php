@@ -130,8 +130,8 @@ class DashboardController extends Controller
                 'is_class_officer' => $student->is_class_officer,
             ],
             'school_hours' => [
-                'start_time' => '07:00',
-                'end_time' => '15:00',
+                'start_time' => substr(\App\Models\Setting::where('key', 'school_start_time')->value('value') ?? '07:00', 0, 5),
+                'end_time' => substr(\App\Models\Setting::where('key', 'school_end_time')->value('value') ?? '15:00', 0, 5),
             ],
             'schedule_today' => $scheduleToday,
         ]);
@@ -353,6 +353,7 @@ class DashboardController extends Controller
             'excused', 'izin' => 'Izin',
             'absent' => 'Alpha',
             'dinas' => 'Dinas',
+            'return' => 'Pulang',
             default => 'Belum Absen',
         };
     }

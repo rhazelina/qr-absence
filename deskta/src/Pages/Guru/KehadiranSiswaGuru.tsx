@@ -45,7 +45,7 @@ export default function KehadiranSiswaGuru({
 
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const fetchData = async () => {
       try {
         const { dashboardService } = await import('../../services/dashboard');
@@ -103,7 +103,7 @@ export default function KehadiranSiswaGuru({
       }
     };
     fetchData();
-    
+
     return () => controller.abort();
   }, [user.name, currentDate]);
 
@@ -125,28 +125,17 @@ export default function KehadiranSiswaGuru({
     if (!confirmed) return;
 
     try {
-      const { API_BASE_URL } = await import('../../utils/constants');
-      // Retrieve token
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/me/schedules/${activeScheduleId}/close`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
+      const { default: apiClient } = await import('../../services/api');
+      const response = await apiClient.post(`/me/schedules/${activeScheduleId}/close`);
 
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.message || "Gagal menutup absensi");
-
-      await popupAlert(`✅ ${data.message}`);
+      const data = response.data || response;
+      await popupAlert(`✅ ${data.message || 'Absensi berhasil ditutup'}`);
       window.location.reload();
 
     } catch (e: any) {
       console.error(e);
-      await popupAlert(`❌ Error: ${e.message}`);
+      const { getErrorMessage } = await import('../../services/api');
+      await popupAlert(`❌ Error: ${getErrorMessage(e)}`);
     }
   };
 

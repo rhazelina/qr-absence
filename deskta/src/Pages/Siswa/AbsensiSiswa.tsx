@@ -142,12 +142,14 @@ export default function AbsensiSiswa({
   const [records, setRecords] = useState<AbsensiRecord[]>([]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchData = async () => {
       try {
         const { attendanceService } = await import('../../services/attendance');
         const response = await attendanceService.getMyAttendance({
           from: startDate,
-          to: endDate
+          to: endDate,
+          signal: controller.signal
         });
         const data = response.data || response;
         const apiRecords = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
@@ -171,11 +173,14 @@ export default function AbsensiSiswa({
         });
         setRecords(mapped);
 
-      } catch (e) {
-        console.error(e);
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          console.error(e);
+        }
       }
     };
     fetchData();
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   const filteredData = useMemo(() => {

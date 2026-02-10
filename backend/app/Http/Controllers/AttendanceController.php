@@ -60,35 +60,11 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'Profil guru tidak ditemukan'], 422);
         }
 
-        if ($user->user_type === 'student') {
-            if (! ($data['device_id'] ?? null)) {
-                return response()->json(['message' => 'Device belum terdaftar'], 422);
-            }
-
-            $device = $user->devices()->where('id', $data['device_id'])->where('active', true)->first();
-            if (! $device) {
-                return response()->json(['message' => 'Device tidak valid'], 422);
-            }
-
-            $device->update(['last_used_at' => $now]);
-        }
-
-        if ($qr->type === 'student' && $qr->schedule && $user->studentProfile && $qr->schedule->class_id !== $user->studentProfile->class_id) {
-            return response()->json(['message' => 'QR bukan untuk kelas kamu'], 403);
-        }
-
-        if ($qr->type === 'teacher' && $qr->schedule && $qr->schedule->teacher_id !== optional($user->teacherProfile)->id) {
-            return response()->json(['message' => 'QR bukan untuk guru ini'], 403);
-        }
-
-        $attributes = [
-            'attendee_type' => $user->user_type,
-            'schedule_id' => $qr->schedule_id,
-            'student_id' => $user->studentProfile->id ?? null,
-            'teacher_id' => $user->teacherProfile->id ?? null,
-        ];
-
         return DB::transaction(function () use ($attributes, $now, $qr, $user) {
+            if ($user->user_type === 'student') {
+                $user->devices()->where('id', request('device_id'))->where('active', true)->update(['last_used_at' => $now]);
+            }
+
             $existing = Attendance::where($attributes)
                 ->whereDate('date', $now->toDateString())
                 ->lockForUpdate()
@@ -143,8 +119,9 @@ class AttendanceController extends Controller
             $startTime->second
         );
 
-        // Grace period: 15 minutes
-        $lateThreshold = $scheduledDateTime->copy()->addMinutes(15);
+        // Grace period from settings
+        $gracePeriod = (int) (\App\Models\Setting::where('key', 'grace_period')->value('value') ?? 15);
+        $lateThreshold = $scheduledDateTime->copy()->addMinutes($gracePeriod);
 
         if ($checkInTime->gt($lateThreshold)) {
             return 'late';
@@ -219,7 +196,7 @@ class AttendanceController extends Controller
 
         if ($request->filled('status')) {
             $request->validate([
-                'status' => ['in:present,late,excused,sick,absent,dinas,izin'],
+                'status' => ['in:present,late,excused,sick,absent,dinas,izin,return'],
             ]);
             $query->where('status', $request->string('status'));
         }
@@ -278,7 +255,7 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin,return'],
         ]);
 
         $teacherId = $request->user()->teacherProfile->id;
@@ -600,7 +577,7 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin,return'],
         ]);
 
         $query = Attendance::query()
@@ -859,7 +836,7 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin,return'],
             'class_id' => ['nullable', 'exists:classes,id'],
         ]);
 
@@ -1134,6 +1111,7 @@ class AttendanceController extends Controller
                     'izin' => 'excused',
                     'terlambat' => 'late',
                     'alpha' => 'absent',
+                    'pulang' => 'return',
                 ];
                 $status = $map[$status] ?? $status;
 
@@ -1170,7 +1148,7 @@ class AttendanceController extends Controller
         $map = [
             'alpha' => 'absent',
             'tanpa-keterangan' => 'absent',
-            'pulang' => 'excused',
+            'pulang' => 'return',
             'hadir' => 'present',
             'sakit' => 'sick',
             'izin' => 'excused',
@@ -1182,7 +1160,7 @@ class AttendanceController extends Controller
         }
 
         $data = $request->validate([
-            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin'],
+            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin,return'],
             'reason' => ['nullable', 'string'],
         ]);
 

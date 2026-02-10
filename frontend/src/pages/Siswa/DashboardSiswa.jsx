@@ -272,6 +272,7 @@ const DashboardSiswa = () => {
   const [scheduleImage, setScheduleImage] = useState(null);
   const [todaySchedule, setScheduleToday] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -320,6 +321,7 @@ const DashboardSiswa = () => {
         }
 
         // Fetch Today's Schedule
+        setIsLoadingSchedule(true);
         const { default: apiClient } = await import('../../services/api');
         const scheduleRes = await apiClient.get('/me/dashboard/summary', { signal: controller.signal });
         setScheduleToday(scheduleRes.data.schedule_today || []);
@@ -331,6 +333,7 @@ const DashboardSiswa = () => {
         }
       } finally {
         setIsLoading(false);
+        setIsLoadingSchedule(false);
       }
     };
 

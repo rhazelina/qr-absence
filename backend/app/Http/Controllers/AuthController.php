@@ -100,13 +100,23 @@ class AuthController extends Controller
             ];
         }
 
+        // Determine precise role for Frontend/Deskta compatibility
+        $actualRole = $user->user_type;
+        if ($user->user_type === 'teacher') {
+            $isHomeroom = \App\Models\Classes::where('teacher_id', $user->teacherProfile?->id)->exists();
+            $actualRole = $isHomeroom ? 'wakel' : 'guru';
+        } elseif ($user->user_type === 'student') {
+            $actualRole = $user->studentProfile?->is_class_officer ? 'pengurus_kelas' : 'siswa';
+        }
+
         return response()->json([
             'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'user_type' => $role, // Map precise role to user_type for Kotlin @SerializedName
+                'user_type' => $user->user_type, // Original DB type
+                'role' => $actualRole, // Standardized role for UI
                 'is_class_officer' => $isClassOfficer,
                 'profile' => $profile,
             ],
@@ -136,11 +146,21 @@ class AuthController extends Controller
             ];
         }
 
+        // Determine precise role for Frontend/Deskta compatibility
+        $actualRole = $user->user_type;
+        if ($user->user_type === 'teacher') {
+            $isHomeroom = \App\Models\Classes::where('teacher_id', $user->teacherProfile?->id)->exists();
+            $actualRole = $isHomeroom ? 'wakel' : 'guru';
+        } elseif ($user->user_type === 'student') {
+            $actualRole = $user->studentProfile?->is_class_officer ? 'pengurus_kelas' : 'siswa';
+        }
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'user_type' => $role,
+            'user_type' => $user->user_type,
+            'role' => $actualRole,
             'is_class_officer' => $isClassOfficer,
             'profile' => $profile,
         ]);

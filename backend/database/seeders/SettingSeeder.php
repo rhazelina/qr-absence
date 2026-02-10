@@ -28,10 +28,17 @@ class SettingSeeder extends Seeder
             ],
             [
                 'key' => 'school_name',
-                'value' => 'SMK Muhammadiyah 1 Sukoharjo',
+                'value' => 'SMK NEGERI 2 SINGOSARI',
                 'type' => 'string',
                 'group' => 'general',
                 'description' => 'Name of the school',
+            ],
+            [
+                'key' => 'grace_period',
+                'value' => '15',
+                'type' => 'integer',
+                'group' => 'attendance',
+                'description' => 'Grace period for attendance in minutes',
             ],
         ];
 

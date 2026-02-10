@@ -6,7 +6,7 @@ import { Select } from '../../component/Shared/Select';
 import { Table } from '../../component/Shared/Table';
 import { TambahGuruForm } from '../../component/Shared/Form/TambahGuruForm';
 import {
-  MoreVertical, Edit, Trash2, Eye, FileDown, FileText, Download, Search
+  MoreVertical, Edit, Trash2, Eye, FileDown, FileText, Download, Search, Upload
 } from 'lucide-react';
 import { saveAs } from "file-saver";
 import { usePopup } from "../../component/Shared/Popup/PopupProvider";
@@ -249,13 +249,77 @@ export default function GuruAdmin({
 
 
 
+  const handleImport = () => fileInputRef.current?.click();
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Import implementation similar to previous but simplified for brevity
-    if (e.target.files?.[0]) {
-      void popupAlert("Fitur impor belum terhubung ke API (TODO)");
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv') && file.type !== "text/csv") {
+      void popupAlert("Format file harus CSV.");
+      e.target.value = '';
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+        const items = lines.slice(1).filter(line => line.trim() !== '').map(line => {
+          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+          const item: any = {};
+          headers.forEach((header, index) => {
+            item[header] = values[index];
+          });
+          return item;
+        });
+
+        if (items.length === 0) {
+          void popupAlert("File CSV kosong atau tidak valid.");
+          return;
+        }
+
+        // Validate and Map to Backend format
+        // Template: Nama, Kode/NIP, Gender (L/P), No Telp, Mata Pelajaran
+        const formattedItems = items.map(item => ({
+          name: item['Nama Guru'] || item['Nama'] || 'Guru Baru',
+          nip: item['Kode Guru'] || item['NIP'] || item['Kode'] || '',
+          code: item['Kode Guru'] || item['NIP'] || item['Kode'] || '',
+          username: item['Kode Guru'] || item['NIP'] || item['Kode'] || `${(item['Nama'] || 'Guru').replace(/\s+/g, '').toLowerCase().substring(0, 5)}${Date.now().toString().substring(8)}`,
+          email: `${item['Kode Guru'] || item['NIP'] || item['Kode'] || Date.now()}@school.id`,
+          password: 'password123',
+          gender: (item['Jenis Kelamin'] || item['Gender'] || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',
+          phone: item['No Telp'] || item['Phone'] || null,
+          subject: item['Mata Pelajaran'] || item['Subject'] || '-',
+          role: 'teacher'
+        }));
+
+        setIsLoading(true);
+        const { teacherService } = await import('../../services/teacher');
+        const response = await teacherService.importTeachers(formattedItems);
+
+        void popupAlert(`Berhasil mengimpor ${response.created} guru.`);
+        await fetchData();
+      } catch (err: any) {
+        console.error(err);
+        void popupAlert(err?.response?.data?.message || 'Gagal memproses file CSV');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
     e.target.value = '';
-  }
+  };
+
+  const handleDownloadFormatExcel = () => {
+    // Logic to download template
+    const headers = ['Nama Guru', 'Kode Guru', 'Jenis Kelamin (L/P)', 'No Telp', 'Mata Pelajaran'];
+    const blob = new Blob([headers.join(',')], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, 'Template_Guru.csv');
+  };
 
   const handleExportPDF = () => {
     // Reuse PDF generation logic
@@ -448,6 +512,14 @@ export default function GuruAdmin({
           {/* Right: Actions */}
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
             <Button label="Tambahkan" onClick={() => { setEditingGuru(null); setIsModalOpen(true); }} variant="primary" />
+
+            <button onClick={handleDownloadFormatExcel} style={{ ...buttonBaseStyle, backgroundColor: '#10B981', color: '#FFFFFF' }}>
+              <Download size={16} /> Format Excel
+            </button>
+
+            <button onClick={handleImport} style={{ ...buttonBaseStyle, backgroundColor: '#0B1221', color: '#FFFFFF' }}>
+              <Upload size={16} /> Impor
+            </button>
 
             <div style={{ position: 'relative' }}>
               <button

@@ -97,22 +97,26 @@ export default function AdminDashboard({
 
   // ==================== FETCH ADMIN SUMMARY ====================
   useEffect(() => {
+    const controller = new AbortController();
     const fetchAdminSummary = async () => {
       try {
         setIsLoadingData(true);
         setError(null);
         const { dashboardService } = await import('../../services/dashboard');
-        const data = await dashboardService.getAdminSummary();
+        const data = await dashboardService.getAdminSummary({ signal: controller.signal });
         setAdminSummary(data);
-      } catch (error) {
-        console.error('Failed to fetch admin summary:', error);
-        setError('Gagal memuat ringkasan data statistik sekolah.');
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to fetch admin summary:', error);
+          setError('Gagal memuat ringkasan data statistik sekolah.');
+        }
       } finally {
         setIsLoadingData(false);
       }
     };
 
     fetchAdminSummary();
+    return () => controller.abort();
   }, []);
 
   // ==================== MENU NAVIGATION HANDLER ====================

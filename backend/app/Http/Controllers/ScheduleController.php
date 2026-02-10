@@ -203,12 +203,6 @@ class ScheduleController extends Controller
 
         $day = $this->normalizeDay($dto->day);
 
-        if ($day === 'Sunday') {
-            throw ValidationException::withMessages([
-                'day' => ['Kegiatan sekolah tidak tersedia di hari Minggu.'],
-            ]);
-        }
-
         foreach ($dto->items as $index => $item) {
             $start = Carbon::createFromFormat('H:i', $item['start_time']);
             $end = Carbon::createFromFormat('H:i', $item['end_time']);

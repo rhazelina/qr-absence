@@ -77,7 +77,13 @@ function DashboardGuru() {
       setCurrentTime(now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       setCurrentDate(now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
     }, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      // Ensure any scanner is cleared on unmount
+      if (window.scannerInstance) {
+        window.scannerInstance.clear().catch(console.error);
+      }
+    };
   }, []);
 
   /* handleLogoutClick removed */
@@ -104,11 +110,21 @@ function DashboardGuru() {
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0
       });
+      window.scannerInstance = scanner;
       scanner.render(() => {
         scanner.clear();
         setQrVerified(true);
+        window.scannerInstance = null;
       }, () => { });
     }, 100);
+  };
+
+  const handleCloseScanner = () => {
+    if (window.scannerInstance) {
+      window.scannerInstance.clear().catch(console.error);
+      window.scannerInstance = null;
+    }
+    setSelectedSchedule(null);
   };
 
   return (
@@ -256,7 +272,7 @@ function DashboardGuru() {
 
       {/* MODAL - Scanner */}
       {selectedSchedule && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={() => setSelectedSchedule(null)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={handleCloseScanner}>
           <div
             className={`bg-white rounded-[3rem] shadow-2xl w-full ${qrVerified ? 'max-w-xl' : 'max-w-md'} overflow-hidden animate-in fade-in zoom-in duration-300`}
             onClick={(e) => e.stopPropagation()}
@@ -268,7 +284,7 @@ function DashboardGuru() {
                     <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight italic flex items-center gap-3">
                       <FaQrcode className="text-blue-600" /> Scan QR Siswa
                     </h3>
-                    <button className="text-gray-300 hover:text-gray-600 text-3xl leading-none" onClick={() => setSelectedSchedule(null)}>&times;</button>
+                    <button className="text-gray-300 hover:text-gray-600 text-3xl leading-none" onClick={handleCloseScanner}>&times;</button>
                   </div>
 
                   <div className="w-full bg-gray-900 p-4 rounded-[2rem] shadow-2xl overflow-hidden ring-[12px] ring-blue-500/10">
