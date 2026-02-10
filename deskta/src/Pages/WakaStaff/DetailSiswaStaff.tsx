@@ -1,6 +1,6 @@
 ﻿// src/Pages/WakaStaff/DetailSiswaStaff.tsx
 import { useEffect, useMemo, useState, useRef } from "react";
-import { FileText, FileSpreadsheet, GraduationCap, Calendar } from "lucide-react";
+import { FileText, FileSpreadsheet, GraduationCap } from "lucide-react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Button } from "../../component/Shared/Button";
 import { Table } from "../../component/Shared/Table";
@@ -39,18 +39,6 @@ interface DetailSiswaStaffProps {
   kelasId?: string;
   onBack?: () => void;
 }
-
-// ✅ PERBAIKAN: Mapping mata pelajaran dengan daftar guru LENGKAP
-const MATA_PELAJARAN_GURU: Record<string, string[]> = {
-  "Matematika": ["Pak Budi", "Bu Ani", "Pak Hendra"],
-  "Bahasa Indonesia": ["Bu Sari", "Pak Dedi"],
-  "Bahasa Inggris": ["Bu Linda", "Pak John"],
-  "Fisika": ["Pak Ahmad", "Bu Rina"],
-  "Kimia": ["Bu Dewi", "Pak Yanto"],
-  "MPKK": ["Bu Rere", "Bu Dian"],
-};
-
-const MATA_PELAJARAN_LIST = Object.keys(MATA_PELAJARAN_GURU);
 
 // Declare jsPDF types for CDN usage
 declare global {
@@ -129,14 +117,11 @@ export default function DetailSiswaStaff({
 }: DetailSiswaStaffProps) {
   const { alert: popupAlert } = usePopup();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [loading, setLoading] = useState(false);
 
   // Tanggal otomatis update setiap hari
   const [selectedTanggal, setSelectedTanggal] = useState(
-    new Date().toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
+    new Date().toISOString().slice(0, 10)
   );
 
   const [selectedMapel, setSelectedMapel] = useState("");
@@ -148,43 +133,68 @@ export default function DetailSiswaStaff({
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Info dummy kelas
-  const kelasInfo = {
-    namaKelas: "X Mekatronika 1",
-  };
+  const [kelasInfo, setKelasInfo] = useState({
+    namaKelas: "Memuat...",
+  });
 
-  // ✅ PERBAIKAN: Data kosong (menunggu integrasi backend)
-  const [rows] = useState<KehadiranRow[]>([]);
+  // ✅ Data dari backend
+  const [rows, setRows] = useState<KehadiranRow[]>([]);
 
   // State untuk modal detail
   const [selectedRow, setSelectedRow] = useState<KehadiranRow | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Update tanggal otomatis setiap hari
+  // Fetch data
   useEffect(() => {
-    const updateDate = () => {
-      setSelectedTanggal(
-        new Date().toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-      );
+    const fetchData = async () => {
+      if (!_kelasId) return;
+      setLoading(true);
+      try {
+        const { attendanceService } = await import("../../services/attendance");
+        const { classService } = await import("../../services/class");
+
+        // 1. Get Class Info
+        const classData = await classService.getClassById(_kelasId);
+        setKelasInfo({
+          namaKelas: classData.name || `${classData.grade} ${classData.label}`,
+        });
+
+        // 2. Get Attendance History for the date
+        const response: any = await attendanceService.getClassAttendanceByDate(
+          Number(_kelasId),
+          selectedTanggal
+        );
+
+        const mappedRows: KehadiranRow[] = response.map((item: any) => ({
+          id: item.id.toString(),
+          nisn: item.student?.nis || "-",
+          namaSiswa: item.student?.user?.name || "Siswa",
+          mataPelajaran: item.schedule?.subject?.name || item.schedule?.subject_name || "-",
+          namaGuru: item.schedule?.teacher?.user?.name || "-",
+          status: (item.status === 'present' ? 'hadir' :
+            item.status === 'late' ? 'hadir' :
+              item.status === 'excused' ? 'izin' :
+                item.status === 'sick' ? 'sakit' :
+                  item.status === 'absent' ? 'alpha' :
+                    item.status === 'alpha' ? 'alpha' :
+                      item.status === 'dinas' ? 'izin' :
+                        item.status === 'pulang' ? 'pulang' : 'alpha') as DetailStatusType,
+          keterangan: item.reason || "-",
+          waktuMasuk: item.checked_in_at ? item.checked_in_at.slice(0, 5) : "-",
+          jamPelajaran: item.schedule?.start_time ? `${item.schedule.start_time.slice(0, 5)} - ${item.schedule.end_time.slice(0, 5)}` : "-",
+          tanggal: item.date,
+        }));
+
+        setRows(mappedRows);
+      } catch (error) {
+        console.error("Failed to fetch student details:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Update setiap tengah malam
-    const now = new Date();
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const timeUntilMidnight = tomorrow.getTime() - now.getTime();
-
-    const timeout = setTimeout(() => {
-      updateDate();
-      // Setelah tengah malam, set interval untuk update setiap 24 jam
-      const interval = setInterval(updateDate, 86400000);
-      return () => clearInterval(interval);
-    }, timeUntilMidnight);
-
-    return () => clearTimeout(timeout);
-  }, []);
+    fetchData();
+  }, [_kelasId, selectedTanggal]);
 
   // Load jsPDF from CDN
   useEffect(() => {
@@ -234,21 +244,23 @@ export default function DetailSiswaStaff({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ PERBAIKAN: Ambil daftar guru dari MAPPING, bukan dari data tabel
-  const availableGurus = useMemo(() => {
-    if (!selectedMapel) {
-      // Jika tidak ada mapel dipilih, ambil semua guru unik dari data
-      const guruSet = new Set<string>();
-      rows.forEach(row => {
-        if (row.namaGuru && row.namaGuru.trim() !== "") {
-          guruSet.add(row.namaGuru);
-        }
-      });
-      return Array.from(guruSet).sort();
-    }
+  // ✅ AMBIL DAFTAR MAPEL & GURU DARI DATA
+  const MATA_PELAJARAN_LIST = useMemo(() => {
+    const mapelSet = new Set<string>();
+    rows.forEach(row => {
+      if (row.mataPelajaran) mapelSet.add(row.mataPelajaran);
+    });
+    return Array.from(mapelSet).sort();
+  }, [rows]);
 
-    // Jika ada mapel dipilih, ambil dari mapping
-    return MATA_PELAJARAN_GURU[selectedMapel] || [];
+  const availableGurus = useMemo(() => {
+    const guruSet = new Set<string>();
+    rows.forEach(row => {
+      if (!selectedMapel || row.mataPelajaran === selectedMapel) {
+        if (row.namaGuru && row.namaGuru !== "-") guruSet.add(row.namaGuru);
+      }
+    });
+    return Array.from(guruSet).sort();
   }, [selectedMapel, rows]);
 
   // Reset guru ketika ganti mapel
@@ -361,9 +373,7 @@ export default function DetailSiswaStaff({
   };
 
   // Fungsi untuk membuka modal detail
-  const handleStatusClick = (row: KehadiranRow, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const handleStatusClick = (row: KehadiranRow) => {
     console.log("Status diklik:", row);
     setSelectedRow(row);
     setIsDetailModalOpen(true);
@@ -570,24 +580,20 @@ export default function DetailSiswaStaff({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
 
-            {/* BUTTON TANGGAL BARU - DENGAN BACKGROUND BIRU */}
-            <div
+            {/* DATE PICKER */}
+            <input
+              type="date"
+              value={selectedTanggal}
+              onChange={(e) => setSelectedTanggal(e.target.value)}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: "#0066CC",
-                color: "#FFFFFF",
-                borderRadius: 8,
                 padding: "10px 16px",
+                borderRadius: 8,
+                border: "1px solid #D1D5DB",
                 fontWeight: 600,
                 fontSize: "14px",
-                boxShadow: "0 2px 4px rgba(0, 102, 204, 0.3)",
+                cursor: "pointer",
               }}
-            >
-              <Calendar size={18} strokeWidth={2.5} />
-              <span>{selectedTanggal}</span>
-            </div>
+            />
 
             {/* CARD KELAS */}
             <div
@@ -811,13 +817,42 @@ export default function DetailSiswaStaff({
           <SummaryCard label="Pulang" value={totalPulang.toString()} color="#2F85EB" /> {/* BOLD BIRU */}
         </div>
 
-        {/* Table */}
-        <Table
-          columns={columns}
-          data={filteredRows}
-          keyField="id"
-          emptyMessage="Belum ada data kehadiran siswa."
-        />
+        <div
+          style={{
+            background: "#FFFFFF",
+            borderRadius: 12,
+            border: "1px solid #E5E7EB",
+            padding: isMobile ? 12 : 16,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+            position: "relative",
+            minHeight: "200px"
+          }}
+        >
+          {loading && (
+            <div style={{
+              position: "absolute",
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: "rgba(255,255,255,0.7)",
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 12,
+              fontWeight: 600,
+              color: "#1E3A5F"
+            }}>
+              <div className="animate-spin" style={{ width: 24, height: 24, border: "3px solid #1E3A5F", borderTopColor: "transparent", borderRadius: "50%" }} />
+              Memuat data...
+            </div>
+          )}
+          <Table
+            columns={columns}
+            data={filteredRows}
+            onView={handleStatusClick}
+            keyField="id"
+            emptyMessage={loading ? "Memuat data..." : "Belum ada data kehadiran untuk kriteria ini."}
+          />
+        </div>
       </div>
 
       {/* Modal Detail Kehadiran */}

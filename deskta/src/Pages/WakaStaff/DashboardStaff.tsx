@@ -119,70 +119,77 @@ import type { WakaSummary } from "../../types/api";
 
 export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) {
   const { confirm: popupConfirm } = usePopup();
-   
+
   const [currentPage, setCurrentPage] = useState<WakaPage>("dashboard");
   const navigate = useNavigate();
 
   // API data states
   const [wakaSummary, setWakaSummary] = useState<WakaSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // ... (rest of the component)
 
-function ComingSoon({ title }: { title: string }) {
-  return (
-    <div
-      style={{
-        backgroundColor: "white",
-        borderRadius: "16px",
-        padding: "64px 32px",
-        border: "2px dashed #E5E7EB",
-        textAlign: "center",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        minHeight: "400px"
-      }}
-    >
-      <div style={{ 
-        backgroundColor: "#F3F4F6", 
-        padding: "24px", 
-        borderRadius: "50%", 
-        marginBottom: "24px",
-        display: "inline-flex"
-      }}>
-        <Construction size={48} color="#9CA3AF" />
-      </div>
-      <h2
+  function ComingSoon({ title }: { title: string }) {
+    return (
+      <div
         style={{
-          fontSize: "24px",
-          marginBottom: "12px",
-          color: "#111827",
-          fontWeight: 700,
+          backgroundColor: "white",
+          borderRadius: "16px",
+          padding: "64px 32px",
+          border: "2px dashed #E5E7EB",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          minHeight: "400px"
         }}
       >
-        {title} Segera Hadir
-      </h2>
-      <p style={{ color: "#6B7280", fontSize: "16px", maxWidth: "400px", lineHeight: "1.5" }}>
-        Fitur ini sedang dalam tahap pengembangan dan akan segera tersedia dalam pembaruan berikutnya.
-      </p>
-    </div>
-  );
-}
+        <div style={{
+          backgroundColor: "#F3F4F6",
+          padding: "24px",
+          borderRadius: "50%",
+          marginBottom: "24px",
+          display: "inline-flex"
+        }}>
+          <Construction size={48} color="#9CA3AF" />
+        </div>
+        <h2
+          style={{
+            fontSize: "24px",
+            marginBottom: "12px",
+            color: "#111827",
+            fontWeight: 700,
+          }}
+        >
+          {title} Segera Hadir
+        </h2>
+        <p style={{ color: "#6B7280", fontSize: "16px", maxWidth: "400px", lineHeight: "1.5" }}>
+          Fitur ini sedang dalam tahap pengembangan dan akan segera tersedia dalam pembaruan berikutnya.
+        </p>
+      </div>
+    );
+  }
 
   // Fetch dashboard data
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const fetchDashboardData = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
         const wakaStats = await dashboardService.getWakaDashboardSummary({ signal: controller.signal });
         setWakaSummary(wakaStats);
-      } catch (error: any) {
-        if (error.name !== 'AbortError') {
-          console.error('Error fetching dashboard data:', error);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('Error fetching dashboard data:', err);
+          setError('Gagal memuat ringkasan data Waka/Staff.');
         }
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchDashboardData();
@@ -195,6 +202,7 @@ function ComingSoon({ title }: { title: string }) {
   }, []);
 
   const [selectedGuru, setSelectedGuru] = useState<string | null>(null);
+  const [selectedGuruId, setSelectedGuruId] = useState<string | null>(null);
   const [selectedGuruIdentitas, setSelectedGuruIdentitas] = useState<string | null>(null);
   const [selectedKelas, setSelectedKelas] = useState<string | null>(null);
   const [selectedKelasId, setSelectedKelasId] = useState<string | null>(null);
@@ -203,7 +211,7 @@ function ComingSoon({ title }: { title: string }) {
     namaKelas: string;
     waliKelas: string;
   } | null>(null);
-  
+
   const [selectedSiswa, setSelectedSiswa] = useState<{
     name: string;
     identitas: string;
@@ -346,7 +354,10 @@ function ComingSoon({ title }: { title: string }) {
         return (
           <KehadiranGuru
             {...commonProps}
-            onNavigateToDetail={() => {
+            onNavigateToDetail={(guruId: string, guruName: string, noIdentitas?: string) => {
+              setSelectedGuruId(guruId);
+              setSelectedGuru(guruName);
+              setSelectedGuruIdentitas(noIdentitas || null);
               handleMenuClick("detail-kehadiran-guru");
             }}
           />
@@ -356,6 +367,8 @@ function ComingSoon({ title }: { title: string }) {
         return (
           <DetailKehadiranGuru
             {...commonProps}
+            teacherId={selectedGuruId || undefined}
+            guruName={selectedGuru || undefined}
             onBack={() => handleMenuClick("kehadiran-guru")}
           />
         );
@@ -404,7 +417,36 @@ function ComingSoon({ title }: { title: string }) {
             user={user}
             onLogout={handleLogout}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: "28px", backgroundColor: "#F9FAFB", padding: "4px" }}>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "28px",
+              backgroundColor: "#F9FAFB",
+              padding: "4px",
+              opacity: isLoading ? 0.7 : 1,
+            }}>
+              {/* Error Alert */}
+              {error && (
+                <div style={{
+                  padding: "16px 20px",
+                  backgroundColor: "#FEF2F2",
+                  border: "1px solid #FEE2E2",
+                  borderRadius: "12px",
+                  color: "#B91C1C",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  width: "100%"
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              )}
+
               {/* Welcome Section */}
               <div style={{ marginBottom: "8px" }}>
                 <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#111827", margin: 0 }}>

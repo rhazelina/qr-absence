@@ -307,6 +307,7 @@ class DashboardController extends Controller
                     'present' => $present,
                     'absent' => $monthRecords->where('status', 'absent')->sum('count'),
                     'sick_excused' => $monthRecords->whereIn('status', ['sick', 'excused', 'izin'])->sum('count'),
+                    'return' => $monthRecords->where('status', 'return')->sum('count'),
                 ];
             }
 

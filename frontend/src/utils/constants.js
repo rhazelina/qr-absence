@@ -27,6 +27,17 @@ export const API_ENDPOINTS = {
 
     // Students
     STUDENTS: 'students',
+    STUDENTS_IMPORT: 'students/import',
+
+    // Classes
+    CLASSES: 'classes',
+
+    // Majors
+    MAJORS: 'majors',
+
+    // Attendance
+    ATTENDANCE: 'attendance',
+    ATTENDANCE_DOCUMENT: (id) => `attendance/${id}/document`,
 };
 
 export const TOKEN_KEY = 'auth_token';

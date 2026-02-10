@@ -78,11 +78,19 @@ export const teacherService = {
     async uploadScheduleImage(id: string | number, file: File): Promise<any> {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await apiClient.post(`${API_ENDPOINTS.TEACHERS}/${id}/schedule-image`, formData, {
+        const response = await apiClient.post(API_ENDPOINTS.TEACHER_SCHEDULE_IMAGE(Number(id)), formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
         });
+        return response.data;
+    },
+
+    /**
+     * Get teacher attendance history (for waka)
+     */
+    async getTeacherAttendance(id: string | number, params?: { month?: number; year?: number }): Promise<any[]> {
+        const response = await apiClient.get(API_ENDPOINTS.TEACHER_ATTENDANCE(Number(id)), { params });
         return response.data;
     }
 };

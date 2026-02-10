@@ -119,8 +119,8 @@ export function KehadiranSiswaWakel({
         let mappedRows: KehadiranRow[] = [];
 
         if (Array.isArray(data)) {
-          mappedRows = data.map((item: any, index: number) => ({
-            id: item.id?.toString() || `attendance-${item.student_id}-${index}-${Date.now()}`,
+          mappedRows = data.map((item: any) => ({
+            id: item.id?.toString() || `att-${item.student_id}-${item.schedule_id}`,
             studentId: item.student_id?.toString(),
             scheduleId: item.schedule_id,
             nisn: item.student?.nisn || '-',

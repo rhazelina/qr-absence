@@ -41,6 +41,14 @@ export const classService = {
     },
 
     /**
+     * Get class by ID
+     */
+    async getClassById(id: string | number): Promise<ClassRoom> {
+        const response = await apiClient.get(`classes/${id}`);
+        return response.data;
+    },
+
+    /**
      * Create a new class
      */
     async createClass(data: any): Promise<ClassRoom> {

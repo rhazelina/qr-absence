@@ -52,6 +52,7 @@ export default function AdminDashboard({
     total_rooms: 0,
   });
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // ==================== DATE & TIME HANDLER ====================
   const updateDateTime = () => {
@@ -98,12 +99,14 @@ export default function AdminDashboard({
   useEffect(() => {
     const fetchAdminSummary = async () => {
       try {
+        setIsLoadingData(true);
+        setError(null);
         const { dashboardService } = await import('../../services/dashboard');
         const data = await dashboardService.getAdminSummary();
         setAdminSummary(data);
       } catch (error) {
         console.error('Failed to fetch admin summary:', error);
-        // Keep default values on error
+        setError('Gagal memuat ringkasan data statistik sekolah.');
       } finally {
         setIsLoadingData(false);
       }
@@ -149,6 +152,28 @@ export default function AdminDashboard({
             >
               {/* ============ CONTENT LAYER ============ */}
               <div style={{ position: "relative", zIndex: 1 }}>
+                {/* ============ ERROR ALERT ============ */}
+                {error && (
+                  <div style={{
+                    marginBottom: "20px",
+                    padding: "16px 20px",
+                    backgroundColor: "#FEF2F2",
+                    border: "1px solid #FEE2E2",
+                    borderRadius: "12px",
+                    color: "#B91C1C",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px"
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span>{error}</span>
+                  </div>
+                )}
+
                 {/* ============ WELCOME SECTION ============ */}
                 <div
                   style={{

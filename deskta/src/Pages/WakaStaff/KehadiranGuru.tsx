@@ -53,35 +53,38 @@ export default function KehadiranGuru({
 
   useEffect(() => {
     const controller = new AbortController();
-    
-    const fetchData = async () => {
 
+    const fetchData = async () => {
+      setLoading(true);
       try {
         const { dashboardService } = await import("../../services/dashboard");
         const response: any = await dashboardService.getTeachersDailyAttendance({ date: selectedTanggal }, { signal: controller.signal });
-        
-        // Map API response to KehadiranGuruRow
-        // API response: { date, items: { data: [ { teacher, attendance, status } ] } }
-        const apiItems = response.items?.data || [];
-        
+
+        const apiItems = response.items?.data || response.items || [];
+
         const mappedRows: KehadiranGuruRow[] = apiItems.map((item: any) => {
+          const status = item.status || 'absent';
+          let displayStatus = 'alpha';
+          if (status === 'present') displayStatus = 'hadir';
+          else if (status === 'late') displayStatus = 'terlambat';
+          else if (status === 'sick' || status === 'sakit') displayStatus = 'sakit';
+          else if (status === 'excused' || status === 'izin') displayStatus = 'izin';
+
           return {
             id: item.teacher.id.toString(),
             namaGuru: item.teacher.user?.name || "Guru",
             jadwal: item.teacher.subject || "-",
-            // API doesn't give 10 hours detail, so we map the daily status to all hours for now
-            // or just use the summary status. The bar UI expects 10 slots.
-            kehadiranJam: Array(10).fill(item.status === 'present' ? 'hadir' : (item.status === 'late' ? 'terlambat' : 'alpha')),
+            kehadiranJam: Array(10).fill(displayStatus),
           };
         });
-        
+
         setRows(mappedRows);
       } catch (error: any) {
         if (error.name !== 'AbortError') {
           console.error("Failed to fetch teacher attendance", error);
         }
       } finally {
-
+        setLoading(false);
       }
     };
 
@@ -151,11 +154,11 @@ export default function KehadiranGuru({
       onNavigateToDetail(row.id, row.namaGuru);
     } else {
       navigate(`/waka/kehadiran/detail/${row.id}`, {
-        state: { 
-          guru: row, 
+        state: {
+          guru: row,
           selectedTanggal,
           guruId: row.id,
-          guruName: row.namaGuru 
+          guruName: row.namaGuru
         },
       });
     }

@@ -69,13 +69,6 @@ class AbsenceRequestController extends Controller
             return response()->json($absenceRequest->load(['teacher.user', 'requester']), 201);
         }
 
-        // Handle Student Absence (Requires student_id)
-        if (empty($data['student_id'])) {
-            abort(422, 'Student ID wajib diisi untuk pengajuan siswa');
-        }
-
-        $student = StudentProfile::with('classRoom')->findOrFail($data['student_id']);
-
         if ($user->user_type === 'student') {
             $studentProfile = $user->studentProfile;
 
@@ -83,9 +76,22 @@ class AbsenceRequestController extends Controller
                 abort(403, 'Profil siswa tidak ditemukan');
             }
 
-            if (! $studentProfile->is_class_officer && $studentProfile->id !== $student->id) {
-                abort(403, 'Pengurus kelas saja yang boleh mengajukan untuk orang lain');
+            // Default to self if student_id is empty
+            if (empty($data['student_id'])) {
+                $data['student_id'] = $studentProfile->id;
+                $student = $studentProfile;
+            } else {
+                $student = StudentProfile::with('classRoom')->findOrFail($data['student_id']);
+                if (! $studentProfile->is_class_officer && $studentProfile->id !== $student->id) {
+                    abort(403, 'Pengurus kelas saja yang boleh mengajukan untuk orang lain');
+                }
             }
+        } else {
+            // Teacher or Admin must provide student_id
+            if (empty($data['student_id'])) {
+                abort(422, 'Student ID wajib diisi untuk pengajuan siswa');
+            }
+            $student = StudentProfile::with('classRoom')->findOrFail($data['student_id']);
         }
 
         if ($user->user_type === 'teacher') {

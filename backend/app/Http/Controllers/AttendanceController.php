@@ -985,8 +985,13 @@ class AttendanceController extends Controller
             $teacherProfile = $user->teacherProfile;
             if ($teacherProfile) {
                 // Authorized if they are the teacher for the schedule OR if they are the homeroom teacher for the student
-                $isAuthorized = ($attendance->schedule->teacher_id == $teacherProfile->id) ||
+                $isAuthorized = ($attendance->schedule && $attendance->schedule->teacher_id == $teacherProfile->id) ||
                                 ($attendance->student && $attendance->student->class_id == $teacherProfile->homeroom_class_id);
+                
+                // Also allow if it's the teacher's OWN attendance record
+                if ($attendance->attendee_type === 'teacher' && $attendance->teacher_id == $teacherProfile->id) {
+                    $isAuthorized = true;
+                }
             }
         } elseif ($user->user_type === 'student') {
             // Authorized only if it's their own attendance
@@ -1024,10 +1029,17 @@ class AttendanceController extends Controller
         } elseif ($user->user_type === 'teacher') {
             $teacherProfile = $user->teacherProfile;
             if ($teacherProfile) {
-                $isAuthorized = ($attendance->schedule->teacher_id == $teacherProfile->id) ||
+                // Authorized if they are the teacher for the schedule OR if they are the homeroom teacher for the student
+                $isAuthorized = ($attendance->schedule && $attendance->schedule->teacher_id == $teacherProfile->id) ||
                                 ($attendance->student && $attendance->student->class_id == $teacherProfile->homeroom_class_id);
+                
+                // Also allow if it's the teacher's OWN attendance record
+                if ($attendance->attendee_type === 'teacher' && $attendance->teacher_id == $teacherProfile->id) {
+                    $isAuthorized = true;
+                }
             }
         } elseif ($user->user_type === 'student') {
+            // Authorized only if it's their own attendance
             $isAuthorized = ($attendance->student_id == $user->studentProfile?->id);
         }
 

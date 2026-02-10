@@ -92,6 +92,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     dispen: 0,
   });
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -121,6 +122,8 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
+        setIsLoadingSchedules(true);
+        setError(null);
         const { dashboardService } = await import('../../services/dashboard');
         const today = new Date().toISOString().split('T')[0];
         const data = await dashboardService.getMySchedules({ date: today });
@@ -128,6 +131,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
         setSchedules(formattedSchedules);
       } catch (error) {
         console.error('Failed to fetch schedules:', error);
+        setError('Gagal memuat jadwal pelajaran.');
       } finally {
         setIsLoadingSchedules(false);
       }
@@ -139,6 +143,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
   useEffect(() => {
     const fetchAttendance = async () => {
       try {
+        setIsLoadingAttendance(true);
         const { dashboardService } = await import('../../services/dashboard');
         const data = await dashboardService.getMyAttendanceSummary();
         setAttendanceSummary({
@@ -150,6 +155,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
         });
       } catch (error) {
         console.error('Failed to fetch attendance:', error);
+        setError((prev) => prev || 'Gagal memuat ringkasan kehadiran.');
       } finally {
         setIsLoadingAttendance(false);
       }
@@ -294,6 +300,25 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 gap: "28px",
               }}
             >
+              {/* Error Alert */}
+              {error && (
+                <div style={{
+                  padding: "16px 20px",
+                  backgroundColor: "#FEF2F2",
+                  border: "1px solid #FEE2E2",
+                  borderRadius: "12px",
+                  color: "#B91C1C",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px"
+                }}>
+                  <Megaphone size={20} />
+                  <span>{error}</span>
+                </div>
+              )}
+
               {/* Welcome Section */}
               <div style={{
                 backgroundColor: "white",
@@ -301,6 +326,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 padding: "28px 32px",
                 boxShadow: "0 4px 20px rgba(0, 31, 62, 0.08)",
                 border: "1px solid #E5E7EB",
+                opacity: isLoadingSchedules || isLoadingAttendance ? 0.7 : 1,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
                   <div>
