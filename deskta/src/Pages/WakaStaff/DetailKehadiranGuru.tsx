@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { User, ArrowLeft, Eye, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, ArrowLeft, Eye, X, Loader2 } from "lucide-react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
+import { Modal } from "../../component/Shared/Modal";
 
 type StatusKehadiran = "Hadir" | "Izin" | "Sakit" | "Alfa" | "Tidak Hadir" | "Pulang";
 
@@ -20,6 +21,7 @@ interface DetailKehadiranGuruProps {
   onMenuClick: (page: string) => void;
   onBack?: () => void;
   guruName?: string;
+  teacherId?: string;
 }
 
 export default function DetailKehadiranGuru({
@@ -29,62 +31,62 @@ export default function DetailKehadiranGuru({
   onLogout = () => { },
   onBack = () => { },
   guruName = "Ewit Emiyah S.pd",
+  teacherId,
 }: DetailKehadiranGuruProps) {
-  const [rows] = useState<RowKehadiran[]>([
-    {
-      no: 1,
-      tanggal: "25-05-2025",
-      jam: "1-4",
-      mapel: "Matematika",
-      kelas: "XII Mekatronika 2",
-      status: "Hadir",
-    },
-    {
-      no: 2,
-      tanggal: "24-05-2025",
-      jam: "5-8",
-      mapel: "Matematika",
-      kelas: "XII Mekatronika 2",
-      status: "Hadir",
-    },
-    {
-      no: 3,
-      tanggal: "25-05-2025",
-      jam: "9-10",
-      mapel: "Matematika",
-      kelas: "XII Mekatronika 2",
-      status: "Izin",
-    },
-    {
-      no: 4,
-      tanggal: "25-05-2025",
-      jam: "1-2",
-      mapel: "Matematika",
-      kelas: "XII Mekatronika 2",
-      status: "Pulang",
-    },
-    {
-      no: 5,
-      tanggal: "24-05-2025",
-      jam: "3-4",
-      mapel: "Matematika",
-      kelas: "XII Mekatronika 2",
-      status: "Sakit",
-    },
-    {
-      no: 6,
-      tanggal: "25-05-2025",
-      jam: "5-6",
-      mapel: "Matematika",
-      kelas: "XII Mekatronika 2",
-      status: "Tidak Hadir",
-    },
-  ]);
-
-  const guruInfo = {
+  const [rows, setRows] = useState<RowKehadiran[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [guruInfo, setGuruInfo] = useState({
     name: guruName,
-    phone: "0918415784",
-  };
+    phone: "-",
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!teacherId) return;
+      setLoading(true);
+      try {
+        const { teacherService } = await import("../../services/teacher");
+
+        // 1. Get Teacher Info
+        const teacher = await teacherService.getTeacherById(teacherId);
+        setGuruInfo({
+          name: teacher.name,
+          phone: teacher.phone || "-",
+        });
+
+        // 2. Get Attendance History
+        const response: any = await teacherService.getTeacherAttendance(teacherId);
+
+        const mappedRows: RowKehadiran[] = response.map((item: any, index: number) => {
+          const status = item.status === 'present' ? 'Hadir' :
+            item.status === 'late' ? 'Hadir' : // Map late to Hadir label but maybe show detail
+              item.status === 'excused' ? 'Izin' :
+                item.status === 'sick' ? 'Sakit' :
+                  item.status === 'absent' ? 'Alfa' :
+                    item.status === 'alpha' ? 'Alfa' :
+                      item.status === 'dinas' ? 'Izin' :
+                        item.status === 'pulang' ? 'Pulang' : 'Alfa';
+
+          return {
+            no: index + 1,
+            tanggal: item.date,
+            jam: item.schedule?.start_time ? `${item.schedule.start_time.slice(0, 5)} - ${item.schedule.end_time.slice(0, 5)}` : "-",
+            mapel: item.schedule?.subject?.name || item.schedule?.subject_name || "-",
+            kelas: item.schedule?.class?.name || "-",
+            status: status as StatusKehadiran,
+          };
+        });
+
+        setRows(mappedRows);
+      } catch (error) {
+        console.error("Failed to fetch teacher details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [teacherId]);
 
   // State untuk modal detail
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -200,13 +202,34 @@ export default function DetailKehadiranGuru({
           overflow: "hidden",
           backgroundColor: "#fff",
           boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+          position: "relative",
+          minHeight: "200px"
         }}
       >
+        {/* Loading Overlay */}
+        {loading && (
+          <div style={{
+            position: "absolute",
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(255,255,255,0.7)",
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            fontWeight: 600,
+            color: "#062A4A"
+          }}>
+            <Loader2 className="animate-spin" size={24} />
+            Memuat data...
+          </div>
+        )}
+
         {/* HEADER - TANPA SPACE KOSONG DI TENGAH */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "50px 100px 60px minmax(160px, 1fr) 180px 110px 60px",
+            gridTemplateColumns: "50px 100px 120px minmax(160px, 1fr) 180px 130px",
             backgroundColor: "#F9FAFB",
             padding: "14px 8px",
             fontWeight: 700,
@@ -220,7 +243,7 @@ export default function DetailKehadiranGuru({
         >
           <div style={{ textAlign: "center" }}>No</div>
           <div style={{ textAlign: "left", paddingLeft: "2px" }}>Tanggal</div>
-          <div style={{ textAlign: "center" }}>Jam</div>
+          <div style={{ textAlign: "center" }}>Jadwal Ke</div>
           <div style={{ textAlign: "left", paddingLeft: "2px" }}>Mapel</div>
           <div style={{ textAlign: "left", paddingLeft: "2px" }}>Kelas</div>
           <div style={{ textAlign: "center" }}>Status</div>
@@ -234,7 +257,7 @@ export default function DetailKehadiranGuru({
               key={i}
               style={{
                 display: "grid",
-                gridTemplateColumns: "50px 100px 60px minmax(160px, 1fr) 180px 110px 60px",
+                gridTemplateColumns: "50px 100px 120px minmax(160px, 1fr) 180px 130px",
                 padding: "12px 8px",
                 fontSize: 13,
                 alignItems: "center",

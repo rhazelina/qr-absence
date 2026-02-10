@@ -302,6 +302,7 @@ export default function DashboardWalliKelas({
   const [totalStudents, setTotalStudents] = useState<number>(0);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -338,27 +339,30 @@ export default function DashboardWalliKelas({
   // Fetch homeroom data
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const fetchHomeroomData = async () => {
       try {
+        setIsLoadingData(true);
+        setError(null);
         const { dashboardService } = await import('../../services/dashboard');
 
         // Fetch homeroom class info
-        const classData = await dashboardService.getMyHomeroom();
+        const classData = await dashboardService.getMyHomeroom({ signal: controller.signal });
         setHomeroomClass(classData.name || 'Kelas');
 
         // Fetch students count
-        const students = await dashboardService.getMyHomeroomStudents();
+        const students = await dashboardService.getMyHomeroomStudents({ signal: controller.signal });
         setTotalStudents(students.length);
 
         // Fetch schedules for today
         const today = new Date().toISOString().split('T')[0];
-        const schedulesData = await dashboardService.getMyHomeroomSchedules({ date: today });
+        const schedulesData = await dashboardService.getMyHomeroomSchedules({ date: today, signal: controller.signal });
         const formattedSchedules = schedulesData.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
       } catch (error: any) {
         if (error.name !== 'AbortError') {
           console.error('Failed to fetch homeroom data:', error);
+          setError('Gagal memuat data wali kelas (kelas/siswa/jadwal).');
         }
       } finally {
         setIsLoadingData(false);
@@ -366,7 +370,7 @@ export default function DashboardWalliKelas({
     };
 
     fetchHomeroomData();
-    
+
     return () => controller.abort();
   }, []);
 
@@ -502,6 +506,27 @@ export default function DashboardWalliKelas({
       onLogout={onLogout}
     >
       <div style={styles.mainContainer(isMobile)}>
+        {/* ===== ERROR ALERT ===== */}
+        {error && (
+          <div style={{
+            padding: "16px 20px",
+            backgroundColor: "#FEF2F2",
+            border: "1px solid #FEE2E2",
+            borderRadius: "12px",
+            color: "#B91C1C",
+            fontSize: "14px",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px"
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* ===== BAGIAN ATAS (SELAMAT DATANG) - TETAP SEPERTI WALI KELAS ===== */}
         <div style={styles.topInfoCard(isMobile)}>
           <div style={styles.iconContainer}>

@@ -39,7 +39,7 @@ class StoreManualAttendanceRequest extends FormRequest
         $map = [
             'alpha' => 'absent',
             'tanpa-keterangan' => 'absent',
-            'pulang' => 'excused', // or return if enum supports it
+            'pulang' => 'return',
             'hadir' => 'present',
             'sakit' => 'sick',
             'izin' => 'excused',

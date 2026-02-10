@@ -36,8 +36,8 @@ export default function RekapKehadiranSiswa({
   waliKelas = "Ewit Erniyah S.pd",
   onBack,
 }: RekapKehadiranSiswaProps) {
-  const [startDate, setStartDate] = useState("2025-01-14");
-  const [endDate, setEndDate] = useState("2025-01-06");
+  const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   // Warna sesuai revisi
   const COLORS = {
@@ -79,7 +79,7 @@ export default function RekapKehadiranSiswa({
 
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const fetchData = async () => {
       if (!classId) return;
 
@@ -87,7 +87,7 @@ export default function RekapKehadiranSiswa({
       try {
         const { dashboardService } = await import("../../services/dashboard");
         const response: any = await dashboardService.getClassStudentsSummary(classId, { from: startDate, to: endDate }, { signal: controller.signal });
-        
+
         const data = response.data || response;
         const mappedData: SiswaRow[] = data.map((item: any, index: number) => ({
           no: index + 1,
@@ -99,7 +99,7 @@ export default function RekapKehadiranSiswa({
           alpha: item.totals.absent || 0,
           pulang: item.totals.return || 0,
         }));
-        
+
         setSiswaData(mappedData);
       } catch (error: any) {
         if (error.name !== 'AbortError') {

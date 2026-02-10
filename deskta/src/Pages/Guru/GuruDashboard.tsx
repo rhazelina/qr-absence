@@ -312,6 +312,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   // API Data State
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<string | null>(null);
 
 
@@ -346,22 +347,31 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
   // ========== FETCH SCHEDULES ==========
   useEffect(() => {
+    const controller = new AbortController();
     const fetchSchedules = async () => {
       try {
+        setIsLoadingSchedules(true);
+        setError(null);
         const { dashboardService } = await import('../../services/dashboard');
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const data = await dashboardService.getTeacherSchedules({ date: today });
+        const data = await dashboardService.getTeacherSchedules({
+          date: today,
+          signal: controller.signal
+        });
         const formattedSchedules = data.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
-      } catch (error) {
-        console.error('Failed to fetch schedules:', error);
-        // Keep empty array on error
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to fetch schedules:', error);
+          setError('Gagal memuat jadwal mengajar hari ini.');
+        }
       } finally {
         setIsLoadingSchedules(false);
       }
     };
 
     fetchSchedules();
+    return () => controller.abort();
   }, []);
 
   // ========== NAVIGATION HANDLERS ==========
@@ -597,6 +607,27 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
           >
             <div style={styles.mainContainer(isMobile)}>
               {/* ========== TOP SECTION ========== */}
+              {error && (
+                <div style={{
+                  padding: "16px 20px",
+                  backgroundColor: "#FEF2F2",
+                  border: "1px solid #FEE2E2",
+                  borderRadius: "12px",
+                  color: "#B91C1C",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  width: "100%"
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              )}
               <div style={styles.topGrid(isMobile)}>
                 {/* User Info Card */}
                 <div style={styles.userCard(isMobile)}>

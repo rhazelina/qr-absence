@@ -42,11 +42,12 @@ class TeacherStatisticsController extends Controller
         $sick = $stats['sick'] ?? 0;
         $permit = $stats['permit'] ?? 0; // or 'excused'
         $absent = $stats['absent'] ?? 0;
+        $pulang = $stats['return'] ?? 0;
 
         // Calculate total teaching hours (based on schedules attended)
         // This is an approximation. For exact hours, we'd need duration from Schedule.
         // Let's assume 1 JP = 45 mins, or just count sessions for now.
-        $totalSessions = $present + $late + $sick + $permit + $absent;
+        $totalSessions = $present + $late + $sick + $permit + $absent + $pulang;
 
         return response()->json([
             'month' => $month,
@@ -57,6 +58,7 @@ class TeacherStatisticsController extends Controller
                 'sakit' => $sick,
                 'izin' => $permit,
                 'alpha' => $absent,
+                'pulang' => $pulang,
                 'total_sessions' => $totalSessions,
             ],
             // Mock chart data for now, real data would require daily aggregation
@@ -87,15 +89,15 @@ class TeacherStatisticsController extends Controller
                 // If any session is present, mark as present? Or show detailed?
                 // Mobile app likely expects a single status code or count.
                 // Let's return just 'hadir' count for the line chart usually.
-                $status = 'hadir'; 
+                $status = 'hadir';
             }
-            
+
             // For simple line chart (e.g. 1=Hadir, 0=Absen)
-            $value = $dayData ? 1 : 0; 
+            $value = $dayData ? 1 : 0;
 
             $data[] = [
                 'day' => $day,
-                'value' => $value, // 1 for attended, 0 for not
+                'status' => $dayData ? 'hadir' : 'alpha', // Simplified for the chart
             ];
         }
 
