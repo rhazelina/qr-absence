@@ -44,6 +44,7 @@ export default function KehadiranGuru({
   const [selectedTanggal, setSelectedTanggal] = useState(
     new Date().toISOString().slice(0, 10)
   );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);

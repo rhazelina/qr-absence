@@ -60,7 +60,7 @@ export default function KehadiranSiswa({
 
         const [classes, summary] = await Promise.all([
           classService.getClasses(),
-          dashboardService.getWakaSummary() // Get today's summary
+          dashboardService.getWakaDashboardSummary() // Get today's summary
         ]);
 
         const mappedData: KelasRow[] = classes.map((c: any) => {

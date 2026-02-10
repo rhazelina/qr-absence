@@ -32,7 +32,7 @@ import {
   ArcElement,
   Filler,
 } from "chart.js";
-import { Doughnut } from "react-chartjs-2";
+import { Doughnut, Line } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -92,6 +92,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     dispen: 0,
   });
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
+  const [trendData, setTrendData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -145,14 +146,61 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
       try {
         setIsLoadingAttendance(true);
         const { dashboardService } = await import('../../services/dashboard');
-        const data = await dashboardService.getMyAttendanceSummary();
-        setAttendanceSummary({
-          hadir: data.present || 0,
-          izin: data.excused || 0,
-          sakit: data.sick || 0,
-          alpha: data.absent || 0,
-          dispen: (data as any).dispensation || 0,
+
+        // Fetch last 6 months for trend
+        const fromDate = new Date();
+        fromDate.setMonth(fromDate.getMonth() - 5);
+        fromDate.setDate(1);
+
+        const data = await dashboardService.getMyAttendanceHistory({
+          from: fromDate.toISOString().split('T')[0]
         });
+
+        // 1. Process Status Summary for Donut Chart
+        const summary = { hadir: 0, izin: 0, sakit: 0, alpha: 0, dispen: 0 };
+        data.status_summary.forEach((item: any) => {
+          switch (item.status) {
+            case 'present':
+            case 'late': summary.hadir += item.total; break;
+            case 'excused':
+            case 'izin': summary.izin += item.total; break;
+            case 'sick': summary.sakit += item.total; break;
+            case 'absent': summary.alpha += item.total; break;
+            case 'return': summary.dispen += item.total; break;
+          }
+        });
+        setAttendanceSummary(summary);
+
+        // 2. Process Daily Summary for Trend Line Chart
+        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+        const trendMap: Record<string, any> = {};
+
+        // Initialize last 6 months
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          const mLabel = months[d.getMonth()];
+          trendMap[mLabel] = { month: mLabel, hadir: 0, izin: 0, tidak_hadir: 0, sakit: 0, pulang: 0 };
+        }
+
+        data.daily_summary.forEach((item: any) => {
+          const d = new Date(item.day);
+          const mLabel = months[d.getMonth()];
+          if (trendMap[mLabel]) {
+            switch (item.status) {
+              case 'present':
+              case 'late': trendMap[mLabel].hadir += item.total; break;
+              case 'excused':
+              case 'izin': trendMap[mLabel].izin += item.total; break;
+              case 'sick': trendMap[mLabel].sakit += item.total; break;
+              case 'absent': trendMap[mLabel].tidak_hadir += item.total; break;
+              case 'return': trendMap[mLabel].pulang += item.total; break;
+            }
+          }
+        });
+
+        setTrendData(Object.values(trendMap));
+
       } catch (error) {
         console.error('Failed to fetch attendance:', error);
         setError((prev) => prev || 'Gagal memuat ringkasan kehadiran.');
@@ -745,7 +793,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                       Memuat data kehadiran...
                     </div>
                   ) : (
-                    <WeeklyDonutChart data={attendanceSummary} />
+                    <MonthlyLineChart data={trendData} />
                   )}
                 </div>
 
@@ -864,8 +912,96 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
   return renderPage();
 }
 
-// Monthly Line Chart Component - KOMPONEN BARU DENGAN GRAFIK GARIS
-// Unused component removed
+// Monthly Line Chart Component - GRAFIK GARIS REAL
+function MonthlyLineChart({
+  data,
+}: {
+  data: Array<{ month: string; hadir: number; izin: number; tidak_hadir: number; sakit: number; pulang: number }>;
+}) {
+  const COLORS = {
+    HADIR: "#1FA83D",
+    IZIN: "#ACA40D",
+    PULANG: "#2F85EB",
+    TIDAK_HADIR: "#D90000",
+    SAKIT: "#520C8F",
+  };
+
+  const chartData = {
+    labels: data.map((d) => d.month),
+    datasets: [
+      {
+        label: "Hadir",
+        data: data.map((d) => d.hadir),
+        borderColor: COLORS.HADIR,
+        backgroundColor: `${COLORS.HADIR}20`,
+        borderWidth: 3,
+        pointRadius: 5,
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: "Izin",
+        data: data.map((d) => d.izin),
+        borderColor: COLORS.IZIN,
+        backgroundColor: `${COLORS.IZIN}20`,
+        borderWidth: 3,
+        pointRadius: 5,
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: "Pulang",
+        data: data.map((d) => d.pulang),
+        borderColor: COLORS.PULANG,
+        backgroundColor: `${COLORS.PULANG}20`,
+        borderWidth: 3,
+        pointRadius: 5,
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: "Sakit",
+        data: data.map((d) => d.sakit),
+        borderColor: COLORS.SAKIT,
+        backgroundColor: `${COLORS.SAKIT}20`,
+        borderWidth: 3,
+        pointRadius: 5,
+        tension: 0.4,
+        fill: true,
+      },
+      {
+        label: "Alpha",
+        data: data.map((d) => d.tidak_hadir),
+        borderColor: COLORS.TIDAK_HADIR,
+        backgroundColor: `${COLORS.TIDAK_HADIR}20`,
+        borderWidth: 3,
+        pointRadius: 5,
+        tension: 0.4,
+        fill: true,
+      }
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "bottom" as const },
+    },
+    scales: {
+      y: { beginAtZero: true },
+    },
+  };
+
+  return (
+    <div style={{ height: "300px", width: "100%" }}>
+      <Line data={chartData} options={options} />
+    </div>
+  );
+}
+
+// Add the Line import from chartjs
+import { Line } from "react-chartjs-2";
 
 
 

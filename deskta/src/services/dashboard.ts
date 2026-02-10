@@ -14,6 +14,7 @@ import type {
     ManualAttendanceRequest,
     QRCodeData,
     QrCode,
+    AttendanceHistory,
 } from '../types/api';
 
 export const dashboardService = {
@@ -62,10 +63,10 @@ export const dashboardService = {
     },
 
     /**
-     * Get my attendance summary (for students)
+     * Get my attendance history (for students)
      */
-    async getMyAttendanceSummary(params?: AttendanceQueryParams, options?: AxiosRequestConfig): Promise<AttendanceSummary> {
-        const response = await apiClient.get<AttendanceSummary>(
+    async getMyAttendanceHistory(params?: AttendanceQueryParams, options?: AxiosRequestConfig): Promise<AttendanceHistory> {
+        const response = await apiClient.get<AttendanceHistory>(
             API_ENDPOINTS.ME_ATTENDANCE_SUMMARY,
             { ...options, params }
         );
@@ -255,4 +256,3 @@ export const dashboardService = {
         return response.data;
     },
 };
-

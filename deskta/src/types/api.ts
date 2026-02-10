@@ -148,12 +148,26 @@ export interface Attendance {
 }
 
 export interface AttendanceSummary {
-  total: number;
   present: number;
   absent: number;
   sick: number;
   excused: number;
-  percentage: number;
+  late?: number;
+  izin?: number;
+  total?: number;
+  percentage?: number;
+}
+
+export interface AttendanceHistory {
+  status_summary: {
+    status: string;
+    total: number;
+  }[];
+  daily_summary: {
+    day: string;
+    status: string;
+    total: number;
+  }[];
 }
 
 // Dashboard Types
