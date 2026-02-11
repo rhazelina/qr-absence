@@ -1,4 +1,5 @@
 import apiClient from './api';
+import { API_ENDPOINTS } from '../utils/constants';
 
 
 export interface Major {
@@ -13,7 +14,7 @@ export const majorService = {
      * Get all majors
      */
     async getMajors(): Promise<Major[]> {
-        const response = await apiClient.get('majors');
+        const response = await apiClient.get(API_ENDPOINTS.MAJORS);
         if (response.data && Array.isArray(response.data.data)) {
             return response.data.data;
         }
@@ -27,7 +28,7 @@ export const majorService = {
      * Create a new major
      */
     async createMajor(data: any): Promise<Major> {
-        const response = await apiClient.post('majors', data);
+        const response = await apiClient.post(API_ENDPOINTS.MAJORS, data);
         return response.data;
     },
 
@@ -35,7 +36,7 @@ export const majorService = {
      * Update a major
      */
     async updateMajor(id: string | number, data: any): Promise<Major> {
-        const response = await apiClient.put(`majors/${id}`, data);
+        const response = await apiClient.put(`${API_ENDPOINTS.MAJORS}/${id}`, data);
         return response.data;
     },
 
@@ -43,6 +44,6 @@ export const majorService = {
      * Delete a major
      */
     async deleteMajor(id: string | number): Promise<void> {
-        await apiClient.delete(`majors/${id}`);
+        await apiClient.delete(`${API_ENDPOINTS.MAJORS}/${id}`);
     }
 };

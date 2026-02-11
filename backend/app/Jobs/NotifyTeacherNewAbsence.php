@@ -19,7 +19,7 @@ class NotifyTeacherNewAbsence implements ShouldQueue
         $request = $this->request->load(['student.user', 'student.classRoom.homeroomTeacher.user']);
         $studentName = $request->student->user->name;
         $className = $request->student->classRoom->name ?? 'Kelas';
-        $status = match($request->type) {
+        $status = match ($request->type) {
             'sick' => 'Sakit',
             'permit' => 'Izin',
             'dispensation' => 'Dispensasi',

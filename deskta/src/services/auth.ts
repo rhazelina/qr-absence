@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { API_ENDPOINTS, TOKEN_KEY } from '../utils/constants';
+import { storage } from '../utils/storage';
 import type { LoginRequest, LoginResponse, User } from '../types/api';
 
 export const authService = {
@@ -8,14 +8,19 @@ export const authService = {
      */
     async login(credentials: LoginRequest): Promise<LoginResponse> {
         const response = await apiClient.post<LoginResponse>(
-            API_ENDPOINTS.AUTH_LOGIN,
+            '/api/auth/login', // Use string directly or import API_ENDPOINTS if needed
             credentials
         );
 
         const { token } = response.data;
 
-        // Store token in localStorage
+        // Store token in storage
         this.setToken(token);
+
+        if (response.data.user && response.data.user.role) {
+            const { normalizeRole } = await import('../utils/roleMapping');
+            response.data.user.role = normalizeRole(response.data.user.role);
+        }
 
         return response.data;
     },
@@ -25,15 +30,12 @@ export const authService = {
      */
     async logout(): Promise<void> {
         try {
-            await apiClient.post(API_ENDPOINTS.AUTH_LOGOUT);
+            await apiClient.post('/api/auth/logout');
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
             // Always clear local data even if API call fails
-            this.removeToken();
-            localStorage.removeItem('user_role');
-            localStorage.removeItem('user_data');
-            localStorage.removeItem('selectedRole');
+            storage.clearAll();
             sessionStorage.clear();
         }
     },
@@ -42,7 +44,13 @@ export const authService = {
      * Get current user data
      */
     async getMe(): Promise<User> {
-        const response = await apiClient.get<User>(API_ENDPOINTS.ME);
+        const response = await apiClient.get<User>('/api/me');
+        
+        if (response.data.role) {
+            const { normalizeRole } = await import('../utils/roleMapping');
+            response.data.role = normalizeRole(response.data.role);
+        }
+        
         return response.data;
     },
 
@@ -50,21 +58,21 @@ export const authService = {
      * Get stored token
      */
     getToken(): string | null {
-        return localStorage.getItem(TOKEN_KEY);
+        return storage.getToken();
     },
 
     /**
      * Store token
      */
     setToken(token: string): void {
-        localStorage.setItem(TOKEN_KEY, token);
+        storage.setToken(token);
     },
 
     /**
      * Remove token
      */
     removeToken(): void {
-        localStorage.removeItem(TOKEN_KEY);
+        storage.removeToken();
     },
 
     /**

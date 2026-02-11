@@ -40,6 +40,7 @@ class CloseDailyAttendance extends Command
 
         if ($schedules->isEmpty()) {
             $this->info('No schedules found for this day.');
+
             return;
         }
 
@@ -49,7 +50,7 @@ class CloseDailyAttendance extends Command
         foreach ($schedules as $schedule) {
             // Get all students in the class
             $students = StudentProfile::where('class_id', $schedule->class_id)->get();
-            
+
             // Get existing attendance
             $existing = Attendance::where('schedule_id', $schedule->id)
                 ->where('attendee_type', 'student')
@@ -58,7 +59,7 @@ class CloseDailyAttendance extends Command
                 ->toArray();
 
             foreach ($students as $student) {
-                if (!in_array($student->id, $existing)) {
+                if (! in_array($student->id, $existing)) {
                     Attendance::create([
                         'attendee_type' => 'student',
                         'student_id' => $student->id,
@@ -70,7 +71,7 @@ class CloseDailyAttendance extends Command
                     ]);
                 }
             }
-            
+
             $bar->advance();
         }
 

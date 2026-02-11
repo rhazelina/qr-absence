@@ -1,10 +1,8 @@
 <?php
 
 use App\Models\Classes;
-use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 
 uses(RefreshDatabase::class);
 
@@ -79,7 +77,7 @@ it('allows admin to import students', function () {
                 'nis' => '111',
                 'gender' => 'L',
                 'address' => 'Addr 1',
-                'class_id' => $class->id
+                'class_id' => $class->id,
             ],
             [
                 'name' => 'Imported 2',
@@ -88,16 +86,16 @@ it('allows admin to import students', function () {
                 'nis' => '222',
                 'gender' => 'P',
                 'address' => 'Addr 2',
-                'class_id' => $class->id
-            ]
-        ]
+                'class_id' => $class->id,
+            ],
+        ],
     ];
 
     $response = $this->actingAs($admin)->postJson('/api/students/import', $payload);
 
     $response->assertStatus(201)
         ->assertJson(['created' => 2]);
-        
+
     $this->assertDatabaseHas('users', ['username' => 'imp1']);
     $this->assertDatabaseHas('users', ['username' => 'imp2']);
 });

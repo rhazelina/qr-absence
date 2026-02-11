@@ -59,7 +59,14 @@ class QrCodeController extends Controller
             if ($data['type'] !== 'student') {
                 abort(422, 'Pengurus kelas hanya boleh membuat QR siswa');
             }
+
+            // Limit period: Officer can only generate for TODAY
+            $today = now()->format('l'); // Monday, Tuesday...
+            if (strcasecmp($schedule->day, $today) !== 0) {
+                abort(422, 'Pengurus kelas hanya boleh membuat QR untuk jadwal hari ini ('.$today.')');
+            }
         }
+
         $expiresAt = now()->addMinutes($data['expires_in_minutes'] ?? 15);
 
         // Prevent concurrent active QR generation
@@ -138,6 +145,18 @@ class QrCodeController extends Controller
                 'end_time' => $schedule->end_time ?? null,
             ],
         ], 201);
+    }
+
+    public function show(string $token): JsonResponse
+    {
+        $qr = Qrcode::with(['schedule.class', 'schedule.teacher.user', 'issuer'])->where('token', $token)->firstOrFail();
+
+        // Auto-expire if time passed
+        if ($qr->is_active && $qr->isExpired()) {
+            $qr->update(['is_active' => false, 'status' => 'expired']);
+        }
+
+        return response()->json($qr);
     }
 
     public function revoke(Request $request, string $token): JsonResponse

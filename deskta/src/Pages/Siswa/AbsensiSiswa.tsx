@@ -148,9 +148,8 @@ export default function AbsensiSiswa({
         const { attendanceService } = await import('../../services/attendance');
         const response = await attendanceService.getMyAttendance({
           from: startDate,
-          to: endDate,
-          signal: controller.signal
-        });
+          to: endDate
+        }, { signal: controller.signal });
         const data = response.data || response;
         const apiRecords = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
 

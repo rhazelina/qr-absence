@@ -1,0 +1,17 @@
+frontend_backup_reskin/
+frontend_env_tmp
+.env
+**/node_modules/
+**/dist/
+**/dist-ssr/
+*.log
+.DS_Store
+.idea/
+.vscode/
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/logs/*
+**/bootstrap/cache/*
+**/vendor/
+backend/public/storage
+backend/database/database.sqlite

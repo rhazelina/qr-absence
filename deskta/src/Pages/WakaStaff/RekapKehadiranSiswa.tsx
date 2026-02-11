@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Eye, FileDown } from "lucide-react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Table } from "../../component/Shared/Table";
+import { isCancellation } from "../../utils/errorHelpers";
 
 interface RekapKehadiranSiswaProps {
   user: { name: string; role: string };
@@ -102,7 +103,7 @@ export default function RekapKehadiranSiswa({
 
         setSiswaData(mappedData);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!isCancellation(error)) {
           console.error("Failed to fetch rekap kehadiran", error);
         }
       } finally {

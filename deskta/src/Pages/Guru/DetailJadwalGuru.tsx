@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import GuruLayout from "../../component/Guru/GuruLayout";
 import type { Schedule } from "../../types/api";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
+import { isCancellation } from "../../utils/errorHelpers";
 
 interface LihatJadwalGuruProps {
   user: { name: string; role: string };
@@ -26,11 +27,15 @@ export default function LihatJadwalGuru({
 
   // Fetch Schedules
   useEffect(() => {
+    const controller = new AbortController();
     const fetchSchedules = async () => {
       try {
         const { dashboardService } = await import('../../services/dashboard');
         // Fetch all schedules for this teacher
-        const data = await dashboardService.getTeacherSchedules();
+        const data = await dashboardService.getTeacherSchedules(
+          {},
+          { signal: controller.signal }
+        );
         setSchedules(data);
 
         // Default to first class found if any
@@ -39,11 +44,14 @@ export default function LihatJadwalGuru({
           const firstClassParams = data.find((s: any) => s.class_id)?.class_id;
           if (firstClassParams) setSelectedClassId(firstClassParams.toString());
         }
-      } catch (error) {
-        console.error("Failed to fetch schedules", error);
+      } catch (error: any) {
+        if (!isCancellation(error)) {
+          console.error("Failed to fetch schedules", error);
+        }
       }
     };
     fetchSchedules();
+    return () => controller.abort();
   }, []);
 
   // Extract unique classes from schedules

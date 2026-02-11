@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Classes;
-use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -53,15 +51,15 @@ it('allows admin to update a teacher', function () {
 it('allows teacher to upload schedule image', function () {
     Storage::fake('public');
     $teacher = User::factory()->teacher()->create();
-    
+
     $file = UploadedFile::fake()->image('schedule.jpg');
 
     $response = $this->actingAs($teacher)->postJson('/api/me/schedule-image', [
-        'file' => $file
+        'file' => $file,
     ]);
 
     $response->assertStatus(200);
-    
+
     $path = $teacher->teacherProfile->fresh()->schedule_image_path;
     Storage::disk('public')->assertExists($path);
 });
@@ -75,15 +73,15 @@ it('allows admin to import teachers', function () {
                 'name' => 'T1',
                 'username' => 't1',
                 'nip' => '111',
-                'subject' => 'Bio'
+                'subject' => 'Bio',
             ],
             [
                 'name' => 'T2',
                 'username' => 't2',
                 'nip' => '222',
-                'subject' => 'Chem'
-            ]
-        ]
+                'subject' => 'Chem',
+            ],
+        ],
     ];
 
     $response = $this->actingAs($admin)->postJson('/api/teachers/import', $payload);

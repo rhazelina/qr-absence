@@ -7,7 +7,7 @@ export const getMyAttendanceHistory = async (options = {}) => {
 };
 
 export const getMyAttendanceSummary = async (options = {}) => {
-    const response = await apiClient.get('attendance/me/summary', options);
+    const response = await apiClient.get('me/attendance/summary', options);
     return response.data;
 };
 
@@ -64,8 +64,8 @@ export const getAttendanceBySchedule = async (scheduleId, options = {}) => {
     return response.data.data ? response.data.data : response.data;
 };
 
-export const getClassSchedules = async (classId) => {
-    const response = await apiClient.get(`classes/${classId}/schedules`);
+export const getClassSchedules = async (classId, options = {}) => {
+    const response = await apiClient.get(`classes/${classId}/schedules`, options);
     return response.data;
 };
 
@@ -90,7 +90,15 @@ const attendanceService = {
     getTeacherSchedules,
     getAttendanceBySchedule,
     getClassSchedules,
-    getClassScheduleImage
+    getClassScheduleImage,
+    getTeacherDashboard: async (options = {}) => {
+        const response = await apiClient.get('me/teacher/dashboard', options);
+        return response.data;
+    },
+    getClassDashboard: async (options = {}) => {
+        const response = await apiClient.get('me/class/dashboard', options);
+        return response.data;
+    }
 };
 
 export default attendanceService;

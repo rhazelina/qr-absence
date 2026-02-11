@@ -1,5 +1,6 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { API_BASE_URL, TOKEN_KEY } from '../utils/constants';
+import { API_BASE_URL } from '../utils/constants';
+import { storage } from '../utils/storage';
 import type { ApiError } from '../types/api';
 
 // Create axios instance
@@ -15,7 +16,7 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor - Add auth token to requests
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem(TOKEN_KEY);
+        const token = storage.getToken();
         if (token && config.headers) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -34,9 +35,7 @@ apiClient.interceptors.response.use(
     (error: AxiosError<ApiError>) => {
         // Handle 401 Unauthorized - redirect to login
         if (error.response?.status === 401) {
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem('user_role');
-            localStorage.removeItem('user_data');
+            storage.clearAll();
 
             // Only redirect if not already on login page
             if (!window.location.pathname.includes('/login') && window.location.pathname !== '/') {

@@ -1,7 +1,6 @@
 import apiClient from './api';
-
-
-
+import { API_ENDPOINTS } from '../utils/constants';
+import type { AxiosRequestConfig } from 'axios';
 
 export interface ClassRoom {
     id: number;
@@ -28,8 +27,8 @@ export const classService = {
     /**
      * Get all classes
      */
-    async getClasses(): Promise<ClassRoom[]> {
-        const response = await apiClient.get('classes'); // Using 'classes' directly as per controller
+    async getClasses(options?: AxiosRequestConfig): Promise<ClassRoom[]> {
+        const response = await apiClient.get(API_ENDPOINTS.CLASSES, options); 
         // Handle both resource collection (data.data) and simple array (data)
         if (response.data && Array.isArray(response.data.data)) {
             return response.data.data;
@@ -43,8 +42,8 @@ export const classService = {
     /**
      * Get class by ID
      */
-    async getClassById(id: string | number): Promise<ClassRoom> {
-        const response = await apiClient.get(`classes/${id}`);
+    async getClassById(id: string | number, options?: AxiosRequestConfig): Promise<ClassRoom> {
+        const response = await apiClient.get(`${API_ENDPOINTS.CLASSES}/${id}`, options);
         return response.data;
     },
 
@@ -52,7 +51,7 @@ export const classService = {
      * Create a new class
      */
     async createClass(data: any): Promise<ClassRoom> {
-        const response = await apiClient.post('classes', data);
+        const response = await apiClient.post(API_ENDPOINTS.CLASSES, data);
         return response.data;
     },
 
@@ -60,7 +59,7 @@ export const classService = {
      * Update a class
      */
     async updateClass(id: string | number, data: any): Promise<ClassRoom> {
-        const response = await apiClient.put(`classes/${id}`, data);
+        const response = await apiClient.put(`${API_ENDPOINTS.CLASSES}/${id}`, data);
         return response.data;
     },
 
@@ -68,7 +67,7 @@ export const classService = {
      * Delete a class
      */
     async deleteClass(id: string | number): Promise<void> {
-        await apiClient.delete(`classes/${id}`);
+        await apiClient.delete(`${API_ENDPOINTS.CLASSES}/${id}`);
     },
 
     /**
@@ -77,7 +76,7 @@ export const classService = {
     async uploadSchedule(id: string | number, file: File): Promise<any> {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await apiClient.post(`classes/${id}/schedule-image`, formData, {
+        const response = await apiClient.post(`${API_ENDPOINTS.CLASSES}/${id}/schedule-image`, formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

@@ -158,4 +158,15 @@ class StudentController extends Controller
 
         return response()->json(['message' => 'Deleted']);
     }
+
+    public function attendanceHistory(Request $request, StudentProfile $student): JsonResponse
+    {
+        $query = $student->attendances()
+            ->with(['schedule.class'])
+            ->latest('date');
+
+        return response()->json(
+            $query->paginate($request->integer('per_page', 10))
+        );
+    }
 }

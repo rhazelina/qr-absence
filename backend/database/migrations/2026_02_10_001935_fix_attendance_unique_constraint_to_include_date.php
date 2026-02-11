@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('attendances', function (Blueprint $table) {
             $table->dropUnique('attendance_unique_per_session');
-            
+
             // Change date to date type to ensure uniqueness per day works consistently
             $table->date('date')->change();
 

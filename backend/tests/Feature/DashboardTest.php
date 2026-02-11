@@ -1,16 +1,13 @@
 <?php
 
 use App\Models\User;
-use App\Models\Classes;
-use App\Models\StudentProfile;
-use App\Models\TeacherProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 it('returns admin summary stats', function () {
     $admin = User::factory()->admin()->create();
-    
+
     // Create some data
     User::factory()->count(2)->student()->create();
     User::factory()->count(2)->teacher()->create();
@@ -23,7 +20,7 @@ it('returns admin summary stats', function () {
             'teachers_count',
             'classes_count',
             'majors_count',
-            'rooms_count'
+            'rooms_count',
         ]);
 });
 

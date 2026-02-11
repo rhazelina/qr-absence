@@ -8,7 +8,6 @@ use App\Services\WhatsAppService;
 use App\Services\WhatsAppTemplates;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Carbon;
 
 class SendWeeklyParentReport implements ShouldQueue
 {
@@ -21,7 +20,7 @@ class SendWeeklyParentReport implements ShouldQueue
     {
         $startOfWeek = now()->startOfWeek();
         $endOfWeek = now()->endOfWeek();
-        $range = $startOfWeek->format('d M') . ' - ' . $endOfWeek->format('d M');
+        $range = $startOfWeek->format('d M').' - '.$endOfWeek->format('d M');
 
         // Only for students with parent phones
         $students = StudentProfile::whereNotNull('parent_phone')->with('user')->get();
@@ -40,7 +39,9 @@ class SendWeeklyParentReport implements ShouldQueue
                 ->whereBetween('date', [$startOfWeek, $endOfWeek])
                 ->count();
 
-            if ($totalSessions === 0) continue;
+            if ($totalSessions === 0) {
+                continue;
+            }
 
             $message = WhatsAppTemplates::weeklySummary(
                 $student->user->name,

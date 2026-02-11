@@ -21,7 +21,7 @@ class ScheduleFactory extends Factory
             'subject_name' => fake()->word(),
             'teacher_id' => TeacherProfile::factory(),
             'class_id' => Classes::factory(),
-            'room' => 'Lab ' . fake()->numerify('##'),
+            'room' => 'Lab '.fake()->numerify('##'),
             'semester' => 1,
             'year' => 2025,
         ];

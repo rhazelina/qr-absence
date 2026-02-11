@@ -12,6 +12,22 @@ interface KehadiranSiswaGuruProps {
   currentPage: string;
   onMenuClick: (page: string) => void;
 }
+const styles = {
+  th: {
+    padding: '16px',
+    textAlign: 'left' as const,
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: '0.025em'
+  },
+  td: {
+    padding: '16px',
+    fontSize: '14px',
+    color: '#1F2937',
+    verticalAlign: 'middle'
+  }
+};
 
 interface SiswaData {
   id: string;
@@ -50,7 +66,10 @@ export default function KehadiranSiswaGuru({
       try {
         const { dashboardService } = await import('../../services/dashboard');
         // Fetch teacher's schedules for today to get the class
-        const schedules = await dashboardService.getTeacherSchedules({ date: new Date().toISOString().split('T')[0] });
+        const schedules = await dashboardService.getTeacherSchedules(
+          { date: new Date().toISOString().split('T')[0] },
+          { signal: controller.signal }
+        );
 
         if (schedules.length > 0) {
           const schedule = schedules[0];
@@ -60,14 +79,22 @@ export default function KehadiranSiswaGuru({
 
           if (schedule.class_id) {
             // Fetch class students
-            const classData = await dashboardService.getClassDetails(schedule.class_id.toString());
+            const classData = await dashboardService.getClassDetails(
+              schedule.class_id.toString(),
+              { signal: controller.signal }
+            );
 
             // Fetch existing attendance for this schedule
             let attendanceRecords: any[] = [];
             try {
-              attendanceRecords = await dashboardService.getAttendanceBySchedule(schedule.id.toString());
-            } catch (err) {
-              console.error("Failed to fetch attendance records", err);
+              attendanceRecords = await dashboardService.getAttendanceBySchedule(
+                schedule.id.toString(),
+                { signal: controller.signal }
+              );
+            } catch (err: any) {
+              if (err.name !== 'AbortError') {
+                console.error("Failed to fetch attendance records", err);
+              }
             }
 
             if (classData && classData.students) {
@@ -97,7 +124,7 @@ export default function KehadiranSiswaGuru({
           setSiswaList([]);
         }
       } catch (e: any) {
-        if (e.name !== 'AbortError') {
+        if (e.name !== 'AbortError' && e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
           console.error(e);
         }
       }
@@ -143,12 +170,12 @@ export default function KehadiranSiswaGuru({
     setEditingSiswa(siswa);
   };
 
-  const handleSaveStatus = (newStatus: SiswaData['status']) => {
+  const handleSaveStatus = (newStatus: SiswaData['status'], newKeterangan?: string) => {
     if (!editingSiswa) return;
 
     setSiswaList(prevList =>
       prevList.map(s =>
-        s.id === editingSiswa.id ? { ...s, status: newStatus } : s
+        s.id === editingSiswa.id ? { ...s, status: newStatus, keterangan: newKeterangan } : s
       )
     );
     setEditingSiswa(null);
@@ -620,11 +647,35 @@ export default function KehadiranSiswaGuru({
                     <option value="absent">Tidak Hadir</option>
                     <option value="late">Terlambat</option>
                   </select>
-                </div>
+              </div>
+
+              {/* Keterangan field */}
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Keterangan
+                </label>
+                <textarea
+                  value={editingSiswa.keterangan || ''}
+                  onChange={(e) => setEditingSiswa({ ...editingSiswa, keterangan: e.target.value })}
+                  placeholder="Tambahkan keterangan (opsional)..."
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #D1D5DB',
+                    fontSize: '15px',
+                    color: '#1F2937',
+                    backgroundColor: 'white',
+                    minHeight: '100px',
+                    resize: 'vertical',
+                    outline: 'none'
+                  }}
+                />
               </div>
             </div>
+          </div>
 
-            {/* Footer Actions */}
+          {/* Footer Actions */}
             <div style={{
               padding: '20px 24px',
               backgroundColor: '#F9FAFB',
@@ -650,7 +701,7 @@ export default function KehadiranSiswaGuru({
                 Batal
               </button>
               <button
-                onClick={() => handleSaveStatus(editingSiswa.status)}
+                onClick={() => handleSaveStatus(editingSiswa.status, editingSiswa.keterangan)}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -903,19 +954,3 @@ export default function KehadiranSiswaGuru({
   );
 }
 
-const styles = {
-  th: {
-    padding: '16px',
-    textAlign: 'left' as const,
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: '0.025em'
-  },
-  td: {
-    padding: '16px',
-    fontSize: '14px',
-    color: '#1F2937',
-    verticalAlign: 'middle'
-  }
-};

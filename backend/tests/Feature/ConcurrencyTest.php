@@ -35,12 +35,12 @@ it('returns existing active qr code if generated again for same schedule (idempo
 
     // 4. Assertions
     expect($token1)->toBe($token2);
-    
+
     // Ensure only one active QR exists in DB
     $activeCount = Qrcode::where('schedule_id', $schedule->id)
         ->where('is_active', true)
         ->count();
-    
+
     expect($activeCount)->toBe(1);
 });
 
@@ -74,11 +74,11 @@ it('generates new qr code if previous one is expired', function () {
     // Old one should be deactivated (handled by logic)
     $qr->refresh();
     expect($qr->is_active)->toBeFalse();
-    
+
     // Only one active now
     $activeCount = Qrcode::where('schedule_id', $schedule->id)
         ->where('is_active', true)
         ->count();
-    
+
     expect($activeCount)->toBe(1);
 });

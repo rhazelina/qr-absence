@@ -41,4 +41,16 @@ class SettingController extends Controller
             'message' => 'Settings updated successfully',
         ]);
     }
+
+    /**
+     * Sync settings and active context.
+     */
+    public function sync()
+    {
+        return response()->json([
+            'school_year' => \App\Models\SchoolYear::where('active', true)->first(),
+            'semester' => \App\Models\Semester::where('active', true)->first(),
+            'settings' => \App\Models\Setting::all()->pluck('value', 'key'),
+        ]);
+    }
 }

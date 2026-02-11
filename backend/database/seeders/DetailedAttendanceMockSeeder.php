@@ -20,36 +20,45 @@ class DetailedAttendanceMockSeeder extends Seeder
 
         if ($schedules->isEmpty() || $students->isEmpty()) {
             $this->command->error('Schedules or Students not found. Please run DashboardMockSeeder first.');
+
             return;
         }
 
         $this->command->info('Generating detailed 6-month history...');
-        
+
         $attendances = [];
         // Generate for the last 180 days to populate 6-month charts
         $startDate = now()->subDays(180);
         $endDate = now();
 
         for ($date = clone $startDate; $date <= $endDate; $date->addDay()) {
-            if ($date->isSunday()) continue;
+            if ($date->isSunday()) {
+                continue;
+            }
 
             $dayName = $date->format('l');
             $daySchedules = $schedules->where('day', $dayName);
 
             foreach ($daySchedules as $schedule) {
                 $classStudents = $students->where('class_id', $schedule->class_id);
-                
+
                 foreach ($classStudents as $student) {
                     // Logic to make recent months have better attendance than older ones for "trend" effect
                     $monthDiff = $date->diffInMonths(now());
                     $presentWeight = 80 + (5 - $monthDiff) * 2; // Newer months are "better"
-                    
+
                     $rand = rand(1, 100);
-                    if ($rand <= $presentWeight) $status = 'present';
-                    elseif ($rand <= 92) $status = 'late';
-                    elseif ($rand <= 95) $status = 'sick';
-                    elseif ($rand <= 98) $status = 'excused';
-                    else $status = 'absent';
+                    if ($rand <= $presentWeight) {
+                        $status = 'present';
+                    } elseif ($rand <= 92) {
+                        $status = 'late';
+                    } elseif ($rand <= 95) {
+                        $status = 'sick';
+                    } elseif ($rand <= 98) {
+                        $status = 'excused';
+                    } else {
+                        $status = 'absent';
+                    }
 
                     $checkIn = null;
                     if ($status === 'present' || $status === 'late') {

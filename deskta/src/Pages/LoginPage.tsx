@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import bgLogin from "../assets/Background/bgLogin.png";
 import LogoSchool from "../assets/Icon/logo smk.png";
+import { storage } from "../utils/storage";
 
 interface LoginPageProps {
   role: string | null;
@@ -66,9 +67,10 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
 
       // Login successful - call onLogin with user data
       if (actualRole) {
-        // Store user data in localStorage using standardized keys
-        localStorage.setItem('user_role', actualRole);
-        localStorage.setItem('user_data', JSON.stringify(response.user));
+        // Store user data in storage using standardized utility
+        storage.setRole(actualRole);
+        storage.setUserData(response.user);
+        storage.setToken(response.token);
 
         // Call onLogin callback
         onLogin(actualRole, response.user.name, response.user.phone || '');
@@ -78,7 +80,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
           'admin': '/admin/dashboard',
           'waka': '/waka/dashboard',
           'guru': '/guru/dashboard',
-          'wakel': '/walikelas/dashboard',
+          'wakel': '/wakel/dashboard',
           'siswa': '/siswa/dashboard',
           'pengurus_kelas': '/pengurus_kelas/dashboard',
         };

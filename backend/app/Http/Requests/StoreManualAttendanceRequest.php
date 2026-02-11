@@ -18,7 +18,7 @@ class StoreManualAttendanceRequest extends FormRequest
             'schedule_id' => ['required', 'exists:schedules,id'],
             'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin,pulang'],
             'date' => [
-                'required', 
+                'required',
                 'date',
                 function ($attribute, $value, $fail) {
                     if (date('N', strtotime($value)) == 7) {

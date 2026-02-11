@@ -1,6 +1,7 @@
 ﻿// src/Pages/WakaStaff/DetailSiswaStaff.tsx
 import { useEffect, useMemo, useState, useRef } from "react";
 import { FileText, FileSpreadsheet, GraduationCap } from "lucide-react";
+import { getStatusConfig } from "../../utils/statusMapping";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Button } from "../../component/Shared/Button";
 import { Table } from "../../component/Shared/Table";
@@ -286,8 +287,10 @@ export default function DetailSiswaStaff({
 
   // Fungsi untuk mendapatkan style badge BOLD dengan klik
   const getStatusStyle = (status: string) => {
-    const baseStyle = {
-      backgroundColor: "#1FA83D", // Default hadir
+    const config = getStatusConfig(status);
+    
+    return {
+      backgroundColor: config.color, // Default hadir
       color: "#FFFFFF",
       padding: "6px 16px",
       borderRadius: "20px",
@@ -304,38 +307,14 @@ export default function DetailSiswaStaff({
       gap: "6px",
       cursor: "pointer",
       transition: "all 0.2s ease",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      boxShadow: `0 2px 4px ${config.color}4D`,
       minHeight: "36px",
     };
-
-    switch (status) {
-      case "hadir":
-        return { ...baseStyle, backgroundColor: "#1FA83D", boxShadow: "0 2px 4px rgba(31, 168, 61, 0.3)" };
-      case "izin":
-        return { ...baseStyle, backgroundColor: "#ACA40D", boxShadow: "0 2px 4px rgba(172, 164, 13, 0.3)" };
-      case "sakit":
-        return { ...baseStyle, backgroundColor: "#520C8F", boxShadow: "0 2px 4px rgba(82, 12, 143, 0.3)" };
-      case "tidak-hadir":
-      case "alpha":
-        return { ...baseStyle, backgroundColor: "#D90000", boxShadow: "0 2px 4px rgba(217, 0, 0, 0.3)" };
-      case "pulang":
-        return { ...baseStyle, backgroundColor: "#2F85EB", boxShadow: "0 2px 4px rgba(47, 133, 235, 0.3)" };
-      default:
-        return { ...baseStyle, backgroundColor: "#6B7280" };
-    }
   };
 
   // Fungsi untuk mendapatkan label status
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "hadir": return "Hadir";
-      case "izin": return "Izin";
-      case "sakit": return "Sakit";
-      case "tidak-hadir":
-      case "alpha": return "Tidak Hadir";
-      case "pulang": return "Pulang";
-      default: return status;
-    }
+    return getStatusConfig(status).label;
   };
 
   // Fungsi untuk mendapatkan teks penjelasan status
@@ -361,19 +340,12 @@ export default function DetailSiswaStaff({
 
   // Fungsi untuk mendapatkan warna status
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "alpha":
-      case "tidak-hadir": return "#D90000";
-      case "izin": return "#ACA40D";
-      case "sakit": return "#520C8F";
-      case "hadir": return "#1FA83D";
-      case "pulang": return "#2F85EB";
-      default: return "#6B7280";
-    }
+    return getStatusConfig(status).color;
   };
 
   // Fungsi untuk membuka modal detail
-  const handleStatusClick = (row: KehadiranRow) => {
+  const handleStatusClick = (row: KehadiranRow, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     console.log("Status diklik:", row);
     setSelectedRow(row);
     setIsDetailModalOpen(true);

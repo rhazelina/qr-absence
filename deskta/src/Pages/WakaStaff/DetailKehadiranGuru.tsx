@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { User, ArrowLeft, Eye, X, Loader2 } from "lucide-react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import { Modal } from "../../component/Shared/Modal";
+
 
 type StatusKehadiran = "Hadir" | "Izin" | "Sakit" | "Alfa" | "Tidak Hadir" | "Pulang";
 

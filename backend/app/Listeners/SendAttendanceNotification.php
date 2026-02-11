@@ -25,11 +25,11 @@ class SendAttendanceNotification implements ShouldQueue
         $attendance = $event->attendance;
         if ($attendance->attendee_type === 'student' && $attendance->student && config('whatsapp.notifications.attendance_success')) {
             $student = $attendance->student->load('user');
-            
+
             if ($student->parent_phone) {
                 $statusLabel = $attendance->status === 'late' ? 'Hadir (Terlambat)' : 'Hadir';
                 $time = $attendance->checked_in_at->format('H:i');
-                
+
                 $message = WhatsAppTemplates::attendanceSuccess(
                     $student->user->name,
                     $time,
@@ -45,7 +45,7 @@ class SendAttendanceNotification implements ShouldQueue
     {
         // Clear caches that might be affected by new attendance
         Cache::forget('dashboard.admin');
-        
+
         // Clear Waka Dashboard for today
         $today = now()->format('Y-m-d');
         Cache::forget("dashboard.waka.{$today}");

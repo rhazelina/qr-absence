@@ -1,181 +1,974 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  FaQrcode, 
-  FaUsers, 
-  FaHistory, 
-  FaCalendarAlt, 
-  FaClock, 
-  FaBell,
-  FaArrowRight,
-  FaCheckCircle,
-  FaLayerGroup,
-  FaChevronRight
-} from 'react-icons/fa';
-import PageWrapper from '../../components/ui/PageWrapper';
-import QRGenerateButton from '../../components/PengurusKelas/QRGenerateButton';
-import attendanceService from '../../services/attendance';
+import { Calendar, Clock, BookOpen, ArrowLeft, LogOut, TrendingUp, PieChart, User, Camera } from 'lucide-react';
+import './DashboardKelas.css';
+import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
+import jadwalImage from '../../assets/jadwal.png';
 
-// Force HMR fix for attendance service export
-function DashboardKelas() {
-  const navigate = useNavigate();
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [dashboardData, setDashboardData] = useState({
-    className: '...',
-    totalStudents: 0,
-    activeSchedule: null,
-    todayAttendance: 0
+// Sample Data
+const sampleData = {
+  profile: {
+    name: '123',
+    kelas: 'XII RPL 2',
+    id: '001234',
+    gender: 'laki-laki' // 'laki-laki' atau 'perempuan'
+  },
+  scheduleImage: jadwalImage,
+  // Statistik Hari Ini - Kehadiran siswa hari ini (dari 30 siswa)
+  dailyStats: {
+    hadir: 20,
+    izin: 2,
+    sakit: 1,
+    alpha: 1,
+    terlambat: 4,
+    pulang: 2
+  },
+  // Tren Bulanan - Data untuk semua status
+  monthlyTrend: [
+    { 
+      month: 'Jan', 
+      hadir: 520, 
+      sakit: 45, 
+      izin: 38, 
+      alpha: 25, 
+      terlambat: 52, 
+      pulang: 40,
+      total: 720 
+    },
+    { 
+      month: 'Feb', 
+      hadir: 580, 
+      sakit: 35, 
+      izin: 30, 
+      alpha: 20, 
+      terlambat: 40, 
+      pulang: 35,
+      total: 740 
+    },
+    { 
+      month: 'Mar', 
+      hadir: 640, 
+      sakit: 28, 
+      izin: 25, 
+      alpha: 15, 
+      terlambat: 35, 
+      pulang: 30,
+      total: 773 
+    },
+    { 
+      month: 'Apr', 
+      hadir: 590, 
+      sakit: 40, 
+      izin: 32, 
+      alpha: 22, 
+      terlambat: 45, 
+      pulang: 38,
+      total: 767 
+    },
+    { 
+      month: 'Mei', 
+      hadir: 670, 
+      sakit: 22, 
+      izin: 20, 
+      alpha: 12, 
+      terlambat: 28, 
+      pulang: 25,
+      total: 777 
+    },
+    { 
+      month: 'Jun', 
+      hadir: 610, 
+      sakit: 32, 
+      izin: 28, 
+      alpha: 18, 
+      terlambat: 38, 
+      pulang: 32,
+      total: 758 
+    }
+  ]
+};
+
+// SVG Avatar Component untuk Profil - Basic Icon
+const ProfileIcon = ({ gender, size = 80 }) => {
+  // Icon basic yang sama untuk semua
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 24 24" 
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="12" cy="12" r="12" fill="#E5E7EB"/>
+      <circle cx="12" cy="9" r="4" fill="#9CA3AF"/>
+      <path d="M4 20c0-4 3-6 8-6s8 2 8 6" fill="#9CA3AF"/>
+    </svg>
+  );
+};
+
+// Subjects Modal
+const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="all-riwayat-modal-overlay" onClick={onClose}>
+      <NavbarPengurus/>
+      <div className="all-riwayat-modal" style={{ 
+        maxWidth: '800px', 
+        maxHeight: 'calc(100vh - 105px)',
+        width: '90%',
+        margin: '0 auto'
+      }} onClick={(e) => e.stopPropagation()}>
+        <div className="all-riwayat-header">
+          <button onClick={onClose} className="backbutton">
+            <ArrowLeft size={32} />
+          </button>
+          <h2>Jadwal Pembelajaran</h2>
+        </div>
+        
+        <div className="all-riwayat-card" style={{ 
+          overflowX: 'auto', 
+          overflowY: 'auto',
+          padding: '24px',
+          maxHeight: 'calc(100vh - 205px)'
+        }}>
+          {scheduleImage ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+              alignItems: 'center'
+            }}>
+              <div style={{
+                width: '100%',
+                maxWidth: '650px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+                border: '2px solid #e5e7eb'
+              }}>
+                <img 
+                  src={scheduleImage} 
+                  alt="Jadwal Pembelajaran" 
+                  style={{
+                    width: '100%',
+                    height: 'auto',
+                    display: 'block'
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '60px 20px',
+              background: '#f9fafb',
+              borderRadius: '16px',
+              border: '3px dashed #d1d5db',
+              minHeight: '400px'
+            }}>
+              <div style={{
+                width: '120px',
+                height: '120px',
+                borderRadius: '50%',
+                background: '#e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '24px'
+              }}>
+                <BookOpen size={60} color="#9ca3af" />
+              </div>
+              
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: '700',
+                color: '#374151',
+                marginBottom: '12px'
+              }}>Belum Ada Jadwal</h3>
+              
+              <p style={{
+                fontSize: '15px',
+                color: '#6b7280',
+                textAlign: 'center',
+                maxWidth: '400px'
+              }}>
+                Jadwal pembelajaran belum tersedia
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Multi-Line Chart Component with All Status Types
+const MultiLineChart = ({ data }) => {
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [visibleLines, setVisibleLines] = useState({
+    hadir: true,
+    sakit: true,
+    izin: true,
+    alpha: true,
+    terlambat: true,
+    pulang: true
   });
 
+  const chartHeight = 240;
+  const chartWidth = 600;
+  const padding = { top: 30, right: 30, bottom: 40, left: 50 };
+  
+  const statusConfig = {
+    hadir: { label: 'Hadir', color: '#1FA83D' },
+    sakit: { label: 'Sakit', color: '#9A0898' },
+    izin: { label: 'Izin', color: '#EDD329' },
+    alpha: { label: 'Alpha', color: '#D90000' },
+    terlambat: { label: 'Terlambat', color: '#FF5F1A' },
+    pulang: { label: 'Pulang', color: '#243CB5' }
+  };
+
+  // Find max value across all visible lines
+  const maxValue = Math.max(...data.flatMap(item => 
+    Object.keys(statusConfig)
+      .filter(key => visibleLines[key])
+      .map(key => item[key])
+  ));
+
+  const yScale = (value) => {
+    return padding.top + ((maxValue - value) / maxValue) * (chartHeight - padding.top - padding.bottom);
+  };
+
+  const xScale = (index) => {
+    return padding.left + (index / (data.length - 1)) * (chartWidth - padding.left - padding.right);
+  };
+
+  const toggleLine = (statusKey) => {
+    setVisibleLines(prev => ({ ...prev, [statusKey]: !prev[statusKey] }));
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Legend with Toggle */}
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '8px', 
+        marginBottom: '16px',
+        justifyContent: 'center' 
+      }}>
+        {Object.entries(statusConfig).map(([key, config]) => (
+          <button
+            key={key}
+            onClick={() => toggleLine(key)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: visibleLines[key] ? 'white' : '#f3f4f6',
+              border: `2px solid ${visibleLines[key] ? config.color : '#d1d5db'}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              opacity: visibleLines[key] ? 1 : 0.5
+            }}
+          >
+            <div style={{
+              width: '10px',
+              height: '10px',
+              background: config.color,
+              borderRadius: '50%'
+            }}></div>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '600',
+              color: '#1f2937'
+            }}>{config.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ overflow: 'visible' }}>
+        {/* Grid Lines */}
+        {[0, 25, 50, 75, 100].map((percent) => {
+          const value = (maxValue * percent) / 100;
+          const y = yScale(value);
+          return (
+            <g key={percent}>
+              <line
+                x1={padding.left}
+                y1={y}
+                x2={chartWidth - padding.right}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeWidth="1"
+                strokeDasharray="4,4"
+              />
+              <text
+                x={padding.left - 10}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="12"
+                fill="#6b7280"
+                fontWeight="600"
+              >
+                {Math.round(value)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-axis labels */}
+        {data.map((item, index) => (
+          <text
+            key={index}
+            x={xScale(index)}
+            y={chartHeight - padding.bottom + 25}
+            textAnchor="middle"
+            fontSize="13"
+            fontWeight="600"
+            fill="#6b7280"
+          >
+            {item.month}
+          </text>
+        ))}
+
+        {/* Draw lines for each status */}
+        {Object.entries(statusConfig).map(([statusKey, config]) => {
+          if (!visibleLines[statusKey]) return null;
+
+          const points = data.map((item, index) => ({
+            x: xScale(index),
+            y: yScale(item[statusKey]),
+            value: item[statusKey],
+            month: item.month,
+            statusKey
+          }));
+
+          const linePath = points.map((point, index) => 
+            `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+          ).join(' ');
+
+          return (
+            <g key={statusKey}>
+              {/* Line */}
+              <path
+                d={linePath}
+                fill="none"
+                stroke={config.color}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Points */}
+              {points.map((point, index) => (
+                <g key={index}>
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="5"
+                    fill="white"
+                    stroke={config.color}
+                    strokeWidth="3"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredPoint({ ...point, color: config.color, label: config.label })}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  />
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r="15"
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredPoint({ ...point, color: config.color, label: config.label })}
+                    onMouseLeave={() => setHoveredPoint(null)}
+                  />
+                </g>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+      
+      {/* Tooltip */}
+      {hoveredPoint && (
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'white',
+          padding: '16px 20px',
+          borderRadius: '12px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+          border: `2px solid ${hoveredPoint.color}`,
+          pointerEvents: 'none',
+          zIndex: 1000,
+          minWidth: '180px'
+        }}>
+          <div style={{
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#1f2937',
+            marginBottom: '12px',
+            textAlign: 'center',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: '8px'
+          }}>
+            {hoveredPoint.month}
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '8px'
+          }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              background: hoveredPoint.color,
+              borderRadius: '50%'
+            }}></div>
+            <span style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              fontWeight: '600'
+            }}>{hoveredPoint.label}:</span>
+            <span style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: hoveredPoint.color,
+              marginLeft: 'auto'
+            }}>{hoveredPoint.value}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Info */}
+      <div style={{
+        marginTop: '16px',
+        padding: '12px',
+        background: '#f0f9ff',
+        borderRadius: '12px',
+        border: '2px solid #bfdbfe'
+      }}>
+        <p style={{
+          margin: 0,
+          fontSize: '12px',
+          color: '#1e40af',
+          fontWeight: '600',
+          textAlign: 'center'
+        }}>
+          Grafik menunjukkan tren kehadiran siswa per status. Klik label untuk hide/show.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Donut Chart Component
+const DonutChart = ({ data }) => {
+  const [hoveredSegment, setHoveredSegment] = useState(null);
+  const total = Object.values(data).reduce((sum, val) => sum + val, 0);
+  
+  if (total === 0) {
+    return (
+      <div className="no-data-chart">
+        <p>Belum ada data hari ini</p>
+      </div>
+    );
+  }
+
+  const percentages = {
+    hadir: (data.hadir / total) * 100,
+    izin: (data.izin / total) * 100,
+    sakit: (data.sakit / total) * 100,
+    alpha: (data.alpha / total) * 100,
+    terlambat: (data.terlambat / total) * 100,
+    pulang: (data.pulang / total) * 100
+  };
+
+  const colors = {
+    hadir: '#1FA83D',
+    izin: '#EDD329',
+    sakit: '#9A0898',
+    alpha: '#D90000',
+    terlambat: '#FF5F1A',
+    pulang: '#243CB5'
+  };
+
+  const labels = {
+    hadir: 'Total Kehadiran',
+    izin: 'Total Izin',
+    sakit: 'Total Sakit',
+    alpha: 'Total Alfa',
+    terlambat: 'Total Terlambat',
+    pulang: 'Total Pulang'
+  };
+
+  let cumulativePercent = 0;
+  const gradientStops = Object.keys(percentages).map(key => {
+    const start = cumulativePercent;
+    cumulativePercent += percentages[key];
+    return `${colors[key]} ${start}% ${cumulativePercent}%`;
+  }).join(', ');
+
+  const handleMouseMove = (e) => {
+    const chart = e.currentTarget;
+    const rect = chart.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    
+    const angle = Math.atan2(y, x) * (180 / Math.PI);
+    const normalizedAngle = (angle + 90 + 360) % 360;
+    
+    const outerRadius = 75;
+    const innerRadius = 50;
+    const distance = Math.sqrt(x * x + y * y);
+    
+    if (distance >= innerRadius && distance <= outerRadius) {
+      let cumulative = 0;
+      for (const [key, percent] of Object.entries(percentages)) {
+        cumulative += percent;
+        if (normalizedAngle < (cumulative / 100) * 360) {
+          setHoveredSegment({ label: labels[key], value: data[key], color: colors[key] });
+          break;
+        }
+      }
+    } else {
+      setHoveredSegment(null);
+    }
+  };
+
+  return (
+    <div className="chart-donut-wrapper" style={{ width: '180px', height: '180px' }}>
+      <div 
+        className="chart-donut"
+        style={{ 
+          background: `conic-gradient(${gradientStops})`,
+          width: '150px',
+          height: '150px'
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoveredSegment(null)}
+      >
+        <div className="chart-inner" style={{ width: '100px', height: '100px' }}>
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            justifyContent: 'center', height: '100%'
+          }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>{total}</div>
+            <div style={{ fontSize: '10px', color: '#6b7280', fontWeight: '600' }}>Total Siswa</div>
+          </div>
+        </div>
+      </div>
+      
+      {hoveredSegment && (
+        <div className="chart-tooltip">
+          <div className="tooltip-color" style={{ background: hoveredSegment.color }}></div>
+          <div className="tooltip-content">
+            <div className="tooltip-label">{hoveredSegment.label}</div>
+            <div className="tooltip-value">{hoveredSegment.value} siswa</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Profile Modal Component
+const ProfileModal = ({ isOpen, onClose, profile, onLogout, currentProfileImage, onUpdateProfileImage }) => {
+  const [profileImage, setProfileImage] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('File harus berupa gambar!');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB!');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result);
+        setProfileImage(file);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveImage = async () => {
+    if (!profileImage) return;
+    setIsUploading(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      onUpdateProfileImage(previewImage);
+      setPreviewImage(null);
+      setProfileImage(null);
+      alert('Foto profil berhasil diperbarui!');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Gagal mengupload foto. Silakan coba lagi.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setPreviewImage(null);
+    setProfileImage(null);
+  };
+
+  const handleDeleteProfileImage = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus foto profil?')) return;
+    setIsUploading(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      onUpdateProfileImage(null);
+      alert('Foto profil berhasil dihapus!');
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Gagal menghapus foto. Silakan coba lagi.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="all-riwayat-modal-overlay" onClick={onClose}>
+      <div className="all-riwayat-modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="all-riwayat-header">
+          <button onClick={onClose} className="back-button">
+            <ArrowLeft size={32} />
+          </button>
+          <h2>Info Akun</h2>
+        </div>
+        
+        <div className="all-riwayat-card">
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            marginBottom: '32px', padding: '24px', background: '#f9fafb', borderRadius: '16px'
+          }}>
+            <div style={{ position: 'relative', marginBottom: '20px' }}>
+              <div style={{
+                width: '150px', height: '150px', borderRadius: '50%', background: '#e8e8e8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                overflow: 'hidden', border: '4px solid white', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+              }}>
+                {previewImage ? (
+                  <img src={previewImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : currentProfileImage ? (
+                  <img src={currentProfileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <ProfileIcon gender={profile.gender} size={80} />
+                )}
+              </div>
+              <label htmlFor="profile-upload" style={{
+                position: 'absolute', bottom: '5px', right: '5px', width: '40px', height: '40px',
+                borderRadius: '50%', background: '#1e3a8a', border: '3px solid white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: isUploading ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+                color: 'white', opacity: isUploading ? 0.5 : 1
+              }}>
+                <Camera size={20} />
+              </label>
+              <input id="profile-upload" type="file" accept="image/jpeg,image/png,image/jpg,image/webp"
+                onChange={handleImageChange} disabled={isUploading} style={{ display: 'none' }} />
+            </div>
+            
+            {previewImage && (
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={handleSaveImage} disabled={isUploading} style={{
+                  padding: '10px 20px', background: isUploading ? '#9ca3af' : '#22c55e',
+                  color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600',
+                  cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
+                }}>
+                  {isUploading ? 'Menyimpan...' : 'Simpan Foto'}
+                </button>
+                <button onClick={handleRemoveImage} disabled={isUploading} style={{
+                  padding: '10px 20px', background: isUploading ? '#9ca3af' : '#ef4444',
+                  color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600',
+                  cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
+                }}>Batal</button>
+              </div>
+            )}
+            
+            {!previewImage && currentProfileImage && (
+              <button onClick={handleDeleteProfileImage} disabled={isUploading} style={{
+                padding: '10px 20px', background: 'transparent', color: '#ef4444',
+                border: '2px solid #ef4444', borderRadius: '8px', fontWeight: '600',
+                cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
+              }}>
+                {isUploading ? 'Menghapus...' : 'Hapus Foto'}
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Nama Lengkap</div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.name}</div>
+            </div>
+
+            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Kelas</div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.kelas}</div>
+            </div>
+
+            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Nomor Induk</div>
+              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.id}</div>
+            </div>
+          </div>
+
+          <button onClick={onLogout} disabled={isUploading} style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '12px', padding: '16px 24px',
+            background: isUploading ? '#9ca3af' : 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+            border: 'none', borderRadius: '12px', color: 'white', fontSize: '16px', fontWeight: '700',
+            cursor: isUploading ? 'not-allowed' : 'pointer', transition: 'all 0.3s ease',
+            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+          }}
+          onMouseOver={(e) => {
+            if (!isUploading) {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!isUploading) {
+              e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }
+          }}>
+            <LogOut size={20} />
+            <span>Keluar dari Akun</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Dashboard
+const DashboardKelas = () => {
+  const [showSubjects, setShowSubjects] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [profileImage, setProfileImage] = useState(null);
+
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const response = await attendanceService.getStudentClassDashboard();
-        const data = response.data;
-        setDashboardData({
-          className: data.class_name || 'XI RPL 1',
-          totalStudents: data.total_students || 36,
-          activeSchedule: data.active_schedule || { id: 1, subject: 'Pemrograman Web', time: '07:00 - 08:30' },
-          todayAttendance: data.today_attendance_count || 32
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard:", error);
-      }
-    };
-    fetchDashboard();
-  }, []);
+  const formatDate = () => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return `${days[currentDateTime.getDay()]}, ${currentDateTime.getDate()} ${months[currentDateTime.getMonth()]} ${currentDateTime.getFullYear()}`;
+  };
+
+  const formatTime = () => {
+    return currentDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Apakah Anda yakin ingin keluar?')) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userRole');
+      window.location.href = '/';
+    }
+  };
+
+  const handleUpdateProfileImage = (newImageUrl) => {
+    setProfileImage(newImageUrl);
+  };
+
+  if (loading) {
+    return <div className="loading-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '20px', fontWeight: 'bold' }}>Memuat data dashboard kelas...</div>;
+  }
+
+  if (error) {
+    return <div className="error-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '20px', fontWeight: 'bold', color: '#ef4444' }}>{error}</div>;
+  }
+
+  const profile = dashboardData?.profile || {};
+  const dailyStats = dashboardData?.dailyStats || {};
+  const monthlyTrend = dashboardData?.monthlyTrend || [];
 
   return (
-    <PageWrapper className="max-w-[1400px] mx-auto p-6 md:p-10 space-y-10 font-sans">
-      
-      {/* HEADER SECTION */}
-      <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-white/50 flex flex-col lg:flex-row justify-between items-center gap-8">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-blue-600 text-white rounded-3xl flex items-center justify-center text-3xl shadow-xl shadow-blue-200">
-            <FaLayerGroup />
+    <>
+      <NavbarPengurus />
+      <div className="dashboard">
+        <div className="profile-section">
+          <div className="profile-contenty" onClick={() => setShowProfile(true)} style={{ cursor: 'pointer' }}>
+            <div className="profile-avatar-wrapper">
+              <div className="profile-avatar">
+                {profileImage ? (
+                  <img src={profileImage} alt="Profile" className="avatar-image" />
+                ) : (
+                  <div className="avatar-icon">
+                    <ProfileIcon gender={profile.gender} size={80} />
+                  </div>
+                )}
+              </div>
+            </div>
+            <h1 className="profile-name">{profile.name}</h1>
+            <h3 className="profile-kelas">{profile.kelas}</h3>
+            <p className="profile-id">{profile.id}</p>
           </div>
-          <div>
-            <h1 className="text-3xl font-black text-gray-800 tracking-tight leading-none uppercase italic">Portal Pengurus</h1>
-            <p className="text-gray-500 font-bold text-sm uppercase tracking-widest mt-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                Kelas: {dashboardData.className}
-            </p>
-          </div>
+
+          <button className="btn-logout" onClick={handleLogout}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+            </svg>
+            Keluar
+          </button>
         </div>
 
-        <div className="flex items-center gap-6 bg-gray-50/50 p-6 rounded-3xl border border-gray-100 shadow-inner">
-          <div className="text-right">
-            <div className="text-3xl font-black text-blue-600 font-mono tracking-tighter leading-none mb-1">
-              {currentTime.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </div>
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              {currentTime.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}
-            </div>
-          </div>
-          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm border border-gray-100"><FaClock /></div>
-        </div>
-      </div>
+        <main className="dashboard-main">
+          <div className="dashboard-grid-main">
+            <div className="content-section">
+              <div className="kehadiran-card">
+                <h3 className="kehadiran-title">Kehadiran Kelas</h3>
+                
+                <div className="datetime-info-row">
+                  <div className="datetime-badge">
+                    <Calendar size={18} />
+                    <span>{formatDate()}</span>
+                  </div>
+                  <div className="datetime-badge">
+                    <Clock size={18} />
+                    <span>{formatTime()}</span>
+                  </div>
+                </div>
+                
+                <div className="time-range-display">
+                  <div className="time-display-box">07:00:00</div>
+                  <div className="time-range-separator">—</div>
+                  <div className="time-display-box">15:00:00</div>
+                </div>
+              </div>
 
-      {/* QUICK ACTIONS & STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        
-        {/* QR CODE CARD */}
-        <div className="md:col-span-2 bg-gradient-to-br from-indigo-600 to-blue-800 rounded-[2.5rem] shadow-xl p-10 text-white relative overflow-hidden group">
-            <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                <div className="w-40 h-40 bg-white p-4 rounded-[2rem] shadow-2xl flex items-center justify-center transform group-hover:rotate-3 transition-transform duration-500">
-                    <FaQrcode size={80} className="text-indigo-900" />
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-3xl font-black mb-3 italic">Generasi Kode Presensi</h3>
-                    <p className="text-indigo-100 font-medium mb-8 opacity-80 leading-relaxed">Gunakan kode ini untuk absensi mandiri siswa di dalam kelas.</p>
-                    <QRGenerateButton />
-                </div>
-            </div>
-            <FaQrcode size={200} className="absolute -right-10 -bottom-10 text-white/5 transform -rotate-12 group-hover:scale-110 transition-transform duration-1000" />
-        </div>
+              <div className="kehadiran-card">
+                <h3 className="kehadiran-title">Mata Pelajaran Hari Ini</h3>
 
-        {/* STATS CARD */}
-        <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 flex flex-col justify-between hover:shadow-2xl transition-all">
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Siswa Hadir</span>
-                    <FaUsers className="text-emerald-500" />
+                <div style={{
+                  background: 'white', border: '2px solid #d1d5db', borderRadius: '16px',
+                  padding: '24px', marginBottom: '20px', color: '#1f2937',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Kelas</div>
+                    <div style={{ fontSize: '40px', fontWeight: 'bold' }}>{profile.kelas}</div>
+                  </div>
+                  <BookOpen size={64} style={{ opacity: 0.8 }} />
                 </div>
-                <div>
-                    <p className="text-5xl font-black text-gray-800 tracking-tighter leading-none mb-2">{dashboardData.todayAttendance}</p>
-                    <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(dashboardData.todayAttendance/dashboardData.totalStudents)*100}%` }}></div>
-                        </div>
-                        <span className="text-[10px] font-black text-gray-400">/{dashboardData.totalStudents}</span>
+
+                <button onClick={() => setShowSubjects(true)} className="btn-action" style={{
+                  width: '100%', background: 'linear-gradient(135deg, #1e3a8a)',
+                  color: 'white', border: 'none', boxShadow: '0 4px 12px rgba(30, 58, 138, 0.3)'
+                }}>
+                  <BookOpen size={20} />
+                  <span>Lihat Jadwal Kelas</span>
+                </button>
+              </div>
+
+              {/* Chart Section - 2 Column Layout */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
+                <div className="kehadiran-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      padding: '12px', borderRadius: '12px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <TrendingUp color="white" size={24} />
                     </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
+                      Tren Kehadiran Bulanan
+                    </h3>
+                  </div>
+                  <MultiLineChart data={monthlyTrend} />
                 </div>
-            </div>
-            <button onClick={() => navigate('/pengurus-kelas/presensi')} className="mt-8 w-full py-4 bg-gray-50 hover:bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2">
-                DETAIL PRESENSI <FaArrowRight size={10} />
-            </button>
-        </div>
-      </div>
 
-      {/* LOWER SECTION */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        
-        {/* ACTIVE SCHEDULE */}
-        <div className="xl:col-span-2 bg-white rounded-[2.5rem] shadow-xl border border-gray-100 p-10">
-            <div className="flex items-center gap-4 mb-10">
-                <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center text-xl"><FaBell className="animate-bounce" /></div>
-                <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Sesi Aktif Sekarang</h3>
-            </div>
-
-            {dashboardData.activeSchedule ? (
-                <div className="p-8 bg-gray-50 rounded-[2rem] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 group hover:bg-white hover:shadow-xl transition-all">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-3xl bg-white shadow-sm border border-gray-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                            <FaCalendarAlt size={24} />
-                        </div>
-                        <div>
-                            <h4 className="text-2xl font-black text-gray-800 leading-tight italic">{dashboardData.activeSchedule.subject}</h4>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1 flex items-center gap-2">
-                                <FaClock className="text-blue-400" /> {dashboardData.activeSchedule.time}
-                            </p>
-                        </div>
+                <div className="kehadiran-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      padding: '12px', borderRadius: '12px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <PieChart color="white" size={24} />
                     </div>
-                    <div className="px-8 py-3 bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100">SEDANG BERJALAN</div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
+                      Statistik Hari Ini
+                    </h3>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '24px',
+                    justifyContent: 'center', padding: '10px'
+                  }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                      <DonutChart data={dailyStats} />
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: '1' }}>
+                      {[
+                        { label: 'Hadir', value: dailyStats.hadir, color: '#1FA83D' },
+                        { label: 'Terlambat', value: dailyStats.terlambat, color: '#FF5F1A' },
+                        { label: 'Pulang', value: dailyStats.pulang, color: '#243CB5' },
+                        { label: 'Izin', value: dailyStats.izin, color: '#EDD329' },
+                        { label: 'Sakit', value: dailyStats.sakit, color: '#9A0898' },
+                        { label: 'Alpha', value: dailyStats.alpha, color: '#D90000' }
+                      ].map((stat, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '14px', height: '14px', background: stat.color,
+                            borderRadius: '50%', flexShrink: 0
+                          }}></div>
+                          <div style={{
+                            flex: 1, fontSize: '13px', color: '#6b7280', fontWeight: '600'
+                          }}>{stat.label}</div>
+                          <div style={{
+                            fontSize: '20px', color: '#1f2937', fontWeight: 'bold'
+                          }}>{stat.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-            ) : (
-                <div className="py-16 text-center bg-gray-50/50 rounded-[2rem] border-2 border-dashed border-gray-200">
-                    <p className="text-gray-400 font-black uppercase tracking-widest text-xs italic">Tidak ada jadwal aktif saat ini</p>
-                </div>
-            )}
-        </div>
+              </div>
+            </div>
+          </div>
+        </main>
 
-        {/* QUICK NAVIGATION */}
-        <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 space-y-4">
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-6 ml-2">Navigasi Cepat</h3>
-            <NavBtn label="Input Manual" icon={<FaCheckCircle />} color="text-blue-600" bg="bg-blue-50" onClick={() => navigate('/pengurus-kelas/presensi')} />
-            <NavBtn label="Riwayat Presensi" icon={<FaHistory />} color="text-indigo-600" bg="bg-indigo-50" onClick={() => navigate('/pengurus-kelas/riwayat')} />
-        </div>
-
+        <SubjectsModal isOpen={showSubjects} onClose={() => setShowSubjects(false)} 
+          scheduleImage={scheduleImage} />
+        
+        <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} 
+          profile={profile} currentProfileImage={profileImage}
+          onUpdateProfileImage={handleUpdateProfileImage} onLogout={handleLogout} />
       </div>
-    </PageWrapper>
+    </>
   );
-}
-
-function NavBtn({ label, icon, color, bg, onClick }) {
-    return (
-        <button onClick={onClick} className="w-full flex items-center justify-between p-5 bg-white border border-gray-100 rounded-[1.5rem] hover:shadow-xl hover:border-blue-200 transition-all group">
-            <div className="flex items-center gap-4">
-                <span className={`w-10 h-10 ${bg} ${color} rounded-xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform`}>{icon}</span>
-                <span className="font-black text-gray-700 text-sm uppercase tracking-tight italic">{label}</span>
-            </div>
-            <FaChevronRight size={10} className="text-gray-300 group-hover:translate-x-1 transition-transform" />
-        </button>
-    );
-}
+};
 
 export default DashboardKelas;

@@ -43,51 +43,50 @@ export interface AttendanceParams {
 
 // Attendance service
 export const attendanceService = {
-    // Get student's own attendance records
-    async getMyAttendance(params?: AttendanceParams): Promise<AxiosResponse> {
-        return apiClient.get('/attendance/me', { params });
+    async getMyAttendance(params?: AttendanceParams, options?: any): Promise<AxiosResponse> {
+        return apiClient.get('/api/me/attendance', { params, ...options });
     },
 
     // Get student's attendance summary
     async getMyAttendanceSummary(params?: { from?: string; to?: string }): Promise<AxiosResponse<AttendanceSummary>> {
-        return apiClient.get('/attendance/me/summary', { params });
+        return apiClient.get('/api/me/attendance/summary', { params });
     },
 
     // Get teacher's teaching attendance
     async getTeachingAttendance(params?: AttendanceParams): Promise<AxiosResponse> {
-        return apiClient.get('/attendance/me/teaching', { params });
+        return apiClient.get('/api/me/attendance/teaching', { params });
     },
 
     // Get teacher's teaching summary
     async getTeachingSummary(params?: { from?: string; to?: string }): Promise<AxiosResponse> {
-        return apiClient.get('/attendance/me/teaching/summary', { params });
+        return apiClient.get('/api/me/attendance/teaching/summary', { params });
     },
 
     // Get class attendance by date (for homeroom teacher)
     async getClassAttendanceByDate(classId: number, date: string): Promise<AxiosResponse> {
-        return apiClient.get(`/attendance/class/${classId}/by-date`, {
+        return apiClient.get(`/api/classes/${classId}/attendance`, {
             params: { date }
         });
     },
 
     // Get class students summary (for homeroom teacher)
     async getClassStudentsSummary(classId: number, params?: AttendanceParams): Promise<AxiosResponse> {
-        return apiClient.get(`/attendance/class/${classId}/students/summary`, { params });
+        return apiClient.get(`/api/classes/${classId}/students/attendance-summary`, { params });
     },
 
     // Get class students absences (for homeroom teacher)
     async getClassStudentsAbsences(classId: number, params?: AttendanceParams): Promise<AxiosResponse> {
-        return apiClient.get(`/attendance/class/${classId}/students/absences`, { params });
+        return apiClient.get(`/api/classes/${classId}/students/absences`, { params });
     },
 
     // Get student's class dashboard
     async getStudentClassDashboard(): Promise<AxiosResponse> {
-        return apiClient.get('/me/class');
+        return apiClient.get('/api/me/class');
     },
 
     // Scan QR code for attendance
     async scanQRCode(token: string, deviceId?: number): Promise<AxiosResponse> {
-        return apiClient.post('/attendance/scan', {
+        return apiClient.post('/api/attendance/scan', {
             token,
             device_id: deviceId
         });
@@ -103,7 +102,7 @@ export const attendanceService = {
         date: string;
         reason?: string;
     }): Promise<AxiosResponse> {
-        return apiClient.post('/attendance/manual', data);
+        return apiClient.post('/api/attendance/manual', data);
     }
 };
 

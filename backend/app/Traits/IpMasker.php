@@ -10,7 +10,7 @@ trait IpMasker
      */
     protected function maskIp(?string $ip): string
     {
-        if (!$ip) {
+        if (! $ip) {
             return 'unknown';
         }
 
@@ -18,7 +18,7 @@ trait IpMasker
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $parts = explode('.', $ip);
             if (count($parts) === 4) {
-                return $parts[0] . '.' . $parts[1] . '.' . $parts[2] . '.xxx';
+                return $parts[0].'.'.$parts[1].'.'.$parts[2].'.xxx';
             }
         }
 
@@ -27,7 +27,8 @@ trait IpMasker
             $parts = explode(':', $ip);
             if (count($parts) > 1) {
                 array_pop($parts);
-                return implode(':', $parts) . ':xxxx';
+
+                return implode(':', $parts).':xxxx';
             }
         }
 

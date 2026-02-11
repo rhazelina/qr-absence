@@ -36,11 +36,11 @@ it('allows teacher to upload class schedule image', function () {
     Storage::fake('public');
     $waka = User::factory()->waka()->create();
     $class = Classes::factory()->create();
-    
+
     $file = UploadedFile::fake()->image('class_schedule.jpg');
 
     $response = $this->actingAs($waka)->postJson("/api/classes/{$class->id}/schedule-image", [
-        'file' => $file
+        'file' => $file,
     ]);
 
     $response->assertStatus(200);
@@ -50,7 +50,7 @@ it('allows teacher to upload class schedule image', function () {
 it('allows student to see their class info', function () {
     $student = User::factory()->student()->create();
     $student->studentProfile->update(['is_class_officer' => true]);
-    
+
     $response = $this->actingAs($student)->getJson('/api/me/class');
 
     $response->assertStatus(200)

@@ -157,6 +157,7 @@ export default function InputManualGuru({
     setSiswaList(siswaList.map((s) => (s.id === id ? { ...s, status } : s)));
   };
 
+  /*
   const handleStatusClick = (siswa: Siswa, e: React.MouseEvent) => {
     e.stopPropagation();
     if (siswa.status === null) return;
@@ -166,6 +167,7 @@ export default function InputManualGuru({
     setEditKeterangan(siswa.keterangan || '');
     setIsModalOpen(true);
   };
+  */
 
   const handleSaveEdit = () => {
     if (!selectedSiswa || !editStatus) return;
@@ -241,7 +243,6 @@ export default function InputManualGuru({
 
     return (
       <div
-        onClick={(e) => handleStatusClick(siswa, e)}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -254,24 +255,13 @@ export default function InputManualGuru({
           fontWeight: 600,
           color: "#FFFFFF",
           backgroundColor: color,
-          cursor: "pointer",
+          cursor: "default",
           transition: "all 0.2s ease",
           border: "none",
           boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
           minHeight: "36px",
         }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = "0.9";
-          e.currentTarget.style.transform = "translateY(-1px)";
-          e.currentTarget.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.15)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = "1";
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-        }}
       >
-        <EyeIcon size={14} />
         <span>{label}</span>
       </div>
     );

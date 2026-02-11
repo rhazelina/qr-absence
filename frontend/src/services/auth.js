@@ -1,5 +1,7 @@
 import apiClient from './api';
-import { API_ENDPOINTS, TOKEN_KEY } from '../utils/constants';
+import { API_ENDPOINTS } from '../utils/constants';
+import { normalizeRole } from '../utils/roleMapping';
+import { authHelpers } from '../utils/authHelpers';
 
 export const authService = {
     /**
@@ -12,9 +14,14 @@ export const authService = {
         });
 
         const { token, user } = response.data;
+        if (user && user.role) {
+            user.role = normalizeRole(user.role);
+        }
 
-        // Store token
-        localStorage.setItem(TOKEN_KEY, token);
+        // Store token and user data
+        authHelpers.setToken(token);
+        if (user.role) authHelpers.setRole(user.role);
+        authHelpers.setUserData(user);
 
         return { token, user };
     },
@@ -29,11 +36,9 @@ export const authService = {
             console.error('Logout error:', error);
         } finally {
             // Always clear local data
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem('user_role');
-            localStorage.removeItem('user_data');
+            authHelpers.clearAuth();
+            sessionStorage.clear();
         }
-        sessionStorage.clear();
     },
 
     /**
@@ -41,6 +46,9 @@ export const authService = {
      */
     async getMe() {
         const response = await apiClient.get(API_ENDPOINTS.ME);
+        if (response.data.role) {
+            response.data.role = normalizeRole(response.data.role);
+        }
         return response.data;
     },
 
@@ -48,6 +56,6 @@ export const authService = {
      * Check if user is authenticated
      */
     isAuthenticated() {
-        return !!localStorage.getItem(TOKEN_KEY);
+        return authHelpers.isAuthenticated();
     },
 };

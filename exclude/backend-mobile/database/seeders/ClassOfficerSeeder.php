@@ -1,0 +1,55 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Classes;
+use App\Models\Major;
+use App\Models\StudentProfile;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+
+class ClassOfficerSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // Pastikan ada kelas
+        $major = Major::firstOrCreate(
+            ['code' => 'TKJ'],
+            ['name' => 'Teknik Komputer dan Jaringan']
+        );
+
+        $class = Classes::firstOrCreate(
+            [
+                'grade' => 'XII',
+                'label' => 'TKJ 1',
+            ],
+            [
+                'major_id' => $major->id,
+            ]
+        );
+
+        // Buat user pengurus kelas (ketua kelas)
+        $user = User::updateOrCreate(
+            ['username' => 'pengurus1'],
+            [
+                'name' => 'Ketua Kelas TKJ 1',
+                'email' => 'pengurus1@example.com',
+                'password' => 'password123', // Auto-hashed by User model cast
+                'user_type' => 'student',
+                'active' => true,
+            ]
+        );
+
+        StudentProfile::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'nisn' => '0024999',
+                'nis' => '2024999',
+                'gender' => 'L',
+                'address' => 'Jl. Contoh No. 999',
+                'class_id' => $class->id,
+                'is_class_officer' => true, // Tandai sebagai pengurus kelas
+            ]
+        );
+    }
+}

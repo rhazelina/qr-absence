@@ -42,10 +42,10 @@ it('sends whatsapp text via configured provider', function () {
     // Verify that the HTTP request was sent with correct headers and payload
     Http::assertSent(function ($request) {
         return $request->url() === 'https://wa.test/send-message';
-            // && $request->hasHeaders([
-            //     'Authorization' => 'Bearer test-token',
-            //     'Accept' => 'application/json',
-            // ]);
+        // && $request->hasHeaders([
+        //     'Authorization' => 'Bearer test-token',
+        //     'Accept' => 'application/json',
+        // ]);
 
         // postJson payload
         // $data = $request->da

@@ -93,10 +93,6 @@ class ScheduleController extends Controller
     public function me(Request $request): JsonResponse
     {
         if ($request->user()->user_type === 'teacher') {
-            // Re-use index logic or similar for teacher 'me'
-            // We return the same structure as student if possible, or paginated?
-            // Student 'me' returns: { date, day, items: [] }
-            // Let's return the same for consistency if frontend expects it.
             $date = $request->filled('date')
                 ? Carbon::parse($request->string('date'))
                 : now();
@@ -112,6 +108,8 @@ class ScheduleController extends Controller
             return response()->json([
                 'date' => $date->toDateString(),
                 'day' => $day,
+                'status' => $schedules->isEmpty() ? 'no_schedule' : 'has_schedule',
+                'message' => $schedules->isEmpty() ? 'Tidak ada jam mengajar hari ini' : 'Jadwal ditemukan',
                 'items' => $schedules,
             ]);
         }
@@ -153,6 +151,16 @@ class ScheduleController extends Controller
             $data['title'] = $data['subject_name'] ?? 'Mata Pelajaran';
         }
 
+        // Validate Teacher Subject
+        if (isset($data['teacher_id']) && isset($data['subject_name'])) {
+            $teacher = TeacherProfile::find($data['teacher_id']);
+            if ($teacher && $teacher->subject && stripos($data['subject_name'], $teacher->subject) === false) {
+                throw ValidationException::withMessages([
+                    'teacher_id' => ["Guru {$teacher->user->name} mengajar {$teacher->subject}, bukan {$data['subject_name']}"],
+                ]);
+            }
+        }
+
         $schedule = Schedule::create($data);
 
         return response()->json($schedule->load(['teacher.user:id,name', 'class:id,grade,label']), 201);
@@ -180,6 +188,19 @@ class ScheduleController extends Controller
             $data['title'] = $data['subject_name'];
         }
 
+        // Validate Teacher Subject on Update
+        if (isset($data['teacher_id']) || isset($data['subject_name'])) {
+            $teacherId = $data['teacher_id'] ?? $schedule->teacher_id;
+            $subjectName = $data['subject_name'] ?? $schedule->subject_name;
+
+            $teacher = TeacherProfile::find($teacherId);
+            if ($teacher && $teacher->subject && $subjectName && stripos($subjectName, $teacher->subject) === false) {
+                throw ValidationException::withMessages([
+                    'teacher_id' => ["Guru {$teacher->user->name} mengajar {$teacher->subject}, bukan {$subjectName}"],
+                ]);
+            }
+        }
+
         $schedule->update($data);
 
         return response()->json($schedule->load(['teacher.user:id,name', 'class:id,grade,label']));
@@ -188,7 +209,7 @@ class ScheduleController extends Controller
     public function bulkUpsert(Request $request, Classes $class): JsonResponse
     {
         $dto = \App\Data\BulkScheduleData::fromRequest($request);
-        $data = $request->validate([
+        $request->validate([
             'day' => ['required', 'string'],
             'semester' => ['required', 'integer'],
             'year' => ['required', 'integer'],
@@ -203,6 +224,7 @@ class ScheduleController extends Controller
 
         $day = $this->normalizeDay($dto->day);
 
+        // Pre-validate input
         foreach ($dto->items as $index => $item) {
             $start = Carbon::createFromFormat('H:i', $item['start_time']);
             $end = Carbon::createFromFormat('H:i', $item['end_time']);
@@ -211,6 +233,23 @@ class ScheduleController extends Controller
                 throw ValidationException::withMessages([
                     'items.'.$index.'.end_time' => ['End time must be after start time.'],
                 ]);
+            }
+
+            // Validate Teacher Subject
+            $teacher = TeacherProfile::find($item['teacher_id']);
+            $subjectName = $item['subject_name'] ?? null;
+
+            if (isset($item['subject_id']) && ! $subjectName) {
+                $subject = Subject::find($item['subject_id']);
+                $subjectName = $subject?->name;
+            }
+
+            if ($teacher && $teacher->subject && $subjectName) {
+                if (stripos($subjectName, $teacher->subject) === false) {
+                    throw ValidationException::withMessages([
+                        "items.$index.teacher_id" => ["Guru {$teacher->user->name} mengajar {$teacher->subject}, bukan {$subjectName}"],
+                    ]);
+                }
             }
         }
 

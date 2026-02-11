@@ -10,6 +10,7 @@ import JadwalPengurus from "./JadwalPengurus";
 import { RekapKehadiranSiswa } from "./RekapKehadiranSiswa";
 import DaftarKetidakhadiranWaliKelas from "./DaftarKetidakhadiranWaliKelas";
 import { usePopup } from "../../component/Shared/Popup/PopupProvider";
+import { isCancellation } from "../../utils/errorHelpers";
 
 // ==================== INTERFACES ====================
 interface DashboardWalliKelasProps {
@@ -356,11 +357,14 @@ export default function DashboardWalliKelas({
 
         // Fetch schedules for today
         const today = new Date().toISOString().split('T')[0];
-        const schedulesData = await dashboardService.getMyHomeroomSchedules({ date: today, signal: controller.signal });
+        const schedulesData = await dashboardService.getMyHomeroomSchedules(
+          { date: today },
+          { signal: controller.signal }
+        );
         const formattedSchedules = schedulesData.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!isCancellation(error)) {
           console.error('Failed to fetch homeroom data:', error);
           setError('Gagal memuat data wali kelas (kelas/siswa/jadwal).');
         }

@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Broadcast;
-use App\Models\User;
 use App\Models\Schedule;
+use App\Models\User;
+use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
@@ -13,7 +13,7 @@ Broadcast::channel('schedules.{scheduleId}', function (User $user, $scheduleId) 
     // Admin/Waka: Yes
     // Teacher: If owns schedule or homeroom
     // Student: If in class
-    
+
     // Simplification for now: Authenticated users can listen
     return $user !== null;
 });

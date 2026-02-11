@@ -19,12 +19,12 @@ class MajorSeeder extends Seeder
                 'category' => 'Teknologi Informasi',
             ],
             [
-                'code' => 'MEKA',
+                'code' => 'MT',
                 'name' => 'Mekatronika',
                 'category' => 'Teknik Mesin',
             ],
             [
-                'code' => 'ANI',
+                'code' => 'ANM',
                 'name' => 'Animasi',
                 'category' => 'Seni dan Industri Kreatif',
             ],
@@ -34,7 +34,7 @@ class MajorSeeder extends Seeder
                 'category' => 'Seni dan Industri Kreatif',
             ],
             [
-                'code' => 'ELIN',
+                'code' => 'TEI',
                 'name' => 'Elektronika Industri',
                 'category' => 'Teknik Elektro',
             ],

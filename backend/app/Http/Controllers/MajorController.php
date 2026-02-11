@@ -11,7 +11,7 @@ class MajorController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
-        
+
         if ($perPage === -1) {
             return response()->json(Major::query()->latest()->get());
         }

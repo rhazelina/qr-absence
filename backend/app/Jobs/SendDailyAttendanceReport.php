@@ -19,7 +19,7 @@ class SendDailyAttendanceReport implements ShouldQueue
      */
     public function handle(WhatsAppService $whatsapp): void
     {
-        if (!config('whatsapp.notifications.daily_report')) {
+        if (! config('whatsapp.notifications.daily_report')) {
             return;
         }
 
@@ -28,7 +28,9 @@ class SendDailyAttendanceReport implements ShouldQueue
             $q->where('type', 'waka');
         })->get();
 
-        if ($wakaUsers->isEmpty()) return;
+        if ($wakaUsers->isEmpty()) {
+            return;
+        }
 
         // Get global stats
         $stats = Attendance::whereDate('date', $date)

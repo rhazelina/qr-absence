@@ -1,0 +1,53 @@
+<?php
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Laravel\Sanctum\Sanctum;
+
+uses(RefreshDatabase::class);
+
+it('sends whatsapp text via configured provider', function () {
+    config([
+        'whatsapp.api_url' => 'https://wa.test',
+        'whatsapp.enabled' => true,
+    ]);
+
+    Http::fake([
+        'https://wa.test/send-message' => Http::response(['ok' => true], 200),
+    ]);
+
+    $admin = User::create([
+        'name' => 'Admin',
+        'username' => 'admin-wa',
+        'email' => 'adminwa@example.com',
+        'password' => Hash::make('secret123'),
+        'user_type' => 'admin',
+        'active' => true,
+    ]);
+
+    Sanctum::actingAs($admin);
+
+    // ini fitur untuk .... ngirim whatsapp text via api
+    // postJson function to /api/wa/send-text
+    $response = $this->postJson('/api/wa/send-text', [
+        'to' => '6281234567890',
+        'message' => 'Halo? apakah ini bisa?. Kalo bisa harusnya ini menampilkan apa gitu',
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJsonFragment(['success' => true]);
+
+    // Verify that the HTTP request was sent with correct headers and payload
+    Http::assertSent(function ($request) {
+        return $request->url() === 'https://wa.test/send-message';
+            // && $request->hasHeaders([
+            //     'Authorization' => 'Bearer test-token',
+            //     'Accept' => 'application/json',
+            // ]);
+
+        // postJson payload
+        // $data = $request->da
+    });
+});

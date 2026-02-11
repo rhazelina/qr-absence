@@ -12,6 +12,7 @@ import { MetodeGuru } from "../../component/Shared/Form/MetodeGuru";
 import { TidakBisaMengajar } from "../../component/Shared/Form/TidakBisaMengajar";
 import { usePopup } from "../../component/Shared/Popup/PopupProvider";
 import QRScanner from "../../component/Shared/QRScanner";
+import { isCancellation } from "../../utils/errorHelpers";
 
 
 // Icon Components
@@ -354,14 +355,14 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
         setError(null);
         const { dashboardService } = await import('../../services/dashboard');
         const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        const data = await dashboardService.getTeacherSchedules({
-          date: today,
-          signal: controller.signal
-        });
+        const data = await dashboardService.getTeacherSchedules(
+          { date: today },
+          { signal: controller.signal }
+        );
         const formattedSchedules = data.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!isCancellation(error)) {
           console.error('Failed to fetch schedules:', error);
           setError('Gagal memuat jadwal mengajar hari ini.');
         }
@@ -675,7 +676,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                         textOverflow: "ellipsis",
                       }}
                     >
-                      {user.name || "Ewit Erniyah S.pd"}
+                      {user.name || "Guru"}
                     </div>
                     <div
                       style={{
@@ -687,7 +688,8 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                         textOverflow: "ellipsis",
                       }}
                     >
-                      {user.role === "guru" ? "0918415784" : "ID User"}
+                      {/* @ts-ignore */}
+                      {user.code || user.nip || user.id || "-"}
                     </div>
                   </div>
                 </div>
@@ -959,7 +961,10 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
             <MetodeGuru
               isOpen={activeModal === "metode"}
-              onClose={() => setActiveModal(null)}
+              onClose={() => {
+                setActiveModal(null);
+                setCurrentPage("input-manual");
+              }}
               onPilihQR={handlePilihQR}
               onTidakBisaMengajar={handlePilihMetodeDariTidakBisaMengajar}
               scheduleId={selectedSchedule?.id}

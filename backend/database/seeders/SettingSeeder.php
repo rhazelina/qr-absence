@@ -17,22 +17,23 @@ class SettingSeeder extends Seeder
                 'value' => '07:00:00',
                 'type' => 'string',
                 'group' => 'general',
-                'description' => 'Official start time of the school day',
+                'description' => 'Jam masuk sekolah',
             ],
             [
                 'key' => 'school_end_time',
                 'value' => '15:00:00',
                 'type' => 'string',
                 'group' => 'general',
-                'description' => 'Official end time of the school day',
+                'description' => 'Jam pulang sekolah',
             ],
             [
                 'key' => 'school_name',
                 'value' => 'SMK NEGERI 2 SINGOSARI',
                 'type' => 'string',
                 'group' => 'general',
-                'description' => 'Name of the school',
+                'description' => 'Nama sekolah',
             ],
+            // GRACE PERIOD INI BUAT ABSENSI 15 MENIT AWAL
             [
                 'key' => 'grace_period',
                 'value' => '15',

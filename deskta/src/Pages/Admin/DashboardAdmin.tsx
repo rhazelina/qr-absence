@@ -7,6 +7,7 @@ import GuruAdmin from "./GuruAdmin";
 import SiswaAdmin from "./SiswaAdmin";
 import DetailSiswa from "./DetailSiswa";
 import DetailGuru from "./DetailGuru";
+import { isCancellation } from "../../utils/errorHelpers";
 
 // ==================== INTERFACE DEFINITIONS ====================
 interface User {
@@ -106,7 +107,7 @@ export default function AdminDashboard({
         const data = await dashboardService.getAdminSummary({ signal: controller.signal });
         setAdminSummary(data);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!isCancellation(error)) {
           console.error('Failed to fetch admin summary:', error);
           setError('Gagal memuat ringkasan data statistik sekolah.');
         }

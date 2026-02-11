@@ -11,13 +11,13 @@ it('allows student to register a device', function () {
     $response = $this->actingAs($student)->postJson('/api/me/devices', [
         'name' => 'My Phone',
         'identifier' => 'device-123',
-        'platform' => 'android'
+        'platform' => 'android',
     ]);
 
     $response->assertStatus(201);
     $this->assertDatabaseHas('devices', [
         'user_id' => $student->id,
-        'identifier' => 'device-123'
+        'identifier' => 'device-123',
     ]);
 });
 
@@ -26,7 +26,7 @@ it('allows student to delete a device', function () {
     $device = $student->devices()->create([
         'name' => 'Old Phone',
         'identifier' => 'old-123',
-        'platform' => 'ios'
+        'platform' => 'ios',
     ]);
 
     $response = $this->actingAs($student)->deleteJson("/api/me/devices/{$device->id}");

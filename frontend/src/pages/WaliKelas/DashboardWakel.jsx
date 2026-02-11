@@ -1,335 +1,396 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  FaUser,
-  FaClock,
-  FaCalendarAlt,
-  FaUsers,
-  FaLayerGroup,
-  FaSignOutAlt,
-  FaBook,
-  FaArrowRight,
-  FaChevronRight,
-  FaBell,
-  FaInfoCircle
-} from 'react-icons/fa';
-import CustomAlert from '../../components/Common/CustomAlert';
-import { getHomeroomDashboard } from '../../services/attendance';
-import PageWrapper from '../../components/ui/PageWrapper';
+import './DashboardWakel.css';
+import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 
 const DashboardWakel = () => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSchedule, setSelectedSchedule] = useState(null);
-  const [alertState, setAlertState] = useState({ show: false, type: 'confirm', title: '', message: '' });
-
-  const [scheduleData, setScheduleData] = useState([]);
-  const [stats, setStats] = useState({ totalKelas: 0, totalSiswa: 0 });
-  const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [user, setUser] = useState(authHelpers.getUserData());
+  
+  // 🔥 STATE TERPISAH: scanSuccess dan mulaiAbsen
+  const [scanSuccess, setScanSuccess] = useState(false);
+  
+  const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const data = await attendanceService.getTeacherDashboard();
+      setDashboardData(data);
+    } catch (err) {
+      console.error("Error fetching wakel dashboard data:", err);
+      setError("Gagal mengambil data dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    fetchDashboardData();
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const dashboardData = await getHomeroomDashboard({ signal: controller.signal });
-
-        if (dashboardData.schedules) {
-          const formattedSchedules = dashboardData.schedules.map(s => ({
-            id: s.id,
-            mataPelajaran: s.subject_name,
-            kelas: s.class_name,
-            classId: s.class_id,
-            jamKe: s.time_slot,
-            waktu: `${s.start_time} - ${s.end_time}`
-          }));
-          setScheduleData(formattedSchedules);
-        }
-        setStats({
-          totalKelas: dashboardData.total_classes || 0,
-          totalSiswa: dashboardData.total_students || 0
-        });
-      } catch (error) {
-        if (error.name !== 'AbortError') {
-          console.error('Failed to fetch dashboard data:', error);
-          setError('Gagal memuat data dashboard. Silakan coba lagi.');
-          setScheduleData([]);
-          setStats({ totalKelas: 0, totalSiswa: 0 });
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchDashboardData();
-
-    return () => controller.abort();
-  }, []);
-
-  const formatTime = (date) => date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const formatDate = (date) => {
-    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatDate = (date) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
 
-  const handleConfirmLogout = () => {
-    localStorage.removeItem('auth_token'); localStorage.removeItem('user_role'); localStorage.removeItem('user_data'); sessionStorage.clear(); navigate('/login');
+  // 🔥 FUNGSI: Buka modal jadwal
+  const handleIconClick = (jadwal) => {
+    setSelectedSchedule({
+      id: jadwal.id,
+      mataPelajaran: jadwal.subject,
+      kelas: jadwal.class_name,
+      jamKe: jadwal.time_slot.replace('Jam Ke ', ''),
+      waktu: `${jadwal.start_time} - ${jadwal.end_time}`
+    });
+    setScanSuccess(false); // Reset scan status
+  };
+
+  // 🔥 FUNGSI: Tutup modal
+  const handleCloseModal = () => {
+    setSelectedSchedule(null);
+    setScanSuccess(false);
+  };
+
+  // 🔥 FUNGSI: Simulasi scan berhasil
+  const handleScanSuccess = () => {
+    setScanSuccess(true);
+    console.log('✅ Scan berhasil!');
+  };
+
+  // 🔥 FUNGSI: Mulai absen (setelah scan berhasil)
+  const handleMulaiAbsen = () => {
+    if (!selectedSchedule) {
+      console.error('❌ No schedule selected');
+      return;
+    }
+
+    if (!scanSuccess) {
+      alert('⚠️ Harap scan QR Code terlebih dahulu!');
+      return;
+    }
+
+    console.log('=== MULAI NAVIGASI KE PRESENSI SISWA ===');
+    console.log('✅ Selected schedule:', selectedSchedule);
+
+    const dataToSend = {
+      scheduleId: selectedSchedule.id,
+      mataPelajaran: selectedSchedule.mataPelajaran,
+      jamKe: selectedSchedule.jamKe,
+      kelas: selectedSchedule.kelas,
+      waktu: selectedSchedule.waktu,
+      tanggal: formatDate(currentTime),
+    };
+
+    console.log('📦 Data yang akan dikirim:', dataToSend);
+
+    // Update completed status
+    setCompletedAbsensi((prev) => new Set([...prev, selectedSchedule.id]));
+    
+    // Simpan ke sessionStorage sebagai backup
+    sessionStorage.setItem('presensiData', JSON.stringify(dataToSend));
+    console.log('💾 Data disimpan ke sessionStorage');
+
+    // Tutup modal
+    handleCloseModal();
+
+    // Navigate ke PresensiSiswa
+    setTimeout(() => {
+      console.log('🚀 Navigasi ke /presensi-siswa...');
+      navigate('/walikelas/presensi', { state: dataToSend });
+      console.log('✅ Navigate dipanggil!');
+    }, 100);
+  };
+
+  const handleLogout = async () => {
+    if (window.confirm('Apakah Anda yakin ingin keluar?')) {
+      try {
+        await authService.logout();
+        navigate('/login');
+      } catch (err) {
+        console.error("Logout failed:", err);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('user_role');
+        navigate('/login');
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="loading-container">Memuat data dashboard...</div>;
+  }
+
+  if (error) {
+    return <div className="error-container">{error}</div>;
+  }
+
+  const teacher = dashboardData?.teacher || {};
+  const stats = {
+    totalKelas: dashboardData?.schedule_today?.length || 0,
+    totalSiswa: teacher.is_homeroom ? "Lihat Data" : "-"
+  };
+  const scheduleData = dashboardData?.schedule_today || [];
+
+  const renderStatusIcon = (jadwalId) => {
+    const isCompleted = completedAbsensi.has(jadwalId);
+
+    if (isCompleted) {
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="action-icon eye-icon" style={{ width: '22px', height: '22px' }}>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      );
+    }
+
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="action-icon">
+        <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM15 19h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2zM17 17h2v2h-2zM19 19h2v2h-2z"/>
+      </svg>
+    );
   };
 
   return (
-    <PageWrapper className="flex min-h-[calc(100vh-80px)] bg-transparent font-sans">
+    <div className="dashboard-page">
+      <NavbarWakel />
+      <div className="circle-decoration left-bottom"></div>
+      <div className="circle-decoration right-top"></div>
 
-      {/* Main Content */}
-      <main className="flex-1 min-w-0">
-        <div className="p-6 md:p-10 lg:p-12 max-w-[1400px] mx-auto space-y-10">
-
-          {/* HEADER SECTION */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white/80 backdrop-blur-md p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-white/50">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="w-8 h-1.5 bg-indigo-600 rounded-full"></span>
-                <h1 className="text-3xl md:text-4xl font-black text-gray-800 tracking-tight">Halo, Wali Kelas!</h1>
+      <div className="dashboard-containerr">
+        
+        <div className="left-section">
+          <div className="profile-section">
+            <div className="profile-content">
+              <div className="profile-avatar-wrapper">
+                <div className="profile-avatar">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  </svg>
+                </div>
               </div>
-              <p className="text-gray-500 font-medium ml-11">Monitor kehadiran siswa binaan Anda dalam satu dasbor.</p>
+              <div className="profile-info">
+                <h2 className="profile-name">{teacher.name || user?.name}</h2>
+                <p className="profile-nip">{teacher.nip || user?.nip || "-"}</p>
+                {teacher.is_homeroom && (
+                  <p className="profile-role">Wali Kelas {teacher.homeroom_class}</p>
+                )}
+              </div>
+              <button className="btn-logout" onClick={handleLogout}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+                </svg>
+                Keluar
+              </button>
             </div>
+          </div>
+        </div>
 
-            <div className="flex items-center gap-6 bg-gray-50/50 p-6 rounded-3xl border border-gray-100 shadow-inner ml-auto lg:ml-0">
-              <div className="text-right">
-                <div className="text-3xl font-black text-indigo-600 font-mono tracking-tighter leading-none mb-1">
-                  {formatTime(currentTime)}
+        <div className="right-section">
+          <div className="header-sectionn">
+            <h2 className="header-title">Kehadiran Siswa</h2>
+            
+            <div className="top-cards-grid">
+              <div className="datetime-card figma-style">
+                <div className="datetime-left">
+                  <svg className="datetime-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                  </svg>
+                  <div>
+                    <p className="datetime-label">{formatDate(now)}</p>
+                    <p className="datetime-static">07:00 - 15:00</p>
+                  </div>
                 </div>
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  {formatDate(currentTime)}
+
+                <div className="datetime-right">
+                  <p className="datetime-clock">{formatTime(now)}</p>
                 </div>
               </div>
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm border border-gray-100"><FaClock /></div>
+
+              <div className="stats-card">
+                <p className="stats-label">Total Mengajar Hari Ini</p>
+                <p className="stats-value">{stats.totalKelas} Kelas</p>
+              </div>
+
+              {teacher.is_homeroom && (
+                <div
+                  className="stats-card clickable"
+                  onClick={() => navigate('/walikelas/datasiswa')}
+                >
+                  <p className="stats-label">Wali Kelas</p>
+                  <p className="stats-value">{teacher.homeroom_class}</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-pulse">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-gray-100 h-32 rounded-[2.5rem]"></div>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-100 text-red-600 p-6 rounded-3xl flex items-center gap-4 shadow-sm">
-              <FaInfoCircle className="shrink-0" />
-              <p className="font-bold">{error}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <StatCard
-                label="Kelas Binaan"
-                value={stats.totalKelas}
-                unit="Rombel"
-                icon={<FaLayerGroup />}
-                color="blue"
-              />
-              <StatCard
-                label="Total Siswa"
-                value={stats.totalSiswa}
-                unit="Peserta"
-                icon={<FaUsers />}
-                color="emerald"
-                onClick={() => navigate('/walikelas/datasiswa')}
-              />
-              <div className="bg-gradient-to-br from-indigo-600 to-blue-800 rounded-[2.5rem] shadow-xl p-8 text-white relative overflow-hidden group">
-                <div className="relative z-10 h-full flex flex-col justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.2em] mb-2">Status Akun</p>
-                    <h4 className="text-2xl font-black italic">Wali Kelas Aktif</h4>
-                  </div>
-                  <div className="flex items-center gap-2 mt-4 bg-white/10 w-fit px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Verified System</span>
-                  </div>
-                </div>
-                <FaUser size={120} className="absolute -right-8 -bottom-8 text-white/5 transform -rotate-12 group-hover:scale-110 transition-transform duration-1000" />
-              </div>
-            </div>
-          )}
-
-          {/* SCHEDULE SECTION */}
-          <div className="space-y-8">
-            <div className="flex items-center gap-4 px-4">
-              <h3 className="text-2xl font-black text-gray-800 tracking-tight uppercase italic flex items-center gap-3">
-                Jadwal Mengajar Anda
-              </h3>
-              <div className="h-px flex-1 bg-gray-200"></div>
-              <div className="p-2 bg-amber-50 text-amber-500 rounded-full animate-pulse border border-amber-100 shadow-sm">
-                <FaBell size={14} />
-              </div>
-            </div>
-
-            <div className="grid gap-6">
+          <div className="jadwal-section">
+            <h3 className="jadwal-titlee">Jadwal Hari Ini</h3>
+            
+            <div className="schedule-list">
               {scheduleData.length > 0 ? (
                 scheduleData.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group bg-white flex flex-col sm:flex-row items-center justify-between p-8 rounded-[2.5rem] border border-gray-100 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-100/30 transition-all cursor-pointer relative overflow-hidden"
-                    onClick={() => setSelectedSchedule(item)}
-                  >
-                    <div className="flex items-center gap-8 w-full">
-                      <div className="w-16 h-16 rounded-3xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                        <FaBook size={24} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-3 mb-2">
-                          <h4 className="text-2xl font-black text-gray-800 group-hover:text-indigo-700 transition-colors leading-tight">{item.mataPelajaran}</h4>
-                          <span className="px-4 py-1 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-gray-200">{item.kelas}</span>
-                        </div>
-                        <div className="flex items-center gap-6 text-xs font-black text-gray-400 uppercase tracking-widest">
-                          <div className="flex items-center gap-2 text-indigo-400"><FaClock /> Jam ke-{item.jamKe}</div>
-                          <div className="flex items-center gap-2">{item.waktu}</div>
-                        </div>
-                      </div>
+                  <div key={item.id} className="schedule-item" onClick={() => handleIconClick(item)}>
+                    <div className="schedule-icon">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/>
+                      </svg>
                     </div>
-
-                    <div className="mt-6 sm:mt-0 flex items-center gap-6 w-full sm:w-auto">
-                      <div className={`text-[10px] font-black uppercase tracking-[0.2em] px-6 py-2.5 rounded-2xl border transition-all
-                            ${completedAbsensi.has(item.id)
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm'
-                          : 'bg-gray-50 text-gray-400 border-gray-100'
-                        }`}
-                      >
-                        {completedAbsensi.has(item.id) ? 'Selesai' : 'Terjadwal'}
-                      </div>
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:translate-x-2 transition-transform duration-500">
-                        <FaChevronRight size={16} />
-                      </div>
+                    <div className="schedule-info">
+                      <p className="schedule-subject">{item.subject}</p>
+                      <p className="schedule-details">
+                        {item.class_name} | {item.time_slot} | {item.start_time} - {item.end_time}
+                      </p>
                     </div>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-[6rem] -mr-12 -mt-12 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                    <button className="schedule-action">
+                      {renderStatusIcon(item.id)}
+                    </button>
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-24 bg-white/50 backdrop-blur rounded-[3rem] border-2 border-dashed border-gray-200 shadow-inner">
-                  <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-200 mb-6">
-                    <FaBook size={48} />
-                  </div>
-                  <p className="font-black text-gray-400 uppercase tracking-widest text-sm italic">Tidak ada jadwal hari ini</p>
+                <div className="empty-schedule">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                  </svg>
+                  <p>Tidak ada jadwal mengajar hari ini</p>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* MODAL JADWAL */}
-      {selectedSchedule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4" onClick={() => setSelectedSchedule(null)}>
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-gradient-to-br from-indigo-600 to-indigo-900 p-10 text-white relative">
-              <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-inner ring-4 ring-white/10">
-                  <FaBook size={32} />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black tracking-tight leading-tight">{selectedSchedule.mataPelajaran}</h2>
-                  <p className="text-indigo-100 text-[10px] font-black uppercase tracking-[0.3em] mt-2 opacity-80">Kelas Binaan: {selectedSchedule.kelas}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedSchedule(null)} className="absolute top-8 right-8 text-white/60 hover:text-white transition-colors text-4xl leading-none font-light">&times;</button>
+      {/* 🔥 MODAL - TAHAP 1: SCAN QR */}
+      {selectedSchedule && !scanSuccess && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-absen-scan" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-simple-header">
+              <button className="back-btn" onClick={handleCloseModal}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                </svg>
+              </button>
+              <h3>Scan QR Code</h3>
+              <button className="close-btn" onClick={handleCloseModal}>×</button>
             </div>
 
-            <div className="p-10 space-y-10">
-              <div className="grid grid-cols-2 gap-6">
-                <DetailBox label="Jam Pelajaran" value={`Ke-${selectedSchedule.jamKe}`} icon={<FaClock className="text-indigo-400" />} />
-                <DetailBox label="Rentang Waktu" value={selectedSchedule.waktu} icon={<FaCalendarAlt className="text-indigo-400" />} />
-              </div>
-
-              <div className="bg-emerald-50 rounded-[2rem] p-8 flex items-center justify-between border border-emerald-100 shadow-inner">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-50">
-                    <FaCheckCircle size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-emerald-900 font-black text-sm uppercase tracking-widest">Status Anda</h3>
-                    <p className="text-emerald-600 text-[10px] font-black mt-1 bg-white/50 px-3 py-1 rounded-full w-fit border border-emerald-100/50">VERIFIKASI HADIR</p>
+            <div className="tab-content-dotted">
+              <div className="scan-area">
+                <div className="qr-box-large">
+                  <div className="qr-frame">
+                    <svg viewBox="0 0 200 200" className="qr-pattern">
+                      <rect x="20" y="20" width="50" height="50" fill="#000" rx="5"/>
+                      <rect x="130" y="20" width="50" height="50" fill="#000" rx="5"/>
+                      <rect x="20" y="130" width="50" height="50" fill="#000" rx="5"/>
+                      <rect x="30" y="30" width="30" height="30" fill="#fff" rx="3"/>
+                      <rect x="140" y="30" width="30" height="30" fill="#fff" rx="3"/>
+                      <rect x="30" y="140" width="30" height="30" fill="#fff" rx="3"/>
+                      <rect x="40" y="40" width="10" height="10" fill="#000" rx="2"/>
+                      <rect x="150" y="40" width="10" height="10" fill="#000" rx="2"/>
+                      <rect x="40" y="150" width="10" height="10" fill="#000" rx="2"/>
+                      <rect x="85" y="30" width="10" height="10" fill="#000"/>
+                      <rect x="100" y="30" width="10" height="10" fill="#000"/>
+                      <rect x="85" y="45" width="10" height="10" fill="#000"/>
+                      <rect x="30" y="85" width="10" height="10" fill="#000"/>
+                      <rect x="45" y="85" width="10" height="10" fill="#000"/>
+                      <rect x="30" y="100" width="10" height="10" fill="#000"/>
+                      <rect x="150" y="85" width="10" height="10" fill="#000"/>
+                      <rect x="165" y="85" width="10" height="10" fill="#000"/>
+                      <rect x="150" y="100" width="10" height="10" fill="#000"/>
+                      <rect x="85" y="150" width="10" height="10" fill="#000"/>
+                      <rect x="100" y="150" width="10" height="10" fill="#000"/>
+                      <rect x="85" y="165" width="10" height="10" fill="#000"/>
+                      <rect x="80" y="80" width="15" height="15" fill="#000"/>
+                      <rect x="105" y="80" width="15" height="15" fill="#000"/>
+                      <rect x="80" y="105" width="15" height="15" fill="#000"/>
+                      <rect x="105" y="105" width="15" height="15" fill="#000"/>
+                    </svg>
+                    
+                    <div className="magnify-icon">
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="40" cy="40" r="25" stroke="#000" strokeWidth="6" fill="none"/>
+                        <line x1="58" y1="58" x2="85" y2="85" stroke="#000" strokeWidth="8" strokeLinecap="round"/>
+                      </svg>
+                    </div>
                   </div>
                 </div>
+                <button onClick={handleScanSuccess} className="btn-simulasi">
+                  Simulasi Scan Berhasil
+                </button>
               </div>
-
-              <button
-                className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 transition-all hover:-translate-y-1 active:scale-[0.98] flex items-center justify-center gap-4"
-                onClick={() => {
-                  const data = {
-                    mataPelajaran: selectedSchedule.mataPelajaran,
-                    jamKe: selectedSchedule.jamKe,
-                    kelas: selectedSchedule.kelas,
-                    waktu: selectedSchedule.waktu,
-                    tanggal: formatDate(currentTime),
-                    scheduleId: selectedSchedule.id,
-                    classId: selectedSchedule.classId
-                  };
-                  setCompletedAbsensi(prev => new Set([...prev, selectedSchedule.id]));
-                  sessionStorage.setItem('presensiData', JSON.stringify(data));
-                  navigate('/walikelas/presensi', { state: data });
-                }}
-              >
-                MULAI SESI PRESENSI <FaArrowRight />
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      <CustomAlert
-        isOpen={alertState.show}
-        onClose={() => setAlertState({ ...alertState, show: false })}
-        title={alertState.title}
-        message={alertState.message}
-        type={alertState.type}
-        onConfirm={handleConfirmLogout}
-        confirmLabel="Ya, Keluar"
-        cancelLabel="Batal"
-      />
-    </PageWrapper>
-  );
-};
+      {/* 🔥 MODAL - TAHAP 2: DETAIL JADWAL (SETELAH SCAN BERHASIL) */}
+      {selectedSchedule && scanSuccess && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-absen-detail" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-subject-header">
+              <div className="subject-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                </svg>
+              </div>
+              <div className="subject-title">
+                <h2>{selectedSchedule.mataPelajaran}</h2>
+              </div>
+              <div className="subject-class">{selectedSchedule.kelas}</div>
+            </div>
 
+            <div className="schedule-info-section">
+              <h3>Keterangan</h3>
+              <div className="info-table">
+                <div className="info-row">
+                  <span className="label">Mata Pelajaran</span>
+                  <span className="value">{selectedSchedule.mataPelajaran}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">Kelas/Jurusan</span>
+                  <span className="value">{selectedSchedule.kelas}</span>
+                </div>
+                <div className="info-row">
+                  <span className="label">Jam ke-</span>
+                  <span className="value">{selectedSchedule.waktu} (Jam ke {selectedSchedule.jamKe})</span>
+                </div>
+              </div>
+            </div>
 
-const StatCard = ({ label, value, unit, icon, color, onClick }) => {
-  const configs = {
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
-  };
-  const config = configs[color];
-
-  return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-[2.5rem] p-10 shadow-sm border border-gray-100 flex items-center gap-8 hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer group relative overflow-hidden`}
-    >
-      <div className={`w-16 h-16 ${config} rounded-[1.5rem] flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform duration-500 shrink-0`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{label}</p>
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-black text-gray-800 tracking-tighter">{value}</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{unit}</span>
+            <div className="guru-status-section">
+              {/* 🔥 STATUS GURU - BADGE DI KANAN */}
+              <div className="info-row">
+                <span className="label">Status Guru</span>
+                <span className="status-badge hadir">Hadir</span>
+              </div>
+              
+              {/* 🔥 TOMBOL MULAI ABSEN */}
+              <button 
+                className="btn-mulai-absensi" 
+                onClick={handleMulaiAbsen}
+              >
+                Mulai Absen
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div className={`absolute -right-4 -bottom-4 w-24 h-24 rounded-full opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-500 ${config.split(' ')[0]}`}></div>
+      )}
     </div>
   );
 };
-
-const DetailBox = ({ label, value, icon }) => (
-  <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 shadow-inner flex flex-col items-center text-center group hover:bg-white hover:shadow-md transition-all duration-300">
-    <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">{icon}</div>
-    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{label}</span>
-    <div className="text-sm font-black text-gray-800 tracking-tight">{value}</div>
-  </div>
-);
 
 export default DashboardWakel;

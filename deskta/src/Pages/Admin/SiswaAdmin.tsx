@@ -209,19 +209,30 @@ export default function SiswaAdmin({
         }
 
         // Validate and Map to Backend format
-        // Template: Nama, NISN, Gender (L/P), No Telp
-        // Backend needs more, so we use defaults for missing ones
-        const formattedItems = items.map(item => ({
-          name: item['Nama Siswa'] || item['Nama'] || 'Siswa Baru',
-          username: item['NISN'] || `${(item['Nama'] || 'Siswa').replace(/\s+/g, '').toLowerCase().substring(0, 5)}${Date.now().toString().substring(8)}`,
-          password: 'password123',
-          nisn: item['NISN'] || '',
-          nis: item['NISN'] || '',
-          gender: (item['Jenis Kelamin'] || item['Gender'] || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',
-          address: '-',
-          class_id: parseInt(selectedKelas) || (kelasList[0]?.id ? parseInt(kelasList[0].id) : 1),
-          phone: item['No Telp'] || item['Phone'] || null,
-        }));
+        // Template: Nama, NISN, Gender (L/P), No Telp, Kelas
+        const formattedItems = items.map(item => {
+          // Try to find class by name matches (case-insensitive)
+          const csvKelas = (item['Kelas'] || item['Class'] || '').trim();
+          const foundKelas = csvKelas 
+            ? kelasList.find(k => k.nama.toLowerCase() === csvKelas.toLowerCase()) 
+            : null;
+          
+          const classIdToUse = foundKelas 
+            ? parseInt(foundKelas.id) 
+            : (parseInt(selectedKelas) || (kelasList[0]?.id ? parseInt(kelasList[0].id) : 1));
+
+          return {
+            name: item['Nama Siswa'] || item['Nama'] || 'Siswa Baru',
+            username: item['NISN'] || `${(item['Nama'] || 'Siswa').replace(/\s+/g, '').toLowerCase().substring(0, 5)}${Date.now().toString().substring(8)}`,
+            password: 'password123',
+            nisn: item['NISN'] || '',
+            nis: item['NISN'] || '',
+            gender: (item['Jenis Kelamin'] || item['Gender'] || 'L').toUpperCase().startsWith('P') ? 'P' : 'L',
+            address: '-',
+            class_id: classIdToUse,
+            phone: item['No Telp'] || item['Phone'] || null,
+          };
+        });
 
         setIsSubmitting(true);
         const { studentService } = await import('../../services/student');

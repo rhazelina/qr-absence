@@ -21,7 +21,7 @@ class WhatsAppController extends Controller
 
         $result = $this->whatsapp->sendMessage($data['to'], $data['message']);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json($result, 500);
         }
 
@@ -47,7 +47,7 @@ class WhatsAppController extends Controller
             $mediaType
         );
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return response()->json($result, 500);
         }
 
@@ -85,9 +85,15 @@ class WhatsAppController extends Controller
             return $map[$extension];
         }
 
-        if (Str::contains($mediaUrl, 'image/')) return 'image';
-        if (Str::contains($mediaUrl, 'video/')) return 'video';
-        if (Str::contains($mediaUrl, 'audio/')) return 'audio';
+        if (Str::contains($mediaUrl, 'image/')) {
+            return 'image';
+        }
+        if (Str::contains($mediaUrl, 'video/')) {
+            return 'video';
+        }
+        if (Str::contains($mediaUrl, 'audio/')) {
+            return 'audio';
+        }
 
         return 'document';
     }

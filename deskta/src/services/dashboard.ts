@@ -41,11 +41,12 @@ export const dashboardService = {
      * Get my schedules (for students/teachers)
      */
     async getMySchedules(params?: ScheduleQueryParams, options?: AxiosRequestConfig): Promise<Schedule[]> {
-        const response = await apiClient.get<Schedule[]>(
+        const response = await apiClient.get<any>(
             API_ENDPOINTS.ME_SCHEDULES,
             { ...options, params }
         );
-        return response.data;
+        // Backend returns { date, day, items: [] }
+        return response.data.items || [];
     },
 
     /**
@@ -70,7 +71,37 @@ export const dashboardService = {
             API_ENDPOINTS.ME_ATTENDANCE_SUMMARY,
             { ...options, params }
         );
-        return response.data;
+
+        // Backend returns { status_summary: [], daily_summary: [] }
+        // We need to flatten status_summary into AttendanceSummary format
+        const statusSummary = response.data.status_summary || [];
+        const summary: any = {
+            present: 0,
+            absent: 0,
+            sick: 0,
+            excused: 0,
+            dispensation: 0,
+            total: 0
+        };
+
+        statusSummary.forEach((item: any) => {
+            const status = item.status;
+            const total = parseInt(item.total);
+            if (status === 'present') summary.present = total;
+            else if (status === 'absent') summary.absent = total;
+            else if (status === 'sick') summary.sakit = total; // Backend uses 'sakit' or 'sick'? Let's check model
+            else if (status === 'excused') summary.excused = total;
+            else if (status === 'dispensation') summary.dispensation = total;
+
+            summary.total += total;
+        });
+
+        // Special handling for mapping if backend uses different keys
+        // Looking at Attendance model, status is 'present', 'absent', 'sick', 'excused'
+        const sickItem = statusSummary.find((i: any) => i.status === 'sick');
+        if (sickItem) summary.sick = parseInt(sickItem.total);
+
+        return summary;
     },
 
     /**
@@ -146,10 +177,17 @@ export const dashboardService = {
      */
     async getWakaDashboardSummary(options?: AxiosRequestConfig): Promise<WakaSummary> {
         const response = await apiClient.get<WakaSummary>(
-            '/waka/dashboard/summary',
+            '/api/waka/dashboard/summary',
             options
         );
         return response.data;
+    },
+
+    /**
+     * Alias for getWakaDashboardSummary
+     */
+    async getWakaSummary(options?: AxiosRequestConfig): Promise<WakaSummary> {
+        return this.getWakaDashboardSummary(options);
     },
 
     /**
@@ -234,7 +272,7 @@ export const dashboardService = {
      * Get Class Details (Students)
      */
     async getClassDetails(classId: string, options?: AxiosRequestConfig): Promise<Class> {
-        return (await apiClient.get<Class>(`/classes/${classId}`, options)).data;
+        return (await apiClient.get<Class>(`/api/classes/${classId}`, options)).data;
     },
 
     /**
@@ -250,7 +288,7 @@ export const dashboardService = {
      */
     async getClassStudentsSummary(classId: string, params?: AttendanceQueryParams, options?: AxiosRequestConfig): Promise<any[]> {
         const response = await apiClient.get<any[]>(
-            `/classes/${classId}/students/attendance-summary`,
+            `/api/classes/${classId}/students/attendance-summary`,
             { ...options, params }
         );
         return response.data;

@@ -1,9 +1,5 @@
 <?php
 
-use App\Models\Major;
-use App\Models\Room;
-use App\Models\Subject;
-use App\Models\TimeSlot;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -16,7 +12,7 @@ it('allows admin to manage rooms', function () {
     $response = $this->actingAs($admin)->postJson('/api/rooms', [
         'name' => 'Lab Komputer 1',
         'location' => 'Lantai 2',
-        'capacity' => 40
+        'capacity' => 40,
     ]);
     $response->assertStatus(201);
     $roomId = $response->json('id');
@@ -36,7 +32,7 @@ it('allows admin to manage subjects', function () {
 
     $response = $this->actingAs($admin)->postJson('/api/subjects', [
         'code' => 'MTK',
-        'name' => 'Matematika'
+        'name' => 'Matematika',
     ]);
     $response->assertStatus(201);
 });
@@ -47,7 +43,7 @@ it('allows admin to manage time slots', function () {
     $response = $this->actingAs($admin)->postJson('/api/time-slots', [
         'name' => 'Jam ke-1',
         'start_time' => '07:00',
-        'end_time' => '07:45'
+        'end_time' => '07:45',
     ]);
     $response->assertStatus(201);
 });

@@ -22,6 +22,8 @@ class AttendanceResource extends JsonResource
             'checked_in_at' => $this->checked_in_at?->format('H:i:s'),
             'reason' => $this->reason,
             'reason_file_url' => $this->reason_file ? \Illuminate\Support\Facades\Storage::url($this->reason_file) : null,
+            'has_attachments' => $this->attachments()->exists() || $this->reason_file !== null,
+            'attachments' => $this->whenLoaded('attachments'),
             'student' => new StudentResource($this->whenLoaded('student')),
             'teacher' => new TeacherResource($this->whenLoaded('teacher')),
             'schedule' => $this->whenLoaded('schedule', function () {

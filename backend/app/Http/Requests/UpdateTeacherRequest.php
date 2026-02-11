@@ -18,7 +18,7 @@ class UpdateTeacherRequest extends FormRequest
 
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['nullable', 'email'],
+            'email' => ['nullable', 'email', 'unique:users,email,'.$userId],
             'password' => ['nullable', 'string', 'min:6'],
             'phone' => ['nullable', 'string', 'max:30'],
             'contact' => ['nullable', 'string', 'max:50'],

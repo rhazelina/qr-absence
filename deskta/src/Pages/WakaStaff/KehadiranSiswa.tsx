@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Table } from "../../component/Shared/Table";
 
+import LoadingState from "../../component/Shared/LoadingState";
+import ErrorState from "../../component/Shared/ErrorState";
+import { isCancellation } from "../../utils/errorHelpers";
+
 interface KelasRow {
   id: string;
   tingkat: "10" | "11" | "12";
@@ -42,6 +46,7 @@ export default function KehadiranSiswa({
   const [selectedJurusan, setSelectedJurusan] = useState("");
   const [selectedKelas, setSelectedKelas] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [kelasData, setKelasData] = useState<KelasRow[]>([]);
 
   useEffect(() => {
@@ -55,32 +60,28 @@ export default function KehadiranSiswa({
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { classService } = await import("../../services/class");
         const { dashboardService } = await import("../../services/dashboard");
 
-        const [classes, summary] = await Promise.all([
-          classService.getClasses(),
-          dashboardService.getWakaDashboardSummary() // Get today's summary
+        const [classes] = await Promise.all([
+          classService.getClasses({ signal: controller.signal }),
+          dashboardService.getWakaDashboardSummary({ signal: controller.signal })
         ]);
 
-        const mappedData: KelasRow[] = classes.map((c: any) => {
-          // Find attendance for this class in summary if available
-          // Or fetch specific class attendance. Let's keep it simple for now.
+        const mappedData: KelasRow[] = (classes as any).map((c: any) => {
           return {
             id: c.id.toString(),
-            tingkat: (c.grade || 10) as any,
+            tingkat: (c.grade || "10") as any,
             namaKelas: c.name || `${c.grade} ${c.label}`,
             namaJurusan: c.major?.name || "-",
             waliKelas: c.homeroom_teacher?.user?.name || "-",
-            // Use a dummy fill for now as individual hour status requires detailed schedule fetch per class
-            kehadiranJam: Array(10).fill('hadir'),
           };
         });
 
         setKelasData(mappedData);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!isCancellation(error)) {
           console.error("Failed to fetch classes", error);
+          setError("Gagal memuat data kelas. Silakan coba lagi.");
         }
       } finally {
         setLoading(false);
@@ -190,13 +191,19 @@ export default function KehadiranSiswa({
         </div>
 
         {/* Tabel */}
-        <Table
-          columns={columns}
-          data={filteredData}
-          onView={handleViewDetail}
-          keyField="id"
-          emptyMessage={loading ? "Memuat data..." : "Belum ada data kelas."}
-        />
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={() => window.location.reload()} />
+        ) : (
+          <Table
+            columns={columns}
+            data={filteredData}
+            onView={handleViewDetail}
+            keyField="id"
+            emptyMessage="Belum ada data kelas."
+          />
+        )}
       </div>
     </StaffLayout>
   );

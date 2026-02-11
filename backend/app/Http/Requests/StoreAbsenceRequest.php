@@ -17,8 +17,9 @@ class StoreAbsenceRequest extends FormRequest
             'student_id' => ['nullable', 'exists:student_profiles,id'],
             'type' => ['required', 'in:dispensation,sick,permit,dinas'],
             'start_date' => [
-                'required', 
+                'required',
                 'date',
+                'after_or_equal:today',
                 function ($attribute, $value, $fail) {
                     if (date('N', strtotime($value)) == 7) {
                         $fail('Pengajuan tidak dapat dimulai pada hari Minggu.');

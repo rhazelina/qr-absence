@@ -12,7 +12,7 @@ class ClassController extends Controller
     public function index(Request $request): JsonResponse
     {
         $perPage = $request->integer('per_page', 15);
-        
+
         if ($perPage === -1) {
             return response()->json(Classes::query()->with(['major', 'homeroomTeacher.user'])->latest()->get());
         }
@@ -122,7 +122,7 @@ class ClassController extends Controller
             $query->where('day', $day);
         }
 
-        return response()->json($query->with(['subject', 'teacher.user'])->get());
+        return response()->json($query->with(['teacher.user'])->get());
     }
 
     public function myClassAttendance(Request $request): JsonResponse
@@ -154,6 +154,6 @@ class ClassController extends Controller
             $query->where('status', $request->status);
         }
 
-        return response()->json($query->with(['student.user', 'schedule.subject', 'schedule.teacher.user'])->latest()->get());
+        return response()->json($query->with(['student.user', 'schedule.teacher.user'])->latest()->get());
     }
 }

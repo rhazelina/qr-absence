@@ -27,6 +27,8 @@ import {
   Filler,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import LoadingState from "../../component/Shared/LoadingState";
+import ErrorState from "../../component/Shared/ErrorState";
 
 ChartJS.register(
   CategoryScale,
@@ -112,7 +114,6 @@ const COLORS = {
   SAKIT: "#520C8F",      // UNGU - Sakit
 };
 
-import { Construction } from "lucide-react";
 import type { WakaSummary } from "../../types/api";
 
 // ... (existing imports)
@@ -130,48 +131,6 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
 
   // ... (rest of the component)
 
-  function ComingSoon({ title }: { title: string }) {
-    return (
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "16px",
-          padding: "64px 32px",
-          border: "2px dashed #E5E7EB",
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          minHeight: "400px"
-        }}
-      >
-        <div style={{
-          backgroundColor: "#F3F4F6",
-          padding: "24px",
-          borderRadius: "50%",
-          marginBottom: "24px",
-          display: "inline-flex"
-        }}>
-          <Construction size={48} color="#9CA3AF" />
-        </div>
-        <h2
-          style={{
-            fontSize: "24px",
-            marginBottom: "12px",
-            color: "#111827",
-            fontWeight: 700,
-          }}
-        >
-          {title} Segera Hadir
-        </h2>
-        <p style={{ color: "#6B7280", fontSize: "16px", maxWidth: "400px", lineHeight: "1.5" }}>
-          Fitur ini sedang dalam tahap pengembangan dan akan segera tersedia dalam pembaruan berikutnya.
-        </p>
-      </div>
-    );
-  }
 
   // Fetch dashboard data
   useEffect(() => {
@@ -403,7 +362,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             user={user}
             onLogout={handleLogout}
           >
-            <ComingSoon title={PAGE_TITLES[currentPage]} />
+            <GuruPenggantiList />
           </StaffLayout>
         );
 
@@ -417,35 +376,22 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             user={user}
             onLogout={handleLogout}
           >
+
             <div style={{
               display: "flex",
               flexDirection: "column",
               gap: "28px",
               backgroundColor: "#F9FAFB",
               padding: "4px",
-              opacity: isLoading ? 0.7 : 1,
+              minHeight: "80vh",
             }}>
-              {/* Error Alert */}
-              {error && (
-                <div style={{
-                  padding: "16px 20px",
-                  backgroundColor: "#FEF2F2",
-                  border: "1px solid #FEE2E2",
-                  borderRadius: "12px",
-                  color: "#B91C1C",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  width: "100%"
-                }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <span>{error}</span>
-                </div>
-              )}
+              {/* Error Alert replaced by Conditional Rendering */}
+              {isLoading && !wakaSummary ? (
+                 <LoadingState />
+              ) : error ? (
+                 <ErrorState message={error} onRetry={() => window.location.reload()} />
+              ) : (
+                <>
 
               {/* Welcome Section */}
               <div style={{ marginBottom: "8px" }}>
@@ -557,16 +503,18 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
                     title="Grafik Kehadiran Bulanan"
                     subtitle="Periode Jan - Jun"
                   />
-                  <MonthlyLineChart data={wakaSummary?.trend?.map((t: any) => ({
-                    month: t.label,
-                    hadir: t.hadir,
-                    izin: t.izin,
-                    tidak_hadir: t.alpha,
-                    sakit: t.sakit,
-                    pulang: t.terlambat // Mapping 'terlambat' to 'pulang' logic for chart
+                   <MonthlyLineChart data={wakaSummary?.trend?.map((t: any) => ({
+                    month: t.month || t.label,
+                    hadir: t.present !== undefined ? t.present : t.hadir,
+                    izin: t.sick_excused !== undefined ? t.sick_excused : t.izin,
+                    tidak_hadir: t.absent !== undefined ? t.absent : t.alpha,
+                    sakit: t.sick !== undefined ? t.sick : 0,
+                    pulang: t.return !== undefined ? t.return : t.terlambat
                   })) || []} />
                 </div>
               </div>
+              </>
+              )}
             </div>
           </StaffLayout>
         );
@@ -574,6 +522,122 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
   };
 
   return renderPage();
+}
+
+
+function GuruPenggantiList() {
+  const [loading, setLoading] = useState(true);
+  const [absentTeachers, setAbsentTeachers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchAbsentTeachers = async () => {
+      try {
+        setLoading(true);
+        const { dashboardService } = await import("../../services/dashboard");
+        const today = new Date().toISOString().split('T')[0];
+        const response: any = await dashboardService.getTeachersDailyAttendance({ date: today }, { signal: controller.signal });
+        
+        const items = response.items?.data || response.items || [];
+        const absent = items.filter((item: any) => (item.status || item.attendance?.status) === 'absent');
+        setAbsentTeachers(absent);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Failed to fetch absent teachers", err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAbsentTeachers();
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <div style={{
+      backgroundColor: "white",
+      borderRadius: "16px",
+      padding: "24px",
+      border: "1px solid #E5E7EB",
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+    }}>
+      <div style={{ marginBottom: "24px", borderBottom: "1px solid #F3F4F6", paddingBottom: "16px" }}>
+        <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
+          Daftar Guru Perlu Pengganti
+        </h2>
+        <p style={{ color: "#6B7280", fontSize: "14px" }}>
+          Berikut adalah daftar guru yang tidak hadir hari ini dan memerlukan guru pengganti.
+        </p>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: "40px", textAlign: "center", color: "#6B7280" }}>Memuat daftar guru...</div>
+      ) : absentTeachers.length === 0 ? (
+        <div style={{ padding: "40px", textAlign: "center", color: "#6B7280", backgroundColor: "#F9FAFB", borderRadius: "8px" }}>
+          Tidak ada guru yang memerlukan pengganti hari ini. Semua guru terjadwal atau sudah hadir.
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid #E5E7EB" }}>
+                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>Nama Guru</th>
+                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>NIP</th>
+                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>Status</th>
+                <th style={{ textAlign: "center", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {absentTeachers.map((item, index) => (
+                <tr key={item.teacher?.id || index} style={{ borderBottom: "1px solid #F3F4F6", transition: "background-color 0.2s" }} 
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                  <td style={{ padding: "12px 16px", fontWeight: 500, color: "#111827" }}>{item.teacher?.user?.name || item.teacher?.name || "-"}</td>
+                  <td style={{ padding: "12px 16px", color: "#4B5563" }}>{item.teacher?.nip || "-"}</td>
+                  <td style={{ padding: "12px 16px" }}>
+                    <span style={{ 
+                      backgroundColor: "#FEE2E2", 
+                      color: "#991B1B", 
+                      padding: "4px 10px", 
+                      borderRadius: "12px", 
+                      fontSize: "12px", 
+                      fontWeight: 600 
+                    }}>
+                      Alpha
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                    <button 
+                      disabled
+                      style={{
+                        backgroundColor: "#E5E7EB",
+                        color: "#9CA3AF",
+                        border: "none",
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "not-allowed",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        margin: "0 auto"
+                      }}
+                      title="Fitur ini akan segera hadir"
+                    >
+                      <span style={{ fontSize: "14px" }}>🔒</span>
+                      Segera Hadir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {

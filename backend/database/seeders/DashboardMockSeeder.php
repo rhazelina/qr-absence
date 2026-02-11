@@ -31,20 +31,20 @@ class DashboardMockSeeder extends Seeder
 
         $classes = Classes::all();
         $subjects = Subject::limit(5)->get();
-        
+
         // 2. Setup Teachers
         if (TeacherProfile::count() < 3) {
-            $teacherNames = ['Siti Aminah', 'Bambang Subianto', 'Dewi Lestari'];
+            $teacherNames = ['ALIFAH DIANTEBES AINDRA, S.Pd', 'ZULKIFLI ABDILLAH, S.Kom', 'RR. HENNING GRATYANIS ANGGRAENI, S.Pd    '];
             foreach ($teacherNames as $i => $name) {
                 $user = User::create([
                     'name' => $name,
-                    'username' => 'teacher' . ($i + 2),
-                    'email' => 'teacher' . ($i + 2) . '@school.id',
+                    'username' => 'teacher'.($i + 2),
+                    'email' => 'teacher'.($i + 2).'@school.id',
                     'password' => Hash::make('password123'),
                     'user_type' => 'teacher',
                 ]);
                 $user->teacherProfile()->create([
-                    'nip' => 'NIP-000' . ($i + 2),
+                    'nip' => 'NIP-000'.($i + 2),
                     'subject' => $subjects->random()->name,
                 ]);
             }
@@ -58,7 +58,7 @@ class DashboardMockSeeder extends Seeder
                 for ($i = $existingCount; $i < 15; $i++) {
                     $user = User::create([
                         'name' => fake()->name(),
-                        'username' => strtolower(str_replace(' ', '', fake()->name())) . rand(100, 999),
+                        'username' => strtolower(str_replace(' ', '', fake()->name())).rand(100, 999),
                         'email' => fake()->unique()->safeEmail(),
                         'password' => Hash::make('password123'),
                         'user_type' => 'student',
@@ -116,24 +116,32 @@ class DashboardMockSeeder extends Seeder
         $endDate = now();
 
         $attendances = [];
-        
+
         for ($date = clone $startDate; $date <= $endDate; $date->addDay()) {
-            if ($date->isSunday()) continue;
+            if ($date->isSunday()) {
+                continue;
+            }
 
             $dayName = $date->format('l');
             $daySchedules = $schedules->where('day', $dayName);
 
             foreach ($daySchedules as $schedule) {
                 $students = StudentProfile::where('class_id', $schedule->class_id)->get();
-                
+
                 foreach ($students as $student) {
                     // Random status weighted towards 'present'
                     $rand = rand(1, 100);
-                    if ($rand <= 85) $status = 'present';
-                    elseif ($rand <= 92) $status = 'late';
-                    elseif ($rand <= 95) $status = 'sick';
-                    elseif ($rand <= 98) $status = 'excused';
-                    else $status = 'absent';
+                    if ($rand <= 85) {
+                        $status = 'present';
+                    } elseif ($rand <= 92) {
+                        $status = 'late';
+                    } elseif ($rand <= 95) {
+                        $status = 'sick';
+                    } elseif ($rand <= 98) {
+                        $status = 'excused';
+                    } else {
+                        $status = 'absent';
+                    }
 
                     $checkIn = null;
                     if ($status === 'present' || $status === 'late') {

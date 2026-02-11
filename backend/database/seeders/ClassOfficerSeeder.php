@@ -33,7 +33,7 @@ class ClassOfficerSeeder extends Seeder
         $user = User::updateOrCreate(
             ['username' => 'pengurus1'],
             [
-                'name' => 'Ketua Kelas TKJ 1',
+                'name' => 'Abyl Gustian',
                 'email' => 'pengurus1@example.com',
                 'password' => Hash::make('password123'),
                 'user_type' => 'student',

@@ -15,14 +15,14 @@ class HomeroomTeacherSeeder extends Seeder
     {
         // Pastikan ada kelas
         $major = Major::firstOrCreate(
-            ['code' => 'TKJ'],
-            ['name' => 'Teknik Komputer dan Jaringan']
+            ['code' => 'RPL'],
+            ['name' => 'Rekayasa Perangkat Lunak']
         );
 
         $class = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => 'TKJ 1',
+                'label' => 'RPL 1',
             ],
             [
                 'major_id' => $major->id,
@@ -33,7 +33,7 @@ class HomeroomTeacherSeeder extends Seeder
         $user = User::updateOrCreate(
             ['username' => 'walikelas1'],
             [
-                'name' => 'Wali Kelas TKJ 1',
+                'name' => 'ALIFAH DIANTEBES AINDRA, S.Pd',
                 'email' => 'walikelas1@example.com',
                 'password' => Hash::make('password123'),
                 'user_type' => 'teacher',
@@ -44,7 +44,7 @@ class HomeroomTeacherSeeder extends Seeder
         TeacherProfile::updateOrCreate(
             ['user_id' => $user->id],
             [
-                'nip' => 'NIP-WALI-001',
+                'nip' => 'NIP-001',
                 'subject' => 'Matematika',
                 'homeroom_class_id' => $class->id, // Set as homeroom teacher
             ]

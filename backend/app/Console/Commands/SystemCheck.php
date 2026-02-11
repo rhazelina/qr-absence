@@ -5,9 +5,8 @@ namespace App\Console\Commands;
 use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Redis;
+
 use function Laravel\Prompts\info;
-use function Laravel\Prompts\error;
 use function Laravel\Prompts\spin;
 use function Laravel\Prompts\table;
 
@@ -42,7 +41,7 @@ class SystemCheck extends Command
                 DB::connection()->getPdo();
                 $results[] = ['Database', 'Connected', '✅'];
             } catch (\Exception $e) {
-                $results[] = ['Database', 'Failed: ' . $e->getMessage(), '❌'];
+                $results[] = ['Database', 'Failed: '.$e->getMessage(), '❌'];
             }
         }, 'Checking Database Connection...');
 
@@ -52,12 +51,12 @@ class SystemCheck extends Command
                 cache()->put('health_check', 'ok', 10);
                 $val = cache()->get('health_check');
                 if ($val === 'ok') {
-                    $results[] = ['Cache', 'Working (' . config('cache.default') . ')', '✅'];
+                    $results[] = ['Cache', 'Working ('.config('cache.default').')', '✅'];
                 } else {
                     $results[] = ['Cache', 'Failed to retrieve value', '❌'];
                 }
             } catch (\Exception $e) {
-                $results[] = ['Cache', 'Failed: ' . $e->getMessage(), '❌'];
+                $results[] = ['Cache', 'Failed: '.$e->getMessage(), '❌'];
             }
         }, 'Checking Cache...');
 
@@ -72,7 +71,7 @@ class SystemCheck extends Command
                     $results[] = ['Queue', "Connection: {$connection}", '✅'];
                 }
             } catch (\Exception $e) {
-                $results[] = ['Queue', 'Failed: ' . $e->getMessage(), '❌'];
+                $results[] = ['Queue', 'Failed: '.$e->getMessage(), '❌'];
             }
         }, 'Checking Queue Connection...');
 
@@ -84,7 +83,7 @@ class SystemCheck extends Command
                 $ready = $waData['ready'] ?? false ? 'Ready' : 'Not Ready';
                 $results[] = ['WhatsApp', "Connected ({$ready})", $ready === 'Ready' ? '✅' : '⚠️'];
             } else {
-                $results[] = ['WhatsApp', 'Failed: ' . ($status['message'] ?? 'Unknown error'), '❌'];
+                $results[] = ['WhatsApp', 'Failed: '.($status['message'] ?? 'Unknown error'), '❌'];
             }
         }, 'Checking WhatsApp Service...');
 

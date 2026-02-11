@@ -7,6 +7,7 @@ import AbsensiSiswa from "./AbsensiSiswa";
 import logoSmk from "../../assets/Icon/logo smk.png";
 import { usePopup } from "../../component/Shared/Popup/PopupProvider";
 import QRScanButton from "../../component/Siswa/QRScanButton";
+import { isCancellation } from "../../utils/errorHelpers";
 import {
   Bell,
   Megaphone,
@@ -63,13 +64,16 @@ interface DashboardSiswaProps {
 
 // Helper to format schedule from API
 const formatScheduleFromAPI = (schedule: any): ScheduleItem => {
-  const timeSlot = schedule.time_slot;
+  // API returns start_time/end_time directly as strings (HH:mm:ss)
+  const start = schedule.start_time?.substring(0, 5) || '00:00';
+  const end = schedule.end_time?.substring(0, 5) || '00:00';
+
   return {
     id: schedule.id.toString(),
-    mapel: schedule.subject?.name || 'Mata Pelajaran',
-    guru: schedule.teacher?.name || 'Guru',
-    start: timeSlot?.start_time || '00:00',
-    end: timeSlot?.end_time || '00:00',
+    mapel: schedule.subject_name || schedule.subject?.name || 'Mata Pelajaran',
+    guru: schedule.teacher?.user?.name || schedule.teacher?.name || 'Guru',
+    start,
+    end,
   };
 };
 
@@ -121,32 +125,41 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
 
   // Fetch schedules
   useEffect(() => {
+    const controller = new AbortController();
     const fetchSchedules = async () => {
       try {
         setIsLoadingSchedules(true);
         setError(null);
         const { dashboardService } = await import('../../services/dashboard');
         const today = new Date().toISOString().split('T')[0];
-        const data = await dashboardService.getMySchedules({ date: today });
+        const data = await dashboardService.getMySchedules(
+          { date: today },
+          { signal: controller.signal }
+        );
         const formattedSchedules = data.map(formatScheduleFromAPI);
         setSchedules(formattedSchedules);
-      } catch (error) {
-        console.error('Failed to fetch schedules:', error);
-        setError('Gagal memuat jadwal pelajaran.');
+      } catch (error: any) {
+        if (!isCancellation(error)) {
+          console.error('Failed to fetch schedules:', error);
+          setError('Gagal memuat jadwal pelajaran.');
+        }
       } finally {
-        setIsLoadingSchedules(false);
+        if (!controller.signal.aborted) {
+          setIsLoadingSchedules(false);
+        }
       }
     };
     fetchSchedules();
+    return () => controller.abort();
   }, []);
 
   // Fetch attendance summary
   useEffect(() => {
+    const controller = new AbortController();
     const fetchAttendance = async () => {
       try {
         setIsLoadingAttendance(true);
         const { dashboardService } = await import('../../services/dashboard');
-
         // Fetch last 6 months for trend
         const fromDate = new Date();
         fromDate.setMonth(fromDate.getMonth() - 5);
@@ -205,10 +218,13 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
         console.error('Failed to fetch attendance:', error);
         setError((prev) => prev || 'Gagal memuat ringkasan kehadiran.');
       } finally {
-        setIsLoadingAttendance(false);
+        if (!controller.signal.aborted) {
+          setIsLoadingAttendance(false);
+        }
       }
     };
     fetchAttendance();
+    return () => controller.abort();
   }, []);
 
   const handleMenuClick = (page: string) => {

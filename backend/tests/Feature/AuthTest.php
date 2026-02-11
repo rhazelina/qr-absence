@@ -20,7 +20,7 @@ it('can login with correct credentials', function () {
     $response->assertSuccessful()
         ->assertJsonStructure([
             'token',
-            'user' => ['id', 'username', 'name']
+            'user' => ['id', 'username', 'name'],
         ]);
 });
 
@@ -51,11 +51,11 @@ it('can get authenticated user info', function () {
 
 it('can logout', function () {
     $user = User::factory()->create();
-    
+
     // Sanctum login simulation
     $token = $user->createToken('test')->plainTextToken;
 
-    $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+    $response = $this->withHeader('Authorization', 'Bearer '.$token)
         ->postJson('/api/auth/logout');
 
     $response->assertSuccessful();
