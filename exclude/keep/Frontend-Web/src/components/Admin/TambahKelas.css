@@ -1,7 +1,7 @@
-/* Tambah.css */
+/* TambahKelas.css */
 
 /* Overlay gelap dengan blur */
-.modal-overlay {
+.modal-overlay-kelas {
   position: fixed;
   top: 0;
   left: 0;
@@ -17,7 +17,7 @@
 }
 
 /* Card modal */
-.modal-card {
+.modal-card-kelas {
   background: #0052A4;
   border-radius: 25px;
   padding: 40px 45px;
@@ -32,14 +32,13 @@
     opacity: 0;
     transform: translateY(-50px) scale(0.9);
   }
-
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
 
-.modal-title {
+.modal-title-kelas {
   color: white;
   font-size: 32px;
   font-weight: 700;
@@ -48,11 +47,11 @@
   text-align: center;
 }
 
-.input-group {
+.input-group-kelas {
   margin-bottom: 22px;
 }
 
-.input-group label {
+.input-group-kelas label {
   display: block;
   color: white;
   font-size: 17px;
@@ -60,8 +59,8 @@
   margin-bottom: 8px;
 }
 
-.input-group input,
-.input-group select {
+.input-group-kelas input,
+.input-group-kelas select {
   width: 100%;
   padding: 14px 18px;
   border: none;
@@ -76,7 +75,7 @@
   cursor: pointer;
 }
 
-.input-group select {
+.input-group-kelas select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -85,45 +84,24 @@
   padding-right: 40px;
 }
 
-.input-group input::placeholder {
+.input-group-kelas input::placeholder {
   color: #999;
 }
 
-.input-group textarea {
-  width: 100%;
-  padding: 14px 18px;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  outline: none;
-  background: white;
-  color: #333;
-  transition: all 0.3s;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-  box-sizing: border-box;
-  font-family: inherit;
-  resize: vertical;
-}
-
-.input-group textarea::placeholder {
-  color: #999;
-}
-
-.input-group input:focus,
-.input-group select:focus,
-.input-group textarea:focus {
+.input-group-kelas input:focus,
+.input-group-kelas select:focus {
   box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
 }
 
-.form-buttons {
+.form-buttons-kelas {
   display: flex;
   gap: 15px;
   margin-top: 30px;
 }
 
-.btn-batal,
-.btn-submit {
+.btn-batal-kelas,
+.btn-submit-kelas {
   flex: 1;
   padding: 14px 28px;
   border: none;
@@ -134,24 +112,24 @@
   transition: all 0.3s;
 }
 
-.btn-batal {
+.btn-batal-kelas {
   background: white;
   color: #333;
 }
 
-.btn-batal:hover {
+.btn-batal-kelas:hover {
   background: red;
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-.btn-submit {
+.btn-submit-kelas {
   background: #00254C;
   color: white;
 }
 
-.btn-submit:hover {
+.btn-submit-kelas:hover {
   background: #000d1a;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
@@ -159,37 +137,37 @@
 
 /* Responsive */
 @media (max-width: 576px) {
-  .modal-card {
+  .modal-card-kelas {
     padding: 30px 25px;
     max-width: 95%;
   }
 
-  .modal-title {
+  .modal-title-kelas {
     font-size: 26px;
     margin-bottom: 25px;
   }
 
-  .input-group {
+  .input-group-kelas {
     margin-bottom: 18px;
   }
 
-  .input-group label {
+  .input-group-kelas label {
     font-size: 15px;
   }
 
-  .input-group input,
-  .input-group select {
+  .input-group-kelas input,
+  .input-group-kelas select {
     padding: 12px 16px;
     font-size: 14px;
   }
 
-  .form-buttons {
+  .form-buttons-kelas {
     flex-direction: column;
     gap: 12px;
   }
 
-  .btn-batal,
-  .btn-submit {
+  .btn-batal-kelas,
+  .btn-submit-kelas {
     width: 100%;
     padding: 13px 25px;
     font-size: 16px;

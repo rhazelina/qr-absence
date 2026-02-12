@@ -1,53 +1,67 @@
-// Tambah.jsx
+// TambahSiswa.jsx
 import React, { useState, useEffect } from 'react';
 import './TambahSiswa.css';
 
-function Tambah({ isOpen, onClose, onSubmit, editData }) {
+function TambahSiswa({ isOpen, onClose, onSubmit, editData, classes = [], majors = [] }) {
   const [formData, setFormData] = useState({
     namaSiswa: '',
     nisn: '',
-    jurusan: '',
-    kelas: ''
+    gender: '',
+    address: '',
+    parent_phone: '',
+    jurusan_id: '',
+    kelas_id: ''
   });
 
-  // Data jurusan dan kelas yang sesuai
-  const jurusanKelasData = {
-    'RPL': ['X RPL 1', 'X RPL 2', 'XI RPL 1', 'XI RPL 2', 'XII RPL 1', 'XII RPL 2'],
-    'TKJ': ['X TKJ 1', 'X TKJ 2', 'XI TKJ 1', 'XI TKJ 2', 'XII TKJ 1', 'XII TKJ 2'],
-    'DKV': ['X DKV 1', 'X DKV 2', 'XI DKV 1', 'XI DKV 2', 'XII DKV 1', 'XII DKV 2'],
-    'AV': ['X AV 1', 'X AV 2', 'XI AV 1', 'XI AV 2', 'XII AV 1', 'XII AV 2'],
-    'MT': ['X MT 1', 'X MT 2', 'XI MT 1', 'XI MT 2', 'XII MT 1', 'XII MT 2'],
-    'BC': ['X BC 1', 'X BC 2', 'XI BC 1', 'XI BC 2', 'XII BC 1', 'XII BC 2'],
-    'AN': ['X AN 1', 'X AN 2', 'XI AN 1', 'XI AN 2', 'XII AN 1', 'XII AN 2'],
-    'EI': ['X EI 1', 'X EI 2', 'XI EI 1', 'XI EI 2', 'XII EI 1', 'XII EI 2']
-  };
-
-  // Dapatkan daftar kelas berdasarkan jurusan yang dipilih
-  const availableKelas = formData.jurusan ? jurusanKelasData[formData.jurusan] : [];
+  // Filter classes based on selected major
+  const [filteredClasses, setFilteredClasses] = useState([]);
 
   // Auto isi saat edit
   useEffect(() => {
     if (editData) {
+      // Find class object to get major_id if needed, or use data if provided
+      const currentClass = classes.find(c => c.id === editData.class_id) || {};
+
       setFormData({
-        namaSiswa: editData.nama,
-        nisn: editData.nisn,
-        jurusan: editData.jurusan,
-        kelas: editData.kelas
+        namaSiswa: editData.namaSiswa || editData.user?.name || editData.name || '',
+        nisn: editData.nisn || '',
+        gender: editData.gender || '',
+        address: editData.address || '',
+        parent_phone: editData.parent_phone || '',
+        jurusan_id: currentClass.major_id || '',
+        kelas_id: editData.class_id || editData.classRoom?.id || ''
       });
     } else {
-      setFormData({ namaSiswa: '', nisn: '', jurusan: '', kelas: '' });
+      setFormData({
+        namaSiswa: '',
+        nisn: '',
+        gender: '',
+        address: '',
+        parent_phone: '',
+        jurusan_id: '',
+        kelas_id: ''
+      });
     }
-  }, [editData, isOpen]);
+  }, [editData, isOpen, classes]);
+
+  // Update filtered classes when major changes
+  useEffect(() => {
+    if (formData.jurusan_id) {
+      const filtered = classes.filter(c => c.major_id === parseInt(formData.jurusan_id));
+      setFilteredClasses(filtered);
+    } else {
+      setFilteredClasses([]);
+    }
+  }, [formData.jurusan_id, classes]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Jika yang diubah adalah jurusan, reset pilihan kelas
-    if (name === 'jurusan') {
+
+    if (name === 'jurusan_id') {
       setFormData({
         ...formData,
-        jurusan: value,
-        kelas: '' // Reset kelas ketika jurusan berubah
+        jurusan_id: value,
+        kelas_id: '' // Reset class when major changes
       });
     } else {
       setFormData({
@@ -59,8 +73,17 @@ function Tambah({ isOpen, onClose, onSubmit, editData }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);   // kirim data balik ke DataSiswa.jsx
-    setFormData({ namaSiswa: '', nisn: '', jurusan: '', kelas: '' });
+    // Transform data for parent consumption
+    const submitData = {
+      namaSiswa: formData.namaSiswa,
+      nisn: formData.nisn,
+      gender: formData.gender,
+      address: formData.address,
+      parent_phone: formData.parent_phone,
+      class_id: formData.kelas_id
+    };
+    onSubmit(submitData);
+    setFormData({ namaSiswa: '', nisn: '', gender: '', address: '', parent_phone: '', jurusan_id: '', kelas_id: '' });
   };
 
   if (!isOpen) return null;
@@ -71,7 +94,7 @@ function Tambah({ isOpen, onClose, onSubmit, editData }) {
         <h2 className="modal-title">
           {editData ? "Ubah Data Siswa" : "Tambah Siswa"}
         </h2>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="input-group">
             <label>Nama Siswa</label>
@@ -101,40 +124,77 @@ function Tambah({ isOpen, onClose, onSubmit, editData }) {
           </div>
 
           <div className="input-group">
+            <label>Jenis Kelamin</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Pilih Jenis Kelamin...</option>
+              <option value="L">Laki-laki</option>
+              <option value="P">Perempuan</option>
+            </select>
+          </div>
+
+          <div className="input-group">
+            <label>Alamat</label>
+            <textarea
+              name="address"
+              placeholder="Masukkan alamat siswa..."
+              value={formData.address}
+              onChange={handleChange}
+              rows="3"
+              required
+            />
+          </div>
+
+          <div className="input-group">
+            <label>No. Telepon Orang Tua (Opsional)</label>
+            <input
+              type="text"
+              name="parent_phone"
+              placeholder="Contoh: 08123456789"
+              value={formData.parent_phone}
+              onChange={handleChange}
+              onKeyPress={(e) => {
+                if (!/[0-9+]/.test(e.key)) e.preventDefault();
+              }}
+            />
+          </div>
+
+          <div className="input-group">
             <label>Konsentrasi Keahlian</label>
             <select
-              name="jurusan"
-              value={formData.jurusan}
+              name="jurusan_id"
+              value={formData.jurusan_id}
               onChange={handleChange}
               required
             >
               <option value="">Pilih Konsentrasi Keahlian...</option>
-              <option value="RPL">RPL</option>
-              <option value="TKJ">TKJ</option>
-              <option value="DKV">DKV</option>
-              <option value="AV">AV</option>
-              <option value="MT">MT</option>
-              <option value="BC">BC</option>
-              <option value="AN">AN</option>
-              <option value="EI">EI</option>
+              {majors.map(major => (
+                <option key={major.id} value={major.id}>
+                  {major.name}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="input-group">
             <label>Kelas</label>
             <select
-              name="kelas"
-              value={formData.kelas}
+              name="kelas_id"
+              value={formData.kelas_id}
               onChange={handleChange}
-              disabled={!formData.jurusan}
+              disabled={!formData.jurusan_id}
               required
             >
               <option value="">
-                {formData.jurusan ? 'Pilih Kelas...' : 'Pilih Konsentrasi Keahlian Terlebih Dahulu'}
+                {formData.jurusan_id ? 'Pilih Kelas...' : 'Pilih Konsentrasi Keahlian Terlebih Dahulu'}
               </option>
-              {availableKelas.map((kelas, index) => (
-                <option key={index} value={kelas}>
-                  {kelas}
+              {filteredClasses.map((kelas) => (
+                <option key={kelas.id} value={kelas.id}>
+                  {kelas.name}
                 </option>
               ))}
             </select>
@@ -154,4 +214,4 @@ function Tambah({ isOpen, onClose, onSubmit, editData }) {
   );
 }
 
-export default Tambah;
+export default TambahSiswa;

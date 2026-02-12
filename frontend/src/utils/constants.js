@@ -35,6 +35,9 @@ export const API_ENDPOINTS = {
     // Majors
     MAJORS: 'majors',
 
+    // Subjects
+    SUBJECTS: 'subjects',
+
     // Attendance
     ATTENDANCE: 'attendance',
     ATTENDANCE_DOCUMENT: (id) => `attendance/${id}/document`,

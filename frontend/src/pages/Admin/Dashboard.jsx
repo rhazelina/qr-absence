@@ -28,23 +28,23 @@ function Dashboard() {
       try {
         setLoading(true);
         const data = await adminService.getSummary();
-        
-        if (data.counts) {
+
+        if (data) {
           setStats({
-            totalMurid: data.counts.students || 0,
-            totalGuru: data.counts.teachers || 0,
-            totalKelas: data.counts.classes || 0,
-            totalJurusan: data.counts.majors || 0
+            totalMurid: data.students_count || 0,
+            totalGuru: data.teachers_count || 0,
+            totalKelas: data.classes_count || 0,
+            totalJurusan: data.majors_count || 0
           });
         }
 
         if (data.attendance_today) {
           setAttendanceData({
-            tepatWaktu: data.attendance_today.present || 0,
-            terlambat: data.attendance_today.late || 0,
-            izin: data.attendance_today.permission || 0,
-            sakit: data.attendance_today.sick || 0,
-            alpha: data.attendance_today.absent || 0
+            tepatWaktu: data.attendance_today.hadir || 0,
+            terlambat: data.attendance_today.terlambat || 0,
+            izin: data.attendance_today.izin || 0,
+            sakit: data.attendance_today.sakit || 0,
+            alpha: data.attendance_today.alpha || 0
           });
         }
       } catch (err) {

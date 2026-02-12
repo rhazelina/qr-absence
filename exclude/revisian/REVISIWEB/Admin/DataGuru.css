@@ -1,15 +1,15 @@
-/* DataSiswa.css */
+/* DataGuru.css */
 
 .data-container {
-  padding: 80px 40px 40px;
+  padding: 40px 60px 80px;
   min-height: 100vh;
   background-image: url(../../assets/bg.png);
   background-size: cover;
   background-position: center;
 }
 
-/* Title Data Siswa - WARNA PUTIH seperti halaman lainnya */
-.page-title-siswa {
+/* Title Data Guru - WARNA PUTIH seperti Data Jurusan & Kelas */
+.page-title-guru {
   color: white;
   font-size: 48px;
   font-weight: 700;
@@ -32,17 +32,16 @@
   background: #001F3E;
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 20px;
+  gap: 20px;
+  padding: 20px 20px;
   flex-wrap: wrap;
   border-radius: 20px 20px 0 0;
   margin: -30px -30px 0 -30px;
 }
 
-/* Search Bar - SEJAJAR DI KIRI */
-.search1 {
-  flex: 0 0 auto;
-  min-width: 250px;
+.search {
+  flex: 1;
+  min-width: 280px;
   padding: 12px 15px 12px 45px;
   border: none;
   border-radius: 25px;
@@ -56,24 +55,22 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.search1::placeholder {
+.search::placeholder {
   color: #999;
 }
 
 .select-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 15px;
   flex-wrap: wrap;
-  margin-left: auto; /* Dorong ke kanan */
 }
 
 .select-group label {
   font-weight: 600;
   color: white;
   white-space: nowrap;
-  font-size: 14px;
-  margin: 0;
+  font-size: 15px;
 }
 
 .select-group select {
@@ -94,7 +91,7 @@
 }
 
 .btn-tambah {
-  padding: 11px 25px;
+  padding: 11px 30px;
   background: #0052A4;
   color: white;
   border: none;
@@ -112,9 +109,9 @@
   box-shadow: 0 5px 15px rgba(0, 102, 255, 0.4);
 }
 
-/* Button Ekspor */
+/* BUTTON EKSPOR */
 .btn-export {
-  padding: 11px 22px;
+  padding: 11px 30px;
   background: #28a745;
   color: white;
   border: none;
@@ -132,10 +129,10 @@
   box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
 }
 
-/* Button Impor */
+/* BUTTON IMPOR */
 .btn-import {
-  padding: 11px 25px;
-  background: #17a2b8;
+  padding: 11px 30px;
+  background: #ff9800;
   color: white;
   border: none;
   border-radius: 8px;
@@ -144,17 +141,18 @@
   cursor: pointer;
   transition: all 0.3s;
   white-space: nowrap;
+  display: inline-block;
 }
 
 .btn-import:hover {
-  background: #138496;
+  background: #e68900;
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
 }
 
-/* Button Download Template Excel */
+/* BUTTON DOWNLOAD TEMPLATE EXCEL */
 .btn-download-template {
-  padding: 11px 20px;
+  padding: 11px 24px;
   background: #6c757d;
   color: white;
   border: none;
@@ -175,9 +173,6 @@
   box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
 }
 
-.btn-download-template svg {
-  flex-shrink: 0;
-}
 
 /* Table Styles */
 .tabel-siswa {
@@ -236,7 +231,7 @@
   border-bottom: none;
 }
 
-/* Action Buttons - DIPERBAIKI UNTUK SVG ICON */
+/* Action Buttons - DIPERBAIKI UNTUK MENAMPILKAN ICON */
 .aksi-cell {
   text-align: center;
   display: flex;
@@ -255,7 +250,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 0; /* PENTING: Hilangkan padding default */
 }
 
 /* STYLING KHUSUS UNTUK SVG ICON */
@@ -263,7 +258,7 @@
   width: 18px !important;
   height: 18px !important;
   display: block !important;
-  pointer-events: none;
+  pointer-events: none; /* Agar klik tetap ke button */
 }
 
 .aksi.edit {
@@ -289,26 +284,12 @@
 }
 
 /* Responsive */
-@media (max-width: 1024px) {
-  .filter-box {
-    gap: 12px;
-  }
-  
-  .search1 {
-    min-width: 200px;
-  }
-  
-  .select-group {
-    margin-left: 0;
-  }
-}
-
 @media (max-width: 768px) {
   .data-container {
     padding: 80px 15px 20px;
   }
 
-  .page-title-siswa {
+  .page-title-guru {
     font-size: 36px;
   }
 
@@ -320,13 +301,11 @@
   .filter-box {
     flex-direction: column;
     align-items: stretch;
-    padding: 20px;
-    gap: 10px;
+    padding-bottom: 20px;
   }
 
-  .search1 {
+  .search {
     min-width: 100%;
-    width: 100%;
   }
 
   .select-group {
@@ -334,7 +313,6 @@
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
-    margin-left: 0;
   }
 
   .select-group label {
@@ -371,6 +349,37 @@
     width: 16px !important;
     height: 16px !important;
   }
+
+  /* Modal responsive */
+  .modal-contentt {
+    max-width: 95%;
+    border-radius: 15px;
+  }
+
+  .modal-headerr {
+    padding: 20px;
+  }
+
+  .modal-headerr h2 {
+    font-size: 20px;
+  }
+
+  form {
+    padding: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+  }
 }
 
 @media (max-width: 576px) {
@@ -380,44 +389,204 @@
     white-space: nowrap;
   }
 }
-/* Loading and Error States */
-.loading-overlay {
-  text-align: center;
-  padding: 60px 20px;
+
+/* ✅ MODAL STYLES - BACKGROUND BIRU SEPERTI DATAKELAS */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(8px);
 }
 
-.loading-spinner {
-  font-size: 18px;
-  color: #666;
-  font-weight: 500;
+.modal-contentt {
+  background: #0052A4; /* BACKGROUND BIRU PENUH */
+  border-radius: 25px;
+  width: 100%;
+  max-width: 550px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
+  animation: modalSlideIn 0.3s ease-out;
 }
 
-.error-message {
-  text-align: center;
-  padding: 60px 20px;
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.error-message p {
-  font-size: 18px;
-  color: #dc3545;
-  margin-bottom: 20px;
-  font-weight: 500;
+.modal-headerr {
+  background: transparent; /* TIDAK ADA BACKGROUND TERPISAH */
+  padding: 35px 40px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: none;
+  position: relative;
 }
 
-.btn-retry {
-  padding: 12px 30px;
-  background: #0052A4;
+.modal-headerr h2 {
   color: white;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.15);
   border: none;
-  border-radius: 8px;
+  color: white;
+  font-size: 28px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  line-height: 1;
+  padding: 0;
+  font-weight: 300;
+}
+
+.close-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: rotate(90deg);
+}
+
+form {
+  padding: 20px 40px 40px;
+}
+
+.form-group {
+  margin-bottom: 22px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: white; /* LABEL PUTIH */
+  font-size: 16px;
+}
+
+.required {
+  color: #ffcccc;
+  margin-left: 3px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 12px;
   font-size: 15px;
+  transition: all 0.3s;
+  outline: none;
+  background: white;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.form-group input::placeholder {
+  color: #999;
+}
+
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23666' d='M7 10L2 5h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  padding-right: 45px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  padding-top: 15px;
+  margin-top: 10px;
+  border-top: none;
+}
+
+.btn-cancel,
+.btn-submit {
+  flex: 1; /* INI YANG BIKIN SAMA LEBAR! */
+  max-width: 200px; /* Batas maksimal lebar */
+  padding: 14px 30px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
 }
 
-.btn-retry:hover {
-  background: #003D7A;
+.btn-cancel {
+  background: white;
+  color: #333;
+}
+
+.btn-cancel:hover {
+  background: #dc3545;
+  color: white;
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 82, 164, 0.3);
+  box-shadow: 0 5px 20px rgba(220, 53, 69, 0.3);
+}
+
+.btn-submit {
+  background: #003D7A;
+  color: white;
+}
+
+.btn-submit:hover {
+  background: #002952;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(0, 61, 122, 0.4);
+}
+
+/* Scrollbar Style */
+.modal-contentt::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-contentt::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.modal-contentt::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+
+.modal-contentt::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
