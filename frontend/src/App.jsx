@@ -6,6 +6,7 @@ import DataSiswa from './pages/Admin/DataSiswa';
 import DataGuru from './pages/Admin/DataGuru';
 import DataKelas from './pages/Admin/DataKelas';
 import DataJurusan from './pages/Admin/DataJurusan';
+import ProfileSekolah from './pages/Admin/Profilesekolah';
 
 import DashboardGuru from './pages/Guru/DashboardGuru';
 import Jadwal from './pages/Guru/Jadwal';
@@ -53,6 +54,7 @@ function App() {
       <Route path="/admin/guru" element={<DataGuru />} />
       <Route path="/admin/kelas" element={<DataKelas />} />
       <Route path="/admin/jurusan" element={<DataJurusan />} />
+      <Route path="/admin/profil-sekolah" element={<ProfileSekolah />} />
 
       {/* Guru Routes */}
       <Route path="/guru/dashboard" element={<DashboardGuru />} />
@@ -85,7 +87,7 @@ function App() {
       <Route path="/waka/jadwal-siswa/:id" element={<JadwalSiswaShow />} />
       <Route path="/waka/jadwal-siswa/:id/edit" element={<JadwalSiswaEdit />} />
       <Route path="/waka/kehadiran-siswa" element={<KehadiranSiswaIndex />} />
-      <Route path="/waka/kehadiran-siswa/rekap" element={<KehadiranSiswaRekap />} />
+      <Route path="/waka/kehadiran-siswa/:id/rekap" element={<KehadiranSiswaRekap />} />
       <Route path="/waka/kehadiran-siswa/:id" element={<KehadiranSiswaShow />} />
       <Route path="/waka/kehadiran-guru" element={<KehadiranGuruIndex />} />
       <Route path="/waka/kehadiran-guru/:id" element={<KehadiranGuruShow />} />

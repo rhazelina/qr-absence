@@ -1,6 +1,6 @@
 // src/Pages/WakaStaff/LihatKelas.tsx
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
+import Jadwal from "../../assets/Icon/jadwal.jpeg";
 
 interface Props {
   user: { name: string; role: string };
@@ -68,7 +68,7 @@ export default function LihatKelas({
 
         <div style={{ background: "#FFFFFF", borderRadius: 14, padding: 16 }}>
           <img
-            src={jadwalImage || DummyJadwal}
+            src={jadwalImage || Jadwal}
             alt="Jadwal Kelas"
             style={{ width: "100%", maxWidth: 1200, margin: "0 auto", display: "block" }}
           />

@@ -50,3 +50,11 @@ it('returns teacher dashboard data', function () {
     $response->assertStatus(200)
         ->assertJsonStructure(['date', 'teacher', 'attendance_summary', 'schedule_today']);
 });
+it('returns teacher dashboard data via alias', function () {
+    $teacher = User::factory()->teacher()->create();
+
+    $response = $this->actingAs($teacher)->getJson('/api/me/teacher/dashboard');
+
+    $response->assertStatus(200)
+        ->assertJsonStructure(['date', 'teacher', 'attendance_summary', 'schedule_today']);
+});

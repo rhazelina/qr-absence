@@ -1,18 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authHelpers } from '../../utils/authHelpers';
 import './Data.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 import InputSuratModal from '../../components/WaliKelas/InputDispensasiModal';
+import attendanceService from '../../services/attendance';
+import Swal from 'sweetalert2';
 
 const Data = () => {
   const navigate = useNavigate();
   const [editingIndex, setEditingIndex] = useState(null);
   const [openModal, setOpenModal] = useState(false);
 
-  // ✅ MODIFIED: Hapus filterType 'hari', hanya ada 'all' dan 'mapel'
   const [filterType, setFilterType] = useState('all'); // 'all', 'mapel'
   const [selectedMapel, setSelectedMapel] = useState('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [classInfo, setClassInfo] = useState({ nama: '' });
+  const [studentList, setStudentList] = useState([]);
 
   const [previewModal, setPreviewModal] = useState({ 
     open: false, 
@@ -26,34 +33,132 @@ const Data = () => {
     isTerlambat: false
   });
 
-  const kelasInfo = {
-    nama: 'XII Rekayasa Perangkat Lunak 2',
-  };
-
-  const daftarMapel = [
-    'Matematika',
-    'Bahasa Indonesia',
-    'Bahasa Inggris',
-    'Pemrograman Web',
-    'Basis Data',
-    'Jaringan Komputer',
-    'Sistem Operasi'
+  const daftarMapel = [ // TODO: Fetch from API schedule if needed
+    'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 
+    'Pemrograman Web', 'Basis Data', 'Jaringan Komputer', 'Sistem Operasi'
   ];
 
-  const [studentList, setStudentList] = useState([
-    { nisn: '00601', nama: 'Andi Pratama', status: 'Hadir', keterangan: '', jamMasuk: null, suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Matematika', tanggal: '2026-02-04' },
-    { nisn: '00602', nama: 'Siti Aisyah', status: 'Izin', keterangan: 'Izin menghadiri acara keluarga', jamMasuk: null, suratFile: '/uploads/surat-izin-siti.jpg', suratFileName: 'surat-izin-siti.jpg', wasTerlambat: false, mapel: 'Matematika', tanggal: '2026-02-04' },
-    { nisn: '00603', nama: 'Budi Santoso', status: 'Sakit', keterangan: '', jamMasuk: null, suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Matematika', tanggal: '2026-02-04' },
-    { nisn: '00604', nama: 'Rina Lestari', status: 'Alpha', keterangan: '', jamMasuk: null, suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Matematika', tanggal: '2026-02-04' },
-    { nisn: '00605', nama: 'Dewi Anggraini', status: 'Pulang', keterangan: 'Pulang di Jam Ke-4 (09:15)', jamMasuk: null, suratFile: '/uploads/surat-pulang-dewi.png', suratFileName: 'surat-pulang-dewi.png', wasTerlambat: false, mapel: 'Matematika', tanggal: '2026-02-04' },
-    { nisn: '00606', nama: 'Ahmad Rizki', status: 'Hadir', keterangan: '', jamMasuk: null, suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Bahasa Indonesia', tanggal: '2026-02-04' },
-    { nisn: '00607', nama: 'Nur Halimah', status: 'Hadir', keterangan: 'Terlambat - Masuk jam 08:15', jamMasuk: '08:15', suratFile: '/uploads/surat-terlambat-nur.jpg', suratFileName: 'surat-terlambat-nur.jpg', wasTerlambat: true, mapel: 'Pemrograman Web', tanggal: '2026-02-04' },
-    { nisn: '00608', nama: 'Fajar Sidiq', status: 'Hadir', keterangan: '', jamMasuk: null, suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Pemrograman Web', tanggal: '2026-02-04' },
-    { nisn: '00609', nama: 'Maya Sari', status: 'Hadir', keterangan: '', jamMasuk: null, suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Basis Data', tanggal: '2026-02-03' },
-    { nisn: '00610', nama: 'Rudi Hartono', status: 'Terlambat', keterangan: '', jamMasuk: '07:50', suratFile: null, suratFileName: null, wasTerlambat: false, mapel: 'Basis Data', tanggal: '2026-02-03' }
-  ]);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // ✅ MODIFIED: Hapus filter berdasarkan tanggal
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 1. Get User Role
+      const role = authHelpers.getRole();
+      let homeroom, studentsData, attendanceData;
+
+      // 2. Fetch data based on role
+      if (role === 'student' || role === 'class_officer') {
+         homeroom = await attendanceService.getStudentClassDashboard();
+         studentsData = await attendanceService.getMyClassStudents();
+         attendanceData = await attendanceService.getMyClassAttendance({ params: { from: today, to: today } });
+      } else {
+         homeroom = await attendanceService.getHomeroom();
+         studentsData = await attendanceService.getHomeroomStudents();
+         attendanceData = await attendanceService.getHomeroomAttendance({ params: { from: today, to: today } });
+      }
+
+      setClassInfo({ nama: homeroom.name || `${homeroom.grade} ${homeroom.major?.code || ''} ${homeroom.label}` });
+
+      // 3. Get leaves (same endpoint for both usually, using classId)
+      const leavesData = await attendanceService.getStudentsOnLeave(homeroom.id);
+
+      // 3. Process Data
+      processData(studentsData, attendanceData, leavesData.students_on_leave);
+
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+      setError("Gagal memuat data. " + (err.response?.data?.message || ""));
+      if (err.response?.status === 404) {
+          setError("Anda belum ditugaskan sebagai Wali Kelas.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processData = (students, attendanceRecords, leaves) => {
+    // Helper to find active leave for a student
+    const getLeave = (studentId) => leaves.find(l => l.student.id === studentId);
+    
+    // Helper to find attendance records
+    const getAttendance = (studentId) => attendanceRecords.filter(a => a.student_id === studentId);
+
+    const processed = students.map(student => {
+      const studentId = student.id;
+      const leave = getLeave(studentId);
+      const attendances = getAttendance(studentId);
+      
+      let status = 'Hadir'; // Default until marked otherwise
+      let keterangan = '';
+      let suratFile = null;
+      let suratFileName = null;
+      let wasTerlambat = false;
+      let jamMasuk = null;
+      let mapel = ''; 
+
+      // Determine Status Priority
+      if (leave) {
+        // Map backend type to UI status
+        switch (leave.type) {
+            case 'sakit': status = 'Sakit'; break;
+            case 'izin': status = 'Izin'; break;
+            case 'izin_pulang': status = 'Pulang'; break;
+            case 'dispensasi': status = 'Izin'; keterangan = 'Dispensasi'; break;
+            default: status = 'Izin';
+        }
+        keterangan = leave.reason || keterangan;
+        suratFile = leave.attachment_url;
+        suratFileName = 'Bukti Surat'; 
+      } else if (attendances.length > 0) {
+        // Check for specific statuses in attendance records
+        const hasAlpha = attendances.some(a => a.status === 'absent');
+        const hasLate = attendances.some(a => a.status === 'late');
+        const hasSick = attendances.some(a => a.status === 'sick');
+        const hasPermission = attendances.some(a => a.status === 'permission');
+
+        if (hasSick) status = 'Sakit';
+        else if (hasPermission) status = 'Izin';
+        else if (hasAlpha) status = 'Alpha';
+        else if (hasLate) {
+            status = 'Terlambat'; 
+            wasTerlambat = true;
+            // Get time from created_at
+            const lateRecord = attendances.find(a => a.status === 'late');
+            if (lateRecord) {
+                jamMasuk = new Date(lateRecord.created_at).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+            }
+        } else {
+            status = 'Hadir';
+        }
+
+        mapel = attendances[0]?.schedule?.subject?.name || '-';
+      } else {
+          status = 'Belum Absen'; 
+      }
+
+      return {
+        id: student.id,
+        nisn: student.nis, 
+        nama: student.user.name,
+        status: status === 'Belum Absen' ? 'Hadir' : status, 
+        keterangan: keterangan,
+        jamMasuk: jamMasuk,
+        suratFile: suratFile,
+        suratFileName: suratFileName,
+        wasTerlambat: wasTerlambat,
+        mapel: mapel,
+        tanggal: new Date().toISOString().split('T')[0]
+      };
+    });
+
+    setStudentList(processed);
+  };
+
   const getFilteredStudents = () => {
     let filtered = [...studentList];
 
@@ -67,36 +172,38 @@ const Data = () => {
   const filteredStudents = getFilteredStudents();
 
   const stats = {
-    Hadir: filteredStudents.filter((s) => s.status === 'Hadir').length,
-    Izin: filteredStudents.filter((s) => s.status === 'Izin').length,
-    Sakit: filteredStudents.filter((s) => s.status === 'Sakit').length,
-    Alpha: filteredStudents.filter((s) => s.status === 'Alpha').length,
-    Pulang: filteredStudents.filter((s) => s.status === 'Pulang').length,
-    Terlambat: filteredStudents.filter((s) => s.status === 'Terlambat' || s.wasTerlambat).length,
+    Hadir: studentList.filter((s) => s.status === 'Hadir').length,
+    Izin: studentList.filter((s) => s.status === 'Izin').length,
+    Sakit: studentList.filter((s) => s.status === 'Sakit').length,
+    Alpha: studentList.filter((s) => s.status === 'Alpha').length,
+    Pulang: studentList.filter((s) => s.status === 'Pulang').length,
+    Terlambat: studentList.filter((s) => s.status === 'Terlambat' || s.wasTerlambat).length,
   };
 
   const handleStatusChange = (index, value) => {
-    const updated = [...studentList];
-    const actualIndex = studentList.findIndex(s => s.nisn === filteredStudents[index].nisn);
-    updated[actualIndex].status = value;
-    
-    if (value !== 'Terlambat') {
-      updated[actualIndex].jamMasuk = null;
+    // If selecting Sakit/Izin/Pulang, open modal
+    if (['Sakit', 'Izin', 'Pulang'].includes(value)) {
+        setOpenModal(true);
+        return;
     }
     
-    setStudentList(updated);
+    Swal.fire({
+        icon: 'info',
+        title: 'Info',
+        text: 'Saat ini perubahan status langsung hanya didukung melalui unggah surat (Sakit/Izin/Pulang). Untuk perubahan ke Hadir/Alpha, silakan hubungi Admin atau Piket.'
+    });
+    
     setEditingIndex(null);
   };
 
   const handleViewSurat = (student) => {
-    // ✅ REVISI: Semua file surat sekarang adalah gambar
-    const fileType = 'image';
+    const fileType = 'image'; 
     setPreviewModal({
       open: true,
       file: student.suratFile,
       type: fileType,
       studentName: student.nama,
-      fileName: student.suratFileName,
+      fileName: 'Dokumen Pendukung',
       nisn: student.nisn,
       status: student.status,
       keterangan: student.keterangan || (student.wasTerlambat ? `Terlambat - Masuk jam ${student.jamMasuk}` : ''),
@@ -107,7 +214,8 @@ const Data = () => {
   const handleDownloadSurat = () => {
     const link = document.createElement('a');
     link.href = previewModal.file;
-    link.download = previewModal.fileName;
+    link.download = previewModal.fileName || 'dokumen.jpg';
+    link.target = '_blank'; 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -147,37 +255,50 @@ const Data = () => {
     return colors[status] || '#64748b';
   };
 
-  const handleSuratUploaded = (suratData) => {
-    console.log('Surat diterima:', suratData);
-    
-    const updatedList = studentList.map(student => {
-      if (student.nama === suratData.namaSiswa) {
-        const suratFile = suratData.uploadFile ? URL.createObjectURL(suratData.uploadFile) : student.suratFile;
-        const suratFileName = suratData.uploadFile ? suratData.uploadFile.name : student.suratFileName;
-        
-        if (student.status === 'Terlambat' && suratData.jenisSurat === 'Izin') {
-          return {
-            ...student,
-            status: 'Hadir',
-            wasTerlambat: true,
-            keterangan: `Terlambat - Masuk jam ${student.jamMasuk}`,
-            suratFile: suratFile,
-            suratFileName: suratFileName
-          };
-        }
-        
-        return {
-          ...student,
-          status: suratData.jenisSurat,
-          keterangan: suratData.keterangan,
-          suratFile: suratFile,
-          suratFileName: suratFileName
+  const handleSuratUploaded = async (suratData) => {
+    // Find student ID
+    const student = studentList.find(s => s.nama === suratData.namaSiswa);
+    if (!student) {
+        Swal.fire('Error', 'Siswa tidak ditemukan', 'error');
+        return;
+    }
+
+    try {
+        setLoading(true);
+        // Map UI type to Backend type
+        let backendType = 'izin';
+        if (suratData.jenisSurat === 'Sakit') backendType = 'sakit';
+        else if (suratData.jenisSurat === 'Pulang') backendType = 'izin_pulang';
+        else if (suratData.jenisSurat === 'Izin') backendType = 'izin';
+
+        const payload = {
+            student_id: student.id,
+            type: backendType,
+            start_time: '07:00', // Default start time
+            reason: suratData.keterangan || 'Izin via Wali Kelas'
         };
-      }
-      return student;
-    });
-    
-    setStudentList(updatedList);
+
+        if (suratData.jenisSurat === 'Pulang') {
+            payload.start_time = new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'}); // Now?
+            // "Pulang" applies from now until end of day
+        }
+
+        await attendanceService.submitLeavePermission(payload, suratData.uploadFile);
+        
+        Swal.fire('Berhasil', 'Surat berhasil diunggah dan status diperbarui', 'success');
+        setOpenModal(false);
+        fetchData(); // Refresh data
+
+    } catch (err) {
+        console.error("Upload failed", err);
+        let msg = err.response?.data?.message || 'Gagal mengunggah surat';
+        if (err.response?.data?.errors) {
+            msg = Object.values(err.response.data.errors).join('\n');
+        }
+        Swal.fire('Gagal', msg, 'error');
+    } finally {
+        setLoading(false);
+    }
   };
 
   const needsSurat = (student) => {
@@ -200,6 +321,19 @@ const Data = () => {
     return student.keterangan || '-';
   };
 
+  if (error) {
+    return (
+        <div className="kehadiran-siswa-page">
+            <NavbarWakel />
+            <div className="error-container" style={{padding: '2rem', textAlign: 'center'}}>
+                <h3>Terjadi Kesalahan</h3>
+                <p>{error}</p>
+                <button className="btn-primary" onClick={fetchData}>Coba Lagi</button>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <div className="kehadiran-siswa-page">
       <NavbarWakel />
@@ -212,13 +346,14 @@ const Data = () => {
           <div className="kelas-info">
             <div className="kelas-icon">🏫</div>
             <div>
-              <div className="kelas-nama">{kelasInfo.nama}</div>
+              <div className="kelas-nama">
+                  {loading ? 'Memuat...' : (classInfo.nama || 'Kelas Tidak Ditemukan')}
+              </div>
             </div>
           </div>
 
           <div className="header-right">
             <div className="header-actions">
-              {/* ✅ MODIFIED: Filter dengan tampilan statis untuk mapel */}
               <div className="filter-wrapper">
                 <button 
                   className="btn-primary btn-filter" 
@@ -258,7 +393,6 @@ const Data = () => {
                       </label>
                     </div>
                     
-                    {/* ✅ FIXED: Select selalu tampil, tidak bergantung pada filterType */}
                     <div className="filter-select-wrapper">
                       <select 
                         value={selectedMapel} 
@@ -293,7 +427,6 @@ const Data = () => {
               </button>
             </div>
 
-            {/* ✅ MODIFIED: Hapus tampilan info tanggal */}
             {filterType === 'mapel' && selectedMapel && (
               <div className="filter-info">
                 <span>📚 {selectedMapel}</span>
@@ -312,6 +445,9 @@ const Data = () => {
         </div>
 
         <div className="table-wrapperr">
+          {loading ? (
+             <div style={{textAlign: 'center', padding: '2rem'}}>Memuat data kehadiran...</div>
+          ) : (
           <table>
             <thead>
               <tr>
@@ -326,7 +462,7 @@ const Data = () => {
             <tbody>
               {filteredStudents.length > 0 ? (
                 filteredStudents.map((s, i) => (
-                  <tr key={i}>
+                  <tr key={s.id || i}>
                     <td className="col-no">{i + 1}</td>
                     <td className="col-nisn">{s.nisn}</td>
                     <td className="col-nama">{s.nama}</td>
@@ -355,7 +491,7 @@ const Data = () => {
                         </select>
                       ) : (
                         <div className="status-cell">
-                          <span className={`status ${s.status.toLowerCase()}`}>
+                          <span className={`status ${s.status.toLowerCase().replace(' ', '-')}`}>
                             {s.status}
                             {s.wasTerlambat && s.status === 'Hadir' && (
                               <span className="terlambat-indicator" title="Terlambat">⏱</span>
@@ -405,6 +541,7 @@ const Data = () => {
               )}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 
@@ -437,7 +574,7 @@ const Data = () => {
                 </div>
                 <div className="preview-info-item">
                   <span className="preview-info-label">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                     NISN
                   </span>
                   <span className="preview-info-value">{previewModal.nisn}</span>
@@ -471,7 +608,6 @@ const Data = () => {
             </div>
 
             <div className="preview-modal-body">
-              {/* ✅ REVISI: Semua preview sekarang adalah gambar */}
               <img src={previewModal.file} alt="Preview Surat" className="image-preview" />
             </div>
 

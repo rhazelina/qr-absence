@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './PresensiSiswa.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
+import attendanceService, { bulkManualAttendance } from '../../services/attendance';
 
 function PresensiSiswa() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state || {};
 
-  const hasScheduleData = state.mataPelajaran && state.kelas;
+  const hasScheduleData = state.scheduleId && state.kelas;
+  const scheduleId = state.scheduleId;
 
   const mataPelajaran = state.mataPelajaran || '';
   const jamKe = state.jamKe || '';
@@ -24,8 +26,15 @@ function PresensiSiswa() {
   const [keteranganForm, setKeteranganForm] = useState({
     alasan: '',
     jam: '',
-    jamKe: '' // Untuk pulang
+    jamKe: '', // Untuk pulang
+    file: null
   });
+
+  const [siswaList, setSiswaList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Daftar jam pelajaran (8 jam per hari)
   const daftarJamKe = [
@@ -39,182 +48,207 @@ function PresensiSiswa() {
     { value: '8', label: 'Jam Ke-8 (13:15 - 14:00)' },
   ];
 
-  const getSiswaByKelas = (kelasNama) => {
-    const dummyData = {
-      'XII Mekatronika 2': [
-        { 
-          no: 1, 
-          nisn: '1348576392', 
-          nama: 'Wito Suherman Suhermin', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-        { 
-          no: 2, 
-          nisn: '1348576393', 
-          nama: 'Ahmad Rizki Pratama', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-        { 
-          no: 3, 
-          nisn: '1348576394', 
-          nama: 'Siti Nurhaliza', 
-          status: 'sakit', 
-          keterangan: null,
-          dokumen: {
-            jenis: 'Surat Dokter',
-            tanggal: '28 Jan 2026',
-            file: 'surat-dokter-siti.pdf',
-            keterangan: 'Demam tinggi, istirahat 3 hari'
-          }
-        },
-        { 
-          no: 4, 
-          nisn: '1348576395', 
-          nama: 'Budi Santoso', 
-          status: 'izin', 
-          keterangan: null,
-          dokumen: {
-            jenis: 'Surat Izin Orang Tua',
-            tanggal: '28 Jan 2026',
-            file: 'surat-izin-budi.pdf',
-            keterangan: 'Acara keluarga di luar kota'
-          }
-        },
-        { 
-          no: 5, 
-          nisn: '1348576396', 
-          nama: 'Dewi Lestari', 
-          status: 'izin', 
-          keterangan: null,
-          dokumen: null // Belum upload surat
-        },
-        { 
-          no: 6, 
-          nisn: '1348576397', 
-          nama: 'Rina Amelia', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-      ],
-      'XII Mekatronika 1': [
-        { 
-          no: 1, 
-          nisn: '1348576398', 
-          nama: 'Andi Setiawan', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-        { 
-          no: 2, 
-          nisn: '1348576399', 
-          nama: 'Putri Ayu', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-        { 
-          no: 3, 
-          nisn: '1348576400', 
-          nama: 'Joko Widodo', 
-          status: 'sakit', 
-          keterangan: null,
-          dokumen: {
-            jenis: 'Surat Dokter',
-            tanggal: '28 Jan 2026',
-            file: 'surat-dokter-joko.pdf',
-            keterangan: 'Sakit maag akut'
-          }
-        },
-        { 
-          no: 4, 
-          nisn: '1348576401', 
-          nama: 'Maya Sari', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-        { 
-          no: 5, 
-          nisn: '1348576402', 
-          nama: 'Rudi Hermawan', 
-          status: 'hadir', 
-          keterangan: null,
-          dokumen: null
-        },
-      ],
-    };
-    return dummyData[kelasNama] || [];
+  useEffect(() => {
+    if (hasScheduleData) {
+      fetchSiswa();
+    } else {
+      setLoading(false);
+    }
+  }, [scheduleId]);
+
+  const fetchSiswa = async () => {
+    try {
+      setLoading(true);
+      const data = await attendanceService.getScheduleDetail(scheduleId);
+      
+      // Map API data to component state
+      const mappedSiswa = data.students.map((student, index) => {
+        let status = 'hadir'; // Default to hadir
+        let keterangan = null;
+        let dokumenUrl = null;
+
+        if (student.attendance) {
+           status = student.attendance.status;
+           if (student.attendance.reason) {
+             keterangan = { alasan: student.attendance.reason };
+           }
+           if (student.attendance.attachments && student.attendance.attachments.length > 0) {
+             dokumenUrl = student.attendance.attachments[0].url; // Assuming backend returns signed URL or path
+           }
+        }
+        
+        return {
+          id: student.id, // student_id
+          no: index + 1,
+          nisn: student.nisn || student.nis || '-',
+          nama: student.name,
+          status: status,
+          keterangan: keterangan,
+          dokumen: null, // File object for upload
+          dokumenUrl: dokumenUrl // Existing document URL
+        };
+      });
+
+      setSiswaList(mappedSiswa);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+      setError("Gagal mengambil data siswa.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const [siswaList, setSiswaList] = useState(getSiswaByKelas(kelas));
-
   const handleStatusChange = (index, newStatus) => {
-    if (newStatus === 'terlambat' || newStatus === 'pulang') {
+    const requiresModal = ['terlambat', 'pulang', 'sakit', 'izin'].includes(newStatus);
+
+    if (requiresModal) {
       setCurrentSiswaIndex(index);
       setKeteranganTipe(newStatus);
       setShowKeteranganModal(true);
-      setKeteranganForm({ alasan: '', jam: '', jamKe: '' });
+      setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null });
     } else {
       const updated = [...siswaList];
       updated[index].status = newStatus;
-      updated[index].keterangan = null;
+      
+      // Auto-text logic from revision
+      if (newStatus === 'hadir' || newStatus === 'present') {
+        updated[index].keterangan = { auto: true, alasan: 'Hadir tepat waktu' };
+      } else if (newStatus === 'alpha' || newStatus === 'absent') {
+        updated[index].keterangan = { auto: true, alasan: 'Tanpa keterangan' };
+      } else {
+        updated[index].keterangan = null;
+      }
+      
+      updated[index].dokumen = null;
       setSiswaList(updated);
     }
   };
 
   const handleSimpanKeterangan = () => {
-    // Validasi berbeda untuk terlambat dan pulang
+    // Validasi
     if (keteranganTipe === 'terlambat') {
-      if (!keteranganForm.alasan || !keteranganForm.jam) {
-        alert('Mohon lengkapi alasan dan jam masuk!');
+      if (!keteranganForm.jam) {
+        alert('Mohon lengkapi jam masuk!');
         return;
       }
     } else if (keteranganTipe === 'pulang') {
-      if (!keteranganForm.alasan || !keteranganForm.jamKe) {
-        alert('Mohon lengkapi alasan dan jam ke-!');
+      if (!keteranganForm.jamKe) {
+        alert('Mohon lengkapi jam ke-!');
         return;
       }
+    } else if (keteranganTipe === 'sakit' || keteranganTipe === 'izin') {
+        if (!keteranganForm.alasan) {
+            alert('Mohon lengkapi alasan!');
+            return;
+        }
     }
 
     const updated = [...siswaList];
     updated[currentSiswaIndex].status = keteranganTipe;
+    updated[currentSiswaIndex].dokumen = keteranganForm.file;
     
     // Simpan data sesuai tipe
+    // reason starts with explicit reason from form
+    let reason = keteranganForm.alasan; 
+
     if (keteranganTipe === 'terlambat') {
-      updated[currentSiswaIndex].keterangan = {
-        alasan: keteranganForm.alasan,
-        jam: keteranganForm.jam
-      };
+        // For display in frontend
+        updated[currentSiswaIndex].keterangan = {
+            alasan: reason,
+            jam: keteranganForm.jam
+        };
+    } else if (keteranganTipe === 'pulang') {
+        const jamLabel = daftarJamKe.find(j => j.value === keteranganForm.jamKe)?.label || '';
+         updated[currentSiswaIndex].keterangan = {
+            alasan: reason,
+            jamKe: keteranganForm.jamKe,
+            jamKeLabel: jamLabel
+        };
     } else {
-      updated[currentSiswaIndex].keterangan = {
-        alasan: keteranganForm.alasan,
-        jamKe: keteranganForm.jamKe,
-        jamKeLabel: daftarJamKe.find(j => j.value === keteranganForm.jamKe)?.label || ''
-      };
+         updated[currentSiswaIndex].keterangan = {
+            alasan: reason
+        };
     }
     
     setSiswaList(updated);
     
     setShowKeteranganModal(false);
     setCurrentSiswaIndex(null);
-    setKeteranganForm({ alasan: '', jam: '', jamKe: '' });
+    setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null });
   };
 
   const handleBatalKeterangan = () => {
     setShowKeteranganModal(false);
     setCurrentSiswaIndex(null);
-    setKeteranganForm({ alasan: '', jam: '', jamKe: '' });
+    setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null });
   };
 
-  const handleSimpan = () => {
-    alert('Absensi berhasil disimpan!');
-    setMode('view');
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setKeteranganForm({ ...keteranganForm, file: e.target.files[0] });
+    }
+  };
+
+  const handleSimpan = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin menyimpan presensi ini?')) return;
+
+    setSaving(true);
+    try {
+      const payload = {
+        schedule_id: scheduleId,
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        items: siswaList.map(siswa => {
+            let reason = siswa.keterangan ? siswa.keterangan.alasan : null;
+            // Append explicit details to reason string for consistency
+            if (siswa.keterangan && siswa.keterangan.jam) {
+                reason = `${reason} (Jam: ${siswa.keterangan.jam})`;
+            }
+            if (siswa.keterangan && siswa.keterangan.jamKeLabel) {
+                 reason = `${reason} (${siswa.keterangan.jamKeLabel})`;
+            }
+
+            return {
+                student_id: siswa.id,
+                status: siswa.status,
+                reason: reason
+            };
+        })
+      };
+      
+      const response = await bulkManualAttendance(payload);
+      
+      // Now Upload Documents
+      const attendanceData = response.data; // Array of saved attendance objects
+      if (attendanceData && Array.isArray(attendanceData)) {
+         const attendanceMap = attendanceData.reduce((acc, curr) => ({ ...acc, [curr.student_id]: curr.id }), {});
+         
+         const studentsWithFiles = siswaList.filter(s => s.dokumen);
+         if (studentsWithFiles.length > 0) {
+             setUploading(true);
+             for (const student of studentsWithFiles) {
+                 const attendanceId = attendanceMap[student.id];
+                 if (attendanceId) {
+                     try {
+                        await attendanceService.uploadDocument(attendanceId, student.dokumen);
+                     } catch (uploadErr) {
+                         console.error(`Failed to upload document for student ${student.id}`, uploadErr);
+                     }
+                 }
+             }
+             setUploading(false);
+         }
+      }
+
+      alert('Absensi berhasil disimpan!');
+      setMode('view');
+      fetchSiswa(); // Refresh data to get URLs and latest status
+    } catch (err) {
+      console.error("Error saving attendance:", err);
+      alert('Gagal menyimpan absensi: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSaving(false);
+      setUploading(false);
+    }
   };
 
   const handleEdit = () => {
@@ -225,87 +259,28 @@ function PresensiSiswa() {
     navigate('/guru/dashboard');
   };
 
-  const handleLihatDokumen = (siswa) => {
-    setCurrentSiswaIndex(siswaList.findIndex(s => s.nisn === siswa.nisn));
-    setShowDokumenModal(true);
-  };
-
-  const handleCloseDokumen = () => {
-    setShowDokumenModal(false);
-    setCurrentSiswaIndex(null);
+  const handleLihatDokumen = async (docUrl) => {
+    if (!docUrl) return;
+    try {
+        // If it's a proxy URL, we might need to handle auth, but browser should handle it if cookie based or token.
+        // If it returns a signed URL, open it.
+        window.open(docUrl, '_blank');
+    } catch (e) {
+        alert("Gagal membuka dokumen.");
+    }
   };
 
   const getStatusBadge = (siswa) => {
     const status = siswa.status;
-    const hasDokumen = siswa.dokumen !== null;
     
     if (status === 'hadir') return <span className="status-badge hadir">Hadir</span>;
-    if (status === 'alpha') return <span className="status-badge alpha">Alpha</span>;
-    if (status === 'terlambat') return <span className="status-badge terlambat">Terlambat</span>;
-    if (status === 'pulang') return <span className="status-badge pulang">Pulang</span>;
+    if (status === 'alpha' || status === 'absent') return <span className="status-badge alpha">Alpha</span>;
+    if (status === 'terlambat' || status === 'late') return <span className="status-badge terlambat">Terlambat</span>;
+    if (status === 'pulang' || status === 'return') return <span className="status-badge pulang">Pulang</span>;
+    if (status === 'sakit' || status === 'sick') return <span className="status-badge sakit">Sakit</span>;
+    if (status === 'izin' || status === 'excused') return <span className="status-badge izin">Izin</span>;
     
-    // Sakit atau Izin dengan dokumen
-    if (status === 'sakit') {
-      return (
-        <div className="status-with-dokumen">
-          <span className="status-badge sakit">Sakit</span>
-          {hasDokumen && (
-            <button className="btn-lihat-dokumen" onClick={() => handleLihatDokumen(siswa)}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-              Lihat Surat
-            </button>
-          )}
-          {!hasDokumen && (
-            <span className="no-dokumen-label">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-              Belum upload
-            </span>
-          )}
-        </div>
-      );
-    }
-    
-    if (status === 'izin') {
-      return (
-        <div className="status-with-dokumen">
-          <span className="status-badge izin">Izin</span>
-          {hasDokumen && (
-            <button className="btn-lihat-dokumen" onClick={() => handleLihatDokumen(siswa)}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-              Lihat Surat
-            </button>
-          )}
-          {!hasDokumen && (
-            <span className="no-dokumen-label">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-              Belum upload
-            </span>
-          )}
-        </div>
-      );
-    }
-    
-    return null;
+    return <span className="status-badge">{status}</span>;
   };
 
   if (!hasScheduleData) {
@@ -333,6 +308,10 @@ function PresensiSiswa() {
     );
   }
 
+  if (loading) {
+     return <div className="loading-container">Memuat data siswa...</div>;
+  }
+
   return (
     <div className="presensi-container">
       <NavbarGuru />
@@ -345,7 +324,7 @@ function PresensiSiswa() {
           </div>
           <div className="class-info">
             <h2 className="class-title">{kelas}</h2>
-            <p className="class-subtitle">Jam Ke-{jamKe}</p>
+            <p className="class-subtitle">{jamKe ? `Jam Ke-${jamKe}` : waktu}</p>
           </div>
         </div>
 
@@ -355,7 +334,7 @@ function PresensiSiswa() {
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            {mataPelajaran} ({jamKe})
+            {mataPelajaran}
           </div>
 
           <div className="tanggal-pill">
@@ -369,8 +348,8 @@ function PresensiSiswa() {
           </div>
 
           {mode === 'input' && (
-            <button className="btn-simpan-presensi" onClick={handleSimpan}>
-              Simpan
+            <button className="btn-simpan-presensi" onClick={handleSimpan} disabled={saving || uploading}>
+              {saving ? 'Menyimpan...' : (uploading ? 'Mengupload Dokumen...' : 'Simpan')}
             </button>
           )}
         </div>
@@ -391,31 +370,40 @@ function PresensiSiswa() {
                 <th>Alpha</th>
                 <th>Terlambat</th>
                 <th>Pulang</th>
+                <th>Ket</th>
               </tr>
             </thead>
             <tbody>
               {siswaList.map((siswa, index) => (
-                <tr key={index}>
+                <tr key={siswa.id}>
                   <td>{siswa.no}.</td>
                   <td>{siswa.nisn}</td>
                   <td>{siswa.nama}</td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'hadir'} onChange={() => handleStatusChange(index, 'hadir')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'hadir' || siswa.status === 'present'} onChange={() => handleStatusChange(index, 'hadir')} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'sakit'} onChange={() => handleStatusChange(index, 'sakit')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'sakit' || siswa.status === 'sick'} onChange={() => handleStatusChange(index, 'sakit')} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'izin'} onChange={() => handleStatusChange(index, 'izin')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'izin' || siswa.status === 'excused'} onChange={() => handleStatusChange(index, 'izin')} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'alpha'} onChange={() => handleStatusChange(index, 'alpha')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'alpha' || siswa.status === 'absent'} onChange={() => handleStatusChange(index, 'alpha')} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'terlambat'} onChange={() => handleStatusChange(index, 'terlambat')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'terlambat' || siswa.status === 'late'} onChange={() => handleStatusChange(index, 'terlambat')} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'pulang'} onChange={() => handleStatusChange(index, 'pulang')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'pulang' || siswa.status === 'return'} onChange={() => handleStatusChange(index, 'pulang')} />
+                  </td>
+                  <td>
+                    {siswa.dokumen && (
+                        <span title="Dokumen akan diupload" style={{color: 'green'}}>📄</span>
+                    )}
+                    {siswa.keterangan && (
+                        <span title={siswa.keterangan.alasan} style={{marginLeft: '5px'}}>📝</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -442,43 +430,25 @@ function PresensiSiswa() {
               </thead>
               <tbody>
                 {siswaList.map((siswa, index) => (
-                  <tr key={index}>
+                  <tr key={siswa.id}>
                     <td>{siswa.no}.</td>
                     <td>{siswa.nisn}</td>
                     <td>{siswa.nama}</td>
                     <td>{mataPelajaran}</td>
                     <td>{getStatusBadge(siswa)}</td>
                     <td>
-                      {siswa.keterangan ? (
+                      {(siswa.keterangan || siswa.dokumenUrl) ? (
                         <div className="keterangan-detail">
-                          {siswa.keterangan.jam && (
-                            <div className="keterangan-jam">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                              </svg>
-                              {siswa.keterangan.jam}
-                            </div>
-                          )}
-                          {siswa.keterangan.jamKeLabel && (
-                            <div className="keterangan-jam">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                <polyline points="15 3 21 3 21 9"></polyline>
-                                <line x1="10" y1="14" x2="21" y2="3"></line>
-                              </svg>
-                              {siswa.keterangan.jamKeLabel}
-                            </div>
-                          )}
-                          <div className="keterangan-alasan">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14 2 14 8 20 8"></polyline>
-                              <line x1="16" y1="13" x2="8" y2="13"></line>
-                              <line x1="16" y1="17" x2="8" y2="17"></line>
-                            </svg>
-                            {siswa.keterangan.alasan}
-                          </div>
+                             {siswa.keterangan && (
+                                <div className="keterangan-alasan">
+                                    {siswa.keterangan.alasan || JSON.stringify(siswa.keterangan)}
+                                </div>
+                             )}
+                             {siswa.dokumenUrl && (
+                                <button className="btn-lihat-dokumen" onClick={() => handleLihatDokumen(siswa.dokumenUrl)}>
+                                    Lihat Surat
+                                </button>
+                             )}
                         </div>
                       ) : (
                         <span className="no-keterangan">-</span>
@@ -500,13 +470,14 @@ function PresensiSiswa() {
         </>
       )}
 
-      {/* MODAL KETERANGAN TERLAMBAT/PULANG */}
+      {/* MODAL KETERANGAN */}
       {showKeteranganModal && (
         <div className="modal-overlay" onClick={handleBatalKeterangan}>
           <div className="modal-keterangan" onClick={(e) => e.stopPropagation()}>
             <div className="modal-keterangan-header">
               <h2>
-                {keteranganTipe === 'terlambat' ? 'Keterangan Terlambat' : 'Keterangan Pulang'}
+                {['sakit', 'izin', 'sick', 'excused'].includes(keteranganTipe) ? 'Keterangan Sakit/Izin' : 
+                 (keteranganTipe === 'terlambat' ? 'Keterangan Terlambat' : 'Keterangan Pulang')}
               </h2>
               <button className="close-btn" onClick={handleBatalKeterangan}>×</button>
             </div>
@@ -517,15 +488,11 @@ function PresensiSiswa() {
                 <span className="siswa-nisn">{siswaList[currentSiswaIndex]?.nisn}</span>
               </div>
 
-              {/* Input berbeda untuk Terlambat vs Pulang */}
-              {keteranganTipe === 'terlambat' ? (
+              {/* Form Content based on Type */}
+              {keteranganTipe === 'terlambat' && (
                 <div className="form-group">
                   <label>Jam Masuk</label>
                   <div className="input-icon">
-                    <svg className="icon-clock" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
                     <input
                       type="time"
                       value={keteranganForm.jam}
@@ -534,7 +501,9 @@ function PresensiSiswa() {
                     />
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {keteranganTipe === 'pulang' && (
                 <div className="form-group">
                   <label>Pulang di Jam Ke-</label>
                   <select
@@ -556,14 +525,27 @@ function PresensiSiswa() {
               <div className="form-group">
                 <label>Alasan</label>
                 <textarea
-                  placeholder={`Masukkan alasan ${keteranganTipe === 'terlambat' ? 'terlambat' : 'pulang cepat'}...`}
+                  placeholder="Masukkan alasan..."
                   className="input-textarea"
-                  rows="4"
+                  rows="3"
                   value={keteranganForm.alasan}
                   onChange={(e) => setKeteranganForm({...keteranganForm, alasan: e.target.value})}
-                  required
+                  required={['sakit', 'izin', 'terlambat', 'pulang'].includes(keteranganTipe)}
                 ></textarea>
               </div>
+
+              {['sakit', 'izin', 'sick', 'excused'].includes(keteranganTipe) && (
+                  <div className="form-group">
+                    <label>Upload Bukti / Surat (Opsional)</label>
+                    <input 
+                        type="file" 
+                        accept="image/*,application/pdf"
+                        onChange={handleFileChange}
+                        className="input-file"
+                    />
+                    <small>Format: JPG, PNG, PDF. Maks 5MB.</small>
+                  </div>
+              )}
 
               <div className="modal-buttons">
                 <button className="btn-batal-keterangan" onClick={handleBatalKeterangan}>
@@ -573,76 +555,6 @@ function PresensiSiswa() {
                   Simpan
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL LIHAT DOKUMEN */}
-      {showDokumenModal && currentSiswaIndex !== null && siswaList[currentSiswaIndex]?.dokumen && (
-        <div className="modal-overlay" onClick={handleCloseDokumen}>
-          <div className="modal-dokumen" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-dokumen-header">
-              <h2>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '8px' }}>
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-                Dokumen Surat
-              </h2>
-              <button className="close-btn" onClick={handleCloseDokumen}>×</button>
-            </div>
-
-            <div className="dokumen-content">
-              <div className="siswa-info-box">
-                <strong>{siswaList[currentSiswaIndex]?.nama}</strong>
-                <span className="siswa-nisn">{siswaList[currentSiswaIndex]?.nisn}</span>
-              </div>
-
-              <div className="dokumen-info">
-                <div className="info-row">
-                  <span className="info-label">Jenis Surat:</span>
-                  <span className="info-value">{siswaList[currentSiswaIndex]?.dokumen.jenis}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Tanggal Upload:</span>
-                  <span className="info-value">{siswaList[currentSiswaIndex]?.dokumen.tanggal}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Keterangan:</span>
-                  <span className="info-value">{siswaList[currentSiswaIndex]?.dokumen.keterangan}</span>
-                </div>
-              </div>
-
-              <div className="dokumen-file-preview">
-                <div className="file-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                  </svg>
-                </div>
-                <div className="file-info">
-                  <div className="file-name">{siswaList[currentSiswaIndex]?.dokumen.file}</div>
-                  <div className="file-type">PDF Document</div>
-                </div>
-                <button className="btn-download">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
-                  Download
-                </button>
-              </div>
-
-              <div className="dokumen-note">
-                <strong>Catatan:</strong> Dokumen ini diupload oleh Wali Kelas
-              </div>
-
-              <button className="btn-tutup-dokumen" onClick={handleCloseDokumen}>
-                Tutup
-              </button>
             </div>
           </div>
         </div>

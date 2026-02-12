@@ -14,7 +14,7 @@ class TeacherSeeder extends Seeder
         $user = User::updateOrCreate(
             ['username' => 'guru1'],
             [
-                'name' => 'Guru Pertama',
+                'name' => 'ALIFAH DIANTEBES AINDRA, S.Pd',
                 'email' => 'guru1@example.com',
                 'password' => Hash::make('password123'),
                 'user_type' => 'teacher',

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import GuruLayout from "../../component/Guru/GuruLayout";
 import type { Schedule } from "../../types/api";
-import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { isCancellation } from "../../utils/errorHelpers";
+import Jadwal from "../../assets/Icon/jadwal.jpeg";
 
 interface LihatJadwalGuruProps {
   user: { name: string; role: string };
@@ -157,7 +157,7 @@ export default function LihatJadwalGuru({
           padding: '20px'
         }}>
           <img
-            src={DummyJadwal}
+            src={Jadwal}
             alt="Jadwal Pelajaran"
             style={{
               width: '100%',

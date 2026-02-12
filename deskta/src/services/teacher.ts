@@ -17,6 +17,7 @@ export interface Teacher {
     schedule_image_path?: string | null;
     gender?: 'L' | 'P';
     role?: string;
+    bidang?: string;
 }
 
 export interface TeacherResponse {

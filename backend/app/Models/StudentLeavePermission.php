@@ -33,6 +33,17 @@ class StudentLeavePermission extends Model
         'is_full_day' => 'boolean',
     ];
 
+    protected $appends = ['attachment_url'];
+
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (! $this->attachment_path) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->url($this->attachment_path);
+    }
+
     public function student(): BelongsTo
     {
         return $this->belongsTo(StudentProfile::class, 'student_id');

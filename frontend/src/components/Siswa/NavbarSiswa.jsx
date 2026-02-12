@@ -20,10 +20,10 @@ function NavbarSiswa() {
       </div>
 
       <div className="nav-right">
-        <NavLink to="/siswa/dashboard" activeClassName="active">
+        <NavLink to="/siswa/dashboard" className={({ isActive }) => (isActive ? "active" : "")}>
           Beranda
         </NavLink>
-        <NavLink to="/siswa/riwayat" activeClassName="active">
+        <NavLink to="/siswa/riwayat" className={({ isActive }) => (isActive ? "active" : "")}>
           Riwayat Kehadiran
         </NavLink>
 

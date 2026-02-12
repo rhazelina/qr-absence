@@ -4,122 +4,77 @@ import './KehadiranSiswaShow.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaArrowLeft, FaChevronDown, FaClipboardCheck, FaDoorOpen, FaEdit, FaSave, FaSpinner, FaTimes, FaUser, FaEye, } from 'react-icons/fa';
 import { FaChartBar } from 'react-icons/fa6';
+import { wakaService } from '../../services/waka';
 
 function KehadiranSiswaShow() {
-
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailSiswa, setDetailSiswa] = useState(null);
-
-  const handleDetailClick = (siswa) => {
-    setDetailSiswa(siswa);
-    setShowDetailModal(true);
-  };
-
   const { id } = useParams();
-  console.log(id);
-
-  const [kelas, setKelas] = useState(null);
+  const [kelas, setKelas] = useState({ nama_kelas: 'Loading...', wali_kelas: 'Loading...' });
   const [siswaList, setSiswaList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailSiswa, setDetailSiswa] = useState(null);
   const [selectedSiswa, setSelectedSiswa] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Jumlah status - diinisialisasi dengan 0, akan dihitung dari data siswa
   const [statusCounts, setStatusCounts] = useState({
-    hadir: 0,
-    izin: 0,
-    sakit: 0,
-    alpha: 0,
-    pulang: 0,
-    terlambat: 0
+    hadir: 0, izin: 0, sakit: 0, alpha: 0, pulang: 0, terlambat: 0
   });
 
-
-  // Fungsi untuk menghitung jumlah status dari data siswa
-  const hitungStatusCounts = (dataSiswa) => {
-    const counts = {
-      hadir: 0,
-      izin: 0,
-      sakit: 0,
-      alpha: 0,
-      pulang: 0,
-      terlambat: 0
-    };
-
-
-    dataSiswa.forEach(siswa => {
-      const status = siswa.status.toLowerCase();
-      if (status === 'hadir') counts.hadir++;
-      else if (status === 'izin') counts.izin++;
-      else if (status === 'sakit') counts.sakit++;
-      else if (status === 'alpha') counts.alpha++;
-      else if (status === 'pulang') counts.pulang++;
-      else if (status === 'terlambat') counts.terlambat++;
+  const hitungStatusCounts = (list) => {
+    const counts = { hadir: 0, izin: 0, sakit: 0, alpha: 0, pulang: 0, terlambat: 0 };
+    list.forEach(item => {
+      const s = item.status.toLowerCase();
+      if (counts[s] !== undefined) counts[s]++;
     });
-
     return counts;
   };
 
-  // Data mock untuk kelas berdasarkan ID
-  const kelasData = {
-    1: { nama_kelas: 'X RPL 1', jurusan: 'RPL', wali_kelas: 'Prof. Aminullah' },
-    2: { nama_kelas: 'X RPL 2', jurusan: 'RPL', wali_kelas: 'Bu Rina Wahyuni, S.Kom' },
-    3: { nama_kelas: 'XI RPL 1', jurusan: 'RPL', wali_kelas: 'Bu Maya Sari, S.Kom' },
-    4: { nama_kelas: 'XI RPL 2', jurusan: 'RPL', wali_kelas: 'Pak Dimas Nugroho, S.Kom' },
-    5: { nama_kelas: 'XII RPL 1', jurusan: 'RPL', wali_kelas: 'Pak Wahyu Setiawan, S.Pd' },
-    6: { nama_kelas: 'XII RPL 2', jurusan: 'RPL', wali_kelas: 'Pak Budi Santoso, S.Pd' },
-    7: { nama_kelas: 'X TKJ 1', jurusan: 'TKJ', wali_kelas: 'Pak Hendra Saputra, S.T' },
-    8: { nama_kelas: 'X TKJ 2', jurusan: 'TKJ', wali_kelas: 'Bu Nita Puspitasari, S.T' },
-    9: { nama_kelas: 'XI TKJ 1', jurusan: 'TKJ', wali_kelas: 'Pak Rudi Hartono, S.T' },
-    10: { nama_kelas: 'XI TKJ 2', jurusan: 'TKJ', wali_kelas: 'Pak Eko Prasetyo, S.Kom' },
-    11: { nama_kelas: 'XII TKJ 1', jurusan: 'TKJ', wali_kelas: 'Pak Ahmad Yani, S.Kom' },
-    12: { nama_kelas: 'X MM 1', jurusan: 'MM', wali_kelas: 'Bu Intan Lestari, S.Sn' },
-    13: { nama_kelas: 'X MM 2', jurusan: 'MM', wali_kelas: 'Pak Bayu Pratama, S.Sn' },
-    14: { nama_kelas: 'XI MM 1', jurusan: 'MM', wali_kelas: 'Bu Dian Anggraeni, S.Pd' },
-    15: { nama_kelas: 'XI MM 2', jurusan: 'MM', wali_kelas: 'Pak Rizky Aditya, S.Sn' },
-    16: { nama_kelas: 'XII MM 1', jurusan: 'MM', wali_kelas: 'Bu Sari Dewi, S.Pd' }
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+        const data = await wakaService.getClassAttendanceDate(id, selectedDate);
+        
+        // Data class
+        setKelas({
+            nama_kelas: data.class.name || `${data.class.grade} ${data.class.major?.name || ''} ${data.class.label || ''}`,
+            wali_kelas: data.class.homeroom_teacher?.user?.name || '-'
+        });
+
+        // Flatten data: Schedules -> Attendances
+        let allList = [];
+        if (data.items) {
+             data.items.forEach(scheduleItem => {
+                const subjectName = scheduleItem.schedule.subject?.name || scheduleItem.schedule.title || 'Mapel Lain';
+                scheduleItem.attendances.forEach(att => {
+                    allList.push({
+                        id: att.id,
+                        nisn: att.student?.nisn || '-',
+                        nama: att.student?.user?.name || 'Siswa',
+                        mata_pelajaran: subjectName,
+                        status: att.status.charAt(0).toUpperCase() + att.status.slice(1),
+                        student_id: att.student_id,
+                        original: { ...att, schedule_id: scheduleItem.schedule.id }
+                    });
+                });
+             });
+        }
+        setSiswaList(allList);
+        setStatusCounts(hitungStatusCounts(allList));
+
+    } catch (error) {
+        console.error("Failed to fetch class attendance:", error);
+        // Fallback or empty state
+        setSiswaList([]);
+    } finally {
+        setLoading(false);
+    }
   };
 
-  // Data mock siswa
-  const mockSiswaList = [
-    { id: 1, nisn: '123456789', nama: 'M. Abdul Khosim Ahmadiansyah', mata_pelajaran: 'Matematika', status: 'Hadir' },
-    { id: 2, nisn: '123456790', nama: 'Budi Santoso', mata_pelajaran: 'Matematika', status: 'Hadir' },
-    { id: 3, nisn: '123456791', nama: 'Siti Nurhaliza', mata_pelajaran: 'Matematika, Bahasa Indonesia', status: 'Izin' },
-    { id: 4, nisn: '123456792', nama: 'Ahmad Rizki', mata_pelajaran: 'Matematika', status: 'Sakit' },
-    { id: 5, nisn: '123456793', nama: 'Dewi Lestari', mata_pelajaran: '-', status: 'Alpha' },
-    { id: 6, nisn: '123456794', nama: 'Rudi Hermawan', mata_pelajaran: 'Matematika', status: 'Hadir' },
-    { id: 7, nisn: '123456795', nama: 'Maya Sari', mata_pelajaran: '-', status: 'Alpha' },
-    { id: 8, nisn: '123456796', nama: 'Eko Prasetyo', mata_pelajaran: 'Matematika', status: 'Hadir' },
-    { id: 9, nisn: '123456797', nama: 'Nita Puspitasari', mata_pelajaran: 'Matematika, Fisika', status: 'Pulang' },
-    { id: 10, nisn: '123456798', nama: 'Hendra Saputra', mata_pelajaran: 'Matematika', status: 'Hadir' }
-  ];
-
   useEffect(() => {
-    setTimeout(() => {
-      const saved = sessionStorage.getItem(`kehadiran-kelas-${id}`);
-
-      let dataSiswa;
-      if (saved) {
-        dataSiswa = JSON.parse(saved);
-        setSiswaList(dataSiswa);
-      } else {
-        dataSiswa = mockSiswaList;
-        sessionStorage.setItem(
-          `kehadiran-kelas-${id}`,
-          JSON.stringify(mockSiswaList)
-        );
-        setSiswaList(mockSiswaList);
-      }
-
-      // Hitung status counts dari data siswa
-      const counts = hitungStatusCounts(dataSiswa);
-      setStatusCounts(counts);
-
-      setKelas(kelasData[id]);
-      setLoading(false);
-    }, 500);
-  }, [id]);
+    fetchData();
+  }, [id, selectedDate]);
 
   const handleEditClick = (siswa) => {
     setSelectedSiswa(siswa);
@@ -127,25 +82,31 @@ function KehadiranSiswaShow() {
     setShowEditModal(true);
   };
 
-  const handleStatusUpdate = () => {
-    const updatedList = siswaList.map(siswa =>
-      siswa.id === selectedSiswa.id
-        ? { ...siswa, status: selectedStatus }
-        : siswa
-    );
+  const handleDetailClick = (siswa) => {
+    setDetailSiswa(siswa);
+    setShowDetailModal(true);
+  };
 
-    setSiswaList(updatedList);
+  const handleStatusUpdate = async () => {
+    if (!selectedSiswa || !selectedStatus) return;
 
-    // Hitung ulang status counts setelah update
-    const counts = hitungStatusCounts(updatedList);
-    setStatusCounts(counts);
-
-    sessionStorage.setItem(
-      `kehadiran-kelas-${id}`,
-      JSON.stringify(updatedList)
-    );
-
-    setShowEditModal(false);
+    try {
+        const payload = {
+            attendee_type: 'student',
+            student_id: selectedSiswa.student_id,
+            schedule_id: selectedSiswa.original.schedule_id, // Ensure this exists in flatten logic
+            status: selectedStatus.toLowerCase(),
+            date: selectedDate,
+            reason: 'Diubah oleh Waka Kurikulum' // Or add a reason field in modal
+        };
+        await wakaService.updateAttendance(payload);
+        
+        setShowEditModal(false);
+        fetchData(); // Refresh data
+    } catch (error) {
+        console.error("Failed to update status:", error);
+        alert("Gagal mengubah status kehadiran");
+    }
   };
 
   if (loading) {
@@ -199,7 +160,7 @@ function KehadiranSiswaShow() {
 
                 {/* Tombol Lihat Rekap */}
                 <Link
-                  to="/waka/kehadiran-siswa/rekap"
+                  to={`/waka/kehadiran-siswa/${id}/rekap`}
                   className="tombol-rekap-inline"
                 >
                   <FaChartBar />
@@ -405,12 +366,12 @@ function KehadiranSiswaShow() {
             <div className="modal-detail-body">
               <div className="detail-row">
                 <span>Tanggal:</span>
-                <strong>25-01-2026</strong>
+                <strong>{selectedDate}</strong>
               </div>
 
               <div className="detail-row">
                 <span>Jam Pelajaran:</span>
-                <strong>1–4</strong>
+                <strong>-</strong>
               </div>
 
               <div className="detail-row">
@@ -447,7 +408,7 @@ function KehadiranSiswaShow() {
 
                 {['Izin', 'Sakit', 'Pulang'].includes(detailSiswa.status) && (
                   <strong>
-                    Demam dan flu
+                    {detailSiswa.original?.reason || 'Tidak ada keterangan'}
                   </strong>
                 )}
               </div>

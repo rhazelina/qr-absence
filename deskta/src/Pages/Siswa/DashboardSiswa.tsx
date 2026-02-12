@@ -1017,7 +1017,7 @@ function MonthlyLineChart({
 }
 
 // Add the Line import from chartjs
-import { Line } from "react-chartjs-2";
+// Duplicate Line import removed
 
 
 

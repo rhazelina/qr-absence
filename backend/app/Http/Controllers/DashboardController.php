@@ -322,12 +322,12 @@ class DashboardController extends Controller
      */
     public function wakaDashboard(Request $request): JsonResponse
     {
+        $semesterId = $request->query('semester_id');
         $today = now()->format('Y-m-d');
 
-        $data = Cache::remember("dashboard.waka.{$today}", 600, function () use ($today) {
-            $startOfMonth = now()->startOfMonth()->format('Y-m-d');
-            $endOfMonth = now()->endOfMonth()->format('Y-m-d');
+        $cacheKey = "dashboard.waka.{$today}".($semesterId ? ".sem.{$semesterId}" : '');
 
+        $data = Cache::remember($cacheKey, 600, function () use ($today, $semesterId) {
             // 1. Stats Hari Ini (Today's Stats)
             $todayStats = Attendance::whereDate('date', $today)
                 ->selectRaw('status, count(*) as count')
@@ -344,38 +344,65 @@ class DashboardController extends Controller
                 'pulang' => $todayStats->get('return', 0),
             ];
 
-            // 2. Tren Bulanan (Last 6 Months Trend)
-            $sixMonthsAgo = now()->subMonths(5)->startOfMonth()->format('Y-m-d');
+            // 2. Trend Data
+            $query = Attendance::query();
 
-            $monthlyData = Attendance::whereBetween('date', [$sixMonthsAgo, $today])
-                ->selectRaw('DATE(date) as date_only, status, count(*) as count')
+            if ($semesterId) {
+                $semester = Semester::with('schoolYear')->find($semesterId);
+                if ($semester) {
+                    $year = $semester->schoolYear;
+                    if ($semester->name === 'Ganjil') {
+                        $start = "{$year->start_year}-07-01";
+                        $end = "{$year->start_year}-12-31";
+                    } else {
+                        $start = "{$year->end_year}-01-01";
+                        $end = "{$year->end_year}-06-30";
+                    }
+                    $query->whereBetween('date', [$start, $end]);
+                    $rangeStart = \Carbon\Carbon::parse($start);
+                    $rangeEnd = \Carbon\Carbon::parse($end)->min(now());
+                } else {
+                    $rangeEnd = now();
+                    $rangeStart = now()->subMonths(5)->startOfMonth();
+                    $query->whereBetween('date', [$rangeStart->format('Y-m-d'), $today]);
+                }
+            } else {
+                $rangeEnd = now();
+                $rangeStart = now()->subMonths(5)->startOfMonth();
+                $query->whereBetween('date', [$rangeStart->format('Y-m-d'), $today]);
+            }
+
+            $monthlyData = $query->selectRaw('DATE(date) as date_only, status, count(*) as count')
                 ->groupBy('date_only', 'status')
                 ->get();
 
             $trend = [];
-            // We'll group by month for the 6-month chart
             $dataByMonth = $monthlyData->groupBy(function ($item) {
                 return \Carbon\Carbon::parse($item->date_only)->format('Y-m');
             });
 
-            for ($i = 5; $i >= 0; $i--) {
-                $monthDate = now()->subMonths($i);
-                $monthKey = $monthDate->format('Y-m');
+            // Iterate over the months in the range
+            $currentMonth = $rangeStart->copy()->startOfMonth();
+            while ($currentMonth->lte($rangeEnd)) {
+                $monthKey = $currentMonth->format('Y-m');
                 $monthRecords = $dataByMonth->get($monthKey, collect([]));
 
                 $total = $monthRecords->sum('count');
                 $present = $monthRecords->whereIn('status', ['present', 'late'])->sum('count');
 
                 $trend[] = [
-                    'month' => $monthDate->locale('id')->translatedFormat('M'),
-                    'full_month' => $monthDate->locale('id')->translatedFormat('F Y'),
+                    'month' => $currentMonth->locale('id')->translatedFormat('M'),
+                    'full_month' => $currentMonth->locale('id')->translatedFormat('F Y'),
                     'percentage' => $total > 0 ? round(($present / $total) * 100) : 0,
                     'total_logs' => $total,
                     'present' => $present,
                     'absent' => $monthRecords->where('status', 'absent')->sum('count'),
-                    'sick_excused' => $monthRecords->whereIn('status', ['sick', 'excused', 'izin'])->sum('count'),
+                    'sick' => $monthRecords->where('status', 'sick')->sum('count'),
+                    'izin' => $monthRecords->whereIn('status', ['excused', 'izin'])->sum('count'),
                     'return' => $monthRecords->where('status', 'return')->sum('count'),
                 ];
+
+                $currentMonth->addMonth();
             }
 
             return [

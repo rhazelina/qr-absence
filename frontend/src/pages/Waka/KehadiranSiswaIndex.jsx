@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './KehadiranSiswaIndex.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaBriefcase, FaChevronDown, FaDoorOpen, FaEye, FaInbox, FaSpinner, FaTable, FaUser } from 'react-icons/fa';
+import { wakaService } from '../../services/waka';
 
 function KehadiranSiswaIndex() {
   const navigate = useNavigate();
@@ -14,41 +15,26 @@ function KehadiranSiswaIndex() {
   const jurusanList = ['TKJ', 'RPL', 'MM', 'TBSM', 'TKR'];
   const kelasOptions = ['X', 'XI', 'XII'];
 
-  // Dummy data sesuai screenshot
-  const dummyData = [
-    { id: 1, nama_kelas: 'X RPL 1', jurusan: { nama_jurusan: 'RPL' }, wali_kelas: 'Prof. Aminullah' },
-    { id: 2, nama_kelas: 'X RPL 2', jurusan: { nama_jurusan: 'RPL' }, wali_kelas: 'Bu Rina Wahyuni, S.Kom' },
-    { id: 3, nama_kelas: 'XI RPL 1', jurusan: { nama_jurusan: 'RPL' }, wali_kelas: 'Bu Maya Sari, S.Kom' },
-    { id: 4, nama_kelas: 'XI RPL 2', jurusan: { nama_jurusan: 'RPL' }, wali_kelas: 'Pak Dimas Nugroho, S.Kom' },
-    { id: 5, nama_kelas: 'XII RPL 1', jurusan: { nama_jurusan: 'RPL' }, wali_kelas: 'Pak Wahyu Setiawan, S.Pd' },
-    { id: 6, nama_kelas: 'XII RPL 2', jurusan: { nama_jurusan: 'RPL' }, wali_kelas: 'Pak Budi Santoso, S.Pd' },
-
-    // ================= TKJ =================
-    { id: 7, nama_kelas: 'X TKJ 1', jurusan: { nama_jurusan: 'TKJ' }, wali_kelas: 'Pak Hendra Saputra, S.T' },
-    { id: 8, nama_kelas: 'X TKJ 2', jurusan: { nama_jurusan: 'TKJ' }, wali_kelas: 'Bu Nita Puspitasari, S.T' },
-    { id: 9, nama_kelas: 'XI TKJ 1', jurusan: { nama_jurusan: 'TKJ' }, wali_kelas: 'Pak Rudi Hartono, S.T' },
-    { id: 10, nama_kelas: 'XI TKJ 2', jurusan: { nama_jurusan: 'TKJ' }, wali_kelas: 'Pak Eko Prasetyo, S.Kom' },
-    { id: 11, nama_kelas: 'XII TKJ 1', jurusan: { nama_jurusan: 'TKJ' }, wali_kelas: 'Pak Ahmad Yani, S.Kom' },
-
-    // ================= MM =================
-    { id: 12, nama_kelas: 'X MM 1', jurusan: { nama_jurusan: 'MM' }, wali_kelas: 'Bu Intan Lestari, S.Sn' },
-    { id: 13, nama_kelas: 'X MM 2', jurusan: { nama_jurusan: 'MM' }, wali_kelas: 'Pak Bayu Pratama, S.Sn' },
-    { id: 14, nama_kelas: 'XI MM 1', jurusan: { nama_jurusan: 'MM' }, wali_kelas: 'Bu Dian Anggraeni, S.Pd' },
-    { id: 15, nama_kelas: 'XI MM 2', jurusan: { nama_jurusan: 'MM' }, wali_kelas: 'Pak Rizky Aditya, S.Sn' },
-    { id: 16, nama_kelas: 'XII MM 1', jurusan: { nama_jurusan: 'MM' }, wali_kelas: 'Bu Sari Dewi, S.Pd' }
-  ];
-
   useEffect(() => {
-    // Simulasi loading data
-    setTimeout(() => {
-      setKelasList(dummyData);
-      setLoading(false);
-    }, 500);
+    const fetchClasses = async () => {
+      try {
+        const data = await wakaService.getClasses();
+        setKelasList(data);
+      } catch (error) {
+        console.error('Failed to fetch classes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClasses();
   }, []);
 
   const filteredKelasList = kelasList.filter(kelas => {
-    const matchesJurusan = filterJurusan ? kelas.jurusan.nama_jurusan === filterJurusan : true;
-    const matchesKelas = filterKelas ? kelas.nama_kelas.startsWith(filterKelas + ' ') : true;
+    // Determine major name safely
+    const majorName = kelas.major?.code || kelas.major?.name || '';
+    const matchesJurusan = filterJurusan ? majorName.includes(filterJurusan) : true;
+    const matchesKelas = filterKelas ? kelas.grade.startsWith(filterKelas) : true;
     return matchesJurusan && matchesKelas;
   });
 
@@ -163,12 +149,12 @@ function KehadiranSiswaIndex() {
                       </td>
                       <td className="td-kelas">
                         <div className="info-kelas">
-                          <span className="nama-kelas">{item.nama_kelas}</span>
+                          <span className="nama-kelas">{item.name}</span>
                         </div>
                       </td>
                       <td>
                         <span className="lencana-jurusan">
-                          {item.jurusan?.nama_jurusan || '-'}
+                          {item.major?.name || '-'}
                         </span>
                       </td>
                       <td>
@@ -176,7 +162,7 @@ function KehadiranSiswaIndex() {
                           <div className="avatar-wali">
                             <FaUser />
                           </div>
-                          <span className="nama-wali">{item.wali_kelas || '-'}</span>
+                          <span className="nama-wali">{item.homeroom_teacher?.user?.name || '-'}</span>
                         </div>
                       </td>
                       <td className="td-tengah">

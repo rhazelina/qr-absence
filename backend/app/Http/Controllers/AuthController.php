@@ -42,6 +42,17 @@ class AuthController extends Controller
             }
         }
 
+        // If still not found, try to find teacher by NIP or Kode Guru
+        if (! $user) {
+            $teacherProfile = \App\Models\TeacherProfile::where('nip', $data['login'])
+                ->orWhere('kode_guru', $data['login'])
+                ->first();
+
+            if ($teacherProfile) {
+                $user = $teacherProfile->user;
+            }
+        }
+
         // If user not found at all
         if (! $user) {
             throw ValidationException::withMessages([

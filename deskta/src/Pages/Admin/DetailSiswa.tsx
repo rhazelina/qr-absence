@@ -1,30 +1,12 @@
-﻿// FILE: DetailSiswa.tsx - Halaman Detail Siswa dengan Data Lengkap
-import { useState, useEffect } from 'react';
-import AdminLayout from '../../component/Admin/AdminLayout';
-import { storage } from '../../utils/storage';
-import { User as UserIcon, ArrowLeft, Edit2, Save, X } from 'lucide-react';
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
+﻿// DetailSiswa.tsx - Halaman detail dan edit data siswa
+import { useState, useEffect } from "react";
+import AdminLayout from "../../component/Admin/AdminLayout";
+import { ArrowLeft, Save, User, MapPin, Phone, GraduationCap, Calendar, Users, QrCode } from "lucide-react";
 
-/* ===================== INTERFACE DEFINITIONS ===================== */
+// ==================== INTERFACE DEFINITIONS ====================
 interface User {
   role: string;
   name: string;
-}
-
-interface Siswa {
-  id: string;
-  namaSiswa: string;
-  nisn: string;
-  jenisKelamin: string;
-  noTelp: string;
-  jurusan: string;
-  jurusanId: string;
-  tahunAngkatan: string;
-  kelas: string;
-  kelasId: string;
-  // Additional fields for API compatibility
-  password?: string;
-  originalData?: any; // To store full API object
 }
 
 interface DetailSiswaProps {
@@ -33,241 +15,381 @@ interface DetailSiswaProps {
   currentPage: string;
   onMenuClick: (page: string) => void;
   siswaId: string;
-  onUpdateSiswa?: (updatedSiswa: Siswa) => void;
 }
 
-/* ===================== MAIN COMPONENT ===================== */
+interface SiswaData {
+  id: string;
+  nisn: string;
+  namaSiswa: string;
+  jenisKelamin: "Laki-Laki" | "Perempuan";
+  kelas: string;
+  jurusan: string;
+  jurusanId?: string; // Menyimpan ID jurusan untuk mapping
+  tahunAngkatan: string; // Format: "2023-2026"
+  noTelp: string;
+  alamat: string;
+  foto: string;
+  status: "Aktif" | "Lulus" | "Keluar" | "Skorsing";
+  rfid?: string; // Kode kartu RFID/QR
+}
+
+// ==================== COMPONENT STYLING ====================
+// Menggunakan styling yang sama dengan DetailGuru untuk konsistensi
+const styles = {
+  container: {
+    maxWidth: "1000px",
+    margin: "0 auto",
+    padding: "0 4px",
+    paddingBottom: "80px",
+  },
+  header: {
+    marginBottom: "24px",
+  },
+  backButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "none",
+    border: "none",
+    color: "#64748B",
+    fontSize: "16px",
+    fontWeight: "600",
+    cursor: "pointer",
+    padding: "8px 0",
+    marginBottom: "16px",
+    transition: "color 0.2s",
+  },
+  card: {
+    background: "white",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    overflow: "hidden",
+    marginBottom: "24px",
+  },
+  cardHeader: {
+    padding: "24px",
+    borderBottom: "1px solid #E2E8F0",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cardTitle: {
+    fontSize: "18px",
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  cardBody: {
+    padding: "24px",
+  },
+  profileHeader: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    padding: "40px 24px",
+    background: "linear-gradient(135deg, #001F3E 0%, #0C4A6E 100%)", // Navy Theme
+    color: "white",
+    borderRadius: "16px 16px 0 0",
+    position: "relative" as const,
+  },
+  avatarContainer: {
+    position: "relative" as const,
+    marginBottom: "16px",
+  },
+  avatar: {
+    width: "120px",
+    height: "120px",
+    borderRadius: "50%",
+    border: "4px solid white",
+    backgroundColor: "#E2E8F0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "48px",
+    color: "#64748B",
+    overflow: "hidden",
+    objectFit: "cover" as const,
+  },
+  statusBadge: {
+    position: "absolute" as const,
+    bottom: "4px",
+    right: "4px",
+    width: "24px",
+    height: "24px",
+    borderRadius: "50%",
+    backgroundColor: "#10B981",
+    border: "3px solid white",
+  },
+  profileName: {
+    fontSize: "24px",
+    fontWeight: "700",
+    marginBottom: "4px",
+    textAlign: "center" as const,
+  },
+  profileSubtitle: {
+    fontSize: "16px",
+    opacity: 0.9,
+    marginBottom: "16px",
+    textAlign: "center" as const,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    padding: "4px 12px",
+    borderRadius: "20px",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "24px",
+  },
+  formGroup: {
+    marginBottom: "20px",
+  },
+  label: {
+    display: "block",
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: "8px",
+  },
+  input: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    border: "1px solid #E2E8F0",
+    fontSize: "14px",
+    color: "#1E293B",
+    backgroundColor: "#F8FAFC",
+    transition: "all 0.2s",
+  },
+  select: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    border: "1px solid #E2E8F0",
+    fontSize: "14px",
+    color: "#1E293B",
+    backgroundColor: "#F8FAFC",
+    cursor: "pointer",
+    appearance: "none" as const,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 16px center",
+    backgroundSize: "20px",
+  },
+  footer: {
+    position: "fixed" as const,
+    bottom: 0,
+    left: "280px",
+    right: 0,
+    padding: "16px 24px",
+    backgroundColor: "white",
+    borderTop: "1px solid #E2E8F0",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    zIndex: 10,
+    boxShadow: "0 -4px 6px -1px rgba(0, 0, 0, 0.05)",
+  },
+  buttonPrimary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    backgroundColor: "#001F3E",
+    color: "white",
+    border: "none",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  buttonSecondary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    backgroundColor: "white",
+    color: "#64748B",
+    border: "1px solid #E2E8F0",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  sectionTitle: {
+    fontSize: "16px",
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    borderBottom: "1px solid #E2E8F0",
+    paddingBottom: "8px",
+  },
+};
+
+// ==================== DUMMY DATA SOURCES ====================
+const JURUSAN_OPTIONS = [
+  { value: "RPL", label: "Rekayasa Perangkat Lunak" },
+  { value: "TKJ", label: "Teknik Komputer dan Jaringan" },
+];
+
+const KELAS_OPTIONS = [
+  "X RPL 1", "X RPL 2", "X TKJ 1", "X TKJ 2",
+  "XI RPL 1", "XI RPL 2", "XI TKJ 1", "XI TKJ 2",
+  "XII RPL 1", "XII RPL 2", "XII TKJ 1", "XII TKJ 2"
+];
+
+const TAHUN_MASUK_OPTIONS = ["2020", "2021", "2022", "2023", "2024", "2025"];
+
 export default function DetailSiswa({
   user,
   onLogout,
   currentPage,
   onMenuClick,
   siswaId,
-  onUpdateSiswa,
 }: DetailSiswaProps) {
-  const { alert: popupAlert } = usePopup();
-
   // ==================== STATE MANAGEMENT ====================
-  const [siswaData, setSiswaData] = useState<Siswa | null>(null);
-  const [originalData, setOriginalData] = useState<Siswa | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<SiswaData | null>(null);
+  const [originalData, setOriginalData] = useState<SiswaData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  
+  // State for split input (Tahun Angkatan: "2023-2026")
+  const [tahunMulai, setTahunMulai] = useState("");
+  const [tahunAkhir, setTahunAkhir] = useState("");
 
-  // Options state
-  const [jurusanOptions, setJurusanOptions] = useState<{ value: string, label: string }[]>([]);
-  const [kelasOptions, setKelasOptions] = useState<{ value: string, label: string }[]>([]);
-
-  // ==================== LOAD DATA SISWA ====================
+  // ==================== DATA FETCHING ====================
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { studentService } = await import('../../services/student');
-        const { majorService } = await import('../../services/major');
-        const { classService } = await import('../../services/class');
-
-        // Parallel fetch options and student data
-        const [majors, classes, studentAPI] = await Promise.all([
-          majorService.getMajors(),
-          classService.getClasses(),
-          studentService.getStudentById(siswaId).catch(() => null)
-        ]);
-
-        // Set Options
-        setJurusanOptions(majors.map((m: any) => ({ value: String(m.id), label: m.name })));
-        setKelasOptions(classes.map((c: any) => ({ value: String(c.id), label: c.name || `${c.grade} ${c.label}` })));
-
-        let studentToSet: Siswa | null = null;
-
-        if (studentAPI && studentAPI.id) {
-          // Map API data to Siswa interface
-          studentToSet = {
-            id: String(studentAPI.id),
-            namaSiswa: studentAPI.user?.name || studentAPI.name || '-',
-            nisn: studentAPI.nisn || '',
-            jenisKelamin: studentAPI.gender === 'L' ? 'Laki-Laki' : 'Perempuan',
-            noTelp: studentAPI.user?.phone || studentAPI.phone || '',
-            jurusan: studentAPI.class_room?.major?.name || '-',
-            jurusanId: studentAPI.class_room?.major?.id ? String(studentAPI.class_room.major.id) : '',
-            tahunAngkatan: '2023 - 2026', // Placeholder as API might not have it directly
-            kelas: studentAPI.class_room?.name || '-',
-            kelasId: studentAPI.class_id ? String(studentAPI.class_id) : '',
-            originalData: studentAPI
-          };
-        } else {
-          // Fallback to storage
-          const savedSiswa = storage.getSelectedSiswa();
-          if (savedSiswa && savedSiswa.id === siswaId) {
-            studentToSet = savedSiswa;
-          }
-        }
-
-        if (studentToSet) {
-          setSiswaData(studentToSet);
-          setOriginalData(studentToSet);
-        } else {
-          void popupAlert("Data siswa tidak ditemukan.");
-        }
-
-      } catch (error) {
-        console.error("Error loading detail siswa:", error);
-      } finally {
-        setLoading(false);
+    // Simulasi fetch data dari "backend" / localStorage
+    // GET /api/siswa/:id
+    
+    setTimeout(() => {
+      const dummyData: SiswaData = {
+        id: siswaId,
+        nisn: "0012345678",
+        namaSiswa: "Ahmad Zaky",
+        jenisKelamin: "Laki-Laki",
+        kelas: "XI RPL 1",
+        jurusan: "Rekayasa Perangkat Lunak",
+        jurusanId: "RPL",
+        tahunAngkatan: "2023-2026",
+        noTelp: "08987654321",
+        alamat: "Jl. Pendidikan No. 1, Semarang",
+        foto: "", // URL foto
+        status: "Aktif",
+        rfid: "RFID-123456",
+      };
+      
+      setFormData(dummyData);
+      setOriginalData(JSON.parse(JSON.stringify(dummyData)));
+      
+      // Split tahun angkatan
+      if (dummyData.tahunAngkatan.includes("-")) {
+        const [mulai, akhir] = dummyData.tahunAngkatan.split("-");
+        setTahunMulai(mulai);
+        setTahunAkhir(akhir);
       }
-    };
-
-    if (siswaId) {
-      fetchData();
-    }
+      
+      setLoading(false);
+    }, 500);
   }, [siswaId]);
 
-  // ==================== FORM VALIDATION ====================
-  const validateForm = (): boolean => {
-    if (!siswaData) return false;
-
-    const errors: { [key: string]: string } = {};
-
-    // Validasi nama siswa
-    if (!siswaData.namaSiswa.trim()) {
-      errors.namaSiswa = 'Nama siswa harus diisi';
-    } else if (siswaData.namaSiswa.trim().length < 3) {
-      errors.namaSiswa = 'Nama siswa minimal 3 karakter';
+  // Update formData ketika tahun diubah
+  useEffect(() => {
+    if (tahunMulai && tahunAkhir && formData) {
+      setFormData(prev => ({
+        ...prev!,
+        tahunAngkatan: `${tahunMulai}-${tahunAkhir}`
+      }));
+      setIsEditing(true);
     }
+  }, [tahunMulai, tahunAkhir]);
 
-    // Validasi NISN
-    if (!siswaData.nisn.trim()) {
-      errors.nisn = 'NISN harus diisi';
-    } else if (!/^\d{10}$/.test(siswaData.nisn)) {
-      errors.nisn = 'NISN harus 10 digit angka';
+  // ==================== INPUT HANDLERS ====================
+  const handleInputChange = (field: keyof SiswaData, value: string) => {
+    if (!formData) return;
+    
+    // Auto update jurusan label jika id berubah
+    if (field === 'jurusanId') {
+      const selectedJurusan = JURUSAN_OPTIONS.find(opt => opt.value === value);
+      setFormData({
+        ...formData,
+        jurusanId: value,
+        jurusan: selectedJurusan ? selectedJurusan.label : "",
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [field]: value,
+      });
     }
-
-    // Validasi nomor telepon (UPDATED: 12-13 digit)
-    if (siswaData.noTelp && siswaData.noTelp.trim()) {
-      // Allow empty or valid format
-      // Regex for 10-14 digits usually
-      if (!/^\d{10,14}$/.test(siswaData.noTelp) && !/^08\d{8,11}$/.test(siswaData.noTelp)) {
-        // Relaxed validation
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    
+    setIsEditing(true);
   };
 
-  // ==================== EVENT HANDLERS ====================
-
-  const handleEnableEdit = () => {
-    setIsEditMode(true);
-    setFormErrors({});
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+        setIsEditing(true);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const handleCancelEdit = () => {
-    setIsEditMode(false);
-    setSiswaData(originalData ? { ...originalData } : null); // Deep copy to avoid ref issues
-    setFormErrors({});
-  };
-
-  // Handler untuk menyimpan perubahan data
-  const handleSaveChanges = async () => {
-    if (!siswaData) return;
-
-    if (!validateForm()) {
-      void popupAlert('⚠️ Mohon perbaiki error pada form!');
+  // ==================== SAVE HANDLER ====================
+  const handleSave = () => {
+    // Validasi sederhana
+    if (!formData?.namaSiswa || !formData?.nisn) {
+      alert("Nama Siswa dan NISN wajib diisi!");
       return;
     }
 
-    try {
-      setLoading(true);
-      const { studentService } = await import('../../services/student');
-
-      // Prepare API Payload
-      const payload = {
-        name: siswaData.namaSiswa,
-        nisn: siswaData.nisn,
-        nis: siswaData.nisn,
-        class_id: parseInt(siswaData.kelasId), // Ensure integer
-        gender: siswaData.jenisKelamin === 'Laki-Laki' ? 'L' : 'P',
-        phone: siswaData.noTelp,
-        // Preserve other fields
-        username: siswaData.nisn,
-        password: siswaData.password || undefined // Only send if changed/exists
-      };
-
-      if (siswaData.originalData?.id) {
-        const updated = await studentService.updateStudent(siswaData.originalData.id, payload);
-
-        // Update local state with result
-        const updatedSiswaUI: Siswa = {
-          ...siswaData,
-          originalData: updated
-        };
-
-        setSiswaData(updatedSiswaUI);
-        setOriginalData(updatedSiswaUI);
-
-        // Update storage
-        storage.setSelectedSiswa(updatedSiswaUI);
-
-        // Callback
-        if (onUpdateSiswa) onUpdateSiswa(updatedSiswaUI);
-
-        setIsEditMode(false);
-        void popupAlert('✓ Data berhasil diperbarui!');
-      } else {
-        void popupAlert('Error: ID Siswa tidak valid');
-      }
-
-    } catch (e: any) {
-      console.error(e);
-      void popupAlert(e?.response?.data?.message || "Gagal menyimpan perubahan");
-    } finally {
-      setLoading(false);
+    // Validasi NISN (harus angka)
+    if (!/^\d+$/.test(formData.nisn)) {
+      alert("NISN harus berupa angka!");
+      return;
     }
+
+    // TODO: BACKEND - Kirim data update ke API
+    console.log("Saving data:", { ...formData, foto: previewImage || formData.foto });
+    
+    // Update original data
+    setOriginalData(formData);
+    setIsEditing(false);
+    alert("Data siswa berhasil disimpan!");
+    
+    // Kembali ke list
+    onMenuClick("siswa");
   };
 
-  const handleBack = () => {
-    if (isEditMode) {
-      // We can't use window.confirm easily with async logic, but standard confirm is fine for now
-      if (confirm('Anda sedang dalam mode edit. Yakin ingin kembali tanpa menyimpan?')) {
-        setIsEditMode(false);
-        setSiswaData(originalData);
-        onMenuClick('siswa');
+  const handleCancel = () => {
+    if (isEditing) {
+      if (window.confirm("Ada perubahan yang belum disimpan. Yakin ingin membatalkan?")) {
+        setFormData(JSON.parse(JSON.stringify(originalData)));
+        // Reset tahun angkatan states
+        if (originalData?.tahunAngkatan.includes("-")) {
+            const [mulai, akhir] = originalData.tahunAngkatan.split("-");
+            setTahunMulai(mulai);
+            setTahunAkhir(akhir);
+        }
+        setIsEditing(false);
+        setPreviewImage(null);
       }
     } else {
-      onMenuClick('siswa');
+      onMenuClick("siswa");
     }
   };
 
-  // Handler untuk perubahan field
-  const handleFieldChange = (field: keyof Siswa, value: string) => {
-    if (!siswaData) return;
-
-    const updatedSiswa = { ...siswaData };
-
-    if (field === 'jurusanId') {
-      const selectedJurusan = jurusanOptions.find(j => j.value === value);
-      updatedSiswa.jurusanId = value;
-      updatedSiswa.jurusan = selectedJurusan?.label || value;
-    } else if (field === 'kelasId') { // Handle kelas change explicitly
-      const selectedKelas = kelasOptions.find(k => k.value === value);
-      updatedSiswa.kelasId = value;
-      updatedSiswa.kelas = selectedKelas?.label || value;
-    } else {
-      // @ts-ignore
-      updatedSiswa[field] = value;
-    }
-
-    setSiswaData(updatedSiswa);
-  };
-
-  const handleGenderChange = (val: string) => {
-    if (!siswaData) return;
-    setSiswaData({ ...siswaData, jenisKelamin: val === 'L' ? 'Laki-Laki' : 'Perempuan' });
-  }
-
-  // ==================== LOADING STATE ====================
-  if (loading && !siswaData) {
+  if (loading || !formData) {
     return (
       <AdminLayout
         pageTitle="Detail Siswa"
@@ -275,22 +397,14 @@ export default function DetailSiswa({
         onMenuClick={onMenuClick}
         user={user}
         onLogout={onLogout}
+        hideBackground={false}
       >
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '400px',
-          color: '#6B7280',
-          fontSize: '18px',
-        }}>
-          Loading data siswa...
+        <div style={{ padding: "40px", textAlign: "center", color: "#64748B" }}>
+            Memuat data siswa...
         </div>
       </AdminLayout>
     );
   }
-
-  if (!siswaData) return null; // Should have alerted if not found
 
   return (
     <AdminLayout
@@ -299,501 +413,293 @@ export default function DetailSiswa({
       onMenuClick={onMenuClick}
       user={user}
       onLogout={onLogout}
-      hideBackground
+      hideBackground={false}
     >
-      <div
-        style={{
-          backgroundImage: 'url(../src/assets/Background/bgdetailgurusiswa.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          minHeight: '100vh',
-          padding: window.innerWidth < 768 ? '16px' : '24px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          paddingTop: '40px',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: '1000px',
-            width: '100%',
-            margin: '0 auto',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.95)',
-              borderRadius: '16px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-              overflow: 'hidden',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-            }}
-          >
-            {/* ============ HEADER WITH PROFILE & EDIT BUTTON ============ */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                padding: window.innerWidth < 768 ? '20px' : '28px 32px',
-                display: 'flex',
-                flexDirection: window.innerWidth < 768 ? 'column' : 'row',
-                alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
-                gap: '20px',
-                position: 'relative',
-              }}
-            >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px',
-                flex: 1,
-              }}>
-                <div
-                  style={{
-                    width: window.innerWidth < 768 ? '60px' : '70px',
-                    height: window.innerWidth < 768 ? '60px' : '70px',
-                    borderRadius: '50%',
-                    backgroundColor: '#3b82f6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    border: '3px solid rgba(255, 255, 255, 0.2)',
-                    flexShrink: 0,
-                  }}
-                >
-                  <UserIcon size={window.innerWidth < 768 ? 28 : 32} />
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <h2
-                    style={{
-                      margin: 0,
-                      fontSize: window.innerWidth < 768 ? '18px' : '22px',
-                      fontWeight: 'bold',
-                      color: 'white',
-                      marginBottom: '4px',
-                    }}
-                  >
-                    {siswaData.namaSiswa}
-                  </h2>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: window.innerWidth < 768 ? '13px' : '15px',
-                      color: '#cbd5e1',
-                      fontFamily: 'monospace',
-                      letterSpacing: '0.5px',
-                    }}
-                  >
-                    NISN: {siswaData.nisn}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action buttons - Edit/Save/Cancel */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                width: window.innerWidth < 768 ? '100%' : 'auto',
-              }}>
-                {!isEditMode ? (
-                  <button
-                    onClick={handleEnableEdit}
-                    style={{
-                      backgroundColor: '#2563EB',
-                      border: 'none',
-                      color: 'white',
-                      padding: window.innerWidth < 768 ? '10px 20px' : '10px 24px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      transition: 'all 0.2s',
-                      width: window.innerWidth < 768 ? '100%' : 'auto',
-                      justifyContent: 'center',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#1D4ED8';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#2563EB';
-                    }}
-                  >
-                    <Edit2 size={16} />
-                    Ubah Data
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleCancelEdit}
-                      style={{
-                        backgroundColor: '#6B7280',
-                        border: 'none',
-                        color: 'white',
-                        padding: window.innerWidth < 768 ? '10px 16px' : '10px 20px',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'all 0.2s',
-                        flex: window.innerWidth < 768 ? 1 : 'auto',
-                        justifyContent: 'center',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#4B5563';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#6B7280';
-                      }}
-                    >
-                      <X size={16} />
-                      Batal
-                    </button>
-                    <button
-                      onClick={handleSaveChanges}
-                      style={{
-                        backgroundColor: '#10B981',
-                        border: 'none',
-                        color: 'white',
-                        padding: window.innerWidth < 768 ? '10px 16px' : '10px 20px',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        transition: 'all 0.2s',
-                        flex: window.innerWidth < 768 ? 1 : 'auto',
-                        justifyContent: 'center',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#059669';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#10B981';
-                      }}
-                    >
-                      <Save size={16} />
-                      Simpan
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* ============ CONTENT - FORM FIELDS ============ */}
-            <div style={{
-              padding: window.innerWidth < 768 ? '20px' : '32px',
-            }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))',
-                  gap: window.innerWidth < 768 ? '16px' : '24px',
-                }}
-              >
-                {/* Nama Siswa */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    Nama Siswa
-                  </label>
-                  <input
-                    type="text"
-                    value={siswaData.namaSiswa}
-                    onChange={(e) => handleFieldChange('namaSiswa', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: formErrors.namaSiswa ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'text' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  {formErrors.namaSiswa && isEditMode && (
-                    <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>
-                      {formErrors.namaSiswa}
-                    </p>
-                  )}
-                </div>
-
-                {/* NISN */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    NISN
-                  </label>
-                  <input
-                    type="text"
-                    value={siswaData.nisn}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      handleFieldChange('nisn', value);
-                    }}
-                    disabled={!isEditMode}
-                    maxLength={10}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: formErrors.nisn ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'text' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  {formErrors.nisn && isEditMode && (
-                    <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>
-                      {formErrors.nisn}
-                    </p>
-                  )}
-                </div>
-
-                {/* Jenis Kelamin */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    Jenis Kelamin
-                  </label>
-                  <select
-                    value={siswaData.jenisKelamin === 'Laki-Laki' ? 'L' : 'P'}
-                    onChange={(e) => handleGenderChange(e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'pointer' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <option value="L">Laki-Laki</option>
-                    <option value="P">Perempuan</option>
-                  </select>
-                </div>
-
-                {/* Konsentrasi Keahlian */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    Konsentrasi Keahlian
-                  </label>
-                  <select
-                    value={siswaData.jurusanId}
-                    onChange={(e) => handleFieldChange('jurusanId', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'pointer' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    {jurusanOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Tingkatan Kelas */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    Tingkatan Kelas
-                  </label>
-                  <select
-                    value={siswaData.kelasId}
-                    onChange={(e) => handleFieldChange('kelasId', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'pointer' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    {kelasOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* No. Telp - UPDATED: 12-13 digit validation */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    No. Telepon
-                  </label>
-                  <input
-                    type="tel"
-                    value={siswaData.noTelp}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 13);
-                      handleFieldChange('noTelp', value);
-                    }}
-                    disabled={!isEditMode}
-                    placeholder="08xxxxxxxxxx"
-                    maxLength={13}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: formErrors.noTelp ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'text' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  {formErrors.noTelp && isEditMode && (
-                    <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>
-                      {formErrors.noTelp}
-                    </p>
-                  )}
-                </div>
-
-                {/* Tahun Angkatan */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    Tahun Angkatan
-                  </label>
-                  <input
-                    type="text"
-                    value={siswaData.tahunAngkatan}
-                    disabled={!isEditMode}
-                    onChange={(e) => handleFieldChange('tahunAngkatan', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      cursor: isEditMode ? 'text' : 'not-allowed',
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* ============ FOOTER BUTTON ============ */}
-              <div
-                style={{
-                  marginTop: '32px',
-                  paddingTop: '24px',
-                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                  display: 'flex',
-                  justifyContent: 'flex-start',
-                }}
-              >
-                <button
-                  onClick={handleBack}
-                  style={{
-                    backgroundColor: '#2563EB',
-                    border: 'none',
-                    color: 'white',
-                    padding: '10px 24px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1D4ED8';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2563EB';
-                  }}
-                >
-                  <ArrowLeft size={18} />
-                  Kembali
-                </button>
-              </div>
-            </div>
-          </div>
+      <div style={styles.container}>
+        {/* Header Navigation */}
+        <div style={styles.header}>
+          <button style={styles.backButton} onClick={handleCancel}>
+            <ArrowLeft size={20} />
+            Kembali ke Data Siswa
+          </button>
         </div>
+
+        {/* Profile Card Header */}
+        <div style={{
+            ...styles.card,
+            overflow: "visible"
+        }}>
+            <div style={styles.profileHeader}>
+                <div style={styles.avatarContainer}>
+                    {previewImage || formData.foto ? (
+                        <img 
+                            src={previewImage || formData.foto} 
+                            alt={formData.namaSiswa} 
+                            style={styles.avatar} 
+                        />
+                    ) : (
+                        <div style={styles.avatar}>
+                            <User size={64} />
+                        </div>
+                    )}
+                    
+                    {/* Upload button overlay */}
+                    <label 
+                        htmlFor="foto-upload"
+                        style={{
+                            position: "absolute",
+                            bottom: "0",
+                            right: "0",
+                            backgroundColor: "#3B82F6",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                            border: "2px solid white"
+                        }}
+                    >
+                        <div style={{ color: "white", fontSize: "16px" }}>+</div>
+                    </label>
+                    <input 
+                        type="file" 
+                        id="foto-upload" 
+                        accept="image/*" 
+                        onChange={handleImageChange} 
+                        style={{ display: "none" }} 
+                    />
+
+                    {/* Status Badge */}
+                    <div style={{
+                        ...styles.statusBadge,
+                        backgroundColor: formData.status === "Aktif" ? "#10B981" : "#EF4444"
+                    }} />
+                </div>
+                
+                <h2 style={styles.profileName}>{formData.namaSiswa}</h2>
+                <div style={styles.profileSubtitle}>
+                    <GraduationCap size={14} />
+                    {formData.kelas} - {formData.jurusanId}
+                </div>
+            </div>
+        </div>
+
+        {/* Form Content */}
+        <div style={styles.card}>
+            <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>Data Akademik</h3>
+            </div>
+            <div style={styles.cardBody}>
+                <div style={styles.grid}>
+                    {/* Kiri - Identitas */}
+                    <div>
+                        <div style={styles.sectionTitle}>
+                            <User size={18} /> Identitas Siswa
+                        </div>
+                        
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Nama Lengkap</label>
+                            <input
+                                type="text"
+                                style={styles.input}
+                                value={formData.namaSiswa}
+                                onChange={(e) => handleInputChange("namaSiswa", e.target.value)}
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>NISN</label>
+                            <input
+                                type="text"
+                                style={styles.input}
+                                value={formData.nisn}
+                                onChange={(e) => handleInputChange("nisn", e.target.value)}
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Jenis Kelamin</label>
+                            <div style={{ display: "flex", gap: "16px", marginTop: "8px" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px" }}>
+                                    <input
+                                        type="radio"
+                                        name="jenisKelamin"
+                                        value="Laki-Laki"
+                                        checked={formData.jenisKelamin === "Laki-Laki"}
+                                        onChange={(e) => handleInputChange("jenisKelamin", e.target.value as any)}
+                                        style={{ accentColor: "#001F3E" }}
+                                    />
+                                    Laki-Laki
+                                </label>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px" }}>
+                                    <input
+                                        type="radio"
+                                        name="jenisKelamin"
+                                        value="Perempuan"
+                                        checked={formData.jenisKelamin === "Perempuan"}
+                                        onChange={(e) => handleInputChange("jenisKelamin", e.target.value as any)}
+                                        style={{ accentColor: "#001F3E" }}
+                                    />
+                                    Perempuan
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>
+                                <QrCode size={14} style={{ display: "inline", marginRight: "6px" }} />
+                                Kode RFID
+                            </label>
+                            <input
+                                type="text"
+                                style={styles.input}
+                                value={formData.rfid || ""}
+                                onChange={(e) => handleInputChange("rfid", e.target.value)}
+                                placeholder="Scan kartu RFID..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Kanan - Akademik */}
+                    <div>
+                        <div style={styles.sectionTitle}>
+                            <GraduationCap size={18} /> Informasi Kelas
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Jurusan</label>
+                            <select
+                                style={styles.select}
+                                value={formData.jurusanId}
+                                onChange={(e) => handleInputChange("jurusanId", e.target.value)}
+                            >
+                                <option value="">Pilih Jurusan</option>
+                                {JURUSAN_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Kelas</label>
+                            <select
+                                style={styles.select}
+                                value={formData.kelas}
+                                onChange={(e) => handleInputChange("kelas", e.target.value)}
+                            >
+                                <option value="">Pilih Kelas</option>
+                                {KELAS_OPTIONS.map((kls) => (
+                                    <option key={kls} value={kls}>{kls}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                         <div style={styles.formGroup}>
+                            <label style={styles.label}>
+                                <Calendar size={14} style={{ display: "inline", marginRight: "6px" }} />
+                                Tahun Angkatan
+                            </label>
+                            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                                <select
+                                    style={styles.select}
+                                    value={tahunMulai}
+                                    onChange={(e) => setTahunMulai(e.target.value)}
+                                >
+                                    <option value="">Mulai</option>
+                                    {TAHUN_MASUK_OPTIONS.map(th => <option key={th} value={th}>{th}</option>)}
+                                </select>
+                                <span style={{ color: "#64748B" }}>s/d</span>
+                                <input
+                                    type="text"
+                                    style={{ ...styles.input, backgroundColor: "#E2E8F0", cursor: "not-allowed" }}
+                                    value={tahunAkhir}
+                                    readOnly
+                                    placeholder="Akhir"
+                                />
+                                {/* Auto-set tahun akhir usually +3 years, but here manual for now or logic elsewhere */}
+                            </div>
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Status Siswa</label>
+                            <select
+                                style={styles.select}
+                                value={formData.status}
+                                onChange={(e) => handleInputChange("status", e.target.value as any)}
+                            >
+                                <option value="Aktif">Aktif</option>
+                                <option value="Lulus">Lulus</option>
+                                <option value="Keluar">Keluar / Pindah</option>
+                                <option value="Skorsing">Skorsing</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style={styles.card}>
+            <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>Kontak & Alamat</h3>
+            </div>
+            <div style={styles.cardBody}>
+                <div style={styles.grid}>
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                            <Phone size={14} style={{ display: "inline", marginRight: "6px" }} />
+                            Nomor Telepon / WhatsApp
+                        </label>
+                        <input
+                            type="tel"
+                            style={styles.input}
+                            value={formData.noTelp}
+                            onChange={(e) => handleInputChange("noTelp", e.target.value)}
+                            placeholder="Contoh: 0812..."
+                        />
+                    </div>
+                    
+                    <div style={{ ...styles.formGroup, gridColumn: "1 / -1" }}>
+                        <label style={styles.label}>
+                            <MapPin size={14} style={{ display: "inline", marginRight: "6px" }} />
+                            Alamat Lengkap
+                        </label>
+                        <textarea
+                            style={{ ...styles.input, minHeight: "100px", resize: "vertical" }}
+                            value={formData.alamat}
+                            onChange={(e) => handleInputChange("alamat", e.target.value)}
+                            placeholder="Alamat domisili saat ini..."
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      {/* FOOTER ACTIONS */}
+      <div style={styles.footer}>
+        <button 
+            style={styles.buttonSecondary}
+            onClick={handleCancel}
+        >
+            Batal
+        </button>
+        <button 
+            style={{
+                ...styles.buttonPrimary,
+                opacity: isEditing ? 1 : 0.7,
+                cursor: isEditing ? "pointer" : "not-allowed"
+            }}
+            onClick={handleSave}
+            disabled={!isEditing}
+        >
+            <Save size={18} />
+            Simpan Perubahan
+        </button>
       </div>
     </AdminLayout>
   );

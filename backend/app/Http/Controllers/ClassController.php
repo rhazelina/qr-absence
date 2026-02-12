@@ -156,4 +156,21 @@ class ClassController extends Controller
 
         return response()->json($query->with(['student.user', 'schedule.teacher.user'])->latest()->get());
     }
+
+    public function myClassStudents(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->studentProfile || ! $user->studentProfile->class_id) {
+            return response()->json(['message' => 'Class not found'], 404);
+        }
+
+        $students = $user->studentProfile->classRoom->students()
+            ->with('user')
+            ->get()
+            ->sortBy('user.name')
+            ->values();
+
+        return response()->json($students);
+    }
 }

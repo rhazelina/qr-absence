@@ -94,6 +94,10 @@ class TeacherController extends Controller
                 'nip' => $data['nip'],
                 'homeroom_class_id' => $data['homeroom_class_id'] ?? null,
                 'subject' => $data['subject'] ?? null,
+                'jabatan' => $data['jabatan'] ?? 'Guru',
+                'bidang' => $data['bidang'] ?? null,
+                'konsentrasi_keahlian' => $data['konsentrasi_keahlian'] ?? null,
+                'kode_guru' => $data['kode_guru'] ?? null,
             ]);
         });
 
@@ -124,6 +128,10 @@ class TeacherController extends Controller
                 'homeroom_class_id' => $data['homeroom_class_id'] ?? $teacher->homeroom_class_id,
                 'subject' => $data['subject'] ?? $teacher->subject,
                 'nip' => $data['nip'] ?? $teacher->nip,
+                'jabatan' => $data['jabatan'] ?? $teacher->jabatan,
+                'bidang' => $data['bidang'] ?? $teacher->bidang,
+                'konsentrasi_keahlian' => $data['konsentrasi_keahlian'] ?? $teacher->konsentrasi_keahlian,
+                'kode_guru' => $data['kode_guru'] ?? $teacher->kode_guru,
             ]);
         });
 
@@ -240,33 +248,44 @@ class TeacherController extends Controller
             return response()->json(['message' => 'Homeroom not found'], 404);
         }
 
-        return response()->json($user->teacherProfile->homeroomClass->students->load('user'));
+        $students = $user->teacherProfile->homeroomClass->students()
+            ->with('user')
+            ->get()
+            ->sortBy('user.name')
+            ->values();
+
+        return response()->json($students);
     }
 
     public function myHomeroomAttendance(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
-            return response()->json(['message' => 'Homeroom not found'], 404);
-        }
+        try {
+            $user = $request->user();
+            if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+                return response()->json(['message' => 'Homeroom not found'], 404);
+            }
 
-        $classId = $user->teacherProfile->homeroom_class_id;
+            $classId = $user->teacherProfile->homeroom_class_id;
 
-        $query = \App\Models\Attendance::whereHas('student', function ($q) use ($classId) {
-            $q->where('class_id', $classId);
-        });
+            $query = \App\Models\Attendance::whereHas('student', function ($q) use ($classId) {
+                $q->where('class_id', $classId);
+            });
 
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
-        }
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
-        }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+            if ($request->filled('from')) {
+                $query->whereDate('date', '>=', $request->from);
+            }
+            if ($request->filled('to')) {
+                $query->whereDate('date', '<=', $request->to);
+            }
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
 
-        return response()->json($query->with(['student.user', 'schedule.subject', 'schedule.teacher.user'])->latest()->get());
+            return response()->json($query->with(['student.user', 'schedule.teacher.user'])->latest('date')->get());
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error fetching homeroom attendance: ' . $e->getMessage());
+            return response()->json(['message' => 'Internal Server Error', 'error' => $e->getMessage()], 500);
+        }
     }
 
     public function myHomeroomAttendanceSummary(Request $request): JsonResponse

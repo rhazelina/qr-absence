@@ -60,6 +60,7 @@ class TeacherScheduleDetailController extends Controller
         $attendances = Attendance::where('schedule_id', $schedule->id)
             ->whereDate('date', $today)
             ->where('attendee_type', 'student')
+            ->with('attachments')
             ->get()
             ->keyBy('student_id');
 

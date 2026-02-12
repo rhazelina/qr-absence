@@ -1,13 +1,38 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import LogoSchool from '../assets/Icon/logo smk.png';
-import Inorasi from '../assets/Icon/INORASI2.png';
 import HalamanUtama from '../assets/Icon/HalamanUtama.png';
+import settingService from '../services/setting';
 
-// Komponen: Interface untuk props LandingPage
+// ==================== INTERFACE DEFINITIONS ====================
 interface LandingPageProps {
   onRoleSelect: (role: string) => void;
 }
+
+interface SchoolData {
+  nama_sekolah: string;
+  npsn?: string;
+  jenis_sekolah?: string;
+  akreditasi?: string;
+  jalan?: string;
+  kelurahan?: string;
+  kecamatan?: string;
+  kabupaten_kota?: string;
+  provinsi?: string;
+  kode_pos?: string;
+  email?: string;
+  kepala_sekolah?: string;
+  nip_kepala_sekolah?: string;
+  nomor_telepon?: string;
+  logo_sekolah?: string;
+  maskot_sekolah?: string;
+}
+
+// ==================== DEFAULT LANDING DATA ====================
+const DEFAULT_LANDING_DATA: SchoolData = {
+  nama_sekolah: 'SMKN 2 SINGOSARI',
+  logo_sekolah: '',  // Kosong = tidak tampilin
+  maskot_sekolah: '', // Kosong = tidak tampilin
+};
 
 const ROLES = [
   { value: 'admin', label: 'Admin' },
@@ -18,15 +43,58 @@ const ROLES = [
   { value: 'guru', label: 'Guru' },
 ];
 
-// Komponen: LandingPage - Halaman utama untuk pemilihan role
+// ==================== MAIN COMPONENT ====================
 export default function LandingPage({ onRoleSelect }: LandingPageProps) {
+  // ==================== STATE MANAGEMENT ====================
   const [selectedRole, setSelectedRole] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [schoolData, setSchoolData] = useState<SchoolData>(DEFAULT_LANDING_DATA);
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownContentRef = useRef<HTMLDivElement>(null);
 
+  // ==================== LOAD SCHOOL DATA FROM BACKEND ====================
+  useEffect(() => {
+    const fetchSchoolData = async () => {
+      try {
+        const settings = await settingService.getPublicSettings();
+        if (settings) {
+          setSchoolData({
+            nama_sekolah: settings.school_name || DEFAULT_LANDING_DATA.nama_sekolah,
+            logo_sekolah: settings.school_logo_url || '',
+            maskot_sekolah: settings.school_mascot_url || '',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching school data:', error);
+        
+        // Fallback to localStorage if API fails (for backward compatibility during migration)
+        const savedData = localStorage.getItem('schoolData');
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          setSchoolData({
+            nama_sekolah: parsedData.nama_sekolah || DEFAULT_LANDING_DATA.nama_sekolah,
+            logo_sekolah: parsedData.logo_sekolah || '',
+            maskot_sekolah: parsedData.maskot_sekolah || '',
+          });
+        } else {
+          setSchoolData(DEFAULT_LANDING_DATA);
+        }
+      }
+    };
+
+    fetchSchoolData();
+
+    // ==================== LISTEN FOR SCHOOL DATA UPDATES ====================
+    window.addEventListener('schoolDataUpdated', fetchSchoolData);
+
+    return () => {
+      window.removeEventListener('schoolDataUpdated', fetchSchoolData);
+    };
+  }, []);
+
+  // ==================== HANDLE CLICK OUTSIDE DROPDOWN ====================
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -44,12 +112,13 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
     } else {
       document.removeEventListener('mousedown', handleClickOutside);
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
 
-  // Fungsi: Navigasi ke halaman login setelah memilih role
+  // ==================== HANDLE CONTINUE ====================
   const handleContinue = () => {
     if (selectedRole) {
       onRoleSelect(selectedRole);
@@ -57,15 +126,16 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
     }
   };
 
-  // Variabel: Mendapatkan label role yang dipilih, atau teks default
+  // ==================== GET SELECTED ROLE LABEL ====================
   const selectedRoleLabel =
     selectedRole
       ? ROLES.find(role => role.value === selectedRole)?.label
       : 'Masuk sebagai';
 
+  // ==================== RENDER ====================
   return (
     <>
-      {/* SECTION: Background Halaman Utama */}
+      {/* Background Halaman Utama */}
       <div
         style={{
           position: 'fixed',
@@ -77,7 +147,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
         }}
       />
 
-      {/* SECTION: Konten Utama */}
+      {/* Konten Utama */}
       <div
         style={{
           position: 'relative',
@@ -91,22 +161,24 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
           boxSizing: 'border-box',
         }}
       >
-        {/* Logo Sekolah */}
-        <img
-          src={LogoSchool}
-          alt="Logo SMK"
-          style={{
-            position: 'absolute',
-            top: '20px',
-            right: '40px',
-            width: '90px',
-            height: 'auto',
-            zIndex: 2,
-          }}
-        />
+        {/* Logo Sekolah yang Dinamis - Hanya tampil jika ada */}
+        {schoolData.logo_sekolah && (
+          <img
+            src={schoolData.logo_sekolah}
+            alt="Logo SMK"
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '40px',
+              width: '90px',
+              height: 'auto',
+              zIndex: 2,
+              objectFit: 'contain',
+            }}
+          />
+        )}
 
-
-        {/* Container > judul, logo Inorasi, dan form pemilihan role */}
+        {/* Container > judul, maskot, dan form pemilihan role */}
         <div
           style={{
             width: '100%',
@@ -117,7 +189,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
             textAlign: 'center',
           }}
         >
-          {/* Komponen: Judul Utama */}
+          {/* Judul Utama */}
           <h1
             style={{
               fontSize: 'clamp(35px, 4vw, 40px)',
@@ -131,7 +203,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
             PRESENSI PEMBELAJARAN DIGITAL
           </h1>
 
-          {/* Komponen: Subjudul (Nama Sekolah) */}
+          {/* Nama Sekolah - Dinamis dari localStorage */}
           <p
             style={{
               fontSize: 'clamp(16px, 3vw, 24px)',
@@ -141,24 +213,30 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
               letterSpacing: '1px',
             }}
           >
-            SMKN 2 SINGOSARI
+            {schoolData.nama_sekolah}
           </p>
 
-          {/* Komponen: Logo Inorasi */}
-          <img
-            src={Inorasi}
-            alt="Inorasi"
-            style={{
-              width: '100%',
-              maxWidth: '400px',
-              height: 'auto',
-              marginBottom: '32px',
-            }}
-          />
+          {/* Maskot Sekolah yang Dinamis - Hanya tampil jika ada */}
+          {schoolData.maskot_sekolah ? (
+            <img
+              src={schoolData.maskot_sekolah}
+              alt="Maskot Sekolah"
+              style={{
+                width: '100%',
+                maxWidth: '400px',
+                height: 'auto',
+                marginBottom: '32px',
+                objectFit: 'contain',
+              }}
+            />
+          ) : (
+            <div style={{ height: '100px', marginBottom: '32px' }} /> // Spacer jika kosong
+          )}
 
-          {/* SECTION: Form Pemilihan Role */}
+          {/* Form Pemilihan Role */}
           <div style={{ width: '100%', maxWidth: '400px' }}>
             <div ref={dropdownRef} style={{ marginBottom: '24px', position: 'relative' }}>
+              {/* Button Dropdown */}
               <button
                 ref={buttonRef}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -176,13 +254,22 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#002952';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#001F3F';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
                 }}
               >
                 <span>{selectedRoleLabel}</span>
                 <span style={{ marginLeft: '10px' }}>{isDropdownOpen ? '▲' : '▼'}</span>
               </button>
 
-              {/* Komponen: Dropdown Content (Daftar Role) */}
+              {/* Dropdown Content */}
               {isDropdownOpen && (
                 <div
                   ref={dropdownContentRef}
@@ -202,7 +289,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
                     boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
                   }}
                 >
-                  {/* Loop: Menampilkan semua role dari array ROLES */}
+                  {/* Loop: Menampilkan semua role */}
                   {ROLES.map(role => (
                     <button
                       key={role.value}
@@ -223,7 +310,6 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
                         transition: 'all 0.2s ease',
                         fontSize: '15px',
                       }}
-                      // Efek hover untuk item dropdown
                       onMouseEnter={(e) => {
                         if (selectedRole !== role.value) {
                           e.currentTarget.style.backgroundColor = '#f8fafc';
@@ -235,7 +321,6 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
                         }
                       }}
                     >
-                      {/* Label role */}
                       {role.label}
                     </button>
                   ))}
@@ -243,8 +328,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
               )}
             </div>
 
-            {/* Komponen: Button Lanjutkan */}
-            {/* Tampil hanya jika role telah dipilih */}
+            {/* Button Lanjutkan */}
             {selectedRole && (
               <button
                 onClick={handleContinue}
@@ -256,13 +340,12 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
                   fontSize: '18px',
                   fontWeight: 700,
                   color: '#ffffff',
-                  backgroundColor: '#001F3F', // Warna navy
+                  backgroundColor: '#001F3F',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
                   marginTop: '8px',
                   boxShadow: '0 4px 12px rgba(0, 31, 63, 0.3)',
                 }}
-                // Efek hover untuk button lanjutkan
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#002952';
                   e.currentTarget.style.transform = 'translateY(-2px)';
@@ -273,7 +356,6 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 31, 63, 0.3)';
                 }}
-                // Efek tekan untuk button lanjutkan
                 onMouseDown={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
@@ -288,38 +370,29 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
         </div>
       </div>
 
-      {/* SECTION: Styling Custom Scrollbar untuk Dropdown */}
-      {/* CSS inline untuk styling scrollbar pada dropdown */}
+      {/* Custom Scrollbar Styling */}
       <style>{`
-        /* Styling untuk scrollbar dropdown */
         div[style*="maxHeight: calc(100vh - 300px)"] {
           scrollbar-width: thin;
           scrollbar-color: #001F3F #f1f1f1;
         }
-        
-        /* Webkit browsers (Chrome, Safari, Edge) */
+
         div[style*="maxHeight: calc(100vh - 300px)"]::-webkit-scrollbar {
           width: 8px;
         }
-        
+
         div[style*="maxHeight: calc(100vh - 300px)"]::-webkit-scrollbar-track {
           background: #f1f1f1;
           border-radius: 0 10px 10px 0;
         }
-        
+
         div[style*="maxHeight: calc(100vh - 300px)"]::-webkit-scrollbar-thumb {
           background: #001F3F;
           border-radius: 4px;
         }
-        
+
         div[style*="maxHeight: calc(100vh - 300px)"]::-webkit-scrollbar-thumb:hover {
           background: #002952;
-        }
-        
-        /* Firefox */
-        div[style*="maxHeight: calc(100vh - 300px)"] {
-          scrollbar-width: thin;
-          scrollbar-color: #001F3F #f1f1f1;
         }
       `}</style>
     </>

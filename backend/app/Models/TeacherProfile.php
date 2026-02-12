@@ -14,6 +14,10 @@ class TeacherProfile extends Model
     protected $fillable = [
         'user_id',
         'nip',
+        'jabatan',
+        'bidang',
+        'konsentrasi_keahlian',
+        'kode_guru',
         'homeroom_class_id',
         'subject',
     ];

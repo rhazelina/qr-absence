@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             HomeroomTeacherSeeder::class,
             StudentSeeder::class,
             ClassOfficerSeeder::class,
+            AttendanceSeeder::class,
         ]);
     }
 }

@@ -9,6 +9,11 @@ export const API_ENDPOINTS = {
   AUTH_LOGOUT: '/api/auth/logout',
   ME: '/api/me',
 
+  // Settings
+  PUBLIC_SETTINGS: '/api/settings/public',
+  SETTINGS: '/api/settings',
+  SETTINGS_BULK: '/api/settings/bulk',
+
   // Admin
   ADMIN_SUMMARY: '/api/admin/summary',
   ATTENDANCE_SUMMARY: '/api/attendance/summary',
@@ -78,6 +83,9 @@ export const API_ENDPOINTS = {
   DASHBOARD_STUDENT: '/api/me/dashboard/summary',
   DASHBOARD_TEACHER: '/api/me/dashboard/teacher-summary',
   DASHBOARD_HOMEROOM: '/api/me/homeroom/dashboard',
+
+  // Subjects
+  SUBJECTS: '/api/subjects',
 
   // Follow-up
   STUDENTS_FOLLOW_UP: '/api/me/students/follow-up',

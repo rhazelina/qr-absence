@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateSettingRequest;
 use App\Models\Setting;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,7 +17,7 @@ class SettingController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(): JsonResponse
     {
         $settings = Setting::all()->pluck('value', 'key');
 
@@ -37,7 +38,7 @@ class SettingController extends Controller
     /**
      * Update bulk settings.
      */
-    public function bulkUpdate(Request $request)
+    public function bulkUpdate(Request $request): JsonResponse
     {
         $request->validate([
             'settings' => 'required|array',
@@ -60,7 +61,7 @@ class SettingController extends Controller
     /**
      * Update individual school settings including file upload. LGOO SEKOLAH
      */
-    public function update(UpdateSettingRequest $request)
+    public function update(UpdateSettingRequest $request): JsonResponse
     {
         $data = $request->validated();
 
@@ -123,7 +124,7 @@ class SettingController extends Controller
     /**
      * Sync settings and active context. TERMASUK LOGO SEKOLAH
      */
-    public function sync()
+    public function sync(): JsonResponse
     {
         $settings = $this->getSettingsWithUrls();
 
@@ -132,5 +133,37 @@ class SettingController extends Controller
             'semester' => \App\Models\Semester::where('active', true)->first(),
             'settings' => $settings,
         ]);
+    }
+
+    public function publicSettings(): JsonResponse
+    {
+        $keys = [
+            'school_name',
+            'school_logo',
+            'school_mascot',
+            'school_type',
+            'school_address',
+            'school_email',
+            'school_phone',
+            'school_npsn',
+            'school_accreditation'
+        ];
+
+        $settings = \App\Models\Setting::whereIn('key', $keys)->get()->pluck('value', 'key');
+
+        // Add logo and mascot URLs if they exist
+        if ($settings->has('school_logo') && $settings['school_logo']) {
+            $settings['school_logo_url'] = asset('storage/'.$settings['school_logo']);
+        } else {
+            $settings['school_logo_url'] = null;
+        }
+
+        if ($settings->has('school_mascot') && $settings['school_mascot']) {
+            $settings['school_mascot_url'] = asset('storage/'.$settings['school_mascot']);
+        } else {
+            $settings['school_mascot_url'] = null;
+        }
+
+        return response()->json($settings);
     }
 }

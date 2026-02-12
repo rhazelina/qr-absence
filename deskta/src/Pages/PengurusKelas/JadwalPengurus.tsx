@@ -1,5 +1,5 @@
 import PengurusKelasLayout from "../../component/PengurusKelas/PengurusKelasLayout";
-import JadwalImg from "../../assets/Icon/DummyJadwal.png";
+import JadwalImg from "../../assets/Icon/jadwal.jpeg";
 
 type PengurusKelasPage = "dashboard" | "jadwal-anda" | "notifikasi";
 

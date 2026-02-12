@@ -63,7 +63,7 @@ export default function KehadiranSiswa({
         const { dashboardService } = await import("../../services/dashboard");
 
         const [classes] = await Promise.all([
-          classService.getClasses({ signal: controller.signal }),
+          dashboardService.getClasses({ signal: controller.signal }),
           dashboardService.getWakaDashboardSummary({ signal: controller.signal })
         ]);
 

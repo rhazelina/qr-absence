@@ -326,6 +326,7 @@ class StudentLeavePermissionController extends Controller
                     'is_currently_active' => $isActive,
                     'reason' => $p->reason,
                     'granted_by' => $p->granter->name ?? 'N/A',
+                    'attachment_url' => $p->attachment_url,
                 ];
             });
 

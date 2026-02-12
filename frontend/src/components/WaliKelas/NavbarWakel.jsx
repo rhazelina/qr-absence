@@ -21,16 +21,16 @@ function NavbarWakel() {
 
       <div className="nav-right">
         {/* Sementara arahkan ke dashboard Guru */}
-        <NavLink to="/walikelas/dashboard" activeClassName="active">
+        <NavLink to="/walikelas/dashboard" className={({ isActive }) => (isActive ? "active" : "")}>
           Beranda
         </NavLink>
-        <NavLink to="/walikelas/datasiswa" activeClassName="active">
+        <NavLink to="/walikelas/datasiswa" className={({ isActive }) => (isActive ? "active" : "")}>
           Data Siswa
         </NavLink>
-        <NavLink to="/walikelas/riwayatkehadiran" activeClassName="active">
+        <NavLink to="/walikelas/riwayatkehadiran" className={({ isActive }) => (isActive ? "active" : "")}>
         Riwayat Kehadiran
         </NavLink>
-        <NavLink to="/walikelas/jadwalwakel" activeClassName="active">
+        <NavLink to="/walikelas/jadwalwakel" className={({ isActive }) => (isActive ? "active" : "")}>
         Jadwal
         </NavLink>
 

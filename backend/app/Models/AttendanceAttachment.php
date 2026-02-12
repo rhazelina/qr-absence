@@ -15,8 +15,19 @@ class AttendanceAttachment extends Model
         'size',
     ];
 
+    protected $appends = ['url'];
+
     public function attendance(): BelongsTo
     {
         return $this->belongsTo(Attendance::class);
+    }
+
+    public function getUrlAttribute(): string
+    {
+        try {
+            return \Illuminate\Support\Facades\Storage::temporaryUrl($this->path, now()->addMinutes(60));
+        } catch (\Throwable $e) {
+            return route('attendance.document.proxy', ['path' => $this->path]);
+        }
     }
 }

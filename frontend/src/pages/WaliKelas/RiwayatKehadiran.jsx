@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { authHelpers } from '../../utils/authHelpers';
 import './RiwayatKehadiran.css';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import attendanceService from '../../services/attendance';
 
 const RiwayatKehadiran = () => {
   // ✅ NEW: Fungsi untuk mendapatkan tanggal hari ini dalam format YYYY-MM-DD
@@ -16,8 +18,15 @@ const RiwayatKehadiran = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const [startDate, setStartDate] = useState('2026-01-01');
-  const [endDate, setEndDate] = useState('2026-01-13');
+  const getFirstDayOfMonth = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  }
+
+  const [startDate, setStartDate] = useState(getFirstDayOfMonth());
+  const [endDate, setEndDate] = useState(getTodayDate());
   const [isPeriodeOpen, setIsPeriodeOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
@@ -26,48 +35,98 @@ const RiwayatKehadiran = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   
   const [selectedMapel, setSelectedMapel] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [classInfo, setClassInfo] = useState({ nama: '' });
+  const [attendanceData, setAttendanceData] = useState([]);
 
-  const className = 'XI RPL 1';
   const todayDate = getTodayDate(); // ✅ NEW: Tanggal hari ini untuk validasi
 
-  const [attendanceData, setAttendanceData] = useState([
-    { no: 1, nisn: '00601', nama: 'Kim Andini', hadir: 10, terlambat: 0, sakit: 2, izin: 1, alpha: 2, pulang: 2, 
-      details: [
-        { tanggal: '25-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Matematika', guru: 'Alifah Diantebes Aindra S.pd', status: 'Alpha', keterangan: '' },
-        { tanggal: '24-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Matematika', guru: 'Alifah Diantebes Aindra S.pd', status: 'Alpha', keterangan: '' },
-        { tanggal: '23-05-2025', jamPelajaran: '5-8', mataPelajaran: 'Bahasa Inggris', guru: 'Siti Nurhaliza S.pd', status: 'Pulang', keterangan: 'Ada keperluan keluarga mendadak' },
-        { tanggal: '22-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Fisika', guru: 'Dr. Ahmad Hidayat', status: 'Pulang', keterangan: 'Merasa tidak enak badan' },
-        { tanggal: '21-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Kimia', guru: 'Dewi Lestari S.pd', status: 'Sakit', keterangan: 'Demam dan flu, membawa surat dokter' },
-        { tanggal: '20-05-2025', jamPelajaran: '5-8', mataPelajaran: 'Biologi', guru: 'Prof. Samsul Arifin', status: 'Sakit', keterangan: 'Masih dalam masa pemulihan dari sakit' },
-        { tanggal: '19-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Bahasa Indonesia', guru: 'Budi Santoso S.pd', status: 'Izin', keterangan: 'Mengikuti acara keluarga penting' }
-      ]
-    },
-    { no: 2, nisn: '00602', nama: 'Siti Aisyah', hadir: 10, terlambat: 1, sakit: 2, izin: 1, alpha: 1, pulang: 0,
-      details: [
-        { tanggal: '27-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Matematika', guru: 'Alifah Diantebes Aindra S.pd', status: 'Terlambat', keterangan: 'Terlambat masuk jam 07:45, macet di jalan' },
-        { tanggal: '26-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Bahasa Indonesia', guru: 'Budi Santoso S.pd', status: 'Sakit', keterangan: 'Demam tinggi, istirahat di rumah' },
-        { tanggal: '25-05-2025', jamPelajaran: '5-8', mataPelajaran: 'Kimia', guru: 'Dewi Lestari S.pd', status: 'Sakit', keterangan: 'Masih dalam masa pemulihan sakit' },
-        { tanggal: '24-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Matematika', guru: 'Alifah Diantebes Aindra S.pd', status: 'Izin', keterangan: 'Menghadiri acara keluarga di luar kota' },
-        { tanggal: '23-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Sejarah', guru: 'Rina Kusuma S.pd', status: 'Alpha', keterangan: '' }
-      ]
-    },
-    { no: 3, nisn: '00603', nama: 'Budi Santoso', hadir: 11, terlambat: 2, sakit: 1, izin: 2, alpha: 0, pulang: 1,
-      details: [
-        { tanggal: '28-05-2025', jamPelajaran: '5-8', mataPelajaran: 'Bahasa Inggris', guru: 'Siti Nurhaliza S.pd', status: 'Terlambat', keterangan: 'Terlambat masuk jam 08:10, ban sepeda bocor' },
-        { tanggal: '27-05-2025', jamPelajaran: '1-4', mataPelajaran: 'PKN', guru: 'Hendra Wijaya S.pd', status: 'Sakit', keterangan: 'Flu dan batuk, membawa surat dokter' },
-        { tanggal: '26-05-2025', jamPelajaran: '5-8', mataPelajaran: 'Seni Budaya', guru: 'Nina Karlina S.pd', status: 'Izin', keterangan: 'Keperluan administrasi penting' },
-        { tanggal: '25-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Olahraga', guru: 'Tono Sukirman S.pd', status: 'Izin', keterangan: 'Mengikuti lomba tingkat kabupaten' },
-        { tanggal: '24-05-2025', jamPelajaran: '5-8', mataPelajaran: 'Bahasa Jawa', guru: 'Sri Mulyani S.pd', status: 'Pulang', keterangan: 'Pusing dan mual setelah olahraga' },
-        { tanggal: '23-05-2025', jamPelajaran: '1-4', mataPelajaran: 'Matematika', guru: 'Alifah Diantebes Aindra S.pd', status: 'Terlambat', keterangan: 'Terlambat masuk jam 07:30, hujan deras' }
-      ]
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+        setLoading(true);
+        const role = authHelpers.getRole();
+        let homeroom, students, attendances;
+
+        if (role === 'student' || role === 'class_officer') {
+            homeroom = await attendanceService.getStudentClassDashboard();
+            students = await attendanceService.getMyClassStudents();
+            attendances = await attendanceService.getMyClassAttendance({ params: { from: startDate, to: endDate } });
+        } else {
+            homeroom = await attendanceService.getHomeroom();
+            // Parallel fetch for teacher
+            const [s, a] = await Promise.all([
+                attendanceService.getHomeroomStudents(),
+                attendanceService.getHomeroomAttendance({ params: { from: startDate, to: endDate } })
+            ]);
+            students = s;
+            attendances = a;
+        }
+        
+        setClassInfo({ nama: homeroom.name || `${homeroom.grade} ${homeroom.major?.code || ''} ${homeroom.label}` });
+
+        processData(students, attendances);
+    } catch (error) {
+        console.error("Error fetching history:", error);
+        // Fallback or alert
+    } finally {
+        setLoading(false);
     }
-  ]);
+  };
+
+  const processData = (students, attendances) => {
+    const processed = students.map((student, index) => {
+        const studentAttendances = attendances.filter(a => a.student_id === student.id);
+        
+        const details = studentAttendances.map(a => ({
+            tanggal: new Date(a.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+            jamPelajaran: a.schedule?.start_time ? `${a.schedule.start_time.slice(0,5)} - ${a.schedule.end_time.slice(0,5)}` : '-',
+            mataPelajaran: a.schedule?.subject_name || '-',
+            guru: a.schedule?.teacher?.user?.name || '-',
+            status: mapStatus(a.status),
+            keterangan: a.reason || (a.status === 'present' ? 'Hadir' : '-')
+        }));
+
+        const counts = {
+            hadir: details.filter(d => d.status === 'Hadir').length,
+            terlambat: details.filter(d => d.status === 'Terlambat').length,
+            sakit: details.filter(d => d.status === 'Sakit').length,
+            izin: details.filter(d => d.status === 'Izin').length,
+            alpha: details.filter(d => d.status === 'Alpha').length,
+            pulang: details.filter(d => d.status === 'Pulang').length,
+        };
+
+        return {
+            no: index + 1,
+            nisn: student.nis,
+            nama: student.user.name,
+            ...counts,
+            details: details
+        };
+    });
+    setAttendanceData(processed);
+  };
+
+  const mapStatus = (status) => {
+      const map = {
+          'present': 'Hadir',
+          'late': 'Terlambat',
+          'sick': 'Sakit',
+          'permission': 'Izin',
+          'absent': 'Alpha',
+          'leave_early': 'Pulang'
+      };
+      return map[status] || status;
+  };
 
   const daftarMapel = useMemo(() => {
     const mapelSet = new Set();
     attendanceData.forEach(student => {
       student.details?.forEach(detail => {
-        if (detail.mataPelajaran) {
+        if (detail.mataPelajaran !== '-') {
           mapelSet.add(detail.mataPelajaran);
         }
       });
@@ -104,12 +163,7 @@ const RiwayatKehadiran = () => {
       return {
         ...student,
         details: filteredDetails,
-        hadir: recap.hadir,
-        terlambat: recap.terlambat,
-        sakit: recap.sakit,
-        izin: recap.izin,
-        alpha: recap.alpha,
-        pulang: recap.pulang
+        ...recap
       };
     });
   }, [attendanceData, selectedMapel]);
@@ -166,6 +220,11 @@ const RiwayatKehadiran = () => {
     setEndDate(val);
   };
 
+  const applyPeriodFilter = () => {
+      setIsPeriodeOpen(false);
+      fetchData();
+  };
+
   const handleEditChange = (field, value) => {
     const numValue = Number(value);
     if (numValue < 0) return;
@@ -216,7 +275,7 @@ const RiwayatKehadiran = () => {
 
     ws.mergeCells('A2:I2');
     const classCell = ws.getCell('A2');
-    classCell.value = `Kelas: ${className}`;
+    classCell.value = `Kelas: ${classInfo.nama}`;
     classCell.font = { bold: true, size: 12 };
     classCell.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.getRow(2).height = 25;
@@ -343,8 +402,8 @@ const RiwayatKehadiran = () => {
 
     const buf = await wb.xlsx.writeBuffer();
     const fileName = selectedMapel 
-      ? `Riwayat_Kehadiran_${className}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.xlsx`
-      : `Riwayat_Kehadiran_${className}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      ? `Riwayat_Kehadiran_${classInfo.nama}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.xlsx`
+      : `Riwayat_Kehadiran_${classInfo.nama}_${new Date().toISOString().split('T')[0]}.xlsx`;
     saveAs(new Blob([buf]), fileName);
     setIsExportOpen(false);
   };
@@ -362,7 +421,7 @@ const RiwayatKehadiran = () => {
       doc.text('RIWAYAT KEHADIRAN SISWA', 148.5, 15, { align: 'center' });
       
       doc.setFontSize(12);
-      doc.text(`Kelas: ${className}`, 148.5, 23, { align: 'center' });
+      doc.text(`Kelas: ${classInfo.nama}`, 148.5, 23, { align: 'center' });
       
       doc.setFontSize(10);
       doc.setFont(undefined, 'normal');
@@ -492,8 +551,8 @@ const RiwayatKehadiran = () => {
       }
 
       const fileName = selectedMapel
-        ? `Riwayat_Kehadiran_${className}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.pdf`
-        : `Riwayat_Kehadiran_${className}_${new Date().toISOString().split('T')[0]}.pdf`;
+        ? `Riwayat_Kehadiran_${classInfo.nama}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.pdf`
+        : `Riwayat_Kehadiran_${classInfo.nama}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
       setIsExportOpen(false);
     } catch (error) {
@@ -526,7 +585,6 @@ const RiwayatKehadiran = () => {
                   <div className="date-range-inputs">
                     <div>
                       <label>Dari</label>
-                      {/* ✅ MODIFIED: Tambahkan atribut max untuk membatasi tanggal */}
                       <input 
                         type="date" 
                         value={startDate} 
@@ -536,7 +594,6 @@ const RiwayatKehadiran = () => {
                     </div>
                     <div>
                       <label>Sampai</label>
-                      {/* ✅ MODIFIED: Tambahkan atribut max untuk membatasi tanggal */}
                       <input 
                         type="date" 
                         value={endDate} 
@@ -546,7 +603,7 @@ const RiwayatKehadiran = () => {
                       />
                     </div>
                   </div>
-                  <button className="apply-date-btn" onClick={() => setIsPeriodeOpen(false)}>Terapkan</button>
+                  <button className="apply-date-btn" onClick={applyPeriodFilter}>Terapkan</button>
                 </div>
               )}
             </div>
@@ -565,7 +622,7 @@ const RiwayatKehadiran = () => {
             </div>
 
             <div className="class-display-box">
-              <b>{className}</b>
+              <b>{loading ? 'Memuat...' : classInfo.nama}</b>
             </div>
           </div>
 
@@ -653,6 +710,9 @@ const RiwayatKehadiran = () => {
         </div>
 
         <div className="student-data-table">
+          {loading ? (
+             <div style={{textAlign: 'center', padding: '2rem'}}>Memuat data riwayat...</div>
+          ) : (
           <table className="data-table">
             <thead>
               <tr>
@@ -687,12 +747,14 @@ const RiwayatKehadiran = () => {
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
                     </button>
-                    <button className="edit-btn" onClick={() => openEditModal(row)}>Ubah</button>
+                    {/* Hide edit button since we don't support history editing yet */}
+                    {/* <button className="edit-btn" onClick={() => openEditModal(row)}>Ubah</button> */}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 
@@ -714,55 +776,8 @@ const RiwayatKehadiran = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label>Terlambat</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={editRow?.terlambat || 0} 
-                  onChange={e => handleEditChange('terlambat', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Sakit</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={editRow?.sakit || 0} 
-                  onChange={e => handleEditChange('sakit', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Alpha</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={editRow?.alpha || 0} 
-                  onChange={e => handleEditChange('alpha', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Izin</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={editRow?.izin || 0} 
-                  onChange={e => handleEditChange('izin', e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Pulang</label>
-                <input 
-                  type="number" 
-                  min="0"
-                  value={editRow?.pulang || 0} 
-                  onChange={e => handleEditChange('pulang', e.target.value)}
-                />
-              </div>
+              {/* ... other fields ... */}
+              {/* Simplified for now since we hid the button */}
 
               <div className="modal-footer">
                 <button className="cancel-btn" onClick={cancelEdit}>Batal</button>
@@ -798,14 +813,14 @@ const RiwayatKehadiran = () => {
                     {selectedStudent.details && selectedStudent.details.length > 0 ? (
                       selectedStudent.details.map((detail, idx) => (
                         <tr key={idx}>
-                          <td>{idx + 1}.</td>
+                          <td>{idx + 1}</td>
                           <td>{detail.tanggal}</td>
                           <td>{detail.jamPelajaran}</td>
                           <td>{detail.mataPelajaran}</td>
                           <td>{detail.guru}</td>
                           <td>{detail.keterangan || '-'}</td>
                           <td>
-                            <span className={`status-badge status-${detail.status.toLowerCase()}`}>
+                            <span className={`status-badge ${detail.status.toLowerCase()}`}>
                               {detail.status}
                             </span>
                           </td>
@@ -813,14 +828,15 @@ const RiwayatKehadiran = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                          Tidak ada data untuk mata pelajaran yang dipilih
-                        </td>
+                        <td colSpan="7" style={{textAlign: 'center'}}>Tidak ada data detail untuk {selectedMapel || 'periode ini'}</td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
+            </div>
+            <div className="modal-footer">
+              <button className="close-btn" onClick={closeDetailModal}>Tutup</button>
             </div>
           </div>
         </div>

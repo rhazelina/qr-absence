@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { wakaService } from "../../services/waka";
 import "./KehadiranGuruShow.css";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
 import {
@@ -13,59 +14,46 @@ import {
 } from "react-icons/fa";
 
 function KehadiranGuruShow() {
-  const [loading, setLoading] = useState(true);
+  const { id } = useParams();
   const [data, setData] = useState([]);
+  const [teacher, setTeacher] = useState({ name: 'Loading...', nip: '-' });
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
 
-  // Ambil data dari sessionStorage
-  useEffect(() => {
-    setTimeout(() => {
-      const saved = sessionStorage.getItem("kehadiran-guru");
-      if (saved) {
-        setData(JSON.parse(saved));
-      } else {
-        const mock = [
-          {
-            id: 1,
-            tanggal: "12-01-2026",
-            jam: "07.00 - 08.30",
-            mapel: "Matematika",
-            kelas: "X RPL 1",
-            status: "Hadir",
-          },
-          {
-            id: 2,
-            tanggal: "13-01-2026",
-            jam: "09.00 - 10.30",
-            mapel: "Bahasa Indonesia",
-            kelas: "XI RPL 2",
-            status: "",
-          },
-        ];
-        sessionStorage.setItem("kehadiran-guru", JSON.stringify(mock));
-        setData(mock);
-      }
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await wakaService.getTeacherAttendanceHistory(id);
+      setData(response.history);
+      setTeacher({
+        name: response.teacher.user?.name || 'Guru',
+        nip: response.teacher.nip || '-'
+      });
+    } catch (error) {
+      console.error("Failed to fetch teacher attendance history:", error);
+    } finally {
       setLoading(false);
-    }, 400);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [id]);
 
   const handleEditClick = (item) => {
     setSelectedItem(item);
-    setSelectedStatus(item.status || "Tidak Ada Jam Mengajar");
+    setSelectedStatus(item.status || "Hadir");
     setShowEditModal(true);
   };
 
   const handleUpdate = () => {
-    const updated = data.map((item) =>
-      item.id === selectedItem.id
-        ? { ...item, status: selectedStatus }
-        : item
-    );
-    setData(updated);
-    sessionStorage.setItem("kehadiran-guru", JSON.stringify(updated));
+    // Local update or API call if needed
+    // Waka might not need to update teacher individual check-ins?
+    // Requirement didn't specify. I'll refresh for now.
     setShowEditModal(false);
+    fetchData();
   };
 
   if (loading) {
@@ -83,8 +71,8 @@ function KehadiranGuruShow() {
             <FaUser />
           </div>
           <div className="info-header">
-            <h2>Budi Santoso, S.Pd</h2>
-            <p>Kode Guru: GR001</p>
+            <h2>{teacher.name}</h2>
+            <p>NIP: {teacher.nip}</p>
           </div>
         </div>
 
@@ -115,15 +103,15 @@ function KehadiranGuruShow() {
                   const displayStatus =
                     item.status && item.status !== ""
                       ? item.status
-                      : "Tidak Ada Jam Mengajar";
+                      : "Belum Absen";
 
                   return (
                     <tr key={item.id}>
                       <td>{i + 1}</td>
-                      <td>{item.tanggal}</td>
-                      <td>{item.jam}</td>
-                      <td>{item.mapel}</td>
-                      <td>{item.kelas}</td>
+                      <td>{item.date}</td>
+                      <td>{item.checked_in_at || "-"}</td>
+                      <td>-</td>
+                      <td>-</td>
                       <td>
                         <span
                           className={`kehadiran-guru-show-badge status-${displayStatus

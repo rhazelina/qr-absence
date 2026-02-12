@@ -1,23 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Eye, X, ZoomIn } from 'lucide-react';
+import { Calendar, Eye, X, ZoomIn, Loader } from 'lucide-react';
 import './Riwayat.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
-import { dummyAttendanceRecords } from '../../data/attendanceData';
+import { getMyAttendanceHistory } from '../../services/attendance';
 
-// Profile siswa yang login (sama dengan DashboardSiswa.jsx)
-const currentStudent = {
-  studentId: 3,  // Budi Santoso
-  name: 'Budi Santoso',
-  nis: '2024003'
-};
-
-function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
-  // Set default tanggal awal bulan dan hari ini
+function Riwayat() {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   
   const [startDate, setStartDate] = useState(firstDayOfMonth.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -25,6 +20,57 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const data = await getMyAttendanceHistory({ 
+                params: { 
+                    from: startDate, 
+                    to: endDate,
+                    per_page: 100 
+                } 
+            });
+            // Map API response to component format
+            // data is { data: [...], links: ..., meta: ... } from Resource collection
+            const records = (data.data || []).map(item => ({
+                id: item.id,
+                recordDate: item.date,
+                date: new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+                period: item.schedule ? `${item.schedule.start_time?.slice(0,5)} - ${item.schedule.end_time?.slice(0,5)}` : '-',
+                subject: item.schedule?.subject_name || '-',
+                teacher: item.schedule?.teacher?.user?.name || '-', // Nested relation might need adjustment based on valid API response
+                status: item.status_label || item.status, // Use label from resource
+                rawStatus: item.status,
+                reason: item.reason,
+                proofImage: item.reason_file_url || (item.attachments && item.attachments.length > 0 ? item.attachments[0].file_url : null),
+                statusColor: getStatusColor(item.status)
+            }));
+            setAttendanceRecords(records);
+        } catch (error) {
+            console.error("Failed to fetch attendance history:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchData();
+  }, [startDate, endDate]);
+
+  const getStatusColor = (status) => {
+      switch(status) {
+          case 'present': return 'hadir';
+          case 'late': return 'terlambat';
+          case 'excused':
+          case 'izin': return 'izin';
+          case 'sick': return 'sakit';
+          case 'absent': return 'alpha';
+          case 'return':
+          case 'pulang': return 'pulang';
+          default: return 'alpha';
+      }
+  };
 
   // Format tanggal untuk ditampilkan dengan format dd/mm/yy
   const formatDisplayDate = (dateString) => {
@@ -42,7 +88,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
     
     // Jika tanggal akhir lebih kecil dari tanggal awal yang baru, update tanggal akhir
     if (new Date(endDate) < new Date(newStartDate)) {
-      setEndDate(newStartDate);
+      setEndDate(newEndDate);
     }
   };
 
@@ -55,29 +101,6 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
     }
   };
 
-  // Filter records berdasarkan rentang tanggal DAN siswa yang login
-  const filterRecords = (records) => {
-    return records.filter(record => {
-      if (!record.recordDate) return false;
-      
-      // Filter berdasarkan studentId
-      if (record.studentId !== currentStudent.studentId) return false;
-      
-      const recordDate = new Date(record.recordDate);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      
-      // Set waktu ke 00:00:00 untuk perbandingan yang akurat
-      recordDate.setHours(0, 0, 0, 0);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(0, 0, 0, 0);
-      
-      return recordDate >= start && recordDate <= end;
-    });
-  };
-
-  const filteredRecords = filterRecords(attendanceRecords);
-
   // Hitung statistik berdasarkan data yang difilter
   const calculateStats = () => {
     const stats = {
@@ -89,10 +112,20 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
       pulang: 0
     };
 
-    filteredRecords.forEach(record => {
-      const status = record.status.toLowerCase();
-      if (stats.hasOwnProperty(status)) {
-        stats[status]++;
+    attendanceRecords.forEach(record => {
+      const status = record.rawStatus.toLowerCase();
+      // Map backend status to stats keys
+      let key = status;
+      if (status === 'excused') key = 'izin';
+      if (status === 'return') key = 'pulang';
+      if (status === 'absent') key = 'alpha'; // Ensure absent maps to alpha
+
+      if (stats.hasOwnProperty(key)) {
+        stats[key]++;
+      } else if (key === 'present') {
+          stats.hadir++;
+      } else if (key === 'late') {
+          stats.terlambat++;
       }
     });
 
@@ -193,7 +226,12 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
         </div>
 
         {/* Table Card */}
-        {filteredRecords.length > 0 ? (
+        {loading ? (
+             <div className="loading-state">
+                 <Loader className="animate-spin" size={32} />
+                 <p>Memuat data...</p>
+             </div>
+        ) : attendanceRecords.length > 0 ? (
           <div className="table-card">
             {/* Table Header */}
             <div className="table-header">
@@ -207,7 +245,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
             </div>
 
             {/* Table Rows */}
-            {filteredRecords.map((record, index) => (
+            {attendanceRecords.map((record, index) => (
               <div key={index} className="table-row">
                 <div className="table-cell">{index + 1}</div>
                 <div className="table-cell">{record.date}</div>

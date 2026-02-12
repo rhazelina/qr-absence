@@ -1,5 +1,5 @@
 import WalikelasLayout from '../../component/Walikelas/layoutwakel';
-import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
+import Jadwal from "../../assets/Icon/jadwal.jpeg";
 import { User } from "lucide-react";
 
 interface JadwalPengurusProps {
@@ -27,7 +27,7 @@ export default function JadwalPengurus({
     const kelasInfo = {
         namaKelas: namaKelas || "-",
         waliKelas: waliKelas || "-",
-        jadwalImage: jadwalImage || DummyJadwal
+        jadwalImage: jadwalImage || Jadwal
     };
 
     return (
@@ -107,7 +107,7 @@ export default function JadwalPengurus({
                 </div>
 
                 {/* Tombol Download/View Full */}
-                {kelasInfo.jadwalImage !== DummyJadwal && (
+                {kelasInfo.jadwalImage !== Jadwal && (
                     <div style={{ display: "flex", justifyContent: "center" }}>
                         <a
                             href={kelasInfo.jadwalImage}

@@ -13,6 +13,7 @@ import "./DashboardWaka.css";
 import { useNavigate } from "react-router-dom";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
 import { authService } from '../../services/auth';
+import { wakaService } from '../../services/waka';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -20,49 +21,100 @@ export default function DashboardWaka() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
 
+  const [loading, setLoading] = useState(true);
+  const [semesters, setSemesters] = useState([]);
+  const [selectedSemester, setSelectedSemester] = useState("");
+  const [statistik, setStatistik] = useState({
+    hadir: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0,
+    pulang: 0,
+  });
+  const [chartData, setChartData] = useState({
+    labels: [],
+    datasets: []
+  });
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const statistik = {
-    hadir: 120,
-    izin: 15,
-    sakit: 10,
-    alpha: 5,
-    pulang: 8,
-  };
+  // Fetch Semesters on mount
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const semesterData = await wakaService.getSemesters();
+        const list = semesterData.data || [];
+        setSemesters(list);
+        
+        // Find active semester
+        const active = list.find(s => s.active);
+        if (active) {
+          setSelectedSemester(active.id);
+        } else if (list.length > 0) {
+          setSelectedSemester(list[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching semesters:", error);
+      }
+    };
+    fetchInitialData();
+  }, []);
 
-  const data = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"],
-    datasets: [
-      {
-        label: "Hadir",
-        data: [30, 35, 28, 27, 26, 29, 31, 30, 28, 27, 26, 25],
-        backgroundColor: "#1FA83D",
-      },
-      {
-        label: "Izin",
-        data: [5, 4, 3, 3, 4, 3, 2, 3, 4, 3, 2, 2],
-        backgroundColor: "#d8bf1a",
-      },
-      {
-        label: "Sakit",
-        data: [4, 3, 2, 1, 2, 2, 3, 2, 1, 2, 1, 1],
-        backgroundColor: "#9A0898",
-      },
-      {
-        label: "Alpha",
-        data: [2, 1, 2, 0, 1, 1, 0, 1, 2, 1, 0, 1],
-        backgroundColor: "#D90000",
-      },
-      {
-        label: "Pulang",
-        data: [3, 2, 1, 2, 3, 2, 2, 3, 2, 1, 2, 1],
-        backgroundColor: "#FF5F1A",
-      },
-    ],
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!selectedSemester && semesters.length > 0) return;
+
+      setLoading(true);
+      try {
+        const data = await wakaService.getDashboardSummary({ 
+          semester_id: selectedSemester 
+        });
+        setStatistik(data.statistik);
+
+        const labels = data.trend.map(item => item.month);
+        
+        setChartData({
+          labels: labels,
+          datasets: [
+            {
+              label: "Hadir",
+              data: data.trend.map(item => item.present),
+              backgroundColor: "#1FA83D",
+            },
+            {
+              label: "Izin",
+              data: data.trend.map(item => item.izin),
+              backgroundColor: "#d8bf1a",
+            },
+            {
+              label: "Sakit",
+              data: data.trend.map(item => item.sick),
+              backgroundColor: "#9A0898",
+            },
+            {
+              label: "Alpha",
+              data: data.trend.map(item => item.absent),
+              backgroundColor: "#D90000",
+            },
+            {
+              label: "Pulang",
+              data: data.trend.map(item => item.return),
+              backgroundColor: "#FF5F1A",
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedSemester]);
 
   const tanggal = now.toLocaleDateString("id-ID", {
     weekday: "long",
@@ -86,6 +138,10 @@ export default function DashboardWaka() {
   };
 
   const jam = now.toLocaleTimeString("id-ID");
+
+  if (loading) {
+    return <div className="loading-state">Loading...</div>;
+  }
 
   return (
     <div className="dashboard-page">
@@ -119,7 +175,20 @@ export default function DashboardWaka() {
             <div className="dashboard-datebox">
               <div className="dashboard-date">{tanggal}</div>
               <div className="dashboard-clock">{jam}</div>
-              <div className="dashboard-semester">Semester Genap</div>
+              <div className="dashboard-semester">
+                <select 
+                  value={selectedSemester} 
+                  onChange={(e) => setSelectedSemester(e.target.value)}
+                  className="semester-select"
+                >
+                  <option value="">Pilih Semester</option>
+                  {semesters.map(s => (
+                    <option key={s.id} value={s.id}>
+                      Semester {s.name} {s.school_year?.name} {s.active ? '(Aktif)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* MINI STATS */}
@@ -135,7 +204,7 @@ export default function DashboardWaka() {
           {/* CHART */}
           <div className="dashboard-chart">
             <Bar
-              data={data}
+              data={chartData}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,

@@ -17,9 +17,11 @@ export const authService = {
         // Store token in storage
         this.setToken(token);
 
-        if (response.data.user && response.data.user.role) {
+        if (response.data.user) {
             const { normalizeRole } = await import('../utils/roleMapping');
-            response.data.user.role = normalizeRole(response.data.user.role);
+            // Backend might send role or user_type
+            const roleToNormalize = response.data.user.role || response.data.user.user_type || '';
+            response.data.user.role = normalizeRole(roleToNormalize);
         }
 
         return response.data;
@@ -46,10 +48,10 @@ export const authService = {
     async getMe(): Promise<User> {
         const response = await apiClient.get<User>('/api/me');
         
-        if (response.data.role) {
-            const { normalizeRole } = await import('../utils/roleMapping');
-            response.data.role = normalizeRole(response.data.role);
-        }
+        const { normalizeRole } = await import('../utils/roleMapping');
+        // Backend might send role or user_type
+        const roleToNormalize = response.data.role || response.data.user_type || '';
+        response.data.role = normalizeRole(roleToNormalize);
         
         return response.data;
     },

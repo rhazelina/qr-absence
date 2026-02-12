@@ -19,6 +19,7 @@ function DataSiswa() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMajor, setSelectedMajor] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState('');
 
   const [editData, setEditData] = useState(null);
   const fileInputRef = React.useRef(null);
@@ -53,15 +54,16 @@ function DataSiswa() {
     return students.filter(student => {
       const searchLower = searchQuery.toLowerCase();
       const matchSearch =
-        (student.user?.name || '').toLowerCase().includes(searchLower) ||
+        (student.name || '').toLowerCase().includes(searchLower) ||
         (student.nis || '').toLowerCase().includes(searchLower) ||
         (student.nisn || '').toLowerCase().includes(searchLower);
 
-      const matchMajor = !selectedMajor || student.classRoom?.major_id === parseInt(selectedMajor);
+      const matchMajor = !selectedMajor || student.major_id === parseInt(selectedMajor);
+      const matchLevel = !selectedLevel || (student.class_name && student.class_name.startsWith(selectedLevel));
 
-      return matchSearch && matchMajor;
+      return matchSearch && matchMajor && matchLevel;
     });
-  }, [students, searchQuery, selectedMajor]);
+  }, [students, searchQuery, selectedMajor, selectedLevel]);
 
   // ADD / UPDATE DATA
   const handleAddOrUpdate = async (formData) => {
@@ -155,9 +157,9 @@ function DataSiswa() {
 
     const exportData = students.map((student, index) => ({
       'No': index + 1,
-      'Nama Siswa': student.user?.name || student.nama,
+      'Nama Siswa': student.name || student.nama,
       'NISN': student.nis || student.nisn,
-      'Kelas': student.classRoom?.name || 'Belum ada kelas'
+      'Kelas': student.class_name || 'Belum ada kelas'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -194,9 +196,9 @@ function DataSiswa() {
 
     const tableData = students.map((student, index) => [
       index + 1,
-      student.user?.name || student.nama,
+      student.name || student.nama,
       student.nis || student.nisn,
-      student.classRoom?.name || 'Belum ada kelas'
+      student.class_name || 'Belum ada kelas'
     ]);
 
     autoTable(doc, {
@@ -331,6 +333,17 @@ function DataSiswa() {
                 <option key={major.id} value={major.id}>{major.name}</option>
               ))}
             </select>
+
+            <label>Kelas:</label>
+            <select
+              value={selectedLevel}
+              onChange={(e) => setSelectedLevel(e.target.value)}
+            >
+              <option value="">Semua Kelas</option>
+              <option value="X">X</option>
+              <option value="XI">XI</option>
+              <option value="XII">XII</option>
+            </select>
             <button
               className="btn-tambah"
               onClick={() => {
@@ -460,9 +473,9 @@ function DataSiswa() {
                 filteredStudents.map((student, index) => (
                   <tr key={student.id}>
                     <td>{index + 1}</td>
-                    <td>{student.user?.name || student.nama}</td>
+                    <td>{student.name || student.nama}</td>
                     <td>{student.nis || student.nisn}</td>
-                    <td>{student.classRoom?.name || <span className="text-muted" style={{ fontStyle: 'italic' }}>Belum ada kelas</span>}</td>
+                    <td>{student.class_name || <span className="text-muted" style={{ fontStyle: 'italic' }}>Belum ada kelas</span>}</td>
                     <td className="aksi-cell">
                       <button
                         className="aksi edit"

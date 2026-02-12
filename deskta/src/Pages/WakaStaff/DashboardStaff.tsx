@@ -77,10 +77,6 @@ const PAGE_TITLES: Record<WakaPage, string> = {
   "daftar-ketidakhadiran": "Daftar Ketidakhadiran",
 };
 
-// Dummy data updated for Monthly view (Mon-Fri) with 5 categories sesuai gambar
-
-
-
 
 const statCards = [
   { label: "Tepat Waktu", key: "hadir", color: "#1FA83D" },

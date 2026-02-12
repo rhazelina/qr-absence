@@ -99,7 +99,7 @@ export const dashboardService = {
         // Special handling for mapping if backend uses different keys
         // Looking at Attendance model, status is 'present', 'absent', 'sick', 'excused'
         const sickItem = statusSummary.find((i: any) => i.status === 'sick');
-        if (sickItem) summary.sick = parseInt(sickItem.total);
+        if (sickItem) summary.sick = typeof sickItem.total === 'string' ? parseInt(sickItem.total) : sickItem.total;
 
         return summary;
     },
@@ -251,7 +251,7 @@ export const dashboardService = {
      * Revoke QR code (for pengurus kelas)
      */
     async revokeQRCode(token: string, options?: AxiosRequestConfig): Promise<void> {
-        await apiClient.post(`/qrcodes/${token}/revoke`, {}, options);
+        await apiClient.post(`/api/qrcodes/${token}/revoke`, {}, options);
     },
 
     /**
@@ -265,7 +265,7 @@ export const dashboardService = {
      * Scan Attendance
      */
     async scanAttendance(token: string, device_id?: number, options?: AxiosRequestConfig): Promise<any> {
-        return (await apiClient.post('/attendance/scan', { token, device_id }, options)).data;
+        return (await apiClient.post('/api/attendance/scan', { token, device_id }, options)).data;
     },
 
     /**
@@ -298,5 +298,20 @@ export const dashboardService = {
      */
     async scanStudentQR(token: string, options?: AxiosRequestConfig): Promise<any> {
         return (await apiClient.post(API_ENDPOINTS.ATTENDANCE_SCAN_STUDENT, { token }, options)).data;
+    },
+
+    /**
+     * Get my attendance summary
+     */
+    async getMyAttendanceSummary(params?: AttendanceQueryParams, options?: AxiosRequestConfig): Promise<AttendanceSummary> {
+        return this.getMyAttendanceHistory(params, options) as any;
+    },
+
+    /**
+     * Get all classes (for waka)
+     */
+    async getClasses(options?: AxiosRequestConfig): Promise<Class[]> {
+        const response = await apiClient.get<Class[]>(API_ENDPOINTS.CLASSES, options);
+        return response.data;
     },
 };

@@ -1,5 +1,6 @@
 import "./KehadiranSiswaRekap.css";
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
 import { FaSchool } from "react-icons/fa6";
 import { FaArrowLeft, FaCalendar, FaEdit, FaFileExport, FaUser, FaFilePdf, FaFileExcel, FaEye } from "react-icons/fa";
@@ -7,58 +8,13 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { wakaService } from "../../services/waka";
+import apiClient from "../../services/api";
 
 export default function KehadiranSiswaRekap() {
+  const { id: classId } = useParams();
   const [showExport, setShowExport] = useState(false);
-  const kelasId = 2; // nanti bisa dari params
-  const className = "XI RPL 2"; // tambahkan untuk keperluan export
-
-  const mockRekapData = [
-    {
-      id: 1,
-      nisn: "1234567890",
-      nama: "M. Abdul Khosim Ahmadiansyah",
-      hadir: 18,
-      izin: 1,
-      sakit: 0,
-      alpha: 0,
-      pulang: 1,
-      terlambat: 2,
-    },
-    {
-      id: 2,
-      nisn: "1234567891",
-      nama: "Budi Santoso",
-      hadir: 17,
-      izin: 0,
-      sakit: 1,
-      alpha: 0,
-      pulang: 0,
-      terlambat: 1,
-    },
-    {
-      id: 3,
-      nisn: "1234567892",
-      nama: "Siti Nurhaliza",
-      hadir: 15,
-      izin: 2,
-      sakit: 1,
-      alpha: 0,
-      pulang: 0,
-      terlambat: 0,
-    },
-    {
-      id: 4,
-      nisn: "1234567893",
-      nama: "Ahmad Rizki",
-      hadir: 14,
-      izin: 1,
-      sakit: 2,
-      alpha: 1,
-      pulang: 0,
-      terlambat: 0,
-    },
-  ];
+  const [className, setClassName] = useState("Loading...");
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -86,21 +42,59 @@ export default function KehadiranSiswaRekap() {
     return `${year}-${month}-01`;
   };
 
-  const handleSave = () => {
-    const newData = [...data];
-    newData[selectedIndex] = {
-      ...newData[selectedIndex],
-      hadir: Number(form.hadir),
-      terlambat: Number(form.terlambat),
-      izin: Number(form.izin),
-      sakit: Number(form.sakit),
-      alpha: Number(form.alpha),
-      pulang: Number(form.pulang),
-    };
+  const fetchData = async () => {
+    if (!classId || !tanggalMulai || !tanggalSampai) return;
 
-    setData(newData);
-    sessionStorage.setItem("kehadiran-kelas-2", JSON.stringify(newData));
-    setShowEditModal(false);
+    try {
+      // Fetch Class Info
+      const classRes = await apiClient.get(`/classes/${classId}`);
+      if (classRes.data) {
+        setClassName(classRes.data.name || `${classRes.data.grade} ${classRes.data.label}`);
+      }
+
+      // Fetch Attendance Summary
+      const summary = await wakaService.getClassAttendanceSummary(classId, {
+        from: tanggalMulai,
+        to: tanggalSampai
+      });
+
+      // Map data
+      const mappedData = summary.map(item => ({
+        id: item.student.id,
+        nisn: item.student.nisn,
+        nama: item.student.user.name,
+        hadir: item.totals.present || 0,
+        terlambat: item.totals.late || 0,
+        izin: item.totals.permission || item.totals.izin || 0,
+        sakit: item.totals.sick || item.totals.sakit || 0,
+        alpha: item.totals.absent || item.totals.alpha || 0,
+        pulang: item.totals.return || 0,
+      }));
+
+      setData(mappedData);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
+  };
+
+  const handleSave = () => {
+    // Save logic needs to be updated to API call? 
+    // For now, keeping local state update or implementing bulk update if API exists.
+    const newData = [...data];
+    if (selectedIndex !== null) {
+        newData[selectedIndex] = {
+            ...newData[selectedIndex],
+            hadir: Number(form.hadir),
+            terlambat: Number(form.terlambat),
+            izin: Number(form.izin),
+            sakit: Number(form.sakit),
+            alpha: Number(form.alpha),
+            pulang: Number(form.pulang),
+        };
+        setData(newData);
+        setShowEditModal(false);
+        // Note: Real backend save not implemented here yet as endpoint might differ
+    }
   };
 
   const [form, setForm] = useState({
@@ -118,19 +112,11 @@ export default function KehadiranSiswaRekap() {
     // Set default tanggal (awal bulan sampai hari ini)
     setTanggalMulai(getFirstDayOfMonth());
     setTanggalSampai(getTodayDate());
-
-    const saved = sessionStorage.getItem("kehadiran-kelas-2");
-
-    if (saved) {
-      setData(JSON.parse(saved));
-    } else {
-      sessionStorage.setItem(
-        "kehadiran-kelas-2",
-        JSON.stringify(mockRekapData)
-      );
-      setData(mockRekapData);
-    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [classId, tanggalMulai, tanggalSampai]);
 
   // Fungsi untuk format tanggal ke bahasa Indonesia
   const formatTanggalIndonesia = (dateString) => {
@@ -368,33 +354,60 @@ export default function KehadiranSiswaRekap() {
     }
   };
 
-  const generateDetailData = (siswa) => {
-    const result = [];
-    let no = 1;
+  const mapStatusToLabel = (status) => {
+      const map = {
+          'present': 'Hadir',
+          'late': 'Terlambat',
+          'permission': 'Izin',
+          'sick': 'Sakit',
+          'absent': 'Alpha',
+          'leave_early': 'Pulang'
+      };
+      return map[status] || status;
+  };
 
-    const pushData = (jumlah, status, badgeClass) => {
-      for (let i = 0; i < jumlah; i++) {
-        result.push({
-          no: no++,
-          tanggal: formatTanggalIndonesia(tanggalSampai || getTodayDate()),
-          jam: "1–4",
-          mapel: "Matematika",
-          guru: "Alifah Dianatbes Andira S.Pd",
-          keterangan: "-",
-          status,
-          badgeClass,
+  const mapStatusToClass = (status) => {
+       const map = {
+          'present': 'hadir',
+          'late': 'terlambat',
+          'permission': 'izin',
+          'sick': 'sakit',
+          'absent': 'alpha',
+          'leave_early': 'pulang'
+      };
+      return map[status] || '';
+  };
+
+  const handleShowDetail = async (siswa) => {
+    setSelectedDetail({ ...siswa, detail: [], loading: true });
+    setShowDetailModal(true);
+
+    try {
+        const history = await wakaService.getStudentAttendance(siswa.id, {
+            from: tanggalMulai,
+            to: tanggalSampai,
+            per_page: -1 
         });
-      }
-    };
+        
+        // Check if history is wrapped in data (pagination) or array
+        const records = Array.isArray(history) ? history : (history.data || []);
 
-    pushData(siswa.hadir || 0, "Hadir", "hadir");
-    pushData(siswa.terlambat || 0, "Terlambat", "terlambat");
-    pushData(siswa.izin || 0, "Izin", "izin");
-    pushData(siswa.sakit || 0, "Sakit", "sakit");
-    pushData(siswa.alpha || 0, "Alpha", "alpha");
-    pushData(siswa.pulang || 0, "Pulang", "pulang");
-
-    return result;
+        const detail = records.map((item, index) => ({
+             no: index + 1,
+             tanggal: formatTanggalIndonesia(item.date),
+             jam: item.schedule?.time_slot?.label || `${item.schedule?.start_time?.slice(0,5)} - ${item.schedule?.end_time?.slice(0,5)}` || '-',
+             mapel: item.schedule?.subject_name || '-',
+             guru: item.schedule?.teacher?.user?.name || '-',
+             keterangan: item.reason || (item.status === 'present' ? 'Hadir' : '-'),
+             status: mapStatusToLabel(item.status),
+             badgeClass: mapStatusToClass(item.status)
+        }));
+        
+        setSelectedDetail(prev => ({ ...prev, detail, loading: false }));
+    } catch (e) {
+        console.error("Failed to load details", e);
+        setSelectedDetail(prev => ({ ...prev, loading: false, error: true }));
+    }
   };
 
   return (
@@ -531,13 +544,7 @@ export default function KehadiranSiswaRekap() {
                   <button
                     className="kehadiran-siswa-rekap-detail"
                     title="Detail Kehadiran"
-                    onClick={() => {
-                      setSelectedDetail({
-                        ...siswa,
-                        detail: generateDetailData(siswa),
-                      });
-                      setShowDetailModal(true);
-                    }}
+                    onClick={() => handleShowDetail(siswa)}
                   >
                     <FaEye />
                   </button>
@@ -673,36 +680,44 @@ export default function KehadiranSiswaRekap() {
               <button onClick={() => setShowDetailModal(false)}>✕</button>
             </div>
 
-            <table className="detail-kehadiran-table">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Tanggal</th>
-                  <th>Jam Pelajaran</th>
-                  <th>Mata Pelajaran</th>
-                  <th>Guru</th>
-                  <th>Keterangan</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedDetail.detail.map((item, index) => (
-                  <tr key={index}>
-                    <td>{item.no}</td>
-                    <td>{item.tanggal}</td>
-                    <td>{item.jam}</td>
-                    <td>{item.mapel}</td>
-                    <td>{item.guru}</td>
-                    <td>{item.keterangan}</td>
-                    <td>
-                      <span className={`badge ${item.badgeClass}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {selectedDetail.loading ? (
+                <div style={{padding: '2rem', textAlign: 'center'}}>Memuat data...</div>
+            ) : selectedDetail.error ? (
+                <div style={{padding: '2rem', textAlign: 'center', color: 'red'}}>Gagal memuat data</div>
+            ) : selectedDetail.detail && selectedDetail.detail.length > 0 ? (
+                <table className="detail-kehadiran-table">
+                  <thead>
+                    <tr>
+                      <th>No</th>
+                      <th>Tanggal</th>
+                      <th>Jam</th>
+                      <th>Mata Pelajaran</th>
+                      <th>Guru</th>
+                      <th>Keterangan</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDetail.detail.map((item, index) => (
+                      <tr key={index}>
+                        <td>{item.no}</td>
+                        <td>{item.tanggal}</td>
+                        <td>{item.jam}</td>
+                        <td>{item.mapel}</td>
+                        <td>{item.guru}</td>
+                        <td>{item.keterangan}</td>
+                        <td>
+                          <span className={`badge ${item.badgeClass}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+            ) : (
+                <div style={{padding: '2rem', textAlign: 'center'}}>Tidak ada data kehadiran untuk periode ini.</div>
+            )}
           </div>
         </div>
       )}

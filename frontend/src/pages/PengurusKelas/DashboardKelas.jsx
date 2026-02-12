@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, BookOpen, ArrowLeft, LogOut, TrendingUp, PieChart, User, Camera } from 'lucide-react';
 import './DashboardKelas.css';
@@ -785,7 +786,7 @@ const DashboardKelas = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const data = await attendanceService.getStudentClassDashboard();
+        const data = await attendanceService.getClassDashboard();
         setDashboardData(data);
       } catch (err) {
         console.error("Error fetching class dashboard data:", err);

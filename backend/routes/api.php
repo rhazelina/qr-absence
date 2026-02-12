@@ -23,6 +23,7 @@ use App\Http\Controllers\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::get('/settings/public', [SettingController::class, 'publicSettings']);
 
 Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
@@ -37,6 +38,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     // Mobile dashboard endpoints
     Route::get('/me/dashboard/summary', [DashboardController::class, 'studentDashboard'])->middleware('role:student');
     Route::get('/me/dashboard/teacher-summary', [DashboardController::class, 'teacherDashboard'])->middleware('role:teacher');
+    Route::get('/me/teacher/dashboard', [DashboardController::class, 'teacherDashboard'])->middleware('role:teacher'); // Alias for Webta
     Route::get('/me/homeroom/dashboard', [DashboardController::class, 'homeroomDashboard'])->middleware('role:teacher');
     Route::get('/guru/dashboard', [DashboardController::class, 'teacherDashboard'])->middleware('role:teacher');
 
@@ -57,6 +59,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::get('/teachers', [TeacherController::class, 'index'])->middleware('role:admin,student,teacher');
 
     // Public classes list (read-only for mobile/web app)
+    Route::get('/semesters', [SemesterController::class, 'index']);
     Route::get('/classes', [ClassController::class, 'index'])->middleware('role:admin,teacher,student');
     Route::get('/classes/{class}', [ClassController::class, 'show'])->middleware('role:admin,teacher,student');
     Route::get('/majors', [MajorController::class, 'index'])->middleware('role:admin,teacher,student');
@@ -70,7 +73,9 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
         Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
         Route::get('/waka/dashboard/summary', [DashboardController::class, 'wakaDashboard']);
+        Route::get('/waka/classes/{class}/attendance-summary', [AttendanceController::class, 'wakaClassSummary']);
         Route::get('/students/absences', [AttendanceController::class, 'studentsAbsences']);
+        Route::get('/teachers/{teacher}/attendance-history', [AttendanceController::class, 'teacherAttendanceHistory']);
 
         Route::post('/teachers/{teacher}/schedule-image', [TeacherController::class, 'uploadScheduleImage']);
         Route::delete('/teachers/{teacher}/schedule-image', [TeacherController::class, 'deleteScheduleImage']);
@@ -215,6 +220,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
             Route::get('/dashboard', [DashboardController::class, 'classDashboard']);
             Route::get('/schedules', [ClassController::class, 'myClassSchedules']);
             Route::get('/attendance', [ClassController::class, 'myClassAttendance']);
+            Route::get('/students', [ClassController::class, 'myClassStudents']);
         });
     });
 

@@ -1,5 +1,4 @@
-﻿import { Home, BookOpen, Users, GraduationCap, LogOut, Calendar } from 'lucide-react';
-import LogoSchool from '../assets/Icon/logo smk.png'; // Added Logo import
+﻿import { Home, BookOpen, Users, GraduationCap, LogOut, Calendar, Building2 } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -23,6 +22,7 @@ const MENU_ITEMS_ADMIN: MenuItem[] = [
   { id: "kelas", label: "Data Kelas", icon: <Users size={20} /> },
   { id: "siswa", label: "Data Siswa", icon: <GraduationCap size={20} /> },
   { id: "guru", label: "Data Guru", icon: <GraduationCap size={20} /> },
+  { id: "profil-sekolah", label: "Profil Sekolah", icon: <Building2 size={20} /> },  // ← DIPERBAIKI: dari "ProfilSekolah" menjadi "profil-sekolah" dan menggunakan icon Building2
 ];
 
 // Waka staff
@@ -37,7 +37,7 @@ const MENU_ITEMS_WAKA: MenuItem[] = [
 // siswa
 const MENU_ITEMS_SISWA: MenuItem[] = [
   { id: "dashboard", label: "Beranda", icon: <Home size={20} /> },
-  { id: "jadwal-anda", label: "Jadwal Anda", icon: <Calendar size={20} /> },
+  { id: "jadwal-anda", label: "Jadwal", icon: <Calendar size={20} /> },
   { id: "absensi", label: "Daftar Ketidakhadiran", icon: <Users size={20} /> },
 ];
 
@@ -45,7 +45,7 @@ const MENU_ITEMS_SISWA: MenuItem[] = [
 const MENU_ITEMS_PENGURUS_KELAS: MenuItem[] = [
   { id: "dashboard", label: "Beranda", icon: <Home size={20} /> },
   { id: "daftar-mapel", label: "Daftar Mapel", icon: <BookOpen size={20} /> },
-  { id: "jadwal-anda", label: "Jadwal Anda", icon: <Calendar size={20} /> },
+  { id: "jadwal-anda", label: "Jadwal", icon: <Calendar size={20} /> },
   { id: "absensi", label: "Daftar Ketidakhadiran", icon: <Users size={20} /> },
 ];
 
@@ -58,9 +58,7 @@ const MENU_ITEMS_WALIKELAS: MenuItem[] = [
 // Menu untuk Guru
 const MENU_ITEMS_GURU: MenuItem[] = [
   { id: "dashboard", label: "Beranda", icon: <Home size={20} /> },
-  // { id: "presensi", label: "Presensi", icon: <Calendar size={20} /> },
   { id: "jadwal-anda", label: "Jadwal Anda", icon: <Calendar size={20} /> },
-  // { id: "kehadiran", label: "Kehadiran Siswa", icon: <Users size={20} /> },
 ];
 
 export default function Sidebar({
@@ -88,7 +86,7 @@ export default function Sidebar({
   } else if (userRole === "pengurus_kelas") {
     MENU_ITEMS = MENU_ITEMS_PENGURUS_KELAS;
     roleLabel = "Pengurus Kelas";
-  } else if (userRole === "wakel") {
+  } else if (userRole === "walikelas") {
     MENU_ITEMS = MENU_ITEMS_WALIKELAS;
     roleLabel = "Wali Kelas";
   }
@@ -137,15 +135,6 @@ export default function Sidebar({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {/* LOGO ADDITION */}
-          {isOpen && (
-            <img
-              src={LogoSchool}
-              alt="Logo"
-              style={{ width: "32px", height: "auto" }}
-            />
-          )}
-
           <button
             onClick={onToggle}
             style={{
@@ -176,12 +165,12 @@ export default function Sidebar({
           >
             {isOpen ? "◀" : "▶"}
           </button>
-
+          
           {isOpen && (
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span
                 style={{
-                  fontSize: "14px", // Adjusted size for better fit with logo
+                  fontSize: "18px",
                   fontWeight: 800,
                   color: "#E2E8F0",
                   letterSpacing: "0.3px",
@@ -192,13 +181,21 @@ export default function Sidebar({
             </div>
           )}
         </div>
-
+        
         {!isOpen && (
-          <img
-            src={LogoSchool}
-            alt="Logo"
-            style={{ width: "24px", height: "auto" }}
-          />
+          <div
+            style={{
+              fontSize: "12px",
+              color: "#94A3B8",
+              fontWeight: 800,
+              border: "1px solid rgba(148, 163, 184, 0.3)",
+              borderRadius: "8px",
+              padding: "4px 8px",
+              background: "rgba(15, 23, 42, 0.7)",
+            }}
+          >
+            {roleLabel.charAt(0)}
+          </div>
         )}
       </div>
 
@@ -276,7 +273,7 @@ export default function Sidebar({
             >
               {item.icon}
             </div>
-
+            
             {isOpen && (
               <span
                 style={{
@@ -290,7 +287,7 @@ export default function Sidebar({
                 {item.label}
               </span>
             )}
-
+            
             {currentPage === item.id && isOpen && (
               <div style={{
                 width: "6px",
@@ -362,7 +359,7 @@ export default function Sidebar({
           }}>
             <LogOut size={20} />
           </div>
-
+          
           {isOpen && (
             <>
               <span style={{ flex: 1, textAlign: "left" }}>Keluar</span>

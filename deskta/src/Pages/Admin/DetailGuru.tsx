@@ -1,27 +1,14 @@
-﻿// FILE: DetailGuru.tsx - Halaman Detail Guru with API Integration
-import { useState, useEffect } from 'react';
-import AdminLayout from '../../component/Admin/AdminLayout';
-import { storage } from '../../utils/storage';
-import { User as UserIcon, ArrowLeft, Edit2, Save, X } from 'lucide-react';
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
+﻿import { useState, useEffect } from "react";
+import AdminLayout from "../../component/Admin/AdminLayout";
+import { ArrowLeft, Save, User, MapPin, Phone, Mail, BookOpen, Layers, Users } from "lucide-react";
+import { teacherService } from "../../services/teacher";
+import { classService, type ClassRoom } from "../../services/class";
+import { subjectService, type Subject } from "../../services/subject";
 
-/* ===================== INTERFACE DEFINITIONS ===================== */
+// ==================== INTERFACE DEFINITIONS ====================
 interface User {
   role: string;
   name: string;
-}
-
-interface Guru {
-  id: string;
-  namaGuru: string;
-  kodeGuru: string;
-  jenisKelamin: string;
-  role: string;
-  noTelp: string;
-  keterangan: string; // Mapel or Division
-  waliKelasDari?: string;
-  password?: string;
-  originalData?: any;
 }
 
 interface DetailGuruProps {
@@ -30,24 +17,238 @@ interface DetailGuruProps {
   currentPage: string;
   onMenuClick: (page: string) => void;
   guruId: string;
-  onUpdateGuru?: (updatedGuru: Guru) => void;
 }
 
-/* ===================== OPTIONS DATA ===================== */
-const peranList = [
-  { id: 'Wali Kelas', nama: 'Wali Kelas' },
-  { id: 'Guru', nama: 'Guru' },
-  { id: 'Staff', nama: 'Staff' },
-];
+interface GuruData {
+  id: string;
+  kodeGuru: string;
+  namaGuru: string;
+  jenisKelamin: string;
+  role: string;
+  keterangan: string; // Mapel / Kelas / Bagian
+  noTelp: string;
+  email: string;
+  alamat: string;
+  foto: string;
+  status: "Aktif" | "Cuti" | "Tidak Aktif";
+  tanggalBergabung: string;
+}
 
-const mataPelajaranList = [
-  'Matematika', 'Bahasa Indonesia', 'Bahasa Inggris', 'Fisika', 'Kimia', 'Biologi',
-  'Sejarah', 'Geografi', 'Ekonomi', 'Sosiologi', 'Seni Budaya', 'Penjasorkes',
-  'PKn', 'Agama', 'Informatika', 'IPAS', 'Dasar Program Keahlian'
-];
+// ==================== COMPONENT STYLING ====================
+// Style object untuk konsistensi UI
+const styles = {
+  container: {
+    maxWidth: "1000px",
+    margin: "0 auto",
+    padding: "0 4px",
+    paddingBottom: "80px", // Ruang untuk fixed footer
+  },
+  header: {
+    marginBottom: "24px",
+  },
+  backButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "none",
+    border: "none",
+    color: "#64748B",
+    fontSize: "16px",
+    fontWeight: "600",
+    cursor: "pointer",
+    padding: "8px 0",
+    marginBottom: "16px",
+    transition: "color 0.2s",
+  },
+  card: {
+    background: "white",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    overflow: "hidden",
+    marginBottom: "24px",
+  },
+  cardHeader: {
+    padding: "24px",
+    borderBottom: "1px solid #E2E8F0",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cardTitle: {
+    fontSize: "18px",
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  cardBody: {
+    padding: "24px",
+  },
+  profileHeader: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    padding: "40px 24px",
+    background: "linear-gradient(135deg, #001F3E 0%, #0C4A6E 100%)",
+    color: "white",
+    borderRadius: "16px 16px 0 0",
+    position: "relative" as const,
+  },
+  avatarContainer: {
+    position: "relative" as const,
+    marginBottom: "16px",
+  },
+  avatar: {
+    width: "120px",
+    height: "120px",
+    borderRadius: "50%",
+    border: "4px solid white",
+    backgroundColor: "#E2E8F0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "48px",
+    color: "#64748B",
+    overflow: "hidden",
+    objectFit: "cover" as const,
+  },
+  statusBadge: {
+    position: "absolute" as const,
+    bottom: "4px",
+    right: "4px",
+    width: "24px",
+    height: "24px",
+    borderRadius: "50%",
+    backgroundColor: "#10B981", // Green for active
+    border: "3px solid white",
+  },
+  profileName: {
+    fontSize: "24px",
+    fontWeight: "700",
+    marginBottom: "4px",
+    textAlign: "center" as const,
+  },
+  profileRole: {
+    fontSize: "16px",
+    opacity: 0.9,
+    marginBottom: "16px",
+    textAlign: "center" as const,
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    padding: "4px 12px",
+    borderRadius: "20px",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "24px",
+  },
+  formGroup: {
+    marginBottom: "20px",
+  },
+  label: {
+    display: "block",
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: "8px",
+  },
+  input: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    border: "1px solid #E2E8F0",
+    fontSize: "14px",
+    color: "#1E293B",
+    backgroundColor: "#F8FAFC",
+    transition: "all 0.2s",
+  },
+  inputFocus: {
+    borderColor: "#3B82F6",
+    boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
+    backgroundColor: "white",
+    outline: "none",
+  },
+  select: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: "8px",
+    border: "1px solid #E2E8F0",
+    fontSize: "14px",
+    color: "#1E293B",
+    backgroundColor: "#F8FAFC",
+    cursor: "pointer",
+    appearance: "none" as const, // Menghilangkan style default browser
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 16px center",
+    backgroundSize: "20px",
+  },
+  footer: {
+    position: "fixed" as const,
+    bottom: 0,
+    left: "280px", // Sesuaikan dengan lebar sidebar
+    right: 0,
+    padding: "16px 24px",
+    backgroundColor: "white",
+    borderTop: "1px solid #E2E8F0",
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    zIndex: 10,
+    boxShadow: "0 -4px 6px -1px rgba(0, 0, 0, 0.05)",
+  },
+  buttonPrimary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    backgroundColor: "#001F3E",
+    color: "white",
+    border: "none",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  buttonSecondary: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    backgroundColor: "white",
+    color: "#64748B",
+    border: "1px solid #E2E8F0",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  sectionTitle: {
+    fontSize: "16px",
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    borderBottom: "1px solid #E2E8F0",
+    paddingBottom: "8px",
+  },
+};
 
-const staffBagianList = [
-  'Tata Usaha', 'Administrasi', 'Perpustakaan', 'Laboratorium', 'Keuangan'
+// ==================== DAFTAR BAGIAN STAFF ====================
+// TODO: Replace with backend data when available
+const BAGIAN_STAFF = [
+  "Tata Usaha",
+  "Perpustakaan",
+  "Laboratorium",
+  "Keamanan",
+  "Kebersihan",
+  "Administrasi",
+  "Kesiswaan"
 ];
 
 export default function DetailGuru({
@@ -56,251 +257,183 @@ export default function DetailGuru({
   currentPage,
   onMenuClick,
   guruId,
-  onUpdateGuru,
 }: DetailGuruProps) {
-  const { alert: popupAlert } = usePopup();
-
   // ==================== STATE MANAGEMENT ====================
-  const [guruData, setGuruData] = useState<Guru | null>(null);
-  const [originalData, setOriginalData] = useState<Guru | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState<GuruData | null>(null);
+  const [originalData, setOriginalData] = useState<GuruData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<ClassRoom[]>([]);
 
-  // Auxiliary data for validation
-  const [allTeachers, setAllTeachers] = useState<Guru[]>([]);
-  const [classList, setClassList] = useState<string[]>([]);
-
-  // State for dynamic fields
-  const [tempMataPelajaran, setTempMataPelajaran] = useState('');
-  const [tempStaffBagian, setTempStaffBagian] = useState('');
-
-  // ==================== LOAD DATA ====================
+  // ==================== DATA FETCHING ====================
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
+      setLoading(true);
       try {
-        const { teacherService } = await import('../../services/teacher');
-        const { classService } = await import('../../services/class');
-
-        // Fetch target teacher, all teachers (for validation), and classes
-        const [targetTeacher, teachersList, classes] = await Promise.all([
-          teacherService.getTeacherById(guruId).catch(() => null),
-          teacherService.getTeachers().catch(() => []),
-          classService.getClasses().catch(() => [])
+        // Fetch teacher, subjects, and classes in parallel
+        const [teacher, subjects, classes] = await Promise.all([
+          teacherService.getTeacherById(guruId),
+          subjectService.getSubjects(),
+          classService.getClasses()
         ]);
 
-        // Map Class List
-        const mappedClasses = classes.map((c: any) => c.name || `${c.grade} ${c.major_id || ''} ${c.label || ''}`).filter((n: any) => n);
-        setClassList(mappedClasses);
+        setAvailableSubjects(subjects);
+        setAvailableClasses(classes);
 
-        // Map All Teachers for validation
-        const mappedTeachers: Guru[] = teachersList.map((t: any) => ({
-          id: String(t.id),
-          namaGuru: t.name,
-          kodeGuru: t.nip || t.code || '-',
-          jenisKelamin: t.gender === 'L' ? 'Laki-Laki' : 'Perempuan',
-          role: t.homeroom_class ? 'Wali Kelas' : (t.role === 'staff' ? 'Staff' : 'Guru'),
-          noTelp: t.phone || '',
-          keterangan: t.subject || '-',
-          waliKelasDari: t.homeroom_class?.name || '',
-          originalData: t
-        }));
-        setAllTeachers(mappedTeachers);
+        // Map teacher to GuruData format
+        const mappedData: GuruData = {
+          id: teacher.id.toString(),
+          kodeGuru: teacher.nip || "",
+          namaGuru: teacher.name || "",
+          jenisKelamin: teacher.gender === "L" ? "Laki-Laki" : teacher.gender === "P" ? "Perempuan" : "Laki-Laki",
+          role: teacher.homeroom_class_id ? "Wali Kelas" : (teacher.subject ? "Guru Mapel" : "Guru Mapel"),
+          keterangan: teacher.homeroom_class_id 
+            ? teacher.homeroom_class?.name || "" 
+            : teacher.subject || "",
+          noTelp: teacher.phone || "",
+          email: teacher.email || "",
+          alamat: "", // Alamat maybe not in basic teacher profile
+          foto: (teacher as any).photo_url || "",
+          status: "Aktif", // Default to active if not provided
+          tanggalBergabung: (teacher as any).created_at ? new Date((teacher as any).created_at).toISOString().split('T')[0] : "",
+        };
 
-        // Process Target Teacher
-        let foundGuru: Guru | null = null;
-        if (targetTeacher) {
-          foundGuru = {
-            id: String(targetTeacher.id),
-            namaGuru: targetTeacher.name,
-            kodeGuru: targetTeacher.nip || targetTeacher.code || '-',
-            jenisKelamin: targetTeacher.gender === 'L' ? 'Laki-Laki' : 'Perempuan',
-            role: targetTeacher.homeroom_class ? 'Wali Kelas' : (targetTeacher.role === 'staff' ? 'Staff' : 'Guru'),
-            noTelp: targetTeacher.phone || '',
-            keterangan: targetTeacher.subject || '',
-            waliKelasDari: targetTeacher.homeroom_class?.name || '',
-            originalData: targetTeacher
-          };
-        } else {
-          // Fallback to local list if individual fetch failed but list succeeded (unlikely but possible)
-          foundGuru = mappedTeachers.find(g => g.id === guruId) || null;
-
-          // Fallback to localStorage as last resort
-          if (!foundGuru) {
-            foundGuru = storage.getSelectedGuru(); // Returns parsed object or null
-          }
-        }
-
-        if (foundGuru) {
-          setGuruData(foundGuru);
-          setOriginalData(foundGuru);
-
-          // Set temps
-          if (foundGuru.role === 'Guru') setTempMataPelajaran(foundGuru.keterangan);
-          else if (foundGuru.role === 'Staff') setTempStaffBagian(foundGuru.keterangan);
-        } else {
-          void popupAlert("Data guru tidak ditemukan.");
-        }
-
+        setFormData(mappedData);
+        setOriginalData(JSON.parse(JSON.stringify(mappedData)));
       } catch (error) {
-        console.error("Error loading detail guru:", error);
+        console.error("Error fetching guru details:", error);
+        alert("Gagal memuat data guru. Silakan coba lagi.");
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    if (guruId) fetchData();
+    fetchData();
   }, [guruId]);
 
-  // ==================== HELPER ====================
-  const getAvailableKelasOptions = () => {
-    const occupiedKelas = allTeachers
-      .filter(g => g.role === 'Wali Kelas' && g.waliKelasDari && g.id !== guruData?.id)
-      .map(g => g.waliKelasDari);
-    return classList.filter(c => !occupiedKelas.includes(c as string));
+  // ==================== INPUT HANDLERS ====================
+  const handleInputChange = (field: keyof GuruData, value: string) => {
+    if (!formData) return;
+    
+    // Logic khusus jika role berubah
+    if (field === 'role') {
+        let defaultKet = '';
+        if (value === 'Guru Mapel') defaultKet = availableSubjects[0]?.name || '';
+        if (value === 'Wali Kelas') defaultKet = availableClasses[0]?.name || '';
+        if (value === 'Staff') defaultKet = BAGIAN_STAFF[0];
+        
+        setFormData({
+            ...formData,
+            [field]: value,
+            keterangan: defaultKet // Reset keterangan sesuai role baru
+        });
+    } else {
+        setFormData({
+          ...formData,
+          [field]: value,
+        });
+    }
+    
+    setIsEditing(true);
   };
 
-
-  // ==================== VALIDATION ====================
-  const validateForm = (): boolean => {
-    if (!guruData) return false;
-    const errors: { [key: string]: string } = {};
-
-    if (!guruData.namaGuru.trim()) errors.namaGuru = 'Nama guru harus diisi';
-
-    // Check NIP uniqueness
-    if (!guruData.kodeGuru.trim()) errors.kodeGuru = 'Kode guru harus diisi';
-    else if (allTeachers.some(g => g.kodeGuru === guruData.kodeGuru && g.id !== guruData.id)) {
-      errors.kodeGuru = 'Kode guru sudah digunakan';
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImage(reader.result as string);
+        setIsEditing(true);
+      };
+      reader.readAsDataURL(file);
     }
-
-    if (guruData.noTelp && !/^\d{10,13}$/.test(guruData.noTelp.replace(/\D/g, ''))) {
-      errors.noTelp = 'Nomor telepon tidak valid';
-    }
-
-    if (guruData.role === 'Guru' && !tempMataPelajaran) errors.mataPelajaran = 'Mata pelajaran wajib';
-    if (guruData.role === 'Staff' && !tempStaffBagian) errors.staffBagian = 'Bagian wajib';
-
-    if (guruData.role === 'Wali Kelas') {
-      if (!guruData.waliKelasDari) errors.waliKelasDari = 'Kelas wajib dipilih';
-      else {
-        const occupied = allTeachers.find(g =>
-          g.role === 'Wali Kelas' &&
-          g.waliKelasDari === guruData.waliKelasDari &&
-          g.id !== guruData.id
-        );
-        if (occupied) {
-          errors.waliKelasDari = `Kelas ini sudah ada wali kelasnya (${occupied.namaGuru})`;
-        }
-      }
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
   };
 
-  // ==================== ACTIONS ====================
-  const handleSaveChanges = async () => {
-    if (!guruData) return;
-    if (!validateForm()) {
-      void popupAlert('Mohon perbaiki isian form.');
+  // ==================== SAVE HANDLER ====================
+  const handleSave = async () => {
+    // Validasi sederhana
+    if (!formData?.namaGuru || !formData?.kodeGuru) {
+      alert("Nama dan Kode Guru wajib diisi!");
       return;
     }
 
-    setIsLoading(true);
     try {
-      const { teacherService } = await import('../../services/teacher');
-
-      let finalSubject = '';
-      if (guruData.role === 'Guru') finalSubject = tempMataPelajaran;
-      else if (guruData.role === 'Staff') finalSubject = tempStaffBagian;
-      // For Wali Kelas, subject might be empty or something else
-
-      const payload = {
-        name: guruData.namaGuru,
-        nip: guruData.kodeGuru,
-        gender: guruData.jenisKelamin === 'Laki-Laki' ? 'L' : 'P',
-        phone: guruData.noTelp,
-        subject: finalSubject,
-        role: guruData.role.toLowerCase().replace(' ', '_'),
-        // Note: Changing homeroom class usually requires specific endpoint or logic
-        // For now assuming updateTeacher handles basics.
-      };
-
-      const updated = await teacherService.updateTeacher(guruData.id, payload);
-
-      // Construct updated local object
-      const updatedLocal: Guru = {
-        ...guruData,
-        keterangan: finalSubject || (guruData.role === 'Wali Kelas' ? guruData.waliKelasDari || '' : ''),
-        originalData: updated
-      };
-
-      setGuruData(updatedLocal);
-      setOriginalData(updatedLocal);
-
-      // Update cached list
-      setAllTeachers(prev => prev.map(g => g.id === guruData.id ? updatedLocal : g));
-
-      if (onUpdateGuru) onUpdateGuru(updatedLocal);
-
-      setIsEditMode(false);
-      void popupAlert('Data berhasil diperbarui!');
-    } catch (e: any) {
-      console.error(e);
-      void popupAlert(`Gagal menyimpan: ${e?.response?.data?.message || 'Error'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    if (confirm('Batal edit? Perubahan tidak akan disimpan.')) {
-      setIsEditMode(false);
-      setGuruData(originalData);
-      setFormErrors({});
-      // Reset temps if needed
-      if (originalData) {
-        if (originalData.role === 'Guru') setTempMataPelajaran(originalData.keterangan);
-        else if (originalData.role === 'Staff') setTempStaffBagian(originalData.keterangan);
+      setLoading(true);
+      
+      // Find class ID if role is Wali Kelas
+      let homeroomClassId = null;
+      if (formData.role === "Wali Kelas") {
+        const selectedClass = availableClasses.find(c => {
+          const className = `${c.grade} ${c.major?.code || ""} ${c.label}`;
+          return className === formData.keterangan;
+        });
+        homeroomClassId = selectedClass?.id || null;
       }
+
+      const updateData = {
+        name: formData.namaGuru,
+        nip: formData.kodeGuru,
+        subject: formData.role === "Guru Mapel" ? formData.keterangan : null,
+        homeroom_class_id: homeroomClassId,
+        phone: formData.noTelp,
+        email: formData.email,
+        // Alamat and status might need mapping if backend supports them
+      };
+
+      await teacherService.updateTeacher(guruId, updateData);
+      
+      // Handle photo upload if changed
+      if (previewImage && previewImage.startsWith('data:')) {
+        // Convert base64 to File object or use a different approach if needed
+        // For now, let's assume we need to convert to blob/file
+        const response = await fetch(previewImage);
+        const blob = await response.blob();
+        const file = new File([blob], "profile.png", { type: "image/png" });
+        await teacherService.uploadScheduleImage(guruId, file); // Reusing uploadScheduleImage for profile for now if no specific endpoint
+      }
+      
+      setOriginalData(JSON.parse(JSON.stringify(formData)));
+      setIsEditing(false);
+      alert("Data guru berhasil disimpan!");
+      onMenuClick("guru");
+    } catch (error) {
+      console.error("Error saving teacher data:", error);
+      alert("Gagal menyimpan data guru.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    if (isEditMode) {
-      if (confirm('Batal edit? Perubahan tidak akan disimpan.')) {
-        setIsEditMode(false);
-        setGuruData(originalData);
-        if (originalData) {
-          if (originalData.role === 'Guru') setTempMataPelajaran(originalData.keterangan);
-          else if (originalData.role === 'Staff') setTempStaffBagian(originalData.keterangan);
-        }
-        onMenuClick('guru');
+  const handleCancel = () => {
+    if (isEditing) {
+      if (window.confirm("Ada perubahan yang belum disimpan. Yakin ingin membatalkan?")) {
+        setFormData(JSON.parse(JSON.stringify(originalData)));
+        setIsEditing(false);
+        setPreviewImage(null);
       }
     } else {
-      onMenuClick('guru');
+      onMenuClick("guru");
     }
   };
 
-  const handleFieldChange = (field: keyof Guru, value: string) => {
-    if (!guruData) return;
-    setGuruData({ ...guruData, [field]: value });
-  };
-
-  // ==================== RENDER ====================
-  if (isLoading && !guruData) {
+  if (loading || !formData) {
     return (
-      <AdminLayout pageTitle="Detail Guru" currentPage={currentPage} onMenuClick={onMenuClick} user={user} onLogout={onLogout}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', color: '#64748B' }}>
-          Loading...
+      <AdminLayout
+        pageTitle="Detail Guru"
+        currentPage={currentPage}
+        onMenuClick={onMenuClick}
+        user={user}
+        onLogout={onLogout}
+        hideBackground={false}
+      >
+        <div style={{ padding: "40px", textAlign: "center", color: "#64748B" }}>
+            Memuat data guru...
         </div>
       </AdminLayout>
     );
   }
-
-  if (!guruData) return null;
 
   return (
     <AdminLayout
@@ -309,261 +442,301 @@ export default function DetailGuru({
       onMenuClick={onMenuClick}
       user={user}
       onLogout={onLogout}
-      hideBackground
+      hideBackground={false}
     >
-      <div
-        style={{
-          backgroundImage: 'url(../src/assets/Background/bgdetailgurusiswa.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          minHeight: '100vh',
-          padding: window.innerWidth < 768 ? '16px' : '24px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          paddingTop: '40px',
-        }}
-      >
-        <div style={{ maxWidth: '1000px', width: '100%', margin: '0 auto' }}>
-          <div style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            borderRadius: '16px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-            overflow: 'hidden',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-          }}
-          >
-            {/* Header */}
-            <div style={{
-              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-              padding: window.innerWidth < 768 ? '20px' : '28px 32px',
-              display: 'flex', flexDirection: window.innerWidth < 768 ? 'column' : 'row',
-              alignItems: window.innerWidth < 768 ? 'flex-start' : 'center', gap: '20px'
-            }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
-                <div style={{
-                  width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#3b82f6',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-                  border: '3px solid rgba(255, 255, 255, 0.2)', flexShrink: 0
-                }}
-                >
-                  <UserIcon size={32} />
-                </div>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>
-                    {guruData.namaGuru}
-                  </h2>
-                  <p style={{ margin: 0, fontSize: '15px', color: '#cbd5e1', fontFamily: 'monospace' }}>
-                    NIP: {guruData.kodeGuru}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {!isEditMode ? (
-                  <button onClick={() => setIsEditMode(true)} style={{
-                    backgroundColor: '#2563EB', border: 'none', color: 'white', padding: '10px 24px',
-                    borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-                  }}
-                  >
-                    <Edit2 size={16} /> Ubah Data
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={handleCancelEdit} style={{
-                      backgroundColor: '#6B7280', border: 'none', color: 'white', padding: '10px 20px',
-                      borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-                    }}
-                    >
-                      <X size={16} /> Batal
-                    </button>
-                    <button onClick={handleSaveChanges} style={{
-                      backgroundColor: '#10B981', border: 'none', color: 'white', padding: '10px 20px',
-                      borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-                    }}
-                    >
-                      <Save size={16} /> Simpan
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Form */}
-            <div style={{ padding: '32px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-
-                {/* Nama */}
-                <div>
-                  <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Nama Guru</label>
-                  <input
-                    type="text"
-                    value={guruData.namaGuru}
-                    onChange={(e) => handleFieldChange('namaGuru', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%', padding: '12px 16px', borderRadius: '8px',
-                      border: formErrors.namaGuru ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                    }}
-                  />
-                  {isEditMode && formErrors.namaGuru && <p style={{ color: '#EF4444', fontSize: '12px' }}>{formErrors.namaGuru}</p>}
-                </div>
-
-                {/* Kode */}
-                <div>
-                  <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Kode Guru / NIP</label>
-                  <input
-                    type="text"
-                    value={guruData.kodeGuru}
-                    onChange={(e) => handleFieldChange('kodeGuru', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%', padding: '12px 16px', borderRadius: '8px',
-                      border: formErrors.kodeGuru ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                    }}
-                  />
-                  {isEditMode && formErrors.kodeGuru && <p style={{ color: '#EF4444', fontSize: '12px' }}>{formErrors.kodeGuru}</p>}
-                </div>
-
-                {/* Role */}
-                <div>
-                  <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Peran</label>
-                  <select
-                    value={guruData.role}
-                    onChange={(e) => {
-                      handleFieldChange('role', e.target.value);
-                      setTempMataPelajaran('');
-                      setTempStaffBagian('');
-                      handleFieldChange('waliKelasDari', '');
-                    }}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%', padding: '12px 16px', borderRadius: '8px',
-                      border: '1px solid #E5E7EB', backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                    }}
-                  >
-                    {peranList.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
-                  </select>
-                </div>
-
-                {/* Role Specific */}
-                {guruData.role === 'Guru' && (
-                  <div>
-                    <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Mata Pelajaran</label>
-                    <select
-                      value={tempMataPelajaran}
-                      onChange={(e) => setTempMataPelajaran(e.target.value)}
-                      disabled={!isEditMode}
-                      style={{
-                        width: '100%', padding: '12px 16px', borderRadius: '8px',
-                        border: formErrors.mataPelajaran ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                        backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="">Pilih Mata Pelajaran</option>
-                      {mataPelajaranList.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    {isEditMode && formErrors.mataPelajaran && <p style={{ color: '#EF4444', fontSize: '12px' }}>{formErrors.mataPelajaran}</p>}
-                  </div>
-                )}
-
-                {guruData.role === 'Wali Kelas' && (
-                  <div>
-                    <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Wali Kelas Untuk</label>
-                    <select
-                      value={guruData.waliKelasDari}
-                      onChange={(e) => handleFieldChange('waliKelasDari', e.target.value)}
-                      disabled={!isEditMode}
-                      style={{
-                        width: '100%', padding: '12px 16px', borderRadius: '8px',
-                        border: formErrors.waliKelasDari ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                        backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="">Pilih Kelas</option>
-                      {getAvailableKelasOptions().map(c => <option key={c} value={c}>{c}</option>)}
-                      {!getAvailableKelasOptions().includes(guruData.waliKelasDari || '') && guruData.waliKelasDari && (
-                        <option value={guruData.waliKelasDari}>{guruData.waliKelasDari}</option>
-                      )}
-                    </select>
-                    {isEditMode && formErrors.waliKelasDari && <p style={{ color: '#EF4444', fontSize: '12px' }}>{formErrors.waliKelasDari}</p>}
-                  </div>
-                )}
-
-                {guruData.role === 'Staff' && (
-                  <div>
-                    <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Bagian</label>
-                    <select
-                      value={tempStaffBagian}
-                      onChange={(e) => setTempStaffBagian(e.target.value)}
-                      disabled={!isEditMode}
-                      style={{
-                        width: '100%', padding: '12px 16px', borderRadius: '8px',
-                        border: formErrors.staffBagian ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                        backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                      }}
-                    >
-                      <option value="">Pilih Bagian</option>
-                      {staffBagianList.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    {isEditMode && formErrors.staffBagian && <p style={{ color: '#EF4444', fontSize: '12px' }}>{formErrors.staffBagian}</p>}
-                  </div>
-                )}
-
-                {/* JK */}
-                <div>
-                  <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>Jenis Kelamin</label>
-                  <select
-                    value={guruData.jenisKelamin === 'Laki-Laki' ? 'Laki-Laki' : 'Perempuan'}
-                    onChange={(e) => handleFieldChange('jenisKelamin', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%', padding: '12px 16px', borderRadius: '8px',
-                      border: '1px solid #E5E7EB', backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="Laki-Laki">Laki-Laki</option>
-                    <option value="Perempuan">Perempuan</option>
-                  </select>
-                </div>
-
-                {/* Telp */}
-                <div>
-                  <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontWeight: 600 }}>No. Telepon</label>
-                  <input
-                    type="tel"
-                    value={guruData.noTelp}
-                    onChange={(e) => handleFieldChange('noTelp', e.target.value.replace(/\D/g, '').slice(0, 13))}
-                    placeholder="08xxxxxxxxxx"
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%', padding: '12px 16px', borderRadius: '8px',
-                      border: formErrors.noTelp ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      backgroundColor: 'white', outline: 'none', boxSizing: 'border-box'
-                    }}
-                  />
-                  {isEditMode && formErrors.noTelp && <p style={{ color: '#EF4444', fontSize: '12px' }}>{formErrors.noTelp}</p>}
-                </div>
-
-              </div>
-
-              {/* Footer */}
-              <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <button onClick={handleBack} style={{
-                  backgroundColor: '#2563EB', border: 'none', color: 'white', padding: '10px 24px',
-                  borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-                }}>
-                  <ArrowLeft size={18} /> Kembali
-                </button>
-              </div>
-
-            </div>
-
-          </div>
+      <div style={styles.container}>
+        {/* Header Navigation */}
+        <div style={styles.header}>
+          <button style={styles.backButton} onClick={handleCancel}>
+            <ArrowLeft size={20} />
+            Kembali ke Data Guru
+          </button>
         </div>
+
+        {/* Profile Card Header */}
+        <div style={{
+            ...styles.card,
+            overflow: "visible"
+        }}>
+            <div style={styles.profileHeader}>
+                <div style={styles.avatarContainer}>
+                    {previewImage || formData.foto ? (
+                        <img 
+                            src={previewImage || formData.foto} 
+                            alt={formData.namaGuru} 
+                            style={styles.avatar} 
+                        />
+                    ) : (
+                        <div style={styles.avatar}>
+                            <User size={64} />
+                        </div>
+                    )}
+                    
+                    {/* Upload button overlay - hanya muncul saat hover atau edit mode */}
+                    <label 
+                        htmlFor="foto-upload"
+                        style={{
+                            position: "absolute",
+                            bottom: "0",
+                            right: "0",
+                            backgroundColor: "#3B82F6",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                            border: "2px solid white"
+                        }}
+                    >
+                        <div style={{ color: "white", fontSize: "16px" }}>+</div>
+                    </label>
+                    <input 
+                        type="file" 
+                        id="foto-upload" 
+                        accept="image/*" 
+                        onChange={handleImageChange} 
+                        style={{ display: "none" }} 
+                    />
+
+                    {/* Status Badge */}
+                    <div style={{
+                        ...styles.statusBadge,
+                        backgroundColor: formData.status === "Aktif" ? "#10B981" : 
+                                         formData.status === "Cuti" ? "#F59E0B" : "#EF4444"
+                    }} />
+                </div>
+                
+                <h2 style={styles.profileName}>{formData.namaGuru}</h2>
+                <div style={styles.profileRole}>
+                    {formData.role === "Guru Mapel" && <BookOpen size={14} />}
+                    {formData.role === "Wali Kelas" && <Users size={14} />}
+                    {formData.role === "Staff" && <Layers size={14} />}
+                    {formData.role} - {formData.keterangan}
+                </div>
+            </div>
+        </div>
+
+        {/* Form Content */}
+        <div style={styles.card}>
+            <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>Informasi Pribadi & Akun</h3>
+            </div>
+            <div style={styles.cardBody}>
+                <div style={styles.grid}>
+                    {/* Kiri */}
+                    <div>
+                        <div style={styles.sectionTitle}>
+                            <User size={18} /> Data Utama
+                        </div>
+                        
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Nama Lengkap</label>
+                            <input
+                                type="text"
+                                style={styles.input}
+                                value={formData.namaGuru}
+                                onChange={(e) => handleInputChange("namaGuru", e.target.value)}
+                                placeholder="Nama lengkap dengan gelar"
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>NIP / Kode Guru</label>
+                            <input
+                                type="text"
+                                style={styles.input}
+                                value={formData.kodeGuru}
+                                onChange={(e) => handleInputChange("kodeGuru", e.target.value)}
+                                placeholder="Contoh: 19800101..."
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Jenis Kelamin</label>
+                            <div style={{ display: "flex", gap: "16px", marginTop: "8px" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px" }}>
+                                    <input
+                                        type="radio"
+                                        name="jenisKelamin"
+                                        value="Laki-Laki"
+                                        checked={formData.jenisKelamin === "Laki-Laki"}
+                                        onChange={(e) => handleInputChange("jenisKelamin", e.target.value)}
+                                        style={{ accentColor: "#001F3E" }}
+                                    />
+                                    Laki-Laki
+                                </label>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px" }}>
+                                    <input
+                                        type="radio"
+                                        name="jenisKelamin"
+                                        value="Perempuan"
+                                        checked={formData.jenisKelamin === "Perempuan"}
+                                        onChange={(e) => handleInputChange("jenisKelamin", e.target.value)}
+                                        style={{ accentColor: "#001F3E" }}
+                                    />
+                                    Perempuan
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Kanan */}
+                    <div>
+                        <div style={styles.sectionTitle}>
+                            <Layers size={18} /> Jabatan & Tugas
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Role / Jabatan</label>
+                            <select
+                                style={styles.select}
+                                value={formData.role}
+                                onChange={(e) => handleInputChange("role", e.target.value)}
+                            >
+                                <option value="Guru Mapel">Guru Mata Pelajaran</option>
+                                <option value="Wali Kelas">Wali Kelas</option>
+                                <option value="Staff">Staff / Karyawan</option>
+                            </select>
+                        </div>
+
+                        {/* Conditional Input based on Role */}
+                        {formData.role === "Guru Mapel" && (
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Mata Pelajaran</label>
+                                <select
+                                    style={styles.select}
+                                    value={formData.keterangan}
+                                    onChange={(e) => handleInputChange("keterangan", e.target.value)}
+                                >
+                                    {availableSubjects.map((mapel) => (
+                                        <option key={mapel.id} value={mapel.name}>{mapel.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {formData.role === "Wali Kelas" && (
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Wali Kelas Dari</label>
+                                <select
+                                    style={styles.select}
+                                    value={formData.keterangan}
+                                    onChange={(e) => handleInputChange("keterangan", e.target.value)}
+                                >
+                                    {availableClasses.map((kelas) => {
+                                        const className = `${kelas.grade} ${kelas.major?.code || ""} ${kelas.label}`;
+                                        return <option key={kelas.id} value={className}>{className}</option>;
+                                    })}
+                                </select>
+                            </div>
+                        )}
+
+                        {formData.role === "Staff" && (
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Bagian</label>
+                                <select
+                                    style={styles.select}
+                                    value={formData.keterangan}
+                                    onChange={(e) => handleInputChange("keterangan", e.target.value)}
+                                >
+                                    {BAGIAN_STAFF.map((bagian) => (
+                                        <option key={bagian} value={bagian}>{bagian}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Status Kepegawaian</label>
+                            <select
+                                style={styles.select}
+                                value={formData.status}
+                                onChange={(e) => handleInputChange("status", e.target.value as any)}
+                            >
+                                <option value="Aktif">Aktif</option>
+                                <option value="Cuti">Cuti</option>
+                                <option value="Tidak Aktif">Tidak Aktif / Keluar</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style={styles.card}>
+            <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>Kontak & Alamat</h3>
+            </div>
+            <div style={styles.cardBody}>
+                <div style={styles.grid}>
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                            <Phone size={14} style={{ display: "inline", marginRight: "6px" }} />
+                            Nomor Telepon / WhatsApp
+                        </label>
+                        <input
+                            type="tel"
+                            style={styles.input}
+                            value={formData.noTelp}
+                            onChange={(e) => handleInputChange("noTelp", e.target.value)}
+                            placeholder="Contoh: 0812..."
+                        />
+                    </div>
+                    
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}>
+                            <Mail size={14} style={{ display: "inline", marginRight: "6px" }} />
+                            Email
+                        </label>
+                        <input
+                            type="email"
+                            style={styles.input}
+                            value={formData.email}
+                            onChange={(e) => handleInputChange("email", e.target.value)}
+                            placeholder="nama@sekolah.sch.id"
+                        />
+                    </div>
+
+                    <div style={{ ...styles.formGroup, gridColumn: "1 / -1" }}>
+                        <label style={styles.label}>
+                            <MapPin size={14} style={{ display: "inline", marginRight: "6px" }} />
+                            Alamat Lengkap
+                        </label>
+                        <textarea
+                            style={{ ...styles.input, minHeight: "100px", resize: "vertical" }}
+                            value={formData.alamat}
+                            onChange={(e) => handleInputChange("alamat", e.target.value)}
+                            placeholder="Alamat domisili saat ini..."
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      {/* FOOTER ACTIONS */}
+      <div style={styles.footer}>
+        <button 
+            style={styles.buttonSecondary}
+            onClick={handleCancel}
+        >
+            Batal
+        </button>
+        <button 
+            style={{
+                ...styles.buttonPrimary,
+                opacity: isEditing ? 1 : 0.7,
+                cursor: isEditing ? "pointer" : "not-allowed"
+            }}
+            onClick={handleSave}
+            disabled={!isEditing}
+        >
+            <Save size={18} />
+            Simpan Perubahan
+        </button>
       </div>
     </AdminLayout>
   );

@@ -731,6 +731,16 @@ class AttendanceController extends Controller
             abort(403, 'Hanya wali kelas yang boleh melihat data ini');
         }
 
+        return $this->calculateClassSummary($request, $class);
+    }
+
+    public function wakaClassSummary(Request $request, Classes $class): JsonResponse
+    {
+        return $this->calculateClassSummary($request, $class);
+    }
+
+    private function calculateClassSummary(Request $request, Classes $class): JsonResponse
+    {
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -1029,6 +1039,33 @@ class AttendanceController extends Controller
         ]);
 
         return response()->json(new \App\Http\Resources\AttendanceResource($attendance->load(['student.user', 'teacher.user', 'schedule.class'])), 201);
+    }
+
+    public function teacherAttendanceHistory(Request $request, TeacherProfile $teacher): JsonResponse
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $query = Attendance::query()
+            ->where('attendee_type', 'teacher')
+            ->where('teacher_id', $teacher->id);
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        $history = $query->orderByDesc('date')->get();
+
+        return response()->json([
+            'teacher' => $teacher->load('user'),
+            'history' => $history,
+        ]);
     }
 
     public function wakaSummary(Request $request): JsonResponse
@@ -1382,6 +1419,7 @@ class AttendanceController extends Controller
             'items' => ['required', 'array'],
             'items.*.student_id' => ['required', 'exists:student_profiles,id'],
             'items.*.status' => ['required', 'string'],
+            'items.*.reason' => ['nullable', 'string'],
         ]);
 
         $schedule = Schedule::findOrFail($data['schedule_id']);
@@ -1415,6 +1453,7 @@ class AttendanceController extends Controller
                         'attendee_type' => 'student',
                         'checked_in_at' => now(),
                         'source' => 'manual',
+                        'reason' => $item['reason'] ?? null,
                     ]
                 );
                 $results[] = $attendance;
@@ -1423,6 +1462,7 @@ class AttendanceController extends Controller
 
         return response()->json([
             'message' => count($results).' data kehadiran berhasil disimpan',
+            'data' => $results,
         ]);
     }
 

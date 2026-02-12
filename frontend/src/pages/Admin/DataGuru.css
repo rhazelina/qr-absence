@@ -267,9 +267,9 @@
 }
 
 .aksi.edit:hover {
-  background: #ffc107d9;
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);
+  background: #e0a800;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
 }
 
 .aksi.hapus {
@@ -279,50 +279,8 @@
 
 .aksi.hapus:hover {
   background: #c82333;
-  transform: scale(1.05);
-  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
-}
-
-/* Loading and Error States */
-.loading-overlay {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.loading-spinner {
-  font-size: 18px;
-  color: #666;
-  font-weight: 500;
-}
-
-.error-message {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.error-message p {
-  font-size: 18px;
-  color: #dc3545;
-  margin-bottom: 20px;
-  font-weight: 500;
-}
-
-.btn-retry {
-  padding: 12px 30px;
-  background: #0052A4;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-retry:hover {
-  background: #003D7A;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 82, 164, 0.3);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
 }
 
 /* Responsive */
@@ -449,7 +407,7 @@
 }
 
 .modal-contentt {
-  background: #0066CC; /* BACKGROUND BIRU PENUH */
+  background: #0052A4; /* BACKGROUND BIRU PENUH */
   border-radius: 25px;
   width: 100%;
   max-width: 550px;

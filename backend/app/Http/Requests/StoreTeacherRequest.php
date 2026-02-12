@@ -23,6 +23,10 @@ class StoreTeacherRequest extends FormRequest
             'contact' => ['nullable', 'string', 'max:50'],
             'homeroom_class_id' => ['nullable', 'exists:classes,id'],
             'subject' => ['nullable', 'string', 'max:100'],
+            'jabatan' => ['nullable', 'string', 'in:Guru,Waka,Kapro,Wali Kelas'],
+            'bidang' => ['nullable', 'string', 'max:100'],
+            'konsentrasi_keahlian' => ['nullable', 'string', 'max:100'],
+            'kode_guru' => ['nullable', 'string', 'max:50', 'unique:teacher_profiles,kode_guru'],
         ];
     }
 }

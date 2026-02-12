@@ -1,6 +1,6 @@
 import SiswaLayout, { type MenuKey } from "../../component/Siswa/SiswaLayout";
 
-import JadwalImg from "../../assets/Icon/DummyJadwal.png";
+import JadwalImg from "../../assets/Icon/jadwal.jpeg";
 
 type SiswaPage = MenuKey;
 

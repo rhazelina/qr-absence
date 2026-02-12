@@ -26,6 +26,10 @@ class UpdateTeacherRequest extends FormRequest
             'subject' => ['nullable', 'string', 'max:100'],
             'nip' => ['sometimes', 'string', 'unique:teacher_profiles,nip,'.$teacherId],
             'username' => ['sometimes', 'string', 'max:50', 'unique:users,username,'.$userId],
+            'jabatan' => ['nullable', 'string', 'in:Guru,Waka,Kapro,Wali Kelas'],
+            'bidang' => ['nullable', 'string', 'max:100'],
+            'konsentrasi_keahlian' => ['nullable', 'string', 'max:100'],
+            'kode_guru' => ['nullable', 'string', 'max:50', 'unique:teacher_profiles,kode_guru,'.$teacherId],
         ];
     }
 }
