@@ -1,17 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, BookOpen, ArrowLeft, LogOut, PieChart, TrendingUp, Camera } from 'lucide-react';
+import { Calendar, Clock, BookOpen, ArrowLeft, PieChart, TrendingUp } from 'lucide-react';
 import './DashboardSiswa.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
-// import { authHelpers } from '../../utils/authHelpers';
 
-import attendanceService from '../../services/attendance';
-import { authHelpers } from '../../utils/authHelpers';
-import { authService } from '../../services/auth';
-import { useNavigate } from 'react-router-dom';
-import { Html5Qrcode } from "html5-qrcode";
-import { QRCodeSVG } from 'qrcode.react';
+// ==================== API CONFIGURATION ====================
+const baseURL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
-// SVG Avatar Component untuk Profil - Basic Icon
+const API_CONFIG = {
+  BASE_URL: API_BASE_URL,
+  ENDPOINTS: {
+    PROFILE: '/student/profile',
+    SCHEDULE: '/student/schedule',
+    WEEKLY_STATS: '/student/attendance/weekly-stats',
+    MONTHLY_TREND: '/student/attendance/monthly-trend'
+  }
+};
+
+// ==================== API SERVICE ====================
+const apiService = {
+  async request(endpoint, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    };
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        throw new Error('Unauthorized');
+      }
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async getProfile() {
+    return this.request(API_CONFIG.ENDPOINTS.PROFILE);
+  },
+
+  async getSchedule(classId) {
+    return this.request(`${API_CONFIG.ENDPOINTS.SCHEDULE}/${classId}`);
+  },
+
+  async getWeeklyStats(studentId) {
+    return this.request(`${API_CONFIG.ENDPOINTS.WEEKLY_STATS}?studentId=${studentId}`);
+  },
+
+  async getMonthlyTrend(studentId, months = 6) {
+    return this.request(`${API_CONFIG.ENDPOINTS.MONTHLY_TREND}?studentId=${studentId}&months=${months}`);
+  }
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+const getTodaySubjectCount = (scheduleData) => {
+  if (!scheduleData || !scheduleData.weeklySchedule) return 0;
+  const today = new Date().getDay();
+  return scheduleData.weeklySchedule[today]?.length || 0;
+};
+
+// ==================== COMPONENTS ====================
 const ProfileIcon = ({ gender, size = 80 }) => {
   return (
     <svg 
@@ -28,9 +85,10 @@ const ProfileIcon = ({ gender, size = 80 }) => {
   );
 };
 
-// Subjects Modal - Menampilkan gambar jadwal
-const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
+const SubjectsModal = ({ isOpen, onClose, scheduleData }) => {
   if (!isOpen) return null;
+
+  const hasScheduleImage = scheduleData?.scheduleImageUrl;
 
   return (
     <div className="siswa-overlay-modal-semua-riwayat" onClick={onClose}>
@@ -54,7 +112,7 @@ const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
           padding: '24px',
           maxHeight: 'calc(100vh - 205px)'
         }}>
-          {scheduleImage ? (
+          {hasScheduleImage ? (
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -70,7 +128,7 @@ const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
                 border: '2px solid #e5e7eb'
               }}>
                 <img 
-                  src={scheduleImage} 
+                  src={scheduleData.scheduleImageUrl} 
                   alt="Jadwal Pembelajaran" 
                   style={{
                     width: '100%',
@@ -128,7 +186,6 @@ const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
   );
 };
 
-// Line Chart Component - Untuk tren kehadiran bulanan pribadi siswa
 const LineChart = ({ data }) => {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const chartHeight = 240;
@@ -144,7 +201,8 @@ const LineChart = ({ data }) => {
         borderRadius: '12px',
         border: '2px dashed #d1d5db'
       }}>
-        <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+        <TrendingUp size={48} color="#9ca3af" style={{ marginBottom: '12px' }} />
+        <p style={{ color: '#6b7280', fontSize: '14px', margin: 0, fontWeight: '600' }}>
           Belum ada data tren bulanan
         </p>
       </div>
@@ -180,32 +238,26 @@ const LineChart = ({ data }) => {
         {[0, 25, 50, 75, 100].map((val) => {
           const y = padding.top + ((100 - val) / 100) * (chartHeight - padding.top - padding.bottom);
           return (
-            <line
-              key={val}
-              x1={padding.left}
-              y1={y}
-              x2={chartWidth - padding.right}
-              y2={y}
-              stroke="#e5e7eb"
-              strokeWidth="1"
-              strokeDasharray="4,4"
-            />
-          );
-        })}
-
-        {[0, 25, 50, 75, 100].map((val) => {
-          const y = padding.top + ((100 - val) / 100) * (chartHeight - padding.top - padding.bottom);
-          return (
-            <text
-              key={val}
-              x={padding.left - 10}
-              y={y + 4}
-              textAnchor="end"
-              fontSize="12"
-              fill="#6b7280"
-            >
-              {val}%
-            </text>
+            <g key={val}>
+              <line
+                x1={padding.left}
+                y1={y}
+                x2={chartWidth - padding.right}
+                y2={y}
+                stroke="#e5e7eb"
+                strokeWidth="1"
+                strokeDasharray="4,4"
+              />
+              <text
+                x={padding.left - 10}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="12"
+                fill="#6b7280"
+              >
+                {val}%
+              </text>
+            </g>
           );
         })}
 
@@ -275,15 +327,59 @@ const LineChart = ({ data }) => {
   );
 };
 
-// Donut Chart Component - Untuk statistik mingguan
 const DonutChart = ({ data }) => {
   const [hoveredSegment, setHoveredSegment] = useState(null);
+  
+  if (!data) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '180px',
+        height: '180px',
+        background: '#f9fafb',
+        borderRadius: '50%',
+        border: '2px dashed #d1d5db'
+      }}>
+        <PieChart size={48} color="#9ca3af" style={{ marginBottom: '8px' }} />
+        <p style={{ 
+          fontSize: '12px', 
+          color: '#6b7280', 
+          fontWeight: '600',
+          textAlign: 'center',
+          padding: '0 20px',
+          margin: 0
+        }}>Belum ada data</p>
+      </div>
+    );
+  }
+
   const total = Object.values(data).reduce((sum, val) => sum + val, 0);
   
   if (total === 0) {
     return (
-      <div className="siswa-chart-tidak-ada-data">
-        <p>Belum ada data minggu ini</p>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '180px',
+        height: '180px',
+        background: '#f9fafb',
+        borderRadius: '50%',
+        border: '2px dashed #d1d5db'
+      }}>
+        <PieChart size={48} color="#9ca3af" style={{ marginBottom: '8px' }} />
+        <p style={{ 
+          fontSize: '12px', 
+          color: '#6b7280', 
+          fontWeight: '600',
+          textAlign: 'center',
+          padding: '0 20px',
+          margin: 0
+        }}>Belum ada data minggu ini</p>
       </div>
     );
   }
@@ -385,492 +481,88 @@ const DonutChart = ({ data }) => {
   );
 };
 
-// Profile Modal Component
-const ProfileModal = ({ isOpen, onClose, profile, onLogout, currentProfileImage, onUpdateProfileImage }) => {
+// ==================== MAIN DASHBOARD COMPONENT ====================
+const Dashboard = () => {
+  // State Management
+  const [isLoading, setIsLoading] = useState(true);
+  const [profileData, setProfileData] = useState({
+    name: '',
+    kelas: '',
+    id: '',
+    gender: 'perempuan',
+    studentId: null
+  });
+  const [scheduleData, setScheduleData] = useState(null);
+  const [weeklyStats, setWeeklyStats] = useState({
+    hadir: 0,
+    terlambat: 0,
+    pulang: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0
+  });
+  const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [profileImage, setProfileImage] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [showSubjects, setShowSubjects] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
-  if (!isOpen) return null;
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('File harus berupa gambar!');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB!');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result);
-        setProfileImage(file);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveImage = async () => {
-    if (!profileImage) return;
-    setIsUploading(true);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onUpdateProfileImage(previewImage);
-      setPreviewImage(null);
-      setProfileImage(null);
-      alert('Foto profil berhasil diperbarui!');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Gagal mengupload foto. Silakan coba lagi.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setPreviewImage(null);
-    setProfileImage(null);
-  };
-
-  const handleDeleteProfileImage = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus foto profil?')) return;
-    setIsUploading(true);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      onUpdateProfileImage(null);
-      alert('Foto profil berhasil dihapus!');
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      alert('Gagal menghapus foto. Silakan coba lagi.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  return (
-    <div className="siswa-overlay-modal-semua-riwayat" onClick={onClose}>
-      <div className="siswa-modal-semua-riwayat" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="siswa-header-semua-riwayat">
-          <button onClick={onClose} className="siswa-tombol-kembali">
-            <ArrowLeft size={32} />
-          </button>
-          <h2>Info Akun</h2>
-        </div>
-        
-        <div className="siswa-kartu-semua-riwayat">
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            marginBottom: '32px', padding: '24px', background: '#f9fafb', borderRadius: '16px'
-          }}>
-            <div style={{ position: 'relative', marginBottom: '20px' }}>
-              <div style={{
-                width: '150px', height: '150px', borderRadius: '50%', background: '#e8e8e8',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden', border: '4px solid white', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-              }}>
-                {previewImage ? (
-                  <img src={previewImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : currentProfileImage ? (
-                  <img src={currentProfileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <ProfileIcon gender={profile.gender} size={80} />
-                )}
-              </div>
-              <label htmlFor="profile-upload" style={{
-                position: 'absolute', bottom: '5px', right: '5px', width: '40px', height: '40px',
-                borderRadius: '50%', background: '#1e3a8a', border: '3px solid white',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: isUploading ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
-                color: 'white', opacity: isUploading ? 0.5 : 1
-              }}>
-                <Camera size={20} />
-              </label>
-              <input id="profile-upload" type="file" accept="image/jpeg,image/png,image/jpg,image/webp"
-                onChange={handleImageChange} disabled={isUploading} style={{ display: 'none' }} />
-            </div>
-            
-            {previewImage && (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={handleSaveImage} disabled={isUploading} style={{
-                  padding: '10px 20px', background: isUploading ? '#9ca3af' : '#22c55e',
-                  color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600',
-                  cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
-                }}>
-                  {isUploading ? 'Menyimpan...' : 'Simpan Foto'}
-                </button>
-                <button onClick={handleRemoveImage} disabled={isUploading} style={{
-                  padding: '10px 20px', background: isUploading ? '#9ca3af' : '#ef4444',
-                  color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600',
-                  cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
-                }}>Batal</button>
-              </div>
-            )}
-            
-            {!previewImage && currentProfileImage && (
-              <button onClick={handleDeleteProfileImage} disabled={isUploading} style={{
-                padding: '10px 20px', background: 'transparent', color: '#ef4444',
-                border: '2px solid #ef4444', borderRadius: '8px', fontWeight: '600',
-                cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
-              }}>
-                {isUploading ? 'Menghapus...' : 'Hapus Foto'}
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Nama Lengkap</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.name}</div>
-            </div>
-
-            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Kelas</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.kelas}</div>
-            </div>
-
-            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Nomor Induk Siswa</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.id}</div>
-            </div>
-          </div>
-
-          <button onClick={onLogout} disabled={isUploading} style={{
-            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '12px', padding: '16px 24px',
-            background: isUploading ? '#9ca3af' : 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-            border: 'none', borderRadius: '12px', color: 'white', fontSize: '16px', fontWeight: '700',
-            cursor: isUploading ? 'not-allowed' : 'pointer', transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
-          }}
-          onMouseOver={(e) => {
-            if (!isUploading) {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }
-          }}
-          onMouseOut={(e) => {
-            if (!isUploading) {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }
-          }}>
-            <LogOut size={20} />
-            <span>Keluar dari Akun</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-// Daily Schedule Component
-const DailySchedule = ({ day, date, schedule }) => (
-  <div className="siswa-kartu-kehadiran">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-      <h3 className="siswa-judul-kehadiran">Jadwal Hari Ini</h3>
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <div className="siswa-lencana-waktu"><Calendar size={16} /><span>{date}</span></div>
-        <div className="siswa-lencana-waktu"><BookOpen size={16} /><span>{day}</span></div>
-      </div>
-    </div>
-    <div className="siswa-area-jadwal">
-      {schedule.length > 0 ? (
-        schedule.map((item, index) => (
-          <div key={index} className="siswa-item-jadwal">
-            <div className="siswa-waktu-jadwal">
-              <span className="siswa-jam-mulai">{item.start_time}</span>
-              <span className="siswa-pemisah-waktu"></span>
-              <span className="siswa-jam-selesai">{item.end_time}</span>
-            </div>
-            <div className="siswa-info-pelajaran">
-              <h4 className="siswa-nama-mapel">{item.subject}</h4>
-              <p className="siswa-nama-guru">{item.teacher}</p>
-            </div>
-            <div className={`siswa-status-absen status-${item.status}`}>
-              {item.status === 'none' ? 'Belum Absen' : item.status_label || item.status}
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="siswa-jadwal-kosong">Tidak ada jadwal hari ini</div>
-      )}
-    </div>
-  </div>
-);
-
-// Stats Section Component
-const StatsSection = ({ weeklyStats, monthlyTrend }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px', marginBottom: '24px' }}>
-    <div className="siswa-kartu-kehadiran">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <TrendingUp color="white" size={24} />
-        </div>
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Tren Kehadiran Bulanan</h3>
-      </div>
-      <LineChart data={monthlyTrend} />
-    </div>
-
-    <div className="siswa-kartu-kehadiran">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <PieChart color="white" size={24} />
-        </div>
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Statistik Minggu Ini</h3>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', justifyContent: 'center' }}>
-        <div style={{ flex: '0 0 auto' }}>
-          <DonutChart data={weeklyStats} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1' }}>
-          {[
-            { label: 'Hadir', value: weeklyStats.hadir, color: '#1FA83D' },
-            { label: 'Terlambat', value: weeklyStats.terlambat, color: '#FF5F1A' },
-            { label: 'Izin', value: weeklyStats.izin, color: '#EDD329' },
-            { label: 'Sakit', value: weeklyStats.sakit, color: '#9A0898' },
-            { label: 'Alpha', value: weeklyStats.alpha, color: '#D90000' }
-          ].map((stat, idx) => (
-            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '10px', height: '10px', background: stat.color, borderRadius: '50%' }}></div>
-              <div style={{ flex: 1, fontSize: '11px', color: '#6b7280', fontWeight: '600' }}>{stat.label}</div>
-              <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 'bold' }}>{stat.value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// Action Card Component
-const ActionCard = ({ title, description, icon: Icon, onClick, color }) => (
-  <button className="siswa-kartu-aksi" onClick={onClick} style={{ borderLeft: `6px solid ${color}` }}>
-    <div className="siswa-ikon-aksi" style={{ background: `${color}15`, color: color }}>
-      <Icon size={28} />
-    </div>
-    <div className="siswa-teks-aksi">
-      <h4 style={{ color: color }}>{title}</h4>
-      <p>{description}</p>
-    </div>
-  </button>
-);
-
-// Action Section Component
-const ActionSection = ({ onScanMasuk, onScanPulang, onGenerateSubjectQR }) => (
-  <div className="siswa-petak-aksi" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
-    <ActionCard title="Presensi Masuk" description="Scan QR Code Sekolah" icon={Camera} onClick={onScanMasuk} color="#10b981" />
-    <ActionCard title="Presensi Pulang" description="Scan QR Code Sekolah" icon={Camera} onClick={onScanPulang} color="#f59e0b" />
-    <ActionCard title="Mata Pelajaran" description="Tampilkan QR Kehadiran" icon={Clock} onClick={onGenerateSubjectQR} color="#1e3a8a" />
-  </div>
-);
-
-// Camera Modal Component
-const CameraModal = ({ isOpen, onClose, onScanSuccess }) => {
-  const [error, setError] = useState(null);
-  const [scanning, setScanning] = useState(false);
-
+  // Fetch data dari API saat component mount
   useEffect(() => {
-    let html5QrCode;
-    if (isOpen) {
-      setError(null);
-      setScanning(true);
-      html5QrCode = new Html5Qrcode("reader");
-      const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
-      
-      html5QrCode.start({ facingMode: "environment" }, qrConfig,
-        (decodedText) => {
-          setScanning(false);
-          html5QrCode.stop().then(() => onScanSuccess(decodedText));
-        },
-        (errorMessage) => {}
-      ).catch(err => {
-        console.error("Error starting QR scanner:", err);
-        setError("Kamera tidak dapat diakses.");
-        setScanning(false);
-      });
-    }
-    return () => {
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(err => console.error("Error stopping scanner:", err));
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch profile data
+        const profile = await apiService.getProfile();
+        setProfileData({
+          name: profile.name || '',
+          kelas: profile.kelas || '',
+          id: profile.id || '',
+          gender: profile.gender || 'perempuan',
+          studentId: profile.studentId
+        });
+        setProfileImage(profile.profileImageUrl);
+
+        // Fetch schedule data
+        if (profile.classId) {
+          const schedule = await apiService.getSchedule(profile.classId);
+          setScheduleData(schedule);
+        }
+
+        // Fetch weekly stats
+        if (profile.studentId) {
+          const weekly = await apiService.getWeeklyStats(profile.studentId);
+          setWeeklyStats({
+            hadir: weekly.hadir || 0,
+            terlambat: weekly.terlambat || 0,
+            pulang: weekly.pulang || 0,
+            izin: weekly.izin || 0,
+            sakit: weekly.sakit || 0,
+            alpha: weekly.alpha || 0
+          });
+
+          // Fetch monthly trend
+          const monthly = await apiService.getMonthlyTrend(profile.studentId, 6);
+          setMonthlyTrend(monthly || []);
+        }
+
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      } finally {
+        setIsLoading(false);
       }
     };
-  }, [isOpen, onScanSuccess]);
 
-  if (!isOpen) return null;
+    fetchData();
+  }, []);
 
-  return (
-    <div className="siswa-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
-      <div className="siswa-box-modal" onClick={e => e.stopPropagation()}>
-        <div className="siswa-kepala-modal">
-          <h2 className="siswa-judul-modal">Scan QR Code</h2>
-          <button className="siswa-tutup-modal" onClick={onClose}>&times;</button>
-        </div>
-        <div className="siswa-konten-modal">
-          <div id="reader" style={{ width: '100%', minHeight: '300px', borderRadius: '12px', overflow: 'hidden' }}></div>
-          {error && <p style={{ color: 'red', marginTop: '10px', textAlign: 'center' }}>{error}</p>}
-          <p className="siswa-instruksi-modal">{scanning ? "Arahkan kamera ke QR Code presensi" : "Memproses..."}</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// QR Generator Modal Component
-const QRGeneratorModal = ({ isOpen, onClose, token }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="siswa-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
-      <div className="siswa-box-modal" onClick={e => e.stopPropagation()}>
-        <div className="siswa-kepala-modal">
-          <h2 className="siswa-judul-modal">QR Code Saya</h2>
-          <button className="siswa-tutup-modal" onClick={onClose}>&times;</button>
-        </div>
-        <div className="siswa-konten-modal" style={{ textAlign: 'center' }}>
-          <div className="siswa-pembungkus-qr" style={{ padding: '20px', background: 'white', borderRadius: '16px', display: 'inline-block', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            {token ? <QRCodeSVG value={token} size={250} /> : <div className="siswa-pemuat-qr">Menghasilkan QR...</div>}
-          </div>
-          <p className="siswa-instruksi-modal" style={{ marginTop: '20px' }}>Tunjukkan QR ini ke petugas/guru</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Main Dashboard
-const Dashboard = () => {
-  const navigate = useNavigate();
-  const [showSubjects, setShowSubjects] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
-  const [showQRGenerator, setShowQRGenerator] = useState(false);
-  const [qrToken, setQrToken] = useState(null);
-  const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  const [profileImage, setProfileImage] = useState(null);
-  
-  const [user, setUser] = useState(authHelpers.getUserData());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [attendanceSummary, setAttendanceSummary] = useState(null);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const [dash, summary] = await Promise.all([
-        attendanceService.getStudentClassDashboard(),
-        attendanceService.getMyAttendanceSummary()
-      ]);
-      
-      setDashboardData(dash);
-      setAttendanceSummary(summary);
-    } catch (err) {
-      console.error('Error fetching student dashboard data:', err);
-      setError('Gagal mengambil data dashboard.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Update current time
   useEffect(() => {
-    fetchDashboardData();
-
     const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleScanSuccess = async (decodedText) => {
-    setShowCamera(false);
-    try {
-      setLoading(true);
-      await attendanceService.scanQRCode(decodedText);
-      alert('Presensi berhasil!');
-      fetchDashboardData(); // Refresh data
-    } catch (err) {
-      console.error('Scan error:', err);
-      alert(err.response?.data?.message || 'Gagal melakukan presensi.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGenerateQR = async () => {
-    try {
-      setLoading(true);
-      // For student daily QR or generic token, we might not need scheduleId 
-      // depends on backend. api.php says POST /qrcodes/generate.
-      // QrCodeController likely handles logic.
-      const response = await attendanceService.generateQRToken();
-      setQrToken(response.token || response.data?.token);
-      setShowQRGenerator(true);
-    } catch (err) {
-      console.error('Generate QR error:', err);
-      alert('Gagal menghasilkan QR Code.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Process monthly trend from backend summary
-  const monthlyTrend = React.useMemo(() => {
-    if (!attendanceSummary?.daily_summary) return [];
-    
-    // Group daily summary into months if needed, or if backend already provides monthly.
-    // Based on summaryMe code, it returns daily_summary.
-    // Let's transform daily to monthly for the chart if needed, 
-    // but the chart expects [{ month: 'Jan', percentage: 95, ... }]
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    const monthlyData = {};
-    
-    attendanceSummary.daily_summary.forEach(item => {
-      const date = new Date(item.day);
-      const monthIdx = date.getMonth();
-      const monthName = months[monthIdx];
-      
-      if (!monthlyData[monthName]) {
-        monthlyData[monthName] = { month: monthName, total: 0, hadir: 0 };
-      }
-      
-      monthlyData[monthName].total += parseInt(item.total);
-      if (['present', 'late'].includes(item.status)) {
-        monthlyData[monthName].hadir += parseInt(item.total);
-      }
-    });
-    
-    return Object.values(monthlyData).map(m => ({
-      ...m,
-      percentage: m.total > 0 ? Math.round((m.hadir / m.total) * 100) : 0
-    }));
-  }, [attendanceSummary]);
-
-  // Process weekly stats
-  const weeklyStats = React.useMemo(() => {
-    const defaultStats = { hadir: 0, terlambat: 0, pulang: 0, izin: 0, sakit: 0, alpha: 0 };
-    if (!attendanceSummary?.status_summary) return defaultStats;
-    
-    attendanceSummary.status_summary.forEach(item => {
-      const status = item.status;
-      const count = parseInt(item.total);
-      
-      if (status === 'present') defaultStats.hadir += count;
-      else if (status === 'late') defaultStats.terlambat += count;
-      else if (status === 'izin') defaultStats.izin += count;
-      else if (status === 'sick') defaultStats.sakit += count;
-      else if (status === 'absent') defaultStats.alpha += count;
-      // Add more as needed
-    });
-    
-    return defaultStats;
-  }, [attendanceSummary]);
-
+  // Format functions
   const formatDate = () => {
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -881,49 +573,37 @@ const Dashboard = () => {
     return currentDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      try {
-        await authService.logout();
-        navigate('/');
-      } catch (error) {
-        console.error('Logout error:', error);
-        navigate('/');
-      }
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userRole');
+      window.location.href = '/';
     }
   };
 
-  const handleUpdateProfileImage = (newImageUrl) => {
-    setProfileImage(newImageUrl);
-  };
-
-  const dashboardProfile = {
-    name: user?.name || 'Siswa',
-    kelas: dashboardData?.student?.class_name || '-',
-    id: dashboardData?.student?.nis || '-',
-    gender: user?.gender || 'laki-laki'
-  };
+  const totalSubjects = getTodaySubjectCount(scheduleData);
 
   return (
     <>
       <NavbarSiswa />
       <div className="siswa-dashboard-utama">
         <div className="siswa-bagian-profil">
-          <div className="siswa-konten-profil" onClick={() => setShowProfile(true)} style={{ cursor: 'pointer' }}>
+          <div className="siswa-konten-profil">
             <div className="siswa-pembungkus-avatar">
               <div className="siswa-avatar-profil">
                 {profileImage ? (
                   <img src={profileImage} alt="Profile" className="siswa-gambar-avatar" />
                 ) : (
                   <div className="siswa-ikon-avatar">
-                    <ProfileIcon gender={dashboardProfile.gender} size={80} />
+                    <ProfileIcon gender={profileData.gender} size={80} />
                   </div>
                 )}
               </div>
             </div>
-            <h1 className="siswa-nama-profil">{loading ? '...' : dashboardProfile.name}</h1>
-            <h3 className="siswa-kelas-profil">{loading ? '...' : dashboardProfile.kelas}</h3>
-            <p className="siswa-id-profil">{loading ? '...' : dashboardProfile.id}</p>
+            <h1 className="siswa-nama-profil">{profileData.name || '-'}</h1>
+            <h3 className="siswa-kelas-profil">{profileData.kelas || '-'}</h3>
+            <p className="siswa-id-profil">{profileData.id || '-'}</p>
           </div>
 
           <button className="btn-logout" onClick={handleLogout}>
@@ -937,44 +617,142 @@ const Dashboard = () => {
         <main className="siswa-dashboard-konten">
           <div className="siswa-dashboard-grid">
             <div className="siswa-bagian-konten">
-              <DailySchedule 
-                day={dashboardData?.day_name || 'Hari Ini'} 
-                date={formatDate()}
-                schedule={dashboardData?.schedule_today || []} 
-              />
-              
-              <StatsSection 
-                weeklyStats={weeklyStats} 
-                monthlyTrend={monthlyTrend} 
-              />
-              
-              <ActionSection 
-                onScanMasuk={() => setShowCamera(true)}
-                onScanPulang={() => setShowCamera(true)}
-                onGenerateSubjectQR={handleGenerateQR}
-              />
+              <div className="siswa-kartu-kehadiran">
+                <h3 className="siswa-judul-kehadiran">Kehadiran Siswa</h3>
+                
+                <div className="siswa-baris-info-waktu">
+                  <div className="siswa-lencana-waktu">
+                    <Calendar size={18} />
+                    <span>{formatDate()}</span>
+                  </div>
+                  <div className="siswa-lencana-waktu">
+                    <Clock size={18} />
+                    <span>{formatTime()}</span>
+                  </div>
+                </div>
+                
+                <div className="siswa-tampilan-rentang-waktu">
+                  <div className="siswa-kotak-tampilan-waktu">07:00:00</div>
+                  <div className="siswa-pemisah-rentang-waktu">—</div>
+                  <div className="siswa-kotak-tampilan-waktu">15:00:00</div>
+                </div>
+              </div>
+
+              <div className="siswa-kartu-kehadiran">
+                <h3 className="siswa-judul-kehadiran">Mata Pelajaran Hari Ini</h3>
+
+                <div style={{
+                  background: 'white', border: '2px solid #d1d5db', borderRadius: '16px',
+                  padding: '24px', marginBottom: '20px', color: '#1f2937',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Total Mata Pelajaran</div>
+                    <div style={{ fontSize: '40px', fontWeight: 'bold' }}>{totalSubjects}</div>
+                    {totalSubjects === 0 && (
+                      <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>
+                        {isLoading ? 'Memuat data...' : 'Libur - Tidak ada jadwal'}
+                      </div>
+                    )}
+                  </div>
+                  <BookOpen size={64} style={{ opacity: 0.8 }} />
+                </div>
+
+                <button onClick={() => setShowSubjects(true)} className="siswa-btn-aksi" style={{
+                  width: '100%', background: 'linear-gradient(135deg, #1e3a8a)',
+                  color: 'white', border: 'none', boxShadow: '0 4px 12px rgba(30, 58, 138, 0.3)'
+                }}>
+                  <BookOpen size={20} />
+                  <span>Lihat Jadwal Kelas</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
+                <div className="siswa-kartu-kehadiran">
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'
+                  }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      padding: '12px', borderRadius: '12px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <TrendingUp color="white" size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
+                      Tren Kehadiran Bulanan
+                    </h3>
+                  </div>
+                  <LineChart data={monthlyTrend} />
+                  <div style={{
+                    marginTop: '20px', padding: '16px', background: '#f0f9ff',
+                    borderRadius: '12px', border: '2px solid #bfdbfe'
+                  }}>
+                    <p style={{
+                      margin: 0, fontSize: '13px', color: '#1e40af',
+                      fontWeight: '600', textAlign: 'center'
+                    }}>
+                      Grafik menunjukkan persentase kehadiran pribadi per bulan
+                    </p>
+                  </div>
+                </div>
+
+                <div className="siswa-kartu-kehadiran">
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'
+                  }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      padding: '12px', borderRadius: '12px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <PieChart color="white" size={24} />
+                    </div>
+                    <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
+                      Statistik Minggu Ini
+                    </h3>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '24px',
+                    justifyContent: 'center', padding: '10px'
+                  }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                      <DonutChart data={weeklyStats} />
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: '1' }}>
+                      {[
+                        { label: 'Hadir', value: weeklyStats.hadir, color: '#1FA83D' },
+                        { label: 'Terlambat', value: weeklyStats.terlambat, color: '#FF5F1A' },
+                        { label: 'Pulang', value: weeklyStats.pulang, color: '#243CB5' },
+                        { label: 'Izin', value: weeklyStats.izin, color: '#EDD329' },
+                        { label: 'Sakit', value: weeklyStats.sakit, color: '#9A0898' },
+                        { label: 'Alpha', value: weeklyStats.alpha, color: '#D90000' }
+                      ].map((stat, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '14px', height: '14px', background: stat.color,
+                            borderRadius: '50%', flexShrink: 0
+                          }}></div>
+                          <div style={{
+                            flex: 1, fontSize: '13px', color: '#6b7280', fontWeight: '600'
+                          }}>{stat.label}</div>
+                          <div style={{
+                            fontSize: '20px', color: '#1f2937', fontWeight: 'bold'
+                          }}>{stat.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </main>
 
-        <CameraModal 
-          isOpen={showCamera} 
-          onClose={() => setShowCamera(false)}
-          onScanSuccess={handleScanSuccess}
-        />
-        
-        <QRGeneratorModal 
-          isOpen={showQRGenerator} 
-          onClose={() => setShowQRGenerator(false)} 
-          token={qrToken}
-        />
-        
         <SubjectsModal isOpen={showSubjects} onClose={() => setShowSubjects(false)} 
-          classId={dashboardData?.student?.class_id} />
-        
-        <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} 
-          profile={dashboardProfile} currentProfileImage={profileImage}
-          onUpdateProfileImage={handleUpdateProfileImage} onLogout={handleLogout} />
+          scheduleData={scheduleData} />
       </div>
     </>
   );

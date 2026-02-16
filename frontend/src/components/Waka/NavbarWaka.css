@@ -27,8 +27,11 @@
 
 .logo {
   height: 48px;
-  object-fit: contain;
+  width: 48px;
+  object-fit: cover;
   display: block;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .school-name {
@@ -94,5 +97,10 @@
     
     .school-name {
         font-size: 15px;
+    }
+    
+    .logo {
+        height: 42px;
+        width: 42px;
     }
 }

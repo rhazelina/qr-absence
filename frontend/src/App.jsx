@@ -78,7 +78,6 @@ function App() {
       <Route path="/walikelas/presensi" element={<Presensi />} />
 
       {/* Waka Routes */}
-
       <Route path="/waka/dashboard" element={<DashboardWaka />} />
       <Route path="/waka/jadwal-guru" element={<JadwalGuruIndex />} />
       <Route path="/waka/jadwal-guru/:id" element={<JadwalGuruShow />} />
@@ -87,7 +86,7 @@ function App() {
       <Route path="/waka/jadwal-siswa/:id" element={<JadwalSiswaShow />} />
       <Route path="/waka/jadwal-siswa/:id/edit" element={<JadwalSiswaEdit />} />
       <Route path="/waka/kehadiran-siswa" element={<KehadiranSiswaIndex />} />
-      <Route path="/waka/kehadiran-siswa/:id/rekap" element={<KehadiranSiswaRekap />} />
+      <Route path="/waka/kehadiran-siswa/rekap" element={<KehadiranSiswaRekap />} />
       <Route path="/waka/kehadiran-siswa/:id" element={<KehadiranSiswaShow />} />
       <Route path="/waka/kehadiran-guru" element={<KehadiranGuruIndex />} />
       <Route path="/waka/kehadiran-guru/:id" element={<KehadiranGuruShow />} />

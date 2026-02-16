@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import JadwalKelasStaff from "./JadwalKelasStaff";
@@ -11,10 +11,6 @@ import DetailSiswaStaff from "./DetailSiswaStaff";
 import DetailKehadiranGuru from "./DetailKehadiranGuru";
 import RekapKehadiranSiswa from "./RekapKehadiranSiswa";
 import DaftarKetidakhadiran from "./DaftarKetidakhadiran";
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
-import { dashboardService } from "../../services/dashboard";
-import { STORAGE_BASE_URL } from "../../utils/constants";
-import { isCancellation } from "../../utils/errorHelpers";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,9 +23,7 @@ import {
   ArcElement,
   Filler,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
-import LoadingState from "../../component/Shared/LoadingState";
-import ErrorState from "../../component/Shared/ErrorState";
+import { Line, Bar } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -62,6 +56,8 @@ type WakaPage =
   | "rekap-kehadiran-siswa"
   | "daftar-ketidakhadiran";
 
+type StatisticType = "tepat-waktu" | "terlambat" | "izin" | "sakit" | "pulang" | null;
+
 const PAGE_TITLES: Record<WakaPage, string> = {
   dashboard: "Dashboard",
   "jadwal-kelas": "Jadwal Kelas",
@@ -77,14 +73,32 @@ const PAGE_TITLES: Record<WakaPage, string> = {
   "daftar-ketidakhadiran": "Daftar Ketidakhadiran",
 };
 
+// Dummy data untuk total murid = 35 per hari
+// Realistis distribution: Hadir (mayoritas), alfa, izin, sakit, pulang (sedikit)
+const dailyAttendanceData = [
+  { day: "Senin", hadir: 30, tidak_hadir: 2, izin: 2, sakit: 1, pulang: 0 },      // Total: 35
+  { day: "Selasa", hadir: 31, tidak_hadir: 1, izin: 2, sakit: 1, pulang: 0 },     // Total: 35
+  { day: "Rabu", hadir: 33, tidak_hadir: 0, izin: 1, sakit: 1, pulang: 0 },       // Total: 35
+  { day: "Kamis", hadir: 29, tidak_hadir: 2, izin: 2, sakit: 1, pulang: 1 },      // Total: 35
+  { day: "Jumat", hadir: 32, tidak_hadir: 1, izin: 1, sakit: 0, pulang: 1 },      // Total: 35
+];
+
+// Updated monthly data with 5 categories sesuai gambar
+const monthlyAttendance = [
+  { month: "Jan", hadir: 210, izin: 8, tidak_hadir: 4, sakit: 3, pulang: 2 },
+  { month: "Feb", hadir: 198, izin: 12, tidak_hadir: 6, sakit: 2, pulang: 1 },
+  { month: "Mar", hadir: 215, izin: 10, tidak_hadir: 5, sakit: 4, pulang: 3 },
+  { month: "Apr", hadir: 224, izin: 9, tidak_hadir: 4, sakit: 1, pulang: 2 },
+  { month: "Mei", hadir: 230, izin: 7, tidak_hadir: 3, sakit: 2, pulang: 1 },
+  { month: "Jun", hadir: 218, izin: 11, tidak_hadir: 6, sakit: 3, pulang: 4 },
+];
 
 const statCards = [
-  { label: "Tepat Waktu", key: "hadir", color: "#1FA83D" },
-  { label: "Terlambat", key: "terlambat", color: "#FFA500" },
-  { label: "Izin", key: "izin", color: "#ACA40D" },
-  { label: "Sakit", key: "sakit", color: "#520C8F" },
-  { label: "Alpha", key: "alpha", color: "#D90000" },
-  { label: "Pulang", key: "pulang", color: "#2F85EB" },
+  { id: "tepat-waktu", label: "Tepat Waktu", value: "2100", color: "#1FA83D", icon: "✓" },
+  { id: "terlambat", label: "Terlambat", value: "10", color: "#ACA40D", icon: "⏱" },
+  { id: "izin", label: "Izin", value: "18", color: "#520C8F", icon: "📋" },
+  { id: "sakit", label: "Sakit", value: "5", color: "#D90000", icon: "🏥" },
+  { id: "pulang", label: "Pulang", value: "3", color: "#2F85EB", icon: "🚪" },
 ];
 
 const historyInfo = {
@@ -96,10 +110,12 @@ const historyInfo = {
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: "#FFFFFF",
-  borderRadius: "16px",
-  padding: "20px",
-  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.08)",
-  border: "1px solid #E5E7EB",
+  borderRadius: "20px",
+  padding: "24px",
+  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08)",
+  border: "1px solid rgba(229, 231, 235, 0.8)",
+  backdropFilter: "blur(10px)",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
 };
 
 // Warna sesuai format revisi
@@ -107,100 +123,28 @@ const COLORS = {
   HADIR: "#1FA83D",      // HIJAU - Hadir
   IZIN: "#ACA40D",       // KUNING - Izin
   PULANG: "#2F85EB",     // BIRU - Pulang
-  TIDAK_HADIR: "#D90000", // MERAH - Tidak Hadir
+  TIDAK_HADIR: "#D90000", // MERAH - alfa
   SAKIT: "#520C8F",      // UNGU - Sakit
 };
 
-import type { WakaSummary } from "../../types/api";
-
-// ... (existing imports)
-
 export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) {
-  const { confirm: popupConfirm } = usePopup();
-
   const [currentPage, setCurrentPage] = useState<WakaPage>("dashboard");
-  const navigate = useNavigate();
-
-  // API data states
-  const [wakaSummary, setWakaSummary] = useState<WakaSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // ... (rest of the component)
-
-
-  // Fetch dashboard data
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const wakaStats = await dashboardService.getWakaDashboardSummary({ signal: controller.signal });
-        setWakaSummary(wakaStats);
-      } catch (err: any) {
-        if (!isCancellation(err)) {
-          console.error('Error fetching dashboard data:', err);
-          setError('Gagal memuat ringkasan data Waka/Staff.');
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchDashboardData();
-    // Refresh every minute
-    const interval = setInterval(fetchDashboardData, 60000);
-    return () => {
-      controller.abort();
-      clearInterval(interval);
-    };
-  }, []);
-
   const [selectedGuru, setSelectedGuru] = useState<string | null>(null);
-  const [selectedGuruId, setSelectedGuruId] = useState<string | null>(null);
-  const [selectedGuruIdentitas, setSelectedGuruIdentitas] = useState<string | null>(null);
   const [selectedKelas, setSelectedKelas] = useState<string | null>(null);
   const [selectedKelasId, setSelectedKelasId] = useState<string | null>(null);
-  const [selectedJadwalImage, setSelectedJadwalImage] = useState<string | null>(null);
   const [selectedKelasInfo, setSelectedKelasInfo] = useState<{
     namaKelas: string;
     waliKelas: string;
   } | null>(null);
-
   const [selectedSiswa, setSelectedSiswa] = useState<{
     name: string;
     identitas: string;
   } | null>(null);
-
-  const handleMenuClick = (page: string, payload?: any) => {
-    setCurrentPage(page as WakaPage);
-
-    // Handle payload untuk lihat-kelas
-    if (page === "lihat-kelas" && payload) {
-      setSelectedKelas(payload.kelas);
-      setSelectedKelasId(payload.classId);
-      setSelectedJadwalImage(payload.jadwalImage);
-    }
-
-    // Handle payload untuk lihat-guru
-    if (page === "lihat-guru" && payload) {
-      setSelectedGuru(payload.namaGuru);
-      setSelectedGuruIdentitas(payload.noIdentitas);
-      setSelectedJadwalImage(payload.jadwalImage);
-    }
-
-    // Handle payload untuk daftar-ketidakhadiran
-    if (page === "daftar-ketidakhadiran" && payload) {
-      setSelectedSiswa({
-        name: payload.siswaName,
-        identitas: payload.siswaIdentitas,
-      });
-    }
-  };
-
+  const [selectedStat, setSelectedStat] = useState<StatisticType>(null);
   const [currentDate, setCurrentDate] = useState("");
   const [currentTime, setCurrentTime] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -226,8 +170,20 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogout = async () => {
-    if (await popupConfirm("Apakah Anda yakin ingin keluar?")) {
+  const handleMenuClick = (page: string, payload?: any) => {
+    setCurrentPage(page as WakaPage);
+    
+    // Handle payload untuk daftar-ketidakhadiran
+    if (page === "daftar-ketidakhadiran" && payload) {
+      setSelectedSiswa({
+        name: payload.siswaName,
+        identitas: payload.siswaIdentitas,
+      });
+    }
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("Apakah Anda yakin ingin keluar?")) {
       onLogout();
       navigate("/");
     }
@@ -269,8 +225,6 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
           <DetailGuru
             {...commonProps}
             namaGuru={selectedGuru || undefined}
-            noIdentitas={selectedGuruIdentitas || undefined}
-            jadwalImage={selectedJadwalImage ? `${STORAGE_BASE_URL}/${selectedJadwalImage}` : undefined}
             onBack={() => handleMenuClick("jadwal-guru")}
           />
         );
@@ -280,7 +234,6 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
           <DetailKelas
             {...commonProps}
             kelas={selectedKelas || undefined}
-            jadwalImage={selectedJadwalImage ? `${STORAGE_BASE_URL}/${selectedJadwalImage}` : undefined}
             onBack={() => handleMenuClick("jadwal-kelas")}
           />
         );
@@ -310,10 +263,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <KehadiranGuru
             {...commonProps}
-            onNavigateToDetail={(guruId: string, guruName: string, noIdentitas?: string) => {
-              setSelectedGuruId(guruId);
-              setSelectedGuru(guruName);
-              setSelectedGuruIdentitas(noIdentitas || null);
+            onNavigateToDetail={() => {
               handleMenuClick("detail-kehadiran-guru");
             }}
           />
@@ -323,8 +273,6 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <DetailKehadiranGuru
             {...commonProps}
-            teacherId={selectedGuruId || undefined}
-            guruName={selectedGuru || undefined}
             onBack={() => handleMenuClick("kehadiran-guru")}
           />
         );
@@ -335,7 +283,6 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             {...commonProps}
             namaKelas={selectedKelasInfo?.namaKelas || "X Mekatronika 1"}
             waliKelas={selectedKelasInfo?.waliKelas || "Ewit Erniyah S.pd"}
-            classId={selectedKelasId || undefined}
             onBack={() => handleMenuClick("detail-siswa-staff")}
           />
         );
@@ -359,7 +306,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             user={user}
             onLogout={handleLogout}
           >
-            <GuruPenggantiList />
+            <ComingSoon title={PAGE_TITLES[currentPage]} />
           </StaffLayout>
         );
 
@@ -373,145 +320,88 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             user={user}
             onLogout={handleLogout}
           >
+            <div style={{ display: "flex", flexDirection: "column", gap: "28px", backgroundColor: "#F9FAFB", padding: "4px" }}>
+              {/* Welcome Section */}
+              <div style={{ marginBottom: "8px" }}>
+                <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#111827", margin: 0 }}>
+                  Selamat Datang, {user.name}
+                </h2>
+                <p style={{ fontSize: "14px", color: "#6B7280", margin: "4px 0 0" }}>
+                  Ringkasan aktivitas dan data sekolah hari ini
+                </p>
+              </div>
 
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "28px",
-              backgroundColor: "#F9FAFB",
-              padding: "4px",
-              minHeight: "80vh",
-            }}>
-              {/* Error Alert replaced by Conditional Rendering */}
-              {isLoading && !wakaSummary ? (
-                <LoadingState />
-              ) : error ? (
-                <ErrorState message={error} onRetry={() => window.location.reload()} />
-              ) : (
-                <>
+              {/* Top Section: History & Statistics */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                  gap: "24px",
+                }}
+              >
+                {/* Riwayat Kehadiran Card */}
+                <div style={cardStyle}>
+                  <SectionHeader
+                    title="Riwayat Kehadiran"
+                    subtitle={`${currentDate} • ${currentTime}`}
+                  />
+                  <HistoryCard
+                    start={historyInfo.start}
+                    end={historyInfo.end}
+                  />
+                </div>
 
-                  {/* Welcome Section */}
-                  <div style={{ marginBottom: "8px" }}>
-                    <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#111827", margin: 0 }}>
-                      Selamat Datang, {user.name}
-                    </h2>
-                    <p style={{ fontSize: "14px", color: "#6B7280", margin: "4px 0 0" }}>
-                      Ringkasan aktivitas dan data sekolah hari ini
-                    </p>
-                  </div>
+                {/* Statistik Kehadiran Card */}
+                <div style={cardStyle}>
+                  <SectionHeader
+                    title="Statistik Kehadiran"
+                    subtitle="Klik untuk melihat detail"
+                  />
+                  <StatisticsGrid 
+                    statCards={statCards} 
+                    selectedStat={selectedStat}
+                    onSelectStat={setSelectedStat}
+                  />
+                  {selectedStat && (
+                    <StatisticDetail stat={selectedStat} />
+                  )}
+                </div>
+              </div>
 
-                  {/* Top Section: History & Statistics */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                      gap: "24px",
-                    }}
-                  >
-                    {/* Riwayat Kehadiran Card */}
-                    <div style={cardStyle}>
-                      <SectionHeader
-                        title="Riwayat Kehadiran"
-                        subtitle={`${currentDate} • ${currentTime}`}
-                      />
-                      <HistoryCard
-                        start={historyInfo.start}
-                        end={historyInfo.end}
-                      />
-                    </div>
+              {/* Grafik Section */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                  gap: "24px",
+                }}
+              >
+                {/* Weekly Chart - Kembali ke bentuk semula dengan warna baru */}
+                <div style={cardStyle}>
+                  <SectionHeader title="Grafik Kehadiran Harian" subtitle="Rekap Mingguan (Senin - Jumat)" />
+                  <WeeklyBarGraph />
+                </div>
 
-                    {/* Statistik Kehadiran Card */}
-                    <div style={cardStyle}>
-                      <SectionHeader
-                        title="Statistik Kehadiran"
-                        subtitle="Rekap keseluruhan"
-                      />
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
-                          gap: "12px",
-                        }}
-                      >
-                        {statCards.filter(item => item.label !== "Pulang").map((item) => (
-                          <div
-                            key={item.label}
-                            style={{
-                              border: `1px solid ${item.color}20`,
-                              borderRadius: "12px",
-                              padding: "16px",
-                              textAlign: "center",
-                              backgroundColor: `${item.color}10`,
-                              transition: "all 0.2s ease",
-                              cursor: "default",
-                            }}
-                          >
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: "12px",
-                                color: "#6B7280",
-                                fontWeight: 600,
-                                marginBottom: "6px",
-                              }}
-                            >
-                              {item.label}
-                            </p>
-                            <p
-                              style={{
-                                margin: "0",
-                                fontSize: "22px",
-                                fontWeight: 700,
-                                color: item.color,
-                              }}
-                            >
-                              {wakaSummary?.statistik ? wakaSummary.statistik[item.key] : 0}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Grafik Section */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                      gap: "24px",
-                    }}
-                  >
-
-
-                    {/* Monthly Chart - Line Chart seperti DashboardSiswa */}
-                    <div style={{
-                      ...cardStyle,
-                      transition: "all 0.3s ease",
-                    }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.boxShadow = "0 8px 30px rgba(0, 31, 62, 0.12)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.08)";
-                      }}>
-                      <SectionHeader
-                        title="Grafik Kehadiran Bulanan"
-                        subtitle="Periode Jan - Jun"
-                      />
-                      <MonthlyLineChart data={wakaSummary?.trend?.map((t: any) => ({
-                        month: t.month || t.label,
-                        hadir: t.present !== undefined ? t.present : t.hadir,
-                        izin: t.sick_excused !== undefined ? t.sick_excused : t.izin,
-                        tidak_hadir: t.absent !== undefined ? t.absent : t.alpha,
-                        sakit: t.sick !== undefined ? t.sick : 0,
-                        pulang: t.return !== undefined ? t.return : t.terlambat
-                      })) || []} />
-                    </div>
-                  </div>
-                </>
-              )}
+                {/* Monthly Chart - Line Chart seperti DashboardSiswa */}
+                <div style={{
+                  ...cardStyle,
+                  transition: "all 0.3s ease",
+                }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0 8px 30px rgba(0, 31, 62, 0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.08)";
+                  }}>
+                  <SectionHeader
+                    title="Grafik Kehadiran Bulanan"
+                    subtitle="Periode Jan - Jun"
+                  />
+                  <MonthlyLineChart data={monthlyAttendance} />
+                </div>
+              </div>
             </div>
           </StaffLayout>
         );
@@ -519,122 +409,6 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
   };
 
   return renderPage();
-}
-
-
-function GuruPenggantiList() {
-  const [loading, setLoading] = useState(true);
-  const [absentTeachers, setAbsentTeachers] = useState<any[]>([]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchAbsentTeachers = async () => {
-      try {
-        setLoading(true);
-        const { dashboardService } = await import("../../services/dashboard");
-        const today = new Date().toISOString().split('T')[0];
-        const response: any = await dashboardService.getTeachersDailyAttendance({ date: today }, { signal: controller.signal });
-
-        const items = response.items?.data || response.items || [];
-        const absent = items.filter((item: any) => (item.status || item.attendance?.status) === 'absent');
-        setAbsentTeachers(absent);
-      } catch (err: any) {
-        if (!isCancellation(err)) {
-          console.error("Failed to fetch absent teachers", err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAbsentTeachers();
-    return () => controller.abort();
-  }, []);
-
-  return (
-    <div style={{
-      backgroundColor: "white",
-      borderRadius: "16px",
-      padding: "24px",
-      border: "1px solid #E5E7EB",
-      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-    }}>
-      <div style={{ marginBottom: "24px", borderBottom: "1px solid #F3F4F6", paddingBottom: "16px" }}>
-        <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#111827", marginBottom: "4px" }}>
-          Daftar Guru Perlu Pengganti
-        </h2>
-        <p style={{ color: "#6B7280", fontSize: "14px" }}>
-          Berikut adalah daftar guru yang tidak hadir hari ini dan memerlukan guru pengganti.
-        </p>
-      </div>
-
-      {loading ? (
-        <div style={{ padding: "40px", textAlign: "center", color: "#6B7280" }}>Memuat daftar guru...</div>
-      ) : absentTeachers.length === 0 ? (
-        <div style={{ padding: "40px", textAlign: "center", color: "#6B7280", backgroundColor: "#F9FAFB", borderRadius: "8px" }}>
-          Tidak ada guru yang memerlukan pengganti hari ini. Semua guru terjadwal atau sudah hadir.
-        </div>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #E5E7EB" }}>
-                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>Nama Guru</th>
-                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>NIP</th>
-                <th style={{ textAlign: "left", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>Status</th>
-                <th style={{ textAlign: "center", padding: "12px 16px", fontSize: "12px", textTransform: "uppercase", color: "#6B7280", fontWeight: 600 }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {absentTeachers.map((item, index) => (
-                <tr key={item.teacher?.id || index} style={{ borderBottom: "1px solid #F3F4F6", transition: "background-color 0.2s" }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
-                  <td style={{ padding: "12px 16px", fontWeight: 500, color: "#111827" }}>{item.teacher?.user?.name || item.teacher?.name || "-"}</td>
-                  <td style={{ padding: "12px 16px", color: "#4B5563" }}>{item.teacher?.nip || "-"}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{
-                      backgroundColor: "#FEE2E2",
-                      color: "#991B1B",
-                      padding: "4px 10px",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                      fontWeight: 600
-                    }}>
-                      Alpha
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                    <button
-                      disabled
-                      style={{
-                        backgroundColor: "#E5E7EB",
-                        color: "#9CA3AF",
-                        border: "none",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        cursor: "not-allowed",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        margin: "0 auto"
-                      }}
-                      title="Fitur ini akan segera hadir"
-                    >
-                      <span style={{ fontSize: "14px" }}>🔒</span>
-                      Segera Hadir
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -660,9 +434,373 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <span
+        style={{
+          width: "10px",
+          height: "10px",
+          borderRadius: "999px",
+          backgroundColor: color,
+          display: "inline-block",
+          flexShrink: 0,
+        }}
+      />
+      <span style={{ fontSize: "12px", color: "#4B5563", fontWeight: 500 }}>{label}</span>
+    </div>
+  );
+}
 
+function StatisticsGrid({ 
+  statCards, 
+  selectedStat,
+  onSelectStat 
+}: { 
+  statCards: typeof statCards;
+  selectedStat: StatisticType;
+  onSelectStat: (stat: StatisticType) => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(85px, 1fr))",
+        gap: "12px",
+        maxWidth: "100%",
+        overflow: "hidden",
+      }}
+    >
+      {statCards.map((item) => (
+        <div
+          key={item.id}
+          onClick={() => onSelectStat(selectedStat === item.id ? null : (item.id as StatisticType))}
+          style={{
+            border: `2px solid ${selectedStat === item.id ? item.color : item.color + "20"}`,
+            borderRadius: "12px",
+            padding: "14px 12px",
+            textAlign: "center",
+            backgroundColor: selectedStat === item.id ? item.color + "15" : item.color + "08",
+            transition: "all 0.2s ease",
+            cursor: "pointer",
+            position: "relative",
+            overflow: "hidden",
+            transform: selectedStat === item.id ? "scale(1.05)" : "scale(1)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = item.color + "20";
+            e.currentTarget.style.borderColor = item.color;
+            e.currentTarget.style.transform = "translateY(-2px)";
+          }}
+          onMouseLeave={(e) => {
+            if (selectedStat !== item.id) {
+              e.currentTarget.style.backgroundColor = item.color + "08";
+              e.currentTarget.style.borderColor = item.color + "20";
+            }
+            e.currentTarget.style.transform = selectedStat === item.id ? "scale(1.05)" : "translateY(0)";
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "11px",
+              color: "#6B7280",
+              fontWeight: 600,
+              marginBottom: "4px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.label}
+          </p>
+          <p
+            style={{
+              margin: "0",
+              fontSize: "20px",
+              fontWeight: 700,
+              color: item.color,
+            }}
+          >
+            {item.icon}
+          </p>
+          <p
+            style={{
+              margin: "4px 0 0",
+              fontSize: "16px",
+              fontWeight: 700,
+              color: item.color,
+            }}
+          >
+            {item.value}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
+function StatisticDetail({ stat }: { stat: StatisticType }) {
+  const details: Record<string, { desc: string; color: string }> = {
+    "tepat-waktu": { 
+      desc: "Total guru yang hadir tepat waktu sesuai jadwal kerja", 
+      color: "#1FA83D" 
+    },
+    "terlambat": { 
+      desc: "Total guru yang terlambat lebih dari 5 menit", 
+      color: "#ACA40D" 
+    },
+    "izin": { 
+      desc: "Total guru yang mengajukan izin dan disetujui", 
+      color: "#520C8F" 
+    },
+    "sakit": { 
+      desc: "Total guru yang tidak masuk karena sakit", 
+      color: "#D90000" 
+    },
+    "pulang": { 
+      desc: "Total guru yang pulang lebih awal dengan izin", 
+      color: "#2F85EB" 
+    },
+  };
 
+  const detail = details[stat];
+
+  return (
+    <div
+      style={{
+        marginTop: "16px",
+        padding: "12px 14px",
+        backgroundColor: detail.color + "10",
+        border: `1px solid ${detail.color}30`,
+        borderRadius: "8px",
+        animation: "slideIn 0.3s ease",
+      }}
+    >
+      <p style={{ margin: 0, fontSize: "12px", color: "#4B5563", lineHeight: "1.5" }}>
+        {detail.desc}
+      </p>
+      <style>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function WeeklyBarGraph() {
+  const chartData = {
+    labels: dailyAttendanceData.map((d) => d.day),
+    datasets: [
+      {
+        label: "Hadir",
+        data: dailyAttendanceData.map((d) => d.hadir),
+        backgroundColor: [
+          "rgba(31, 168, 61, 0.9)",
+          "rgba(31, 168, 61, 0.85)",
+          "rgba(31, 168, 61, 0.95)",
+          "rgba(31, 168, 61, 0.88)",
+          "rgba(31, 168, 61, 0.92)",
+        ],
+        borderColor: COLORS.HADIR,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+        hoverBackgroundColor: "rgba(31, 168, 61, 1)",
+        hoverBorderColor: COLORS.HADIR,
+        hoverBorderWidth: 3,
+      },
+      {
+        label: "alfa",
+        data: dailyAttendanceData.map((d) => d.tidak_hadir),
+        backgroundColor: [
+          "rgba(217, 0, 0, 0.85)",
+          "rgba(217, 0, 0, 0.8)",
+          "rgba(217, 0, 0, 0.9)",
+          "rgba(217, 0, 0, 0.83)",
+          "rgba(217, 0, 0, 0.87)",
+        ],
+        borderColor: COLORS.TIDAK_HADIR,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+        hoverBackgroundColor: "rgba(217, 0, 0, 1)",
+        hoverBorderColor: COLORS.TIDAK_HADIR,
+        hoverBorderWidth: 3,
+      },
+      {
+        label: "Izin",
+        data: dailyAttendanceData.map((d) => d.izin),
+        backgroundColor: [
+          "rgba(172, 164, 13, 0.85)",
+          "rgba(172, 164, 13, 0.8)",
+          "rgba(172, 164, 13, 0.9)",
+          "rgba(172, 164, 13, 0.83)",
+          "rgba(172, 164, 13, 0.87)",
+        ],
+        borderColor: COLORS.IZIN,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+        hoverBackgroundColor: "rgba(172, 164, 13, 1)",
+        hoverBorderColor: COLORS.IZIN,
+        hoverBorderWidth: 3,
+      },
+      {
+        label: "Sakit",
+        data: dailyAttendanceData.map((d) => d.sakit),
+        backgroundColor: [
+          "rgba(82, 12, 143, 0.85)",
+          "rgba(82, 12, 143, 0.8)",
+          "rgba(82, 12, 143, 0.9)",
+          "rgba(82, 12, 143, 0.83)",
+          "rgba(82, 12, 143, 0.87)",
+        ],
+        borderColor: COLORS.SAKIT,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+        hoverBackgroundColor: "rgba(82, 12, 143, 1)",
+        hoverBorderColor: COLORS.SAKIT,
+        hoverBorderWidth: 3,
+      },
+      {
+        label: "Pulang",
+        data: dailyAttendanceData.map((d) => d.pulang),
+        backgroundColor: [
+          "rgba(47, 133, 235, 0.85)",
+          "rgba(47, 133, 235, 0.8)",
+          "rgba(47, 133, 235, 0.9)",
+          "rgba(47, 133, 235, 0.83)",
+          "rgba(47, 133, 235, 0.87)",
+        ],
+        borderColor: COLORS.PULANG,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+        hoverBackgroundColor: "rgba(47, 133, 235, 1)",
+        hoverBorderColor: COLORS.PULANG,
+        hoverBorderWidth: 3,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: "x" as const,
+    plugins: {
+      legend: {
+        position: "bottom" as const,
+        labels: {
+          usePointStyle: true,
+          boxWidth: 10,
+          padding: 20,
+          font: {
+            size: 13,
+            weight: "600" as const,
+            family: "'Inter', sans-serif",
+          },
+          color: "#374151",
+        },
+      },
+      tooltip: {
+        backgroundColor: "rgba(31, 41, 55, 0.95)",
+        padding: 14,
+        titleFont: { size: 14, weight: "600", family: "'Inter', sans-serif" },
+        bodyFont: { size: 13, weight: "500", family: "'Inter', sans-serif" },
+        cornerRadius: 10,
+        displayColors: true,
+        borderColor: "#E5E7EB",
+        borderWidth: 1,
+        boxPadding: 8,
+        callbacks: {
+          label: function (context: any) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            label += context.parsed.y + ' murid';
+            return label;
+          },
+          afterLabel: function (context: any) {
+            const total = context.chart.data.datasets.reduce((sum: number, dataset: any) => {
+              return sum + (dataset.data[context.dataIndex] || 0);
+            }, 0);
+            return `Total: ${total} murid`;
+          }
+        }
+      },
+    },
+    scales: {
+      x: {
+        stacked: false,
+        grid: {
+          display: false,
+          drawBorder: false,
+        },
+        ticks: {
+          font: {
+            size: 12,
+            weight: "600",
+          },
+          color: "#6B7280",
+        },
+      },
+      y: {
+        stacked: false,
+        beginAtZero: true,
+        max: 35,
+        grid: {
+          color: "rgba(243, 244, 246, 0.8)",
+          drawBorder: false,
+          lineWidth: 1,
+        },
+        border: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 12,
+            weight: "500",
+          },
+          color: "#9CA3AF",
+          padding: 10,
+          stepSize: 5,
+          callback: function (value: any) {
+            return value + ' murid';
+          }
+        },
+      },
+    },
+    interaction: {
+      mode: "index" as const,
+      intersect: false,
+    },
+    animation: {
+      duration: 800,
+      easing: "easeInOutQuart" as const,
+    }
+  };
+
+  return (
+    <div style={{ 
+      height: "350px", 
+      width: "100%",
+      padding: "10px 0"
+    }}>
+      <Bar data={chartData} options={options} />
+    </div>
+  );
+}
 
 // Monthly Line Chart Component - dengan 5 kategori
 function MonthlyLineChart({
@@ -716,7 +854,7 @@ function MonthlyLineChart({
         fill: true,
       },
       {
-        label: "Tidak Hadir",
+        label: "alfa",
         data: data.map((d) => d.tidak_hadir),
         borderColor: COLORS.TIDAK_HADIR,
         backgroundColor: `${COLORS.TIDAK_HADIR}20`,
@@ -824,8 +962,22 @@ function MonthlyLineChart({
 }
 
 function HistoryCard({ start, end }: { start: string; end: string }) {
+  // Calculate work duration
+  const startTime = new Date(`2024-01-01 ${start}`);
+  const endTime = new Date(`2024-01-01 ${end}`);
+  const durationMs = endTime.getTime() - startTime.getTime();
+  const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
+  const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+  // Check if on time (before 7:30 AM)
+  const isOnTime = start <= "07:30:00";
+  const statusColor = isOnTime ? "#10B981" : "#F59E0B";
+  const statusText = isOnTime ? "Tepat Waktu" : "Terlambat";
+  const statusIcon = isOnTime ? "✓" : "⏱";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+      {/* Time Range Cards */}
       <div
         style={{
           display: "flex",
@@ -837,39 +989,168 @@ function HistoryCard({ start, end }: { start: string; end: string }) {
         <TimeRange label="Mulai" value={start} />
         <TimeRange label="Selesai" value={end} />
       </div>
+
+      {/* Work Duration Section */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {/* Duration Display */}
+        <div
+          style={{
+            backgroundColor: "linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)",
+            backgroundImage: "linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%)",
+            borderRadius: "12px",
+            padding: "14px 16px",
+            border: "1px solid #BAE6FD",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "#0369A1", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              ⏱ Durasi Kerja
+            </span>
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "#0C4A6E" }}>
+              {durationHours}h {durationMinutes}m
+            </span>
+          </div>
+          
+          {/* Progress Bar */}
+          <div style={{ position: "relative", height: "6px", backgroundColor: "rgba(2, 132, 199, 0.15)", borderRadius: "3px", overflow: "hidden" }}>
+            <div
+              style={{
+                height: "100%",
+                backgroundColor: "#0284C7",
+                borderRadius: "3px",
+                width: `${Math.min((durationHours * 60 + durationMinutes) / 480 * 100, 100)}%`,
+                transition: "width 0.5s ease",
+              }}
+            />
+          </div>
+          <div style={{ marginTop: "6px", fontSize: "10px", color: "#0369A1", fontWeight: 500 }}>
+            Target: 8 jam | Tercapai: {((durationHours * 60 + durationMinutes) / 480 * 100).toFixed(0)}%
+          </div>
+        </div>
+
+        {/* Status Indicator */}
+        <div
+          style={{
+            backgroundColor: statusColor + "15",
+            border: `2px solid ${statusColor}`,
+            borderRadius: "12px",
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: statusColor + "30",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "20px",
+            }}
+          >
+            {statusIcon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>Status</div>
+            <div style={{ fontSize: "14px", fontWeight: 700, color: statusColor }}>
+              {statusText}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 function TimeRange({ label, value }: { label: string; value: string }) {
+  const isStart = label === "Mulai";
+  const gradientStart = isStart ? "#F0FDF4" : "#FEF3C7";
+  const gradientEnd = isStart ? "#DCFCE7" : "#FCD34D";
+  const borderColor = isStart ? "#86EFAC" : "#FCD34D";
+  const textColor = isStart ? "#15803D" : "#92400E";
+  const icon = isStart ? "🕖" : "🏁";
+
   return (
     <div
       style={{
         flex: 1,
         minWidth: "160px",
-        border: "1px solid #E5E7EB",
-        borderRadius: "10px",
-        padding: "14px 16px",
+        backgroundImage: `linear-gradient(135deg, ${gradientStart} 0%, ${gradientEnd} 100%)`,
+        border: `2px solid ${borderColor}`,
+        borderRadius: "14px",
+        padding: "16px 18px",
         display: "flex",
         flexDirection: "column",
-        gap: "6px",
-        backgroundColor: "#F9FAFB",
-        transition: "all 0.2s ease",
+        gap: "8px",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        cursor: "default",
+        position: "relative",
+        overflow: "hidden",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#3B82F6";
-        e.currentTarget.style.backgroundColor = "#F0F9FF";
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = `0 12px 24px rgba(0, 0, 0, 0.12)`;
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#E5E7EB";
-        e.currentTarget.style.backgroundColor = "#F9FAFB";
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
       }}
     >
-      <span style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</span>
-      <strong style={{ fontSize: "18px", color: "#111827", fontWeight: 700 }}>{value}</strong>
+      {/* Background decoration */}
+      <div
+        style={{
+          position: "absolute",
+          top: "-20px",
+          right: "-20px",
+          width: "80px",
+          height: "80px",
+          borderRadius: "50%",
+          backgroundColor: borderColor,
+          opacity: 0.1,
+        }}
+      />
+      
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", zIndex: 1 }}>
+        <span style={{ fontSize: "11px", color: textColor, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
+          {label}
+        </span>
+        <span style={{ fontSize: "18px" }}>{icon}</span>
+      </div>
+      
+      <strong style={{ fontSize: "22px", color: textColor, fontWeight: 800, fontFamily: "'Monaco', 'Courier New', monospace" }}>
+        {value}
+      </strong>
     </div>
   );
 }
 
-
-
+function ComingSoon({ title }: { title: string }) {
+  return (
+    <div
+      style={{
+        backgroundColor: "white",
+        borderRadius: "12px",
+        padding: "48px 32px",
+        border: "2px dashed #E5E7EB",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "48px", marginBottom: "16px" }}>🚀</div>
+      <h2
+        style={{
+          fontSize: "20px",
+          marginBottom: "8px",
+          color: "#111827",
+          fontWeight: 700,
+        }}
+      >
+        {title}
+      </h2>
+      <p style={{ color: "#6B7280", fontSize: "14px", margin: 0 }}>Konten masih dalam pengembangan.</p>
+    </div>
+  );
+}

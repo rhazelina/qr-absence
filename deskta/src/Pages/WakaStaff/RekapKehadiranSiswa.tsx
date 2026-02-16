@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { Eye, FileDown } from "lucide-react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Table } from "../../component/Shared/Table";
-import { isCancellation } from "../../utils/errorHelpers";
 
 interface RekapKehadiranSiswaProps {
   user: { name: string; role: string };
@@ -10,7 +9,6 @@ interface RekapKehadiranSiswaProps {
   currentPage: string;
   onMenuClick: (page: string, payload?: any) => void;
   kelas?: string;
-  classId?: string;
   namaKelas?: string;
   waliKelas?: string;
   onBack?: () => void;
@@ -32,13 +30,13 @@ export default function RekapKehadiranSiswa({
   onLogout,
   currentPage,
   onMenuClick,
-  classId,
-  namaKelas = "X Mekatronika 1",
+  kelas = "12 Mekatronika 2",
+  namaKelas = "12 Mekatronika 2",
   waliKelas = "Ewit Erniyah S.pd",
   onBack,
 }: RekapKehadiranSiswaProps) {
-  const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
-  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState("2025-01-14");
+  const [endDate, setEndDate] = useState("2025-01-06");
 
   // Warna sesuai revisi
   const COLORS = {
@@ -75,49 +73,83 @@ export default function RekapKehadiranSiswa({
     };
   }, []);
 
-  const [siswaData, setSiswaData] = useState<SiswaRow[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchData = async () => {
-      if (!classId) return;
-
-      setLoading(true);
-      try {
-        const { dashboardService } = await import("../../services/dashboard");
-        const response: any = await dashboardService.getClassStudentsSummary(classId, { from: startDate, to: endDate }, { signal: controller.signal });
-
-        const data = response.data || response;
-        const mappedData: SiswaRow[] = data.map((item: any, index: number) => ({
-          no: index + 1,
-          nisn: item.student.nisn,
-          namaSiswa: item.student.user?.name || "Siswa",
-          hadir: item.totals.present || 0,
-          sakit: item.totals.sick || 0,
-          izin: (item.totals.excused || 0) + (item.totals.izin || 0),
-          alpha: item.totals.absent || 0,
-          pulang: item.totals.return || 0,
-        }));
-
-        setSiswaData(mappedData);
-      } catch (error: any) {
-        if (!isCancellation(error)) {
-          console.error("Failed to fetch rekap kehadiran", error);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => controller.abort();
-  }, [classId, startDate, endDate]);
+  // Dummy data siswa
+  const [siswaData] = useState<SiswaRow[]>([
+    {
+      no: 1,
+      nisn: "0078980482",
+      namaSiswa: "NOVITA AZZAHRA",
+      hadir: 23,
+      sakit: 3,
+      izin: 2,
+      alpha: 2,
+      pulang: 2,
+    },
+    {
+      no: 2,
+      nisn: "0079312790",
+      namaSiswa: "RAENA WESTI DHEANOFA HERLIANI",
+      hadir: 25,
+      sakit: 1,
+      izin: 2,
+      alpha: 1,
+      pulang: 1,
+    },
+    {
+      no: 3,
+      nisn: "0061631562",
+      namaSiswa: "NADIA SINTA DEVI OKTAVIA",
+      hadir: 22,
+      sakit: 2,
+      izin: 3,
+      alpha: 2,
+      pulang: 1,
+    },
+    {
+      no: 4,
+      nisn: "0076610748",
+      namaSiswa: "RITA AURA AGUSTINA",
+      hadir: 24,
+      sakit: 2,
+      izin: 1,
+      alpha: 1,
+      pulang: 2,
+    },
+    {
+      no: 5,
+      nisn: "0075802873",
+      namaSiswa: "TALITHA NUDIA RISMATULLAH",
+      hadir: 23,
+      sakit: 3,
+      izin: 2,
+      alpha: 2,
+      pulang: 0,
+    },
+    {
+      no: 6,
+      nisn: "0076376703",
+      namaSiswa: "SA'IDHATUL HASANA",
+      hadir: 26,
+      sakit: 1,
+      izin: 1,
+      alpha: 1,
+      pulang: 1,
+    },
+    {
+      no: 7,
+      nisn: "0074320819",
+      namaSiswa: "LELY SAGITA",
+      hadir: 21,
+      sakit: 4,
+      izin: 2,
+      alpha: 2,
+      pulang: 1,
+    },
+  ]);
 
   const handleExportExcel = () => {
     // Buat data untuk Excel
-    const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Sakit", "Izin", "Tidak Hadir", "Pulang"];
+    const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Sakit", "Izin", "Alfa", "Pulang"];
     const rows = siswaData.map((siswa) => [
       siswa.no,
       siswa.nisn,
@@ -198,7 +230,7 @@ export default function RekapKehadiranSiswa({
               <th>Hadir</th>
               <th>Sakit</th>
               <th>Izin</th>
-              <th>Tidak Hadir</th>
+              <th>Alfa</th>
               <th>Pulang</th>
             </tr>
           </thead>
@@ -224,7 +256,7 @@ export default function RekapKehadiranSiswa({
     // Buat Blob dan download
     const blob = new Blob([htmlContent], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-
+    
     // Buka di tab baru untuk print to PDF
     const printWindow = window.open(url, "_blank");
     if (printWindow) {
@@ -244,16 +276,16 @@ export default function RekapKehadiranSiswa({
 
   const columns = useMemo(
     () => [
-      {
-        key: "nisn",
+      { 
+        key: "nisn", 
         label: <div style={{ textAlign: "center" }}>NISN</div>,
         render: (value: string) => (
           <div style={{ textAlign: "center" }}>{value}</div>
         ),
       },
       { key: "namaSiswa", label: "Nama Siswa" },
-      {
-        key: "hadir",
+      { 
+        key: "hadir", 
         label: <div style={{ textAlign: "center" }}>Hadir</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -261,8 +293,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      {
-        key: "sakit",
+      { 
+        key: "sakit", 
         label: <div style={{ textAlign: "center" }}>Sakit</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -270,8 +302,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      {
-        key: "izin",
+      { 
+        key: "izin", 
         label: <div style={{ textAlign: "center" }}>Izin</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -279,17 +311,17 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      {
-        key: "alpha",
-        label: <div style={{ textAlign: "center" }}>Tidak Hadir</div>,
+      { 
+        key: "alpha", 
+        label: <div style={{ textAlign: "center" }}>Alfa</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
             <span style={{ color: COLORS.TIDAK_HADIR, fontWeight: 700 }}>{value}</span>
           </div>
         ),
       },
-      {
-        key: "pulang",
+      { 
+        key: "pulang", 
         label: <div style={{ textAlign: "center" }}>Pulang</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -406,15 +438,15 @@ export default function RekapKehadiranSiswa({
                 justifyContent: "center",
               }}
             >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="white"
-                stroke="white"
+              <svg 
+                width="22" 
+                height="22" 
+                viewBox="0 0 24 24" 
+                fill="white" 
+                stroke="white" 
                 strokeWidth="0.5"
               >
-                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
+                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
               </svg>
             </div>
             <div>
@@ -460,14 +492,14 @@ export default function RekapKehadiranSiswa({
                   borderRadius: 6,
                 }}
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
+                <svg 
+                  width="18" 
+                  height="18" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="white" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
                   strokeLinejoin="round"
                 >
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -570,7 +602,7 @@ export default function RekapKehadiranSiswa({
           columns={columns}
           data={siswaData}
           keyField="nisn"
-          emptyMessage={loading ? "Memuat data..." : "Belum ada data rekap kehadiran siswa."}
+          emptyMessage="Belum ada data rekap kehadiran siswa."
         />
       </div>
     </StaffLayout>

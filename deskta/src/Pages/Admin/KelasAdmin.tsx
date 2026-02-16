@@ -1,39 +1,10 @@
-﻿// FILE: KelasAdmin.tsx - Halaman Admin untuk mengelola data kelas
-// ✅ PERBAIKAN: Layout lebih pendek dan kompak
-// ✅ PERBAIKAN: Validasi duplikasi kelas yang lebih ketat
-// ✅ PERBAIKAN: Integrasi dengan data Guru & Jurusan
-// ✅ PERBAIKAN: UI/UX Modal yang lebih baik
-import { useState, useEffect } from 'react';
-import AdminLayout from '../../component/Admin/AdminLayout';
-import { Button } from '../../component/Shared/Button';
-import { Select } from '../../component/Shared/Select';
-import { Table } from '../../component/Shared/Table';
-import { 
-  MoreVertical,
-  Trash2,
-  Edit,
-  Plus, 
-  Search,
-  X,
-  Users,
-  School,
-  GraduationCap
-} from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import AdminLayout from "../../component/Admin/AdminLayout";
+import { Button } from "../../component/Shared/Button";
+import AWANKIRI from "../../assets/Icon/AWANKIRI.png";
+import AwanBawahkanan from "../../assets/Icon/AwanBawahkanan.png";
+import { MoreVertical, Edit, Trash2, X } from "lucide-react";
 
-/* ============ IMPORT GAMBAR AWAN ============ */
-import AWANKIRI from '../../assets/Icon/AWANKIRI.png';
-import AwanBawahkanan from '../../assets/Icon/AwanBawahkanan.png';
-
-/* ============ IMPORT SERVICES ============ */
-import { classService } from '../../services/class';
-import type { ClassRoom } from '../../services/class';
-import { majorService } from '../../services/major';
-import type { Major } from '../../services/major';
-import { teacherService } from '../../services/teacher';
-import type { Teacher } from '../../services/teacher';
-import { Loader2 } from 'lucide-react';
-
-/* ===================== INTERFACE DEFINITIONS ===================== */
 interface User {
   role: string;
   name: string;
@@ -41,9 +12,9 @@ interface User {
 
 interface Kelas {
   id: string;
-  namaKelas: string;
   konsentrasiKeahlian: string;
   tingkatKelas: string;
+  namaKelas: string;
   waliKelas: string;
 }
 
@@ -54,590 +25,277 @@ interface KelasAdminProps {
   onMenuClick: (page: string) => void;
 }
 
-/* ===================== OPTIONS ===================== */
-const tingkatKelasOptions = [
-  { value: '10', label: 'Kelas 10' },
-  { value: '11', label: 'Kelas 11' },
-  { value: '12', label: 'Kelas 12' },
+// TODO: BACKEND - Ganti dengan fetch dari API
+const semuaGuru = [
+  { nama: "SLAMET RIADI, S.Pd" },
+  { nama: "MOCHAMAD BACHRUDIN, S.Pd" },
+  { nama: "SOLIKAH,S.Pd" },
+  { nama: "Hj. TITIK MARIYATI, S.Pd" },
+  { nama: "Drs. MOCHAMMAD IQBAL IVAN MAS'UDY" },
+  { nama: "Dra. SITI MUZAYYANAH" },
+  { nama: "DYAH AYU KOMALA, ST" },
+  { nama: "TRIANA ARDIANI, S.Pd" },
+  { nama: "DIANA FARIDA, S.Si" },
+  { nama: "WIWIN WINANGSIH, S.Pd,M.Pd" },
+  { nama: "SITTI HADIJAH, S.Pd" },
+  { nama: "FAJAR NINGTYAS, S.Pd" },
+  { nama: "ZULKIFLI ABDILLAH, S.Kom" },
+  { nama: "HERMAWAN, ST,M.Pd" },
+  { nama: "ANWAR, S.Kom" },
+  { nama: "ALIFAH DIANTEBES AINDRA, S.Pd" },
 ];
 
-/* ===================== MAIN COMPONENT ===================== */
+// TODO: BACKEND - Ganti dengan fetch dari API
+const initialKelasData: Kelas[] = [
+  { id: "1", konsentrasiKeahlian: "Rekayasa Perangkat Lunak", tingkatKelas: "12", namaKelas: "Rekayasa Perangkat Lunak 2", waliKelas: "TRIANA ARDIANI, S.Pd" },
+  { id: "2", konsentrasiKeahlian: "Animasi", tingkatKelas: "12", namaKelas: "Rekayasa Perangkat Lunak 1", waliKelas: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd" },
+  { id: "3", konsentrasiKeahlian: "Teknik Komputer dan Jaringan", tingkatKelas: "12", namaKelas: "Teknik Komputer dan Jaringan 1", waliKelas: "MOHAMMAD JUZKI ARIF, M.Pd" },
+  { id: "4", konsentrasiKeahlian: "Desain Komunikasi Visual", tingkatKelas: "12", namaKelas: "Desain Komunikasi Visual 1", waliKelas: "ADHI BAGUS PERMANA, S.Pd" },
+];
+
+const konsentrasiKeahlianOptions = [
+  "Semua Konsentrasi Keahlian",
+  "Rekayasa Perangkat Lunak",
+  "Teknik Komputer dan Jaringan",
+  "Desain Komunikasi Visual",
+  "Animasi",
+];
+
+const tingkatKelasOptions = [
+  "Semua Tingkat",
+  "10",
+  "11",
+  "12"
+];
+
+const jurusanList = [
+  { id: "Rekayasa Perangkat Lunak", nama: "Rekayasa Perangkat Lunak" },
+  { id: "Teknik Komputer dan Jaringan", nama: "Teknik Komputer dan Jaringan" },
+  { id: "Desain Komunikasi Visual", nama: "Desain Komunikasi Visual" },
+  { id: "Animasi", nama: "Animasi" },
+];
+
 export default function KelasAdmin({
   user,
   onLogout,
   currentPage,
   onMenuClick,
 }: KelasAdminProps) {
-  // ==================== STATE MANAGEMENT ====================
-  const [searchValue, setSearchValue] = useState('');
-  const [selectedJurusan, setSelectedJurusan] = useState('');
-  const [selectedTingkat, setSelectedTingkat] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [kelasList, setKelasList] = useState<Kelas[]>([]);
-  const [majors, setMajors] = useState<Major[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [kelasList, setKelasList] = useState<Kelas[]>(initialKelasData);
   const [editingKelas, setEditingKelas] = useState<Kelas | null>(null);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState('');
+  const [selectedKonsentrasi, setSelectedKonsentrasi] = useState("Semua Konsentrasi Keahlian");
+  const [selectedTingkat, setSelectedTingkat] = useState("Semua Tingkat");
+  const [validationError, setValidationError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // ==================== DATA FETCHING ====================
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [classesData, majorsData, teachersData] = await Promise.all([
-        classService.getClasses(),
-        majorService.getMajors(),
-        teacherService.getTeachers()
-      ]);
-
-      const mappedClasses: Kelas[] = classesData.map((c: ClassRoom) => ({
-        id: c.id.toString(),
-        namaKelas: c.name || `${c.grade} ${c.major?.code || ''} ${c.label}`,
-        konsentrasiKeahlian: c.major?.name || '',
-        tingkatKelas: c.grade,
-        waliKelas: c.homeroom_teacher?.user?.name || '-'
-      }));
-
-      setKelasList(mappedClasses);
-      setMajors(majorsData);
-      setTeachers(teachersData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      alert('Gagal mengambil data dari server');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // Derived options
-  const jurusanOptions = majors.map(m => ({
-    value: m.name,
-    label: m.name
-  }));
-
-  const availableGuruList = teachers.map(t => t.name);
-
-  // ==================== FILTERING DATA ====================
-  const filteredKelas = kelasList.filter((kelas) => {
-    const matchSearch = 
-      kelas.namaKelas.toLowerCase().includes(searchValue.toLowerCase()) ||
-      kelas.waliKelas.toLowerCase().includes(searchValue.toLowerCase());
-      
-    const matchJurusan = selectedJurusan 
-      ? kelas.konsentrasiKeahlian === selectedJurusan || kelas.konsentrasiKeahlian.includes(selectedJurusan)
-      : true;
-      
-    const matchTingkat = selectedTingkat ? kelas.tingkatKelas === selectedTingkat : true;
-    
-    return matchSearch && matchJurusan && matchTingkat;
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    namaKelas: "",
+    jurusanId: "",
+    kelasId: "",
+    waliKelas: "",
   });
 
-  // ==================== HELPER FUNCTIONS ====================
-  // Mendapatkan daftar wali kelas yang tersedia (belum mengampu kelas lain, kecuali diri sendiri saat edit)
-  const getAvailableWaliKelas = (currentWaliKelas?: string) => {
-    const occupiedWaliKelas = kelasList
-      .map(k => k.waliKelas)
-      .filter(w => w !== currentWaliKelas); // Exclude current wali kelas if editing
-      
-    return availableGuruList.filter(guru => !occupiedWaliKelas.includes(guru));
-  };
-
-  const validateKelasData = (data: any, isEdit: boolean, currentId?: string) => {
-    // 1. Cek Field Kosong
-    if (!data.namaKelas || !data.jurusanId || !data.kelasId) {
-      return { isValid: false, message: 'Semua field wajib diisi' };
-    }
-
-    // 2. Cek Duplikasi Nama Kelas
-    const isDuplicateName = kelasList.some(k => 
-      k.namaKelas.toLowerCase() === data.namaKelas.toLowerCase() && 
-      k.id !== currentId
-    );
-    if (isDuplicateName) {
-      return { isValid: false, message: `Kelas dengan nama "${data.namaKelas}" sudah ada` };
-    }
-
-    // 3. Cek Duplikasi Wali Kelas
-    if (data.waliKelas) {
-      const isWaliKelasOccupied = kelasList.some(k => 
-        k.waliKelas === data.waliKelas && 
-        k.id !== currentId
-      );
-      if (isWaliKelasOccupied) {
-        return { isValid: false, message: `Guru tersebut sudah menjadi wali kelas di kelas lain` };
-      }
-    }
-
-    return { isValid: true, message: '' };
-  };
-
-  // ==================== EVENT HANDLERS ====================
-  const handleTambahKelas = (data: any) => {
-    // Di sini kita hanya membuka modal, logic simpan ada di ModalKelasForm -> handleSubmit
-    setEditingKelas(null);
-    setValidationError('');
-    setIsModalOpen(true);
-  };
-
-  const handleEditKelas = (kelas: Kelas) => {
-    setEditingKelas(kelas);
-    setValidationError('');
-    setIsModalOpen(true);
-    setOpenActionId(null);
-  };
-
-  const handleDeleteKelas = async (id: string) => {
-    const kelas = kelasList.find(k => k.id === id);
-    if (confirm(`Apakah Anda yakin ingin menghapus kelas "${kelas?.namaKelas}"?`)) {
-      try {
-        await classService.deleteClass(id);
-        alert('✓ Data kelas berhasil dihapus!');
-        fetchData();
-      } catch (error) {
-        console.error('Error deleting class:', error);
-        alert('Gagal menghapus kelas');
-      }
-    }
-    setOpenActionId(null);
-  };
-
-  // Logic Submit Form ada di dalam komponen ModalKelasForm untuk simplifikasi state
-  // Tapi kita butuh fungsi update state list di sini
-  const updateKelasList = () => {
-    fetchData(); // Just refresh everything from server
-    setIsModalOpen(false);
-  };
-
-  /* ===================== TABLE CONFIGURATION ===================== */
-  const columns = [
-    { key: 'namaKelas', label: 'Nama Kelas', width: '20%' },
-    { key: 'konsentrasiKeahlian', label: 'Konsentrasi Keahlian', width: '30%' },
-    { key: 'tingkatKelas', label: 'Tingkat', width: '15%' },
-    { key: 'waliKelas', label: 'Wali Kelas', width: '25%' },
-    {
-      key: 'aksi',
-      label: 'Aksi',
-      width: '10%',
-      render: (_: any, row: Kelas) => (
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setOpenActionId(openActionId === row.id ? null : row.id)}
-            style={{ 
-              border: 'none', 
-              background: 'transparent', 
-              cursor: 'pointer',
-              padding: '4px' 
-            }}
-          >
-            <MoreVertical size={20} strokeWidth={1.5} color="#64748B" />
-          </button>
-
-          {openActionId === row.id && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: 4,
-                background: '#FFFFFF',
-                borderRadius: 8,
-                boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
-                minWidth: 160,
-                zIndex: 10,
-                overflow: 'hidden',
-                border: '1px solid #E2E8F0',
-              }}
-            >
-              <button
-                onClick={() => handleEditKelas(row)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: 'none',
-                  background: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#0F172A',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s',
-                  borderBottom: '1px solid #F1F5F9',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F0F4FF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0F172A';
-                }}
-              >
-                <Edit size={14} />
-                Edit
-              </button>
-              
-              <button
-                onClick={() => handleDeleteKelas(row.id)}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: 'none',
-                  background: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#EF4444',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FEF2F2';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
-                }}
-              >
-                <Trash2 size={14} />
-                Hapus
-              </button>
-            </div>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  /* ===================== SUB-COMPONENT: MODAL FORM ===================== */
-  const ModalKelasForm = ({ 
-    isOpen, 
-    onClose, 
-    editingData, 
-    onSave,
-    validate 
-  }: {
-    isOpen: boolean,
-    onClose: () => void,
-    editingData: Kelas | null,
-    onSave: (data: Kelas, isEdit: boolean) => void,
-    validate: (data: any, isEdit: boolean, id?: string) => { isValid: boolean, message: string }
-  }) => {
-    const [localFormData, setLocalFormData] = useState({
-      namaKelas: '',
-      jurusanId: '',
-      kelasId: '',
-      waliKelas: ''
+  // Daftar wali kelas yang sudah digunakan
+  const usedWaliKelas = useMemo(() => {
+    const waliKelasSet = new Set<string>();
+    kelasList.forEach(kelas => {
+      waliKelasSet.add(kelas.waliKelas);
     });
+    return Array.from(waliKelasSet);
+  }, [kelasList]);
+
+  // Wali kelas yang TERSEDIA untuk mode TAMBAH (yang belum dipakai)
+  const availableWaliKelas = useMemo(() => {
+    return semuaGuru.filter(guru => !usedWaliKelas.includes(guru.nama));
+  }, [usedWaliKelas]);
+
+  // Wali kelas yang TERSEDIA untuk mode EDIT
+  const availableWaliKelasForEdit = useMemo(() => {
+    if (!editingKelas) return availableWaliKelas;
     
-    useEffect(() => {
-      if (editingData) {
-        setLocalFormData({
-          namaKelas: editingData.namaKelas,
-          jurusanId: editingData.konsentrasiKeahlian,
-          kelasId: editingData.tingkatKelas,
-          waliKelas: editingData.waliKelas
-        });
-      } else {
-        setLocalFormData({ namaKelas: '', jurusanId: '', kelasId: '', waliKelas: '' });
-      }
-    }, [editingData, isOpen]);
+    const currentWaliKelas = semuaGuru.find(guru => guru.nama === editingKelas.waliKelas);
+    if (currentWaliKelas && !availableWaliKelas.find(g => g.nama === currentWaliKelas.nama)) {
+      return [...availableWaliKelas, currentWaliKelas];
+    }
+    return availableWaliKelas;
+  }, [availableWaliKelas, editingKelas]);
 
-    if (!isOpen) return null;
+  // Statistik
+  const stats = useMemo(() => ({
+    totalKelas: kelasList.length,
+    totalGuru: semuaGuru.length,
+    totalWaliKelas: usedWaliKelas.length,
+  }), [kelasList.length, usedWaliKelas.length]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setIsSubmitting(true);
+  const validateKelasData = (data: any, isEditMode: boolean, excludeId?: string): { isValid: boolean; message: string } => {
+    setValidationError("");
+
+    const inputNamaKelas = data.namaKelas?.trim() || "";
+    const inputJurusan = data.jurusanId || "";
+    const inputTingkat = data.kelasId || "";
+    const inputWaliKelas = data.waliKelas || "";
+
+    if (!inputNamaKelas) {
+      return { isValid: false, message: "Nama kelas harus diisi!" };
+    }
+
+    if (!inputJurusan) {
+      return { isValid: false, message: "Konsentrasi keahlian harus dipilih!" };
+    }
+
+    if (!inputTingkat) {
+      return { isValid: false, message: "Tingkat kelas harus dipilih!" };
+    }
+
+    if (!inputWaliKelas) {
+      return { isValid: false, message: "Wali kelas harus dipilih!" };
+    }
+
+    const duplicateCombination = kelasList.find((k) => {
+      if (isEditMode && k.id === excludeId) return false;
       
-      const isEditMode = !!editingData;
-      const validation = validate(localFormData, isEditMode, editingData?.id);
+      const kelasNama = k.namaKelas.trim().toLowerCase();
+      const kelasJurusan = k.konsentrasiKeahlian;
+      const kelasTingkat = k.tingkatKelas;
       
-      if (!validation.isValid) {
-        setValidationError(validation.message);
-        setIsSubmitting(false);
-        return;
-      }
+      return kelasJurusan === inputJurusan && 
+             kelasTingkat === inputTingkat && 
+             kelasNama === inputNamaKelas.toLowerCase();
+    });
 
-      // Build submission data
-      const selectedMajor = majors.find(m => m.name === localFormData.jurusanId);
-      const selectedTeacher = teachers.find(t => t.name === localFormData.waliKelas);
-
-      const submitData = {
-        grade: localFormData.kelasId,
-        label: localFormData.namaKelas.split(' ').pop() || '', // Assuming "10 RPL 1" -> "1"
-        major_id: selectedMajor?.id,
-        homeroom_teacher_id: selectedTeacher?.id || null,
-        name: localFormData.namaKelas.trim()
+    if (duplicateCombination) {
+      return {
+        isValid: false,
+        message: `Kelas "${inputNamaKelas}" untuk ${inputJurusan} tingkat ${inputTingkat} sudah ada!`
       };
+    }
+
+    const duplicateWaliKelas = kelasList.find((k) => {
+      if (isEditMode && k.id === excludeId) return false;
+      return k.waliKelas === inputWaliKelas;
+    });
+
+    if (duplicateWaliKelas) {
+      return {
+        isValid: false,
+        message: `Wali kelas "${inputWaliKelas}" sudah mengajar kelas lain!`
+      };
+    }
+
+    return { isValid: true, message: "" };
+  };
+
+  const filteredData = kelasList.filter((k) => {
+    const konsentrasiMatch = 
+      selectedKonsentrasi === "Semua Konsentrasi Keahlian" || 
+      k.konsentrasiKeahlian === selectedKonsentrasi;
+    
+    const tingkatMatch = 
+      selectedTingkat === "Semua Tingkat" || 
+      k.tingkatKelas === selectedTingkat;
+    
+    return konsentrasiMatch && tingkatMatch;
+  });
+
+  const handleDelete = (row: Kelas) => {
+    if (confirm(`Hapus kelas "${row.namaKelas}"?`)) {
+      setKelasList((prev) => prev.filter((k) => k.id !== row.id));
+      setOpenActionId(null);
+      setValidationError("");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    const isEditMode = !!editingKelas;
+    
+    const validation = validateKelasData(formData, isEditMode, editingKelas?.id);
+    
+    if (!validation.isValid) {
+      setValidationError(validation.message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (editingKelas) {
+      setKelasList((prev) =>
+        prev.map((k) =>
+          k.id === editingKelas.id
+            ? { 
+                ...k,
+                namaKelas: formData.namaKelas.trim(),
+                konsentrasiKeahlian: formData.jurusanId,
+                tingkatKelas: formData.kelasId,
+                waliKelas: formData.waliKelas
+              }
+            : k
+        )
+      );
+      alert("✓ Kelas berhasil diperbarui!");
+    } else {
+      const newId = `kelas_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      try {
-        if (isEditMode && editingData) {
-          await classService.updateClass(editingData.id, submitData);
-          alert(`✓ Kelas "${localFormData.namaKelas}" berhasil diperbarui!`);
-        } else {
-          await classService.createClass(submitData);
-          alert(`✓ Kelas "${localFormData.namaKelas}" berhasil ditambahkan!`);
-        }
-        onSave({} as Kelas, isEditMode); // Trigger refresh
-      } catch (error: any) {
-        console.error('Error saving class:', error);
-        setValidationError(error.response?.data?.message || 'Gagal menyimpan data kelas');
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
+      setKelasList((prev) => [
+        ...prev,
+        {
+          id: newId,
+          namaKelas: formData.namaKelas.trim(),
+          konsentrasiKeahlian: formData.jurusanId,
+          tingkatKelas: formData.kelasId,
+          waliKelas: formData.waliKelas,
+        },
+      ]);
+      alert("✓ Kelas berhasil ditambahkan!");
+    }
+    
+    handleCloseModal();
+  };
 
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px',
-        }}
-        onClick={onClose}
-      >
-        <div
-          style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '24px',
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px',
-            borderBottom: '1px solid #F1F5F9',
-            paddingBottom: '12px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                background: '#F0F9FF',
-                padding: '8px',
-                borderRadius: '8px',
-              }}>
-                <School size={22} color="#0EA5E9" />
-              </div>
-              <h2 style={{
-                margin: 0,
-                fontSize: '18px',
-                fontWeight: '700',
-                color: '#0F172A',
-              }}>
-                {editingData ? 'Edit Data Kelas' : 'Tambah Kelas Baru'}
-              </h2>
-            </div>
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-              <X size={20} color="#64748B" />
-            </button>
-          </div>
+  const handleOpenModal = () => {
+    setEditingKelas(null);
+    setFormData({
+      namaKelas: "",
+      jurusanId: "",
+      kelasId: "",
+      waliKelas: "",
+    });
+    setValidationError("");
+    setIsModalOpen(true);
+  };
 
-          {validationError && (
-            <div style={{
-              backgroundColor: '#FEF2F2',
-              border: '1px solid #FECACA',
-              color: '#EF4444',
-              padding: '12px',
-              borderRadius: '8px',
-              fontSize: '13px',
-              marginBottom: '16px',
-            }}>
-              ⚠️ {validationError}
-            </div>
-          )}
+  const handleEditModal = (kelas: Kelas) => {
+    setEditingKelas(kelas);
+    setFormData({
+      namaKelas: kelas.namaKelas,
+      jurusanId: kelas.konsentrasiKeahlian,
+      kelasId: kelas.tingkatKelas,
+      waliKelas: kelas.waliKelas,
+    });
+    setValidationError("");
+    setOpenActionId(null);
+    setIsModalOpen(true);
+  };
 
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gap: '16px' }}>
-              
-              {/* Nama Kelas */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
-                  Nama Kelas <span style={{ color: '#EF4444' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={localFormData.namaKelas}
-                  onChange={(e) => setLocalFormData({...localFormData, namaKelas: e.target.value})}
-                  placeholder="Contoh: 10 RPL 1"
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = '#0EA5E9'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = '#CBD5E1'}
-                />
-              </div>
-
-              {/* Tingkat Kelas */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
-                  Tingkat Kelas <span style={{ color: '#EF4444' }}>*</span>
-                </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  {tingkatKelasOptions.map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setLocalFormData({...localFormData, kelasId: opt.value})}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        borderRadius: '8px',
-                        border: localFormData.kelasId === opt.value ? '2px solid #0EA5E9' : '1px solid #CBD5E1',
-                        backgroundColor: localFormData.kelasId === opt.value ? '#F0F9FF' : '#FFFFFF',
-                        color: localFormData.kelasId === opt.value ? '#0369A1' : '#64748B',
-                        fontWeight: '600',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                      }}
-                    >
-                      <GraduationCap size={16} />
-                      {opt.label.replace('Kelas ', '')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Konsentrasi Keahlian */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
-                  Konsentrasi Keahlian <span style={{ color: '#EF4444' }}>*</span>
-                </label>
-                <select
-                  value={localFormData.jurusanId}
-                  onChange={(e) => setLocalFormData({...localFormData, jurusanId: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: '1px solid #CBD5E1',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    background: '#FFFFFF',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="">Pilih Jurusan</option>
-                  {jurusanOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Wali Kelas */}
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
-                  Wali Kelas <span style={{ color: '#94A3B8', fontWeight: '400' }}>(Opsional)</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Users size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                  <select
-                    value={localFormData.waliKelas}
-                    onChange={(e) => setLocalFormData({...localFormData, waliKelas: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px 10px 40px',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      background: '#FFFFFF',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <option value="">Belum Ada Wali Kelas</option>
-                    {/* Jika sedang edit, pastikan wali kelas saat ini tetap muncul di opsi */}
-                    {editingData && editingData.waliKelas && !getAvailableWaliKelas(editingData.waliKelas).includes(editingData.waliKelas) && (
-                      <option value={editingData.waliKelas}>{editingData.waliKelas}</option>
-                    )}
-                    {getAvailableWaliKelas(editingData?.waliKelas).map((guru, idx) => (
-                      <option key={idx} value={guru}>{guru}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  backgroundColor: '#F1F5F9',
-                  color: '#475569',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                }}
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  backgroundColor: '#0EA5E9',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  opacity: isSubmitting ? 0.7 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
-              >
-                {isSubmitting ? 'Menyimpan...' : (editingData ? 'Simpan Perubahan' : 'Tambahkan Kelas')}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingKelas(null);
+    setFormData({
+      namaKelas: "",
+      jurusanId: "",
+      kelasId: "",
+      waliKelas: "",
+    });
+    setValidationError("");
+    setIsSubmitting(false);
   };
 
   return (
@@ -649,183 +307,875 @@ export default function KelasAdmin({
       onLogout={onLogout}
       hideBackground
     >
-      {/* BACKGROUND AWAN */}
-      <img 
-        src={AWANKIRI} 
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: 220,
-          zIndex: 0,
-          pointerEvents: "none",
-        }} 
-        alt="Background awan kiri" 
-      />
-      
-      <img 
-        src={AwanBawahkanan} 
-        style={{
-          position: "fixed",
-          bottom: 0,
-          right: 0,
-          width: 220,
-          zIndex: 0,
-          pointerEvents: "none",
-        }} 
-        alt="Background awan kanan bawah" 
-      />
+      <img src={AWANKIRI} style={bgLeft} alt="Background awan kiri" />
+      <img src={AwanBawahkanan} style={bgRight} alt="Background awan kanan bawah" />
 
-      {/* KONTEN UTAMA */}
-      <div
-        style={{
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(6px)",
-          borderRadius: 16,
-          padding: 'clamp(12px, 2vw, 20px)',
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-          border: "1px solid rgba(255,255,255,0.6)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 14,
-          position: "relative",
-          zIndex: 1,
-          minHeight: "70vh",
-        }}
-      >
-        {isLoading ? (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 1,
-            gap: '12px',
-          }}>
-            <Loader2 size={40} className="animate-spin" color="#0EA5E9" />
-            <span style={{ color: '#64748B', fontWeight: '500' }}>Memuat data kelas...</span>
-          </div>
-        ) : (
-          <>
-            {/* ============ FILTER & ACTION ============ */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 0.8fr 0.8fr auto',
-            gap: '8px',
-            alignItems: 'flex-end',
-          }}
-        >
-          {/* Search */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: '#252525', marginBottom: '4px' }}>
-              Cari Kelas / Wali Kelas
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Search
-                size={16}
-                color="#9CA3AF"
-                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-              />
-              <input
-                type="text"
-                placeholder="Cari..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px 8px 32px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  outline: 'none',
-                  backgroundColor: '#FFFFFF',
-                  height: '38px',
-                }}
-              />
+      <div style={containerStyle}>
+        <div style={statsContainerStyle}>
+          <div style={statCardStyle} className="stat-card">
+            <div style={statIconContainerStyle}>
+              <div style={iconCircleStyle} className="icon-circle">
+                <span style={iconTextStyle}>🏫</span>
+              </div>
+            </div>
+            
+            <div style={statContentStyle}>
+              <div style={statNumberStyle}>{stats.totalKelas}</div>
+              <div style={statLabelStyle}>Total Kelas</div>
             </div>
           </div>
 
-          {/* Filter Jurusan */}
-          <div>
-            <Select
-              label="Konsentrasi Keahlian"
-              value={selectedJurusan}
-              onChange={setSelectedJurusan}
-              options={jurusanOptions}
-              placeholder="Semua Jurusan"
-            />
-          </div>
-
-          {/* Filter Tingkat */}
-          <div>
-            <Select
-              label="Tingkat Kelas"
-              value={selectedTingkat}
-              onChange={setSelectedTingkat}
-              options={tingkatKelasOptions}
-              placeholder="Semua Tingkat"
-            />
-          </div>
-
-          {/* Tombol Tambah */}
-          <div style={{ height: '38px' }}>
-            <Button
-              label="Tambah Kelas"
-              icon={<Plus size={16} />}
-              onClick={handleTambahKelas}
-              variant="primary"
-            />
-          </div>
-        </div>
-
-        {/* ============ INFO STATISTIK ============ */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '12px',
-        }}>
-          {[
-            { label: 'Total Kelas', value: kelasList.length, color: '#0EA5E9' },
-            { label: 'Kelas 10', value: kelasList.filter(k => k.tingkatKelas === '10').length, color: '#8B5CF6' },
-            { label: 'Kelas 11', value: kelasList.filter(k => k.tingkatKelas === '11').length, color: '#F59E0B' },
-            { label: 'Kelas 12', value: kelasList.filter(k => k.tingkatKelas === '12').length, color: '#10B981' },
-          ].map((stat, idx) => (
-            <div key={idx} style={{
-              background: '#FFFFFF',
-              borderRadius: '12px',
-              padding: '12px 16px',
-              border: '1px solid #E2E8F0',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
-            }}>
-              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>{stat.label}</span>
-              <span style={{ fontSize: '20px', color: stat.color, fontWeight: '700', marginTop: '4px' }}>{stat.value}</span>
+          <div style={statCardStyle} className="stat-card">
+            <div style={statIconContainerStyle}>
+              <div style={iconCircleStyle} className="icon-circle">
+                <span style={iconTextStyle}>👨‍🏫</span>
+              </div>
             </div>
-          ))}
+            
+            <div style={statContentStyle}>
+              <div style={statNumberStyle}>{stats.totalGuru}</div>
+              <div style={statLabelStyle}>Total Guru</div>
+            </div>
+          </div>
+
+          <div style={statCardStyle} className="stat-card">
+            <div style={statIconContainerStyle}>
+              <div style={iconCircleStyle} className="icon-circle">
+                <span style={iconTextStyle}>📚</span>
+              </div>
+            </div>
+            
+            <div style={statContentStyle}>
+              <div style={statNumberStyle}>{stats.totalWaliKelas}</div>
+              <div style={statLabelStyle}>Total Wali Kelas</div>
+            </div>
+          </div>
         </div>
 
-        {/* ============ DATA TABLE ============ */}
-        <div style={{ 
-          borderRadius: 12, 
-          overflow: 'hidden', 
-          boxShadow: '0 0 0 1px #E5E7EB',
-          background: '#FFFFFF',
-        }}>
-          <Table columns={columns} data={filteredKelas} keyField="id" />
+        <div style={headerStyle}>
+          <div style={filterContainerStyle}>
+            <div style={{ minWidth: "200px", maxWidth: "250px" }}>
+              <select
+                value={selectedKonsentrasi}
+                onChange={(e) => setSelectedKonsentrasi(e.target.value)}
+                style={dropdownStyle}
+              >
+                {konsentrasiKeahlianOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div style={{ minWidth: "120px", maxWidth: "150px" }}>
+              <select
+                value={selectedTingkat}
+                onChange={(e) => setSelectedTingkat(e.target.value)}
+                style={dropdownStyle}
+              >
+                {tingkatKelasOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={buttonContainerStyle}>
+            <Button 
+              label="Tambahkan" 
+              onClick={handleOpenModal}
+              style={buttonStyle}
+            />
+          </div>
         </div>
-          </>
+
+        {validationError && (
+          <div style={errorBannerStyle}>
+            ⚠️ {validationError}
+          </div>
         )}
+
+        <div style={tableWrapperStyle}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            backgroundColor: '#FFFFFF',
+          }}>
+            <thead>
+              <tr style={{
+                backgroundColor: '#F3F4F6',
+                borderBottom: '1px solid #E5E7EB',
+              }}>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>No</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Konsentrasi Keahlian</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Tingkat Kelas</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Kelas</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Wali Kelas</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                }}>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((row, index) => (
+                <tr key={row.id} style={{
+                  borderBottom: '1px solid #E5E7EB',
+                  backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#F0F4FF';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
+                }}>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{index + 1}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{row.konsentrasiKeahlian}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{row.tingkatKelas}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{row.namaKelas}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{row.waliKelas}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    position: 'relative',
+                  }}>
+                    <button
+                      onClick={() => setOpenActionId(openActionId === row.id ? null : row.id)}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: '#666',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F3F4F6';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <MoreVertical size={20} strokeWidth={1.5} />
+                    </button>
+
+                    {openActionId === row.id && (
+                      <div style={dropdownMenuStyle}>
+                        <button
+                          onClick={() => handleEditModal(row)}
+                          style={actionItemStyle}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#F0F4FF';
+                            e.currentTarget.style.color = '#2563EB';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.color = '#0F172A';
+                          }}
+                        >
+                          <Edit size={16} strokeWidth={2} />
+                          Ubah
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(row)}
+                          style={{ ...actionItemStyle, borderBottom: "none" }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#FEF2F2';
+                            e.currentTarget.style.color = '#DC2626';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#FFFFFF';
+                            e.currentTarget.style.color = '#0F172A';
+                          }}
+                        >
+                          <Trash2 size={16} strokeWidth={2} />
+                          Hapus
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <ModalKelasForm 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        editingData={editingKelas}
-        onSave={updateKelasList}
-        validate={validateKelasData}
-      />
+      {/* MODAL FORM - IMPROVED STYLING */}
+      {isModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backdropFilter: 'blur(4px)',
+          padding: '20px',
+          paddingTop: '100px',
+          overflowY: 'auto',
+          paddingBottom: '40px',
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '420px',
+            overflow: 'auto',
+            maxHeight: '75vh',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 28px',
+              backgroundColor: '#1e293b',
+              color: '#FFFFFF',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderRadius: '16px 16px 0 0',
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: '18px',
+                fontWeight: '700',
+                letterSpacing: '-0.3px',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              }}>
+                {editingKelas ? 'Ubah Kelas' : 'Tambah Kelas'}
+              </h2>
+              <button
+                onClick={handleCloseModal}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease',
+                  color: '#FFFFFF',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <X size={24} strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <form onSubmit={handleSubmit} style={{
+              padding: '24px',
+            }}>
+              {/* Nama Kelas */}
+              <div style={{
+                marginBottom: '18px',
+              }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Nama Kelas<span style={{
+                    color: '#ef4444',
+                    marginLeft: '6px',
+                    fontWeight: '700',
+                  }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.namaKelas}
+                  onChange={(e) => setFormData({...formData, namaKelas: e.target.value})}
+                  placeholder="Masukkan nama kelas"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    transition: 'all 0.2s ease',
+                    backgroundColor: '#f8fafc',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              {/* Konsentrasi Keahlian */}
+              <div style={{
+                marginBottom: '18px',
+              }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Konsentrasi Keahlian<span style={{
+                    color: '#ef4444',
+                    marginLeft: '6px',
+                    fontWeight: '700',
+                  }}>*</span>
+                </label>
+                <select
+                  value={formData.jurusanId}
+                  onChange={(e) => setFormData({...formData, jurusanId: e.target.value})}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    backgroundColor: '#f8fafc',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">Pilih Konsentrasi Keahlian</option>
+                  {jurusanList.map((jurusan) => (
+                    <option key={jurusan.id} value={jurusan.id}>{jurusan.nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tingkat Kelas */}
+              <div style={{
+                marginBottom: '18px',
+              }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Tingkat Kelas<span style={{
+                    color: '#ef4444',
+                    marginLeft: '6px',
+                    fontWeight: '700',
+                  }}>*</span>
+                </label>
+                <select
+                  value={formData.kelasId}
+                  onChange={(e) => setFormData({...formData, kelasId: e.target.value})}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    backgroundColor: '#f8fafc',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">Pilih Tingkat Kelas</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                </select>
+              </div>
+
+              {/* Wali Kelas */}
+              <div style={{
+                marginBottom: '24px',
+              }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Wali Kelas<span style={{
+                    color: '#ef4444',
+                    marginLeft: '6px',
+                    fontWeight: '700',
+                  }}>*</span>
+                </label>
+                <select
+                  value={formData.waliKelas}
+                  onChange={(e) => setFormData({...formData, waliKelas: e.target.value})}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    backgroundColor: '#f8fafc',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">Pilih Wali Kelas</option>
+                  {(editingKelas ? availableWaliKelasForEdit : availableWaliKelas).map((guru) => (
+                    <option key={guru.nama} value={guru.nama}>{guru.nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Error Message */}
+              {validationError && (
+                <div style={{
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  marginBottom: '18px',
+                  border: '1px solid #fecaca',
+                  fontWeight: '500',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  {validationError}
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '10px',
+                justifyContent: 'center',
+              }}>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  style={{
+                    flex: 1,
+                    padding: '10px 20px',
+                    backgroundColor: '#f1f5f9',
+                    color: '#475569',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e2e8f0';
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f1f5f9';
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    flex: 1,
+                    padding: '10px 20px',
+                    backgroundColor: '#3b82f6',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    opacity: isSubmitting ? 0.7 : 1,
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.backgroundColor = '#2563eb';
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
+                  }}
+                >
+                  {editingKelas ? 'Perbarui' : 'Tambahkan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
+}
+
+// ===== STYLE OBJECTS =====
+
+const containerStyle: React.CSSProperties = {
+  background: "#FFFFFF",
+  borderRadius: 12,
+  padding: 20,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 24,
+  position: "relative",
+  zIndex: 1,
+  minHeight: "calc(100vh - 180px)",
 };
+
+const statsContainerStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 20,
+  justifyContent: "space-between",
+  marginBottom: 8,
+};
+
+const statCardStyle: React.CSSProperties = {
+  flex: 1,
+  background: "linear-gradient(135deg, #001F3E 0%, #0C4A6E 100%)",
+  borderRadius: 16,
+  padding: "24px",
+  display: "flex",
+  alignItems: "center",
+  gap: 16,
+  boxShadow: "0 4px 12px rgba(30, 58, 138, 0.3)",
+  border: "1px solid #1e40af",
+  minHeight: "120px",
+  transition: "all 0.2s ease",
+  cursor: "pointer",
+};
+
+const statIconContainerStyle: React.CSSProperties = {
+  flexShrink: 0,
+};
+
+const iconCircleStyle: React.CSSProperties = {
+  width: "64px",
+  height: "64px",
+  borderRadius: "50%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(255, 255, 255, 0.15)",
+  border: "2px solid rgba(255, 255, 255, 0.3)",
+  transition: "all 0.2s ease",
+};
+
+const iconTextStyle: React.CSSProperties = {
+  fontSize: "28px",
+  lineHeight: 1,
+  color: "#FFFFFF",
+};
+
+const statContentStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  flex: 1,
+  minWidth: 0,
+};
+
+const statNumberStyle: React.CSSProperties = {
+  color: "#FFFFFF",
+  fontSize: "36px",
+  fontWeight: 800,
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  lineHeight: 1.2,
+  marginBottom: "6px",
+  textShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
+};
+
+const statLabelStyle: React.CSSProperties = {
+  color: "#dbeafe",
+  fontSize: '13px',
+  fontWeight: 500,
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  letterSpacing: "0.3px",
+};
+
+const headerStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 20,
+  marginTop: 8,
+  paddingBottom: 16,
+  borderBottom: "1px solid #F3F4F6",
+};
+
+const filterContainerStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  flex: 1,
+};
+
+const buttonContainerStyle: React.CSSProperties = {
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+};
+
+const buttonStyle: React.CSSProperties = {
+  height: "100%",
+  padding: "0 20px",
+  borderRadius: 8,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "#001F3E",
+  color: "#FFFFFF",
+  fontWeight: 600,
+  fontSize: "14px",
+  border: "none",
+  cursor: "pointer",
+  transition: "background-color 0.2s ease",
+};
+
+const tableWrapperStyle: React.CSSProperties = {
+  borderRadius: 8,
+  overflow: "hidden",
+  border: "1px solid #E5E7EB",
+  backgroundColor: "#FFFFFF",
+  marginTop: 8,
+};
+
+const dropdownStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "8px 12px",
+  borderRadius: 6,
+  border: "1px solid #D1D5DB",
+  fontSize: 14,
+  backgroundColor: "#FFFFFF",
+  color: "#374151",
+  outline: "none",
+  cursor: "pointer",
+  height: "40px",
+  boxSizing: "border-box",
+  transition: "all 0.2s ease",
+};
+
+const dropdownMenuStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "100%",
+  right: 0,
+  marginTop: 4,
+  background: "#FFFFFF",
+  borderRadius: 6,
+  boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+  minWidth: 140,
+  zIndex: 1000,
+  overflow: "hidden",
+  border: "1px solid #E5E7EB",
+};
+
+const actionItemStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "8px 12px",
+  border: "none",
+  background: "none",
+  textAlign: "left",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  color: "#374151",
+  fontSize: 14,
+  fontWeight: 400,
+  transition: "all 0.2s ease",
+  borderBottom: "1px solid #F3F4F6",
+};
+
+const errorBannerStyle: React.CSSProperties = {
+  backgroundColor: "#FEF2F2",
+  border: "1px solid #FECACA",
+  color: "#DC2626",
+  padding: "12px 16px",
+  borderRadius: "6px",
+  fontSize: "14px",
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  fontWeight: 500,
+  margin: "8px 0",
+};
+
+const bgLeft: React.CSSProperties = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: 200,
+  zIndex: 0,
+  opacity: 0.9,
+};
+
+const bgRight: React.CSSProperties = {
+  position: "fixed",
+  bottom: 0,
+  right: 0,
+  width: 220,
+  zIndex: 0,
+  opacity: 0.9,
+};
+
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = `
+    .stat-card:hover {
+      box-shadow: 0 8px 20px rgba(30, 58, 138, 0.4) !important;
+      transform: translateY(-3px);
+      background: linear-gradient(135deg, #1e3a8a 0%, #0c4a6e 100%) !important;
+      border-color: #3b82f6 !important;
+    }
+    
+    .stat-card:hover .icon-circle {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(255, 255, 255, 0.4) !important;
+      transform: scale(1.05);
+    }
+  `;
+  if (!document.getElementById('stat-card-hover-styles')) {
+    styleSheet.id = 'stat-card-hover-styles';
+    document.head.appendChild(styleSheet);
+  }
+}

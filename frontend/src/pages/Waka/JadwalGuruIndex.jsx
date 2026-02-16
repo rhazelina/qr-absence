@@ -27,41 +27,34 @@ function JadwalGuruIndex() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-  const stored = localStorage.getItem('jadwal-guru');
+    fetchJadwalGuru();
+  }, []);
 
-  if (stored) {
-    const parsed = JSON.parse(stored);
-    setDataGuru(parsed);
-    setFilteredData(parsed);
-  } else {
-    const mockData = [
-      {
-        id: 1,
-        kode_guru: 'GR001',
-        nama_guru: 'Budi Santoso, S.Pd',
-        mata_pelajaran: 'Matematika',
-        email: 'budi.santoso@smkn2.sch.id',
-        no_hp: '081234567890',
-        gambar_jadwal: '/images/jadwal-guru-1.jpg',
-        jumlah_kelas: 5
-      },
-      {
-        id: 2,
-        kode_guru: 'GR002',
-        nama_guru: 'Siti Aminah, S.Pd',
-        mata_pelajaran: 'Bahasa Indonesia',
-        email: 'siti.aminah@smkn2.sch.id',
-        no_hp: '081234567891',
-        gambar_jadwal: null,
-        jumlah_kelas: 4
+  const fetchJadwalGuru = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/jadwal-guru', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDataGuru(data);
+        setFilteredData(data);
+      } else {
+        console.error('Gagal memuat data jadwal guru');
+        alert('Gagal memuat data jadwal guru');
       }
-    ];
-
-    localStorage.setItem('jadwal-guru', JSON.stringify(mockData));
-    setDataGuru(mockData);
-    setFilteredData(mockData);
-  }
-}, []);
+    } catch (error) {
+      console.error('Error fetching jadwal guru:', error);
+      alert('Terjadi kesalahan saat memuat data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let filtered = dataGuru;
@@ -101,139 +94,149 @@ function JadwalGuruIndex() {
   };
 
   return (
-  <>
-    <NavbarWaka />
+    <>
+      <NavbarWaka />
 
-    <div className="jadwal-guru-index-root">
-      <div className="jadwal-guru-index-header">
-        <h1 className="jadwal-guru-index-title">
-          Jadwal Pembelajaran Guru
-        </h1>
-        <p className="jadwal-guru-index-subtitle">
-          Kelola dan lihat jadwal pembelajaran per guru
-        </p>
-      </div>
-
-      <div className="jadwal-guru-index-filter-card">
-        <div className="jadwal-guru-index-filter-grid">
-          <div>
-            <label className="jadwal-guru-index-label">
-              <FaIdCard /> Cari Kode Guru
-            </label>
-            <input
-              type="text"
-              value={searchKode}
-              onChange={(e) => setSearchKode(e.target.value)}
-              placeholder="Contoh: GR001"
-              className="jadwal-guru-index-input"
-            />
-          </div>
-
-          <div>
-            <label className="jadwal-guru-index-label">
-              <FaUser /> Cari Nama Guru
-            </label>
-            <input
-              type="text"
-              value={searchNama}
-              onChange={(e) => setSearchNama(e.target.value)}
-              placeholder="Contoh: Budi Santoso"
-              className="jadwal-guru-index-input"
-            />
-          </div>
+      <div className="jadwal-guru-index-root">
+        <div className="jadwal-guru-index-header">
+          <h1 className="jadwal-guru-index-title">
+            Jadwal Pembelajaran Guru
+          </h1>
+          <p className="jadwal-guru-index-subtitle">
+            Kelola dan lihat jadwal pembelajaran per guru
+          </p>
         </div>
 
-        {(searchKode || searchNama) && (
-          <div className="jadwal-guru-index-reset-wrapper">
-            <button
-              onClick={handleReset}
-              className="jadwal-guru-index-reset-btn"
-            >
-              Reset Filter
-            </button>
+        <div className="jadwal-guru-index-filter-card">
+          <div className="jadwal-guru-index-filter-grid">
+            <div>
+              <label className="jadwal-guru-index-label">
+                <FaIdCard /> Cari Kode Guru
+              </label>
+              <input
+                type="text"
+                value={searchKode}
+                onChange={(e) => setSearchKode(e.target.value)}
+                placeholder="Contoh: GR001"
+                className="jadwal-guru-index-input"
+              />
+            </div>
+
+            <div>
+              <label className="jadwal-guru-index-label">
+                <FaUser /> Cari Nama Guru
+              </label>
+              <input
+                type="text"
+                value={searchNama}
+                onChange={(e) => setSearchNama(e.target.value)}
+                placeholder="Contoh: Budi Santoso"
+                className="jadwal-guru-index-input"
+              />
+            </div>
           </div>
-        )}
-      </div>
 
-      <div className="jadwal-guru-index-table-card">
-        <div className="jadwal-guru-index-table-header">
-          <h3>Daftar Guru ({filteredData.length})</h3>
+          {(searchKode || searchNama) && (
+            <div className="jadwal-guru-index-reset-wrapper">
+              <button
+                onClick={handleReset}
+                className="jadwal-guru-index-reset-btn"
+              >
+                Reset Filter
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="jadwal-guru-index-table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Kode Guru</th>
-                <th>Nama Guru</th>
-                <th>Mata Pelajaran</th>
-                <th>Kontak</th>
-                <th>Jumlah Kelas</th>
-                <th>Status Jadwal</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
+        <div className="jadwal-guru-index-table-card">
+          <div className="jadwal-guru-index-table-header">
+            <h3>Daftar Guru ({filteredData.length})</h3>
+          </div>
 
-            <tbody>
-              {filteredData.map((guru, index) => (
-                <tr key={guru.id}>
-                  <td>{index + 1}</td>
+          <div className="jadwal-guru-index-table-wrapper">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                Memuat data...
+              </div>
+            ) : filteredData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                Tidak ada data jadwal guru
+              </div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Kode Guru</th>
+                    <th>Nama Guru</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Kontak</th>
+                    <th>Jumlah Kelas</th>
+                    <th>Status Jadwal</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
 
-                  <td>
-                    <span className="jadwal-guru-index-badge-blue">
-                      {guru.kode_guru}
-                    </span>
-                  </td>
+                <tbody>
+                  {filteredData.map((guru, index) => (
+                    <tr key={guru.id}>
+                      <td>{index + 1}</td>
 
-                  <td>{guru.nama_guru}</td>
-                  <td>{guru.mata_pelajaran}</td>
+                      <td>
+                        <span className="jadwal-guru-index-badge-blue">
+                          {guru.kode_guru}
+                        </span>
+                      </td>
 
-                  <td>
-                    <div><FaEnvelope /> {guru.email}</div>
-                    <div><FaPhone /> {guru.no_hp}</div>
-                  </td>
+                      <td>{guru.nama_guru}</td>
+                      <td>{guru.mata_pelajaran}</td>
 
-                  <td>{guru.jumlah_kelas} Kelas</td>
+                      <td>
+                        <div><FaEnvelope /> {guru.email}</div>
+                        <div><FaPhone /> {guru.no_hp}</div>
+                      </td>
 
-                  <td>
-                    {guru.gambar_jadwal ? (
-                      <span className="jadwal-guru-index-badge-green">
-                        <FaCheckCircle /> Jadwal Tersedia
-                      </span>
-                    ) : (
-                      <span className="jadwal-guru-index-badge-orange">
-                        <FaExclamationCircle /> Belum Ada Jadwal
-                      </span>
-                    )}
-                  </td>
+                      <td>{guru.jumlah_kelas || 0} Kelas</td>
 
-                  <td>
-                    <div className="jadwal-guru-index-action">
-                      <button
-                        onClick={(e) => handleView(e, guru.id)}
-                        className="jadwal-guru-index-btn-view"
-                      >
-                        <FaEye />
-                      </button>
+                      <td>
+                        {guru.gambar_jadwal ? (
+                          <span className="jadwal-guru-index-badge-green">
+                            <FaCheckCircle /> Jadwal Tersedia
+                          </span>
+                        ) : (
+                          <span className="jadwal-guru-index-badge-orange">
+                            <FaExclamationCircle /> Belum Ada Jadwal
+                          </span>
+                        )}
+                      </td>
 
-                      <button
-                        onClick={(e) => handleEdit(e, guru.id)}
-                        className="jadwal-guru-index-btn-edit"
-                      >
-                        <FaEdit />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <td>
+                        <div className="jadwal-guru-index-action">
+                          <button
+                            onClick={(e) => handleView(e, guru.id)}
+                            className="jadwal-guru-index-btn-view"
+                          >
+                            <FaEye />
+                          </button>
+
+                          <button
+                            onClick={(e) => handleEdit(e, guru.id)}
+                            className="jadwal-guru-index-btn-edit"
+                          >
+                            <FaEdit />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  </>
-);
+    </>
+  );
 }
 
 export default JadwalGuruIndex;

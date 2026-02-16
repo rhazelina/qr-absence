@@ -1,24 +1,98 @@
-import { useState, useMemo, useEffect } from "react";
-import SiswaLayout, { type MenuKey } from "../../component/Siswa/SiswaLayout";
+import { useState, useMemo } from "react";
+import SiswaLayout from "../../component/Siswa/SiswaLayout";
 import { Select } from "../../component/Shared/Select";
 import { Modal } from "../../component/Shared/Modal";
 
-// Statuses handled by mapping util
-import { STATUS_BACKEND_TO_FRONTEND, STATUS_COLORS_HEX } from '../../utils/statusMapping';
-
 interface AbsensiRecord {
   id: string;
-  tanggal: string; // DD-MM-YYYY for display or YYYY-MM-DD
+  tanggal: string;
   jamPelajaran: string;
   mataPelajaran: string;
   guru: string;
-  status: string; // mapped status
-  keterangan?: string;
-  originalDate: string; // for filtering
+  status: "alfa" | "izin" | "sakit" | "hadir" | "pulang";
+  keterangan?: string; // Tambahan untuk izin/sakit/pulang
 }
 
-// Dummy data removed
-const dummyData: AbsensiRecord[] = [];
+// Dummy data - nanti dari API
+const dummyData: AbsensiRecord[] = [
+  {
+    id: "1",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+  },
+  {
+    id: "2",
+    tanggal: "24-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+  },
+  {
+    id: "3",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "izin",
+    keterangan: "Ijin tidak masuk karena ada keperluan keluarga",
+  },
+  {
+    id: "4",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "sakit",
+    keterangan: "Demam tinggi dan dokter menyarankan istirahat",
+  },
+  {
+    id: "5",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+  },
+  {
+    id: "6",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+  },
+  {
+    id: "7",
+    tanggal: "26-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Bahasa Indonesia",
+    guru: "Budi Santoso S.Pd",
+    status: "izin",
+    keterangan: "Menghadiri acara keluarga",
+  },
+  {
+    id: "8",
+    tanggal: "26-05-2025",
+    jamPelajaran: "5-8",
+    mataPelajaran: "Bahasa Inggris",
+    guru: "Siti Nurhaliza S.Pd",
+    status: "sakit",
+    keterangan: "Flu berat dan batuk",
+  },
+  {
+    id: "10",
+    tanggal: "26-05-2025",
+    jamPelajaran: "5-8",
+    mataPelajaran: "Bahasa Inggris",
+    guru: "Siti Nurhaliza S.Pd",
+    status: "pulang",
+    keterangan: "Pulang lebih awal karena sakit perut",
+  },
+];
 
 function CalendarIcon() {
   return (
@@ -122,7 +196,7 @@ function XIcon({ size = 24 }: { size?: number }) {
 // Interface untuk props
 interface AbsensiSiswaProps {
   user?: { name: string; phone: string; role?: string };
-  currentPage?: MenuKey;
+  currentPage?: string;
   onMenuClick?: (page: string) => void;
   onLogout?: () => void;
 }
@@ -133,83 +207,52 @@ export default function AbsensiSiswa({
   onMenuClick = () => { },
   onLogout = () => { },
 }: AbsensiSiswaProps) {
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState("2025-05-24");
+  const [endDate, setEndDate] = useState("2025-05-26");
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   const [selectedRecord, setSelectedRecord] = useState<AbsensiRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [records, setRecords] = useState<AbsensiRecord[]>([]);
+  // Filter data
+  const filteredData = useMemo(() => {
+    if (!startDate || !endDate) return dummyData;
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchData = async () => {
-      try {
-        const { attendanceService } = await import('../../services/attendance');
-        const response = await attendanceService.getMyAttendance({
-          from: startDate,
-          to: endDate
-        }, { signal: controller.signal });
-        const data = response.data || response;
-        const apiRecords = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
 
-        const mapped: AbsensiRecord[] = apiRecords.map((r: any) => {
-          const dateObj = new Date(r.date);
-          const displayDate = `${String(dateObj.getDate()).padStart(2, '0')}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${dateObj.getFullYear()}`;
+    return dummyData.filter((item) => {
+      const [day, month, year] = item.tanggal.split("-").map(Number);
+      const itemDate = new Date(year, month - 1, day);
 
-          const statusLabel = STATUS_BACKEND_TO_FRONTEND[r.status] || r.status;
+      const inDateRange = itemDate >= start && itemDate <= end;
 
-          return {
-            id: String(r.id),
-            tanggal: displayDate,
-            originalDate: r.date.split('T')[0],
-            jamPelajaran: r.schedule ? `${r.schedule.start_time?.slice(0, 5)}-${r.schedule.end_time?.slice(0, 5)}` : '-',
-            mataPelajaran: r.schedule?.subject_name || r.schedule?.class?.label || '-',
-            guru: r.schedule?.teacher?.user?.name || '-',
-            status: statusLabel.toLowerCase(), // UI uses lowercase keys for colors? No, let's fix that.
-            keterangan: r.reason
-          };
-        });
-        setRecords(mapped);
-
-      } catch (e: any) {
-        if (e.name !== 'AbortError') {
-          console.error(e);
+      let statusMatch = true;
+      if (statusFilter !== "semua") {
+        if (statusFilter === "izin/sakit") {
+          statusMatch = item.status === "izin" || item.status === "sakit";
+        } else if (statusFilter === "alfa") {
+          statusMatch = item.status === "alfa";
+        } else if (statusFilter === "pulang") {
+          statusMatch = item.status === "pulang";
+        } else if (statusFilter === "hadir") {
+          statusMatch = item.status === "hadir";
         }
       }
-    };
-    fetchData();
-    return () => controller.abort();
-  }, [startDate, endDate]);
 
-  const filteredData = useMemo(() => {
-    return records.filter((item) => {
-      // const mappedFilter = statusFilter !== 'semua' ? STATUS_BACKEND_TO_FRONTEND[STATUS_FRONTEND_TO_BACKEND[statusFilter]]?.toLowerCase() : null;
-      // Logic is complicated by lowercase/uppercase mix.
-      // Let's simplified: item.status is "Hadir", "Sakit" etc (Title case from mapping).
-
-      if (statusFilter === 'semua') return true;
-      // Map filter value "hadir" to "Hadir"
-      // "izin/sakit" -> Check if includes
-
-      const s = item.status.toLowerCase();
-      if (statusFilter === 'izin/sakit') return s === 'izin' || s === 'sakit';
-      if (statusFilter === 'alpha') return s === 'alpha'; // Mapped 'absent' -> 'Alpha' -> lower 'alpha'
-
-      return s === statusFilter.toLowerCase();
+      return inDateRange && statusMatch;
     });
-  }, [startDate, endDate, statusFilter, records]);
+  }, [startDate, endDate, statusFilter]);
 
   // Hitung summary berdasarkan data filtered
   const summary = useMemo(() => {
-    const getCount = (s: string) => filteredData.filter((d) => d.status.toLowerCase() === s).length;
-    const hadir = getCount('hadir');
-    const pulang = getCount('pulang');
-    const izin = getCount('izin');
-    const sakit = getCount('sakit');
-    const alpha = getCount('alpha');
+    const hadir = filteredData.filter((d) => d.status === "hadir").length;
+    const pulang = filteredData.filter((d) => d.status === "pulang").length;
+    const izin = filteredData.filter((d) => d.status === "izin").length;
+    const sakit = filteredData.filter((d) => d.status === "sakit").length;
+    const alfa = filteredData.filter((d) => d.status === "alfa").length;
 
-    return { hadir, pulang, izin, sakit, alpha, total: filteredData.length };
+    return { hadir, pulang, izin, sakit, alfa, total: filteredData.length };
   }, [filteredData]);
 
   // Fungsi untuk membuka modal detail - SEMUA STATUS bisa diklik
@@ -220,32 +263,26 @@ export default function AbsensiSiswa({
     setSelectedRecord(record);
     setIsModalOpen(true);
   };
-
+    
   // Custom Status Renderer dengan icon mata - SEMUA STATUS bisa diklik
   const StatusButton = ({ status, row }: { status: string; row: AbsensiRecord }) => {
-    let bgColor = "#D90000"; // REVISI: Tidak Hadir > #D90000
-    let label = "Tidak Hadir";
-    const textColor = "#FFFFFF";
+    let bgColor = "#D90000"; // REVISI: alfa > #D90000
+    let label = "alfa";
+    let textColor = "#FFFFFF";
 
-
-    // Actually STATUS_COLORS_HEX keys are 'present', 'sick' etc.
-    // item.status is 'Hadir', 'Sakit' etc.
-    // Convert 'Hadir' -> 'present' -> HEX
-
-    // Reverse map first
-    const backendKey = Object.keys(STATUS_BACKEND_TO_FRONTEND).find(key => STATUS_BACKEND_TO_FRONTEND[key].toLowerCase() === status.toLowerCase()) || status.toLowerCase();
-
-    // Fix specific hardcoded colors if needed or use HEX map
-    if (backendKey === 'present') { bgColor = STATUS_COLORS_HEX.present; label = 'Hadir'; }
-    else if (backendKey === 'sick') { bgColor = STATUS_COLORS_HEX.sick; label = 'Sakit'; }
-    else if (backendKey === 'izin' || backendKey === 'excused') { bgColor = STATUS_COLORS_HEX.izin; label = 'Izin'; }
-    else if (backendKey === 'absent') { bgColor = STATUS_COLORS_HEX.absent; label = 'Tidak Hadir'; }
-    else if (backendKey === 'dinas') { bgColor = STATUS_COLORS_HEX.dinas; label = 'Dinas'; }
-    // Pulang?
-    else if (status.toLowerCase() === 'pulang') { bgColor = '#2F85EB'; label = 'Pulang'; }
-
-    // Fallback
-    else { bgColor = '#6B7280'; label = status; }
+    if (status === "izin") {
+      bgColor = "#ACA40D"; // REVISI: Izin > #ACA40D
+      label = "Izin";
+    } else if (status === "sakit") {
+      bgColor = "#520C8F"; // REVISI: Sakit > #520C8F
+      label = "Sakit";
+    } else if (status === "pulang") {
+      bgColor = "#2F85EB"; // REVISI: Pulang > #2F85EB
+      label = "Pulang";
+    } else if (status === "hadir") {
+      bgColor = "#1FA83D"; // REVISI: Hadir > #1FA83D
+      label = "Hadir";
+    }
 
     return (
       <div
@@ -258,8 +295,9 @@ export default function AbsensiSiswa({
           minWidth: "100px",
           padding: "8px 14px",
           borderRadius: "20px",
-          fontSize: "12px",
-          fontWeight: 600,
+          fontSize: "14px",
+          fontWeight: 700,
+          letterSpacing: "0.5px",
           color: textColor,
           backgroundColor: bgColor,
           cursor: "pointer", // SEMUA STATUS bisa diklik
@@ -324,11 +362,10 @@ export default function AbsensiSiswa({
     },
   ];
 
-  // Status filter options - Alpha diubah jadi Tidak Hadir
+  // Status filter options 
   const statusOptions = [
     { label: "Semua Status", value: "semua" },
-    { label: "Hadir", value: "hadir" },
-    { label: "Tidak Hadir", value: "alpha" },
+    { label: "alfa", value: "alfa" },
     { label: "Izin/Sakit", value: "izin/sakit" },
     { label: "Pulang", value: "pulang" },
   ];
@@ -336,7 +373,7 @@ export default function AbsensiSiswa({
   // Fungsi untuk mendapatkan teks status
   const getStatusText = (status: string) => {
     switch (status) {
-      case "alpha":
+      case "alfa":
         return "Siswa tidak hadir tanpa keterangan";
       case "izin":
         return "Siswa izin dengan keterangan";
@@ -353,8 +390,26 @@ export default function AbsensiSiswa({
 
   // Helper function untuk warna status
   const getStatusColor = (status: string) => {
-    const backendKey = Object.keys(STATUS_BACKEND_TO_FRONTEND).find(key => STATUS_BACKEND_TO_FRONTEND[key].toLowerCase() === status.toLowerCase()) || status.toLowerCase();
-    return STATUS_COLORS_HEX[backendKey] || '#6B7280';
+    switch (status) {
+      case "alfa": return "#D90000"; // REVISI: alfa > #D90000
+      case "izin": return "#ACA40D"; // REVISI: Izin > #ACA40D
+      case "sakit": return "#520C8F"; // REVISI: Sakit > #520C8F
+      case "hadir": return "#1FA83D"; // REVISI: Hadir > #1FA83D
+      case "pulang": return "#2F85EB"; // REVISI: Pulang > #2F85EB
+      default: return "#6B7280";
+    }
+  };
+
+  // Helper function untuk mendapatkan label status
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "alfa": return "alfa";
+      case "izin": return "Izin";
+      case "sakit": return "Sakit";
+      case "hadir": return "Hadir";
+      case "pulang": return "Pulang";
+      default: return status;
+    }
   };
 
   // Total Card
@@ -548,8 +603,7 @@ export default function AbsensiSiswa({
             }}
           >
             <TotalCard />
-            <SummaryCard label="Hadir" value={summary.hadir} color="#1FA83D" /> {/* REVISI: Hadir > #1FA83D */}
-            <SummaryCard label="Tidak Hadir" value={summary.alpha} color="#D90000" /> {/* REVISI: Tidak Hadir > #D90000 */}
+            <SummaryCard label="alfa" value={summary.alfa} color="#D90000" /> {/* REVISI: alfa > #D90000 */}
             <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" /> {/* REVISI: Izin > #ACA40D */}
             <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" /> {/* REVISI: Sakit > #520C8F */}
             <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" /> {/* REVISI: Pulang > #2F85EB */}
@@ -634,11 +688,11 @@ export default function AbsensiSiswa({
                               textAlign: col.align || "left",
                             }}
                           >
-                            {col.key === "no"
+                            {col.key === "no" 
                               ? index + 1
                               : col.render
-                                ? col.render(row[col.key as keyof AbsensiRecord], row)
-                                : row[col.key as keyof AbsensiRecord]}
+                              ? col.render(row[col.key as keyof AbsensiRecord], row)
+                              : row[col.key as keyof AbsensiRecord]}
                           </td>
                         ))}
                       </tr>
@@ -760,7 +814,7 @@ export default function AbsensiSiswa({
             </div>
 
             {/* Content Modal */}
-            <div style={{
+            <div style={{ 
               padding: 24,
               overflowY: "auto",
               flex: 1,
@@ -777,7 +831,7 @@ export default function AbsensiSiswa({
               {/* Row Nama Guru */}
               <DetailRow label="Nama guru" value={selectedRecord.guru} />
 
-              {/* Row Status */}
+              {/* Row Status - ✅ FIXED: Hapus text "alfa" yang ter-duplicate */}
               <div style={{
                 display: "flex",
                 justifyContent: "space-between",
@@ -795,11 +849,8 @@ export default function AbsensiSiswa({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {selectedRecord.status === "alpha" ? "Tidak Hadir" :
-                      selectedRecord.status === "sakit" ? "Sakit" :
-                        selectedRecord.status === "izin" ? "Izin" :
-                          selectedRecord.status === "hadir" ? "Hadir" :
-                            "Pulang"}
+                    {/* ✅ FIXED: Gunakan helper function untuk mendapatkan label status */}
+                    {getStatusLabel(selectedRecord.status)}
                   </span>
                 </div>
               </div>
@@ -878,8 +929,8 @@ export default function AbsensiSiswa({
                       color: "#9CA3AF",
                       textAlign: "center",
                     }}>
-                      {(selectedRecord.status as string) === "hadir"
-                        ? "Tidak ada bukti foto yang diperlukan"
+                      {selectedRecord.status === "hadir" 
+                        ? "Tidak ada bukti foto yang diperlukan" 
                         : "[Area untuk menampilkan bukti foto]"}
                     </p>
                   </div>
@@ -887,8 +938,8 @@ export default function AbsensiSiswa({
               )}
 
               {/* Catatan untuk status Hadir */}
-              {(selectedRecord.status as string) === "hadir" && (
-                <div style={{
+              {selectedRecord.status === "hadir" && (
+                <div style={{ 
                   marginTop: 24,
                   padding: "12px 16px",
                   backgroundColor: "#F0FDF4",

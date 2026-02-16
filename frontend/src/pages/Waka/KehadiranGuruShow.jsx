@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { wakaService } from "../../services/waka";
+import { Link, useParams } from "react-router-dom";
 import "./KehadiranGuruShow.css";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
 import {
@@ -11,53 +10,80 @@ import {
   FaUser,
   FaClipboardCheck,
   FaChevronDown,
+  FaSpinner,
 } from "react-icons/fa";
 
 function KehadiranGuruShow() {
   const { id } = useParams();
-  const [data, setData] = useState([]);
-  const [teacher, setTeacher] = useState({ name: 'Loading...', nip: '-' });
   const [loading, setLoading] = useState(true);
+  const [guruData, setGuruData] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const response = await wakaService.getTeacherAttendanceHistory(id);
-      setData(response.history);
-      setTeacher({
-        name: response.teacher.user?.name || 'Guru',
-        nip: response.teacher.nip || '-'
-      });
-    } catch (error) {
-      console.error("Failed to fetch teacher attendance history:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
+    // TODO: Ganti dengan API call untuk fetch data guru berdasarkan ID
+    // Contoh:
+    // fetchKehadiranGuru(id).then(data => {
+    //   setGuruData(data);
+    //   setLoading(false);
+    // }).catch(error => {
+    //   console.error('Error fetching data:', error);
+    //   setLoading(false);
+    // });
+    
+    setLoading(false);
   }, [id]);
 
   const handleEditClick = (item) => {
     setSelectedItem(item);
-    setSelectedStatus(item.status || "Hadir");
+    setSelectedStatus(item.status || "Tidak Ada Jam Mengajar");
     setShowEditModal(true);
   };
 
   const handleUpdate = () => {
-    // Local update or API call if needed
-    // Waka might not need to update teacher individual check-ins?
-    // Requirement didn't specify. I'll refresh for now.
+    // TODO: Ganti dengan API call untuk update status kehadiran
+    // Contoh:
+    // updateKehadiranGuru(guruData.guru.id, selectedItem, selectedStatus)
+    //   .then(response => {
+    //     // Update local state setelah berhasil
+    //     const updatedJam = [...guruData.jam];
+    //     updatedJam[selectedItem] = selectedStatus;
+    //     setGuruData({
+    //       ...guruData,
+    //       jam: updatedJam,
+    //     });
+    //     setShowEditModal(false);
+    //   })
+    //   .catch(error => {
+    //     console.error('Error updating status:', error);
+    //   });
+
     setShowEditModal(false);
-    fetchData();
   };
 
   if (loading) {
-    return <div className="kehadiran-guru-show-loading">Loading...</div>;
+    return (
+      <div className="kontainer-loading">
+        <div className="teks-loading">
+          <FaSpinner className="spinner" /> Loading...
+        </div>
+      </div>
+    );
+  }
+
+  if (!guruData) {
+    return (
+      <div className="kehadiran-guru-show">
+        <NavbarWaka />
+        <div className="kehadiran-guru-show-container">
+          <p>Data guru tidak ditemukan</p>
+          <Link to="/waka/kehadiran-guru" className="kehadiran-guru-show-back">
+            <FaArrowLeft /> Kembali
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -71,8 +97,8 @@ function KehadiranGuruShow() {
             <FaUser />
           </div>
           <div className="info-header">
-            <h2>{teacher.name}</h2>
-            <p>NIP: {teacher.nip}</p>
+            <h2>{guruData?.guru?.nama}</h2>
+            <p>Kode Guru: {guruData?.guru?.kode_guru}</p>
           </div>
         </div>
 
@@ -90,28 +116,22 @@ function KehadiranGuruShow() {
               <thead>
                 <tr>
                   <th>No</th>
-                  <th>Tanggal</th>
-                  <th>Jam Pelajaran</th>
-                  <th>Mata Pelajaran</th>
                   <th>Kelas</th>
                   <th>Status</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((item, i) => {
+                {guruData?.jam?.map((status, i) => {
                   const displayStatus =
-                    item.status && item.status !== ""
-                      ? item.status
-                      : "Belum Absen";
+                    status && status !== ""
+                      ? status
+                      : "Tidak Ada Jam Mengajar";
 
                   return (
-                    <tr key={item.id}>
+                    <tr key={i}>
                       <td>{i + 1}</td>
-                      <td>{item.date}</td>
-                      <td>{item.checked_in_at || "-"}</td>
-                      <td>-</td>
-                      <td>-</td>
+                      <td>{guruData?.guru?.kelas}</td>
                       <td>
                         <span
                           className={`kehadiran-guru-show-badge status-${displayStatus
@@ -124,7 +144,11 @@ function KehadiranGuruShow() {
                       <td>
                         <button
                           className="kehadiran-guru-show-edit"
-                          onClick={() => handleEditClick(item)}
+                          onClick={() => {
+                            setSelectedItem(i);
+                            setSelectedStatus(displayStatus);
+                            setShowEditModal(true);
+                          }}
                         >
                           <FaEdit />
                         </button>
@@ -172,7 +196,7 @@ function KehadiranGuruShow() {
                     <option value="Terlambat">Terlambat</option>
                     <option value="Izin">Izin</option>
                     <option value="Sakit">Sakit</option>
-                    <option value="Alpha">Alpha</option>
+                    <option value="Alfa">Alfa</option>
                     <option value="Pulang">Pulang</option>
                     <option value="Tidak Ada Jam Mengajar">Tidak Ada Jam Mengajar</option>
                   </select>

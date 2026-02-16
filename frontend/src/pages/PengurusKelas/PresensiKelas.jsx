@@ -3,106 +3,77 @@ import { Calendar, BookOpen, X, QrCode, Eye, Clock } from 'lucide-react';
 import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
 import './PresensiKelas.css';
 
-const scheduleData = [
-  {
-    id: 1,
-    subject: 'Matematika',
-    class: 'XII RPL 2',
-    period: 'Jam ke 1 - 2',
-    time: '07:00-08:30',
-    teacher: 'Drs. Ahmad Sudrajat, M.Pd',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=MTK-XII-RPL2-001'
-  },
-  {
-    id: 2,
-    subject: 'MPKK',
-    class: 'XII RPL 2',
-    period: 'Jam ke 3 - 4',
-    time: '08:30-10:00',
-    teacher: 'Dr. Siti Nurhaliza, S.Kom, M.T',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=MPKK-XII-RPL2-002'
-  },
-  {
-    id: 3,
-    subject: 'Bahasa Indonesia',
-    class: 'XII RPL 2',
-    period: 'Jam ke 5 - 6',
-    time: '10:15-11:45',
-    teacher: 'Sri Wahyuni, S.Pd, M.Pd',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=BIND-XII-RPL2-003'
-  },
-  {
-    id: 4,
-    subject: 'PAI',
-    class: 'XII RPL 2',
-    period: 'Jam ke 7 - 8',
-    time: '12:30-14:00',
-    teacher: 'H. Abdullah Rahman, S.Ag, M.Pd.I',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=PAI-XII-RPL2-004'
-  },
-  {
-    id: 5,
-    subject: 'PKDK',
-    class: 'XII RPL 2',
-    period: 'Jam ke 1 - 2',
-    time: '07:00-08:30',
-    teacher: 'Ir. Bambang Sugiarto, M.T',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=PKDK-XII-RPL2-005'
-  },
-  {
-    id: 6,
-    subject: 'MPP',
-    class: 'XII RPL 2',
-    period: 'Jam ke 3 - 4',
-    time: '08:30-10:00',
-    teacher: 'Dewi Lestari, S.Pd, M.Pd',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=MPP-XII-RPL2-006'
-  },
-  {
-    id: 7,
-    subject: 'Bahasa Inggris',
-    class: 'XII RPL 2',
-    period: 'Jam ke 5 - 6',
-    time: '10:15-11:45',
-    teacher: 'Maria Ulfah, S.Pd, M.TESOL',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=BING-XII-RPL2-007'
-  },
-  {
-    id: 8,
-    subject: 'Bahasa Jawa',
-    class: 'XII RPL 2',
-    period: 'Jam ke 7 - 8',
-    time: '12:30-14:00',
-    teacher: 'Pak Paijo Sunarto, S.Pd',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=BJAWA-XII-RPL2-008'
-  },
-  {
-    id: 9,
-    subject: 'Bahasa Jawa',
-    class: 'XII RPL 2',
-    period: 'Jam ke 7 - 8',
-    time: '12:30-19:00',
-    teacher: 'Pak Paijo Sunarto, S.Pd',
-    qrCode: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=BJAWA-XII-RPL2-008'
-  }
-];
+// ==================== API CONFIGURATION ====================
+const baseURL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
-// Dummy attendance data
-const dummyAttendance = {
-  totalStudents: 36,
-  present: 32,
-  late: 2,
-  absent: 2,
-  students: [
-    { name: 'Ahmad Fauzi', status: 'Hadir', time: '07:05' },
-    { name: 'Siti Aminah', status: 'Hadir', time: '07:03' },
-    { name: 'Budi Santoso', status: 'Hadir', time: '07:02' },
-    { name: 'Dewi Ratnasari', status: 'Terlambat', time: '07:25' },
-    { name: 'Eko Prasetyo', status: 'Hadir', time: '07:01' },
-    { name: 'Fitri Handayani', status: 'Hadir', time: '07:04' },
-    { name: 'Gilang Ramadhan', status: 'Alpha', time: '-' },
-    { name: 'Hana Wijaya', status: 'Hadir', time: '07:06' },
-  ]
+const API_CONFIG = {
+  BASE_URL: API_BASE_URL,
+  ENDPOINTS: {
+    SCHEDULE: '/class/schedule',
+    ATTENDANCE: '/class/attendance',
+    SCAN_QR: '/class/scan-qr'
+  }
+};
+
+// ==================== API SERVICE ====================
+const apiService = {
+  async request(endpoint, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    };
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        throw new Error('Unauthorized');
+      }
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async getTodaySchedule(classId) {
+    return this.request(`${API_CONFIG.ENDPOINTS.SCHEDULE}/${classId}/today`);
+  },
+
+  async getAttendanceDetail(scheduleId) {
+    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE}/${scheduleId}`);
+  },
+
+  async markAsScanned(scheduleId) {
+    return this.request(`${API_CONFIG.ENDPOINTS.SCAN_QR}/${scheduleId}`, {
+      method: 'POST'
+    });
+  }
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+const getTimeRange = (period) => {
+  const timeMap = {
+    '1-2': '07:00-08:30',
+    '3-4': '08:30-10:00',
+    '5-6': '10:15-11:45',
+    '7-8': '12:30-14:00',
+    '7-10': '12:30-15:00',
+    '1-4': '07:00-10:00',
+    '5-10': '10:15-15:00',
+    '3-6': '08:30-11:45',
+    '7': '12:30-13:15',
+    '8-10': '13:15-15:00',
+    '9-10': '14:00-15:00'
+  };
+  return timeMap[period] || '07:00-08:30';
 };
 
 function PresensiKelas() {
@@ -113,33 +84,87 @@ function PresensiKelas() {
   const [currentTime, setCurrentTime] = useState('');
   const [scannedSchedules, setScannedSchedules] = useState({});
   const [qrOpenTime, setQrOpenTime] = useState(null);
+  const [scheduleData, setScheduleData] = useState([]);
+  const [attendanceData, setAttendanceData] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch schedule data from API
   useEffect(() => {
-    // Function to format date and time
+    const fetchSchedule = async () => {
+      try {
+        setIsLoading(true);
+        
+        // TODO: Replace with actual class ID from user session
+        const classId = localStorage.getItem('classId') || '1';
+        
+        // Fetch today's schedule
+        const scheduleResponse = await apiService.getTodaySchedule(classId);
+        
+        // Format schedule data
+        const formattedSchedule = scheduleResponse.map((subject, index) => ({
+          id: subject.id || index + 1,
+          subject: subject.name || '',
+          class: subject.className || '',
+          period: subject.period ? `Jam ke ${subject.period}` : '',
+          time: subject.timeRange || getTimeRange(subject.period),
+          teacher: subject.teacher || '',
+          qrCode: subject.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(subject.name)}-${index+1}`
+        }));
+        
+        setScheduleData(formattedSchedule);
+        
+      } catch (error) {
+        console.error('Error fetching schedule:', error);
+        // UI tetap dirender dengan state default (array kosong)
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, []);
+
+  // Load scanned schedules dari localStorage
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const saved = localStorage.getItem(`scannedSchedules_${today}`);
+    if (saved) {
+      try {
+        setScannedSchedules(JSON.parse(saved));
+      } catch (error) {
+        console.error('Error parsing scanned schedules:', error);
+      }
+    }
+  }, []);
+
+  // Save scanned schedules ke localStorage
+  useEffect(() => {
+    if (Object.keys(scannedSchedules).length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`scannedSchedules_${today}`, JSON.stringify(scannedSchedules));
+    }
+  }, [scannedSchedules]);
+
+  // Update date and time
+  useEffect(() => {
     const updateDateTime = () => {
       const now = new Date();
       
-      // Format date
       const day = String(now.getDate()).padStart(2, '0');
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const year = now.getFullYear();
       setCurrentDate(`${day}-${month}-${year}`);
       
-      // Format time
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       setCurrentTime(`${hours}:${minutes}`);
     };
 
-    // Set initial date and time
     updateDateTime();
-
-    // Update every second for realtime
     const interval = setInterval(() => {
       updateDateTime();
     }, 1000);
 
-    // Cleanup interval
     return () => clearInterval(interval);
   }, []);
 
@@ -148,10 +173,9 @@ function PresensiKelas() {
     if (qrOpenTime && modalType === 'qr') {
       const checkTime = setInterval(() => {
         const now = Date.now();
-        const elapsed = (now - qrOpenTime) / 1000; // seconds
+        const elapsed = (now - qrOpenTime) / 1000;
         
         if (elapsed >= 10) {
-          // Mark as scanned after 10 seconds
           handleMarkAsScanned();
           clearInterval(checkTime);
         }
@@ -161,42 +185,86 @@ function PresensiKelas() {
     }
   }, [qrOpenTime, modalType]);
 
-  // Function to check if schedule time has passed
   const isSchedulePassed = (timeRange) => {
-    if (!currentTime) return false;
-    
-    // Extract end time from range (e.g., "07:00-08:30" -> "08:30")
+    if (!currentTime || !timeRange) return false;
     const endTime = timeRange.split('-')[1];
-    
     return currentTime > endTime;
   };
 
-  // Function to mark schedule as scanned
-  const handleMarkAsScanned = () => {
-    if (selectedSchedule) {
+  const handleMarkAsScanned = async () => {
+    if (!selectedSchedule) return;
+
+    try {
+      // TODO: Call API to mark as scanned
+      // await apiService.markAsScanned(selectedSchedule.id);
+      
+      // Fetch attendance detail from API
+      // const attendanceDetail = await apiService.getAttendanceDetail(selectedSchedule.id);
+      
+      // For now, use default attendance structure
+      const defaultAttendance = {
+        totalStudents: 30,
+        present: 0,
+        late: 0,
+        absent: 0,
+        students: []
+      };
+
       setScannedSchedules(prev => ({
         ...prev,
         [selectedSchedule.id]: {
           scanned: true,
           scannedAt: new Date().toISOString(),
-          attendance: dummyAttendance
+          attendance: defaultAttendance
         }
       }));
+
+      setAttendanceData(prev => ({
+        ...prev,
+        [selectedSchedule.id]: defaultAttendance
+      }));
+
+      closeModal();
+    } catch (error) {
+      console.error('Error marking as scanned:', error);
+      // Tetap tutup modal meskipun error
       closeModal();
     }
   };
 
-  const handleButtonClick = (schedule) => {
+  const handleButtonClick = async (schedule) => {
     const isScanned = scannedSchedules[schedule.id]?.scanned;
     
     setSelectedSchedule(schedule);
     
     if (isScanned) {
-      // Show attendance detail
+      // Fetch attendance detail jika belum ada
+      if (!attendanceData[schedule.id]) {
+        try {
+          const detail = await apiService.getAttendanceDetail(schedule.id);
+          setAttendanceData(prev => ({
+            ...prev,
+            [schedule.id]: detail
+          }));
+        } catch (error) {
+          console.error('Error fetching attendance detail:', error);
+          // Use cached data or default
+          setAttendanceData(prev => ({
+            ...prev,
+            [schedule.id]: scannedSchedules[schedule.id]?.attendance || {
+              totalStudents: 30,
+              present: 0,
+              late: 0,
+              absent: 0,
+              students: []
+            }
+          }));
+        }
+      }
+      
       setModalType('detail');
       setShowModal(true);
     } else {
-      // Show QR code
       setModalType('qr');
       setQrOpenTime(Date.now());
       setShowModal(true);
@@ -210,7 +278,6 @@ function PresensiKelas() {
     setQrOpenTime(null);
   };
 
-  // Function to get button icon and state
   const getButtonState = (schedule) => {
     const isScanned = scannedSchedules[schedule.id]?.scanned;
     const isPassed = isSchedulePassed(schedule.time);
@@ -221,6 +288,16 @@ function PresensiKelas() {
       className: isPassed && !isScanned ? 'qr-button disabled' : 'qr-button'
     };
   };
+
+  const currentAttendance = selectedSchedule && attendanceData[selectedSchedule.id] 
+    ? attendanceData[selectedSchedule.id]
+    : scannedSchedules[selectedSchedule?.id]?.attendance || {
+        totalStudents: 30,
+        present: 0,
+        late: 0,
+        absent: 0,
+        students: []
+      };
 
   return (
     <div className="jadwal-page">
@@ -250,44 +327,128 @@ function PresensiKelas() {
             <span>{currentTime}</span>
           </div>
 
-          {/* Schedule Grid */}
-          <div className="schedule-grid">
-            {scheduleData.map((schedule) => {
-              const buttonState = getButtonState(schedule);
-              const ButtonIcon = buttonState.icon;
-              const isScanned = scannedSchedules[schedule.id]?.scanned;
-              
-              return (
-                <div key={schedule.id} className="schedule-card">
-                  <div className="schedule-info">
-                    <div className="schedule-icon-wrapper">
-                      <BookOpen size={24} />
-                    </div>
-                    <div className="schedule-text">
-                      <div className="schedule-left">
-                        <h3>{schedule.subject}</h3>
-                        <p className="schedule-period">{schedule.period}</p>
-                      </div>
-                      <div className="schedule-right">
-                        <p className="schedule-class">{schedule.class}</p>
-                        <p className="schedule-time">{schedule.time}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="schedule-actions">
-                    <button
-                      className={buttonState.className}
-                      onClick={() => !buttonState.disabled && handleButtonClick(schedule)}
-                      title={isScanned ? "Lihat Detail Kehadiran" : buttonState.disabled ? "Waktu telah berlalu" : "Scan QR Code"}
-                      disabled={buttonState.disabled}
-                    >
-                      <ButtonIcon size={32} strokeWidth={1.5} />
-                    </button>
-                  </div>
+          {/* Loading State */}
+          {isLoading && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '80px 20px',
+              background: '#f9fafb',
+              borderRadius: '16px',
+              border: '2px dashed #d1d5db'
+            }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                border: '4px solid #e5e7eb',
+                borderTopColor: '#3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }}></div>
+              <p style={{
+                marginTop: '16px',
+                fontSize: '16px',
+                color: '#6b7280',
+                fontWeight: '600'
+              }}>Memuat jadwal...</p>
+            </div>
+          )}
+
+          {/* Info Card - jika ada jadwal */}
+          {!isLoading && scheduleData.length > 0 && (
+            <div style={{
+              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+              color: 'white',
+              padding: '16px 24px',
+              borderRadius: '12px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+            }}>
+              <div>
+                <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                  Jadwal Hari Ini
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', marginTop: '4px' }}>
+                  {scheduleData.length} Mata Pelajaran
+                </div>
+              </div>
+              <BookOpen size={48} style={{ opacity: 0.8 }} />
+            </div>
+          )}
+
+          {/* Schedule Grid or Empty State */}
+          {!isLoading && scheduleData.length === 0 ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '80px 20px',
+              background: '#f9fafb',
+              borderRadius: '16px',
+              border: '2px dashed #d1d5db'
+            }}>
+              <BookOpen size={64} color="#9ca3af" style={{ marginBottom: '20px' }} />
+              <h3 style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Tidak Ada Jadwal Hari Ini
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#6b7280',
+                textAlign: 'center'
+              }}>
+                Hari ini adalah akhir pekan atau belum ada jadwal yang tersedia.
+              </p>
+            </div>
+          ) : !isLoading && (
+            <div className="schedule-grid">
+              {scheduleData.map((schedule) => {
+                const buttonState = getButtonState(schedule);
+                const ButtonIcon = buttonState.icon;
+                const isScanned = scannedSchedules[schedule.id]?.scanned;
+                
+                return (
+                  <div key={schedule.id} className="schedule-card">
+                    <div className="schedule-info">
+                      <div className="schedule-icon-wrapper">
+                        <BookOpen size={24} />
+                      </div>
+                      <div className="schedule-text">
+                        <div className="schedule-left">
+                          <h3>{schedule.subject}</h3>
+                          <p className="schedule-period">{schedule.period}</p>
+                        </div>
+                        <div className="schedule-right">
+                          <p className="schedule-class">{schedule.class}</p>
+                          <p className="schedule-time">{schedule.time}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="schedule-actions">
+                      <button
+                        className={buttonState.className}
+                        onClick={() => !buttonState.disabled && handleButtonClick(schedule)}
+                        title={isScanned ? "Lihat Detail Kehadiran" : buttonState.disabled ? "Waktu telah berlalu" : "Scan QR Code"}
+                        disabled={buttonState.disabled}
+                      >
+                        <ButtonIcon size={32} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -345,43 +506,59 @@ function PresensiKelas() {
 
                 <div className="attendance-summary">
                   <div className="summary-card present">
-                    <div className="summary-number">{dummyAttendance.present}</div>
+                    <div className="summary-number">{currentAttendance.present}</div>
                     <div className="summary-label">Hadir</div>
                   </div>
                   <div className="summary-card late">
-                    <div className="summary-number">{dummyAttendance.late}</div>
+                    <div className="summary-number">{currentAttendance.late}</div>
                     <div className="summary-label">Terlambat</div>
                   </div>
                   <div className="summary-card absent">
-                    <div className="summary-number">{dummyAttendance.absent}</div>
+                    <div className="summary-number">{currentAttendance.absent}</div>
                     <div className="summary-label">Alpha</div>
                   </div>
                 </div>
 
                 <div className="attendance-list">
                   <h5>Daftar Kehadiran</h5>
-                  <div className="attendance-table">
-                    {dummyAttendance.students.map((student, idx) => (
-                      <div key={idx} className="attendance-row">
-                        <div className="student-info">
-                          <span className="student-number">{idx + 1}.</span>
-                          <span className="student-name">{student.name}</span>
+                  {currentAttendance.students.length > 0 ? (
+                    <div className="attendance-table">
+                      {currentAttendance.students.map((student, idx) => (
+                        <div key={idx} className="attendance-row">
+                          <div className="student-info">
+                            <span className="student-number">{idx + 1}.</span>
+                            <span className="student-name">{student.name}</span>
+                          </div>
+                          <div className="student-status-group">
+                            <span className={`student-status ${student.status.toLowerCase()}`}>
+                              {student.status}
+                            </span>
+                            <span className="student-time">{student.time}</span>
+                          </div>
                         </div>
-                        <div className="student-status-group">
-                          <span className={`student-status ${student.status.toLowerCase()}`}>
-                            {student.status}
-                          </span>
-                          <span className="student-time">{student.time}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{
+                      padding: '40px 20px',
+                      textAlign: 'center',
+                      background: '#f9fafb',
+                      borderRadius: '12px',
+                      border: '2px dashed #d1d5db'
+                    }}>
+                      <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+                        Belum ada data kehadiran siswa
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="scanned-info">
                   <p>✓ QR Code telah di-scan oleh guru</p>
                   <p className="scan-time">
-                    Waktu scan: {new Date(scannedSchedules[selectedSchedule.id]?.scannedAt).toLocaleString('id-ID')}
+                    Waktu scan: {scannedSchedules[selectedSchedule.id]?.scannedAt 
+                      ? new Date(scannedSchedules[selectedSchedule.id].scannedAt).toLocaleString('id-ID')
+                      : '-'}
                   </p>
                 </div>
               </div>
@@ -389,6 +566,12 @@ function PresensiKelas() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

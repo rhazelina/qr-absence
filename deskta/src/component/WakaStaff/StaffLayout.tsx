@@ -1,5 +1,5 @@
+//StaffLayout.tsx
 import { useEffect, useState, useRef } from 'react';
-import { storage } from '../../utils/storage';
 import { AnimatePresence, motion } from "framer-motion";
 import type { ReactNode } from 'react';
 import Sidebar from '../Sidebar';
@@ -7,7 +7,6 @@ import AWANKIRI from '../../assets/Icon/AWANKIRI.png';
 import AWANKANAN from '../../assets/Icon/AWANKANAN.png';
 import INO from '../../assets/Icon/InoBlue.svg';
 import RASI from '../../assets/Icon/RasiRed.svg';
-import LogoSchool from '../../assets/Icon/logo smk.png';
 import { useLocalLenis } from '../Shared/SmoothScroll';
 
 interface StaffLayoutProps {
@@ -30,14 +29,44 @@ export default function StaffLayout({
   user,
   onLogout,
 }: StaffLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(() => storage.getSidebarState('waka'));
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('wakaSidebarOpen');
+    return saved ? saved === 'true' : true;
+  });
+
+  // ✅ DIUBAH: State untuk logo_sekolah
+  const [logoSekolah, setLogoSekolah] = useState<string>('');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useLocalLenis(scrollContainerRef);
 
   useEffect(() => {
-    storage.setSidebarState('waka', sidebarOpen);
+    localStorage.setItem('wakaSidebarOpen', sidebarOpen.toString());
   }, [sidebarOpen]);
+
+  // ✅ DIUBAH: Load logo_sekolah dari localStorage
+  useEffect(() => {
+    const loadLogoSekolah = () => {
+      const schoolData = localStorage.getItem('schoolData');
+      if (schoolData) {
+        try {
+          const parsed = JSON.parse(schoolData);
+          setLogoSekolah(parsed.logo_sekolah || '');
+        } catch (error) {
+          console.error('Error loading school data:', error);
+        }
+      }
+    };
+
+    loadLogoSekolah();
+
+    // ✅ DIUBAH: Listen untuk update event dari ProfilSekolah
+    const handleUpdate = () => {
+      loadLogoSekolah();
+    };
+    window.addEventListener('schoolDataUpdated', handleUpdate);
+    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+  }, []);
 
   return (
     <div
@@ -164,18 +193,21 @@ export default function StaffLayout({
                 {user.role}
               </div>
             </div>
-            <img
-              src={LogoSchool}
-              alt="Logo SMK"
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                padding: "4px",
-                backgroundColor: "white",
-              }}
-            />
+            {/* ✅ DIUBAH: Hanya tampilkan logo jika logo_sekolah tidak kosong */}
+            {logoSekolah && (
+              <img
+                src={logoSekolah}
+                alt="Logo SMK"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                  padding: "4px",
+                  backgroundColor: "white",
+                }}
+              />
+            )}
           </div>
         </header>
 

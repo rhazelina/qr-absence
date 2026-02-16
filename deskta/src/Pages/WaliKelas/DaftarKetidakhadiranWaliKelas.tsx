@@ -1,27 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import WalikelasLayout from "../../component/Walikelas/layoutwakel";
 import { User, ArrowLeft, Eye } from "lucide-react";
 import { Modal } from "../../component/Shared/Modal";
-import { attendanceService } from "../../services/attendance";
-import { dashboardService } from "../../services/dashboard";
 
-type StatusKehadiran = "Hadir" | "Izin" | "Sakit" | "Alfa" | "Terlambat" | "Pulang";
+type StatusKehadiran = "Izin" | "Sakit" | "Alfa";
 
-// Mapping backend status to frontend status
-const MAP_STATUS: Record<string, StatusKehadiran> = {
-  'present': 'Hadir',
-  'late': 'Terlambat',
-  'excused': 'Izin',
-  'sick': 'Sakit',
-  'absent': 'Alfa',
-  'alpha': 'Alfa',
-  'dinas': 'Izin', // Or separate if needed
-  'izin': 'Izin',
-  'pulang': 'Pulang'
-};
-
-interface RowKehadiran {
-  id: number;
+type RowKehadiran = {
   no: number;
   tanggal: string;
   jam: string;
@@ -30,7 +14,7 @@ interface RowKehadiran {
   status: StatusKehadiran;
   keterangan?: string;
   bukti?: string;
-}
+};
 
 interface DaftarKetidakhadiranWaliKelasProps {
   user?: { name: string; role: string };
@@ -39,74 +23,62 @@ interface DaftarKetidakhadiranWaliKelasProps {
   onLogout?: () => void;
   siswaName?: string;
   siswaIdentitas?: string;
-  studentId?: string; // Added studentId
 }
 
 export default function DaftarKetidakhadiranWaliKelas({
   user = { name: "Wali Kelas", role: "walikelas" },
   currentPage = "daftar-ketidakhadiran-walikelas",
-  onMenuClick = () => { },
-  onLogout = () => { },
-  siswaName = "Siswa",
-  siswaIdentitas = "-",
-  studentId,
+  onMenuClick = () => {},
+  onLogout = () => {},
+  siswaName = "Muhammad Wito S.",
+  siswaIdentitas = "0918415784",
 }: DaftarKetidakhadiranWaliKelasProps) {
+  const [rows] = useState<RowKehadiran[]>([
+    {
+      no: 1,
+      tanggal: "21-05-2025",
+      jam: "5-6",
+      mapel: "Matematika",
+      guru: "WIWIN WINANGSIH, S.Pd,M.Pd",
+      status: "Izin",
+      keterangan: "Izin tidak masuk karena ada keperluan keluarga",
+      bukti: "surat_izin.jpg",
+    },
+    {
+      no: 2,
+      tanggal: "22-05-2025",
+      jam: "3-4",
+      mapel: "Bahasa Inggris",
+      guru: "FAJAR NINGTYAS, S.Pd",
+      status: "Sakit",
+      keterangan: "Demam tinggi dan dokter menyarankan istirahat",
+      bukti: "surat_dokter.jpg",
+    },
+    {
+      no: 3,
+      tanggal: "23-05-2025",
+      jam: "1-2",
+      mapel: "MPKK",
+      guru: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd",
+      status: "Alfa",
+    },
+    {
+      no: 4,
+      tanggal: "23-05-2025",
+      jam: "7-8",
+      mapel: "Bahasa Inggris",
+      guru: "FAJAR NINGTYAS, S.Pd",
+      status: "Alfa",
+    },
+  ]);
 
-  const [rows, setRows] = useState<RowKehadiran[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<RowKehadiran | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!studentId) return;
-      setIsLoading(true);
-      try {
-        // 1. Get Class Info (to ensure we have access/id)
-        const classData = await dashboardService.getMyHomeroom();
-
-        if (classData.id) {
-          // 2. Fetch Absences
-          // We use getClassStudentsAbsences. We might need to filter by studentId if the API returns all.
-          // Assuming params can take student_id or we filter client side.
-          const response = await attendanceService.getClassStudentsAbsences(classData.id, {});
-          const allAbsences = (response.data as any).data || response.data;
-
-          if (Array.isArray(allAbsences)) {
-            // Filter by studentId
-            const studentAbsences = allAbsences.filter((item: any) => item.student_id.toString() === studentId.toString());
-
-            const mappedRows: RowKehadiran[] = studentAbsences.map((item: any, index: number) => ({
-              id: item.id,
-              no: index + 1,
-              tanggal: item.date,
-              jam: item.schedule?.start_time ? `${item.schedule.start_time.slice(0, 5)} - ${item.schedule.end_time.slice(0, 5)}` : '-',
-              mapel: item.schedule?.subject_name || '-',
-              guru: item.schedule?.teacher?.user?.name || '-',
-              status: MAP_STATUS[item.status] || 'Alfa',
-              keterangan: item.reason || (item.status === 'alpha' ? 'Tanpa Keterangan' : '-'),
-              bukti: item.attachment || null // Assuming attachment field exists
-            }));
-            setRows(mappedRows);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching absence details:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [studentId]);
-
-
-  // Hitung statistik
   const stats = useMemo(() => ({
-    hadir: rows.filter((r) => r.status === "Hadir").length,
     izin: rows.filter((r) => r.status === "Izin").length,
     sakit: rows.filter((r) => r.status === "Sakit").length,
-    alfa: rows.filter((r) => r.status === "Alfa").length,
+    tidakHadir: rows.filter((r) => r.status === "Alfa").length,
   }), [rows]);
 
   const handleBack = () => {
@@ -114,12 +86,9 @@ export default function DaftarKetidakhadiranWaliKelas({
   };
 
   const COLORS = {
-    HADIR: "#1FA83D",
     IZIN: "#ACA40D",
     SAKIT: "#520C8F",
-    ALFA: "#D90000",
-    TERLAMBAT: "#F59E0B",
-    PULANG: "#2F85EB"
+    TIDAK_HADIR: "#D90000"
   };
 
   const handleStatusClick = (record: RowKehadiran, e: React.MouseEvent) => {
@@ -130,17 +99,16 @@ export default function DaftarKetidakhadiranWaliKelas({
   };
 
   const StatusButton = ({ status, row }: { status: StatusKehadiran; row: RowKehadiran }) => {
-    let bgColor = COLORS.ALFA;
-    const label = status;
-    const textColor = "#FFFFFF";
+    let bgColor = COLORS.TIDAK_HADIR;
+    let label = "Alfa";
+    let textColor = "#FFFFFF";
 
-    switch (status) {
-      case "Hadir": bgColor = COLORS.HADIR; break;
-      case "Izin": bgColor = COLORS.IZIN; break;
-      case "Sakit": bgColor = COLORS.SAKIT; break;
-      case "Terlambat": bgColor = COLORS.TERLAMBAT; break;
-      case "Pulang": bgColor = COLORS.PULANG; break;
-      default: bgColor = COLORS.ALFA; break;
+    if (status === "Izin") {
+      bgColor = COLORS.IZIN;
+      label = "Izin";
+    } else if (status === "Sakit") {
+      bgColor = COLORS.SAKIT;
+      label = "Sakit";
     }
 
     return (
@@ -183,24 +151,16 @@ export default function DaftarKetidakhadiranWaliKelas({
 
   const getStatusText = (status: StatusKehadiran) => {
     switch (status) {
-      case "Hadir": return "Siswa hadir tepat waktu";
-      case "Izin": return "Siswa izin dengan keterangan";
-      case "Sakit": return "Siswa sakit dengan surat dokter";
-      case "Alfa": return "Siswa tidak hadir tanpa keterangan";
-      case "Terlambat": return "Siswa terlambat hadir";
-      case "Pulang": return "Siswa pulang lebih awal";
-      default: return status;
+      default:
+        return status;
     }
   };
 
   const getStatusColor = (status: StatusKehadiran) => {
     switch (status) {
-      case "Hadir": return COLORS.HADIR;
       case "Izin": return COLORS.IZIN;
       case "Sakit": return COLORS.SAKIT;
-      case "Alfa": return COLORS.ALFA;
-      case "Terlambat": return COLORS.TERLAMBAT;
-      case "Pulang": return COLORS.PULANG;
+      case "Alfa": return COLORS.TIDAK_HADIR;
       default: return "#6B7280";
     }
   };
@@ -214,7 +174,45 @@ export default function DaftarKetidakhadiranWaliKelas({
         user={user}
         onLogout={onLogout}
       >
-        {/* CARD SISWA */}
+        <div
+          style={{
+            display: "flex",
+            marginBottom: 24,
+          }}
+        >
+          <button
+            onClick={handleBack}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "12px 20px",
+              borderRadius: 8,
+              backgroundColor: "#062A4A",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 700,
+              transition: "all 0.2s",
+              boxShadow: "0 2px 4px rgba(6, 42, 74, 0.2)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#051A2F";
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 4px 8px rgba(6, 42, 74, 0.3)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#062A4A";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 2px 4px rgba(6, 42, 74, 0.2)";
+            }}
+          >
+            <ArrowLeft size={18} />
+            Kembali ke Rekap
+          </button>
+        </div>
+
         <div
           style={{
             width: "100%",
@@ -246,8 +244,6 @@ export default function DaftarKetidakhadiranWaliKelas({
           </div>
         </div>
 
-        {/* STATISTIK KEHADIRAN (Hanya Absensi karena endpoint absensi) */}
-        {/* Jika endpoint hanya return absen, statistik Hadir akan 0, which is fine for "Daftar Ketidakhadiran" */}
         <div
           style={{
             display: "flex",
@@ -256,9 +252,6 @@ export default function DaftarKetidakhadiranWaliKelas({
             flexWrap: "wrap",
           }}
         >
-          {/* Removed Hadir stats card if we strictly show absences, but keeping logical consistency with 'stats' object */}
-          {/* If we want to show all stats, we'd need a summary endpoint for this student. For now, rely on what we have. */}
-
           <div
             style={{
               backgroundColor: "#FFFFFF",
@@ -314,7 +307,7 @@ export default function DaftarKetidakhadiranWaliKelas({
           <div
             style={{
               backgroundColor: "#FFFFFF",
-              border: `2px solid ${COLORS.ALFA}`,
+              border: `2px solid ${COLORS.TIDAK_HADIR}`,
               borderRadius: 10,
               padding: "12px 24px",
               textAlign: "center",
@@ -329,57 +322,15 @@ export default function DaftarKetidakhadiranWaliKelas({
               style={{
                 fontSize: 32,
                 fontWeight: 900,
-                color: COLORS.ALFA,
+                color: COLORS.TIDAK_HADIR,
                 marginTop: 4,
               }}
             >
-              {stats.alfa}
+              {stats.tidakHadir}
             </div>
           </div>
         </div>
 
-        {/* BUTTON KEMBALI */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            marginBottom: 16,
-          }}
-        >
-          <button
-            onClick={handleBack}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 20px",
-              borderRadius: 8,
-              backgroundColor: "#062A4A",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 14,
-              fontWeight: 700,
-              transition: "all 0.2s",
-              boxShadow: "0 2px 4px rgba(6, 42, 74, 0.2)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#051A2F";
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 4px 8px rgba(6, 42, 74, 0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#062A4A";
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 2px 4px rgba(6, 42, 74, 0.2)";
-            }}
-          >
-            <ArrowLeft size={18} />
-            Kembali ke Rekap
-          </button>
-        </div>
-
-        {/* TABLE */}
         <div
           style={{
             border: "1px solid #E5E7EB",
@@ -389,7 +340,6 @@ export default function DaftarKetidakhadiranWaliKelas({
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
           }}
         >
-          {/* HEADER */}
           <div
             style={{
               display: "grid",
@@ -410,42 +360,34 @@ export default function DaftarKetidakhadiranWaliKelas({
             <div style={{ textAlign: "center", fontWeight: 900 }}>Status</div>
           </div>
 
-          {/* ROWS */}
-          {isLoading ? (
-            <div style={{ padding: "20px", textAlign: "center", color: "#6B7280" }}>Memuat riwayat...</div>
-          ) : rows.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center", color: "#9CA3AF" }}>Tidak ada data ketidakhadiran.</div>
-          ) : (
-            rows.map((r, idx) => (
-              <div
-                key={r.no}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "70px 140px 140px 1fr 1fr 150px",
-                  padding: "16px 20px",
-                  fontSize: 14,
-                  alignItems: "center",
-                  borderBottom: idx < rows.length - 1 ? "1px solid #F3F4F6" : "none",
-                  backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#FAFBFC",
-                  transition: "background-color 0.2s",
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "#FFFFFF" : "#FAFBFC"}
-              >
-                <div style={{ textAlign: "center", color: "#6B7280", fontWeight: "700" }}>{r.no}</div>
-                <div style={{ textAlign: "center", color: "#374151", fontWeight: "700" }}>{r.tanggal}</div>
-                <div style={{ textAlign: "center", color: "#374151", fontWeight: "700" }}>{r.jam}</div>
-                <div style={{ color: "#111827", fontWeight: "800" }}>{r.mapel}</div>
-                <div style={{ color: "#374151", fontWeight: "600" }}>{r.guru}</div>
-                <div style={{ display: "flex", justifyContent: "center" }}>
-                  <StatusButton status={r.status} row={r} />
-                </div>
+          {rows.map((r, idx) => (
+            <div
+              key={r.no}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "70px 140px 140px 1fr 1fr 150px",
+                padding: "16px 20px",
+                fontSize: 14,
+                alignItems: "center",
+                borderBottom: idx < rows.length - 1 ? "1px solid #F3F4F6" : "none",
+                backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#FAFBFC",
+                transition: "background-color 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "#FFFFFF" : "#FAFBFC"}
+            >
+              <div style={{ textAlign: "center", color: "#6B7280", fontWeight: "700" }}>{r.no}</div>
+              <div style={{ textAlign: "center", color: "#374151", fontWeight: "700" }}>{r.tanggal}</div>
+              <div style={{ textAlign: "center", color: "#374151", fontWeight: "700" }}>{r.jam}</div>
+              <div style={{ color: "#111827", fontWeight: "800" }}>{r.mapel}</div>
+              <div style={{ color: "#374151", fontWeight: "600" }}>{r.guru}</div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <StatusButton status={r.status} row={r} />
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
 
-        {/* SUMMARY FOOTER */}
         <div
           style={{
             marginTop: 24,
@@ -475,7 +417,6 @@ export default function DaftarKetidakhadiranWaliKelas({
         </div>
       </WalikelasLayout>
 
-      {/* Modal Detail Kehadiran */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
         {selectedRecord && (
           <div style={{
@@ -489,7 +430,6 @@ export default function DaftarKetidakhadiranWaliKelas({
             display: "flex",
             flexDirection: "column",
           }}>
-            {/* Header Modal */}
             <div style={{
               backgroundColor: "#062A4A",
               padding: "18px 24px",
@@ -525,8 +465,7 @@ export default function DaftarKetidakhadiranWaliKelas({
               </button>
             </div>
 
-            {/* Content Modal */}
-            <div style={{
+            <div style={{ 
               padding: 24,
               overflowY: "auto",
               flex: 1,
@@ -535,28 +474,8 @@ export default function DaftarKetidakhadiranWaliKelas({
               <DetailRow label="Jam Pelajaran" value={selectedRecord.jam} />
               <DetailRow label="Mata pelajaran" value={selectedRecord.mapel} />
               <DetailRow label="Nama guru" value={selectedRecord.guru} />
-
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 24,
-                paddingBottom: 12,
-                borderBottom: "1px solid #E5E7EB",
-              }}>
-                <div style={{ fontWeight: 800, color: "#374151" }}>Status :</div>
-                <div>
-                  <span style={{
-                    backgroundColor: getStatusColor(selectedRecord.status),
-                    color: "#FFFFFF",
-                    padding: "6px 18px",
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: 800,
-                  }}>
-                    {selectedRecord.status}
-                  </span>
-                </div>
-              </div>
+              
+              {/* Row Status - DIHAPUS sesuai perintah */}
 
               <div style={{
                 backgroundColor: "#EFF6FF",
@@ -564,7 +483,7 @@ export default function DaftarKetidakhadiranWaliKelas({
                 borderRadius: 8,
                 padding: 16,
                 textAlign: "center",
-                marginBottom: (selectedRecord.status !== "Hadir") && selectedRecord.keterangan ? 24 : 0,
+                marginBottom: (selectedRecord.status === "Izin" || selectedRecord.status === "Sakit") && selectedRecord.keterangan ? 24 : 0,
               }}>
                 <div style={{
                   fontSize: 14,
@@ -575,7 +494,7 @@ export default function DaftarKetidakhadiranWaliKelas({
                 </div>
               </div>
 
-              {((selectedRecord.status !== "Hadir")) && selectedRecord.keterangan && (
+              {(selectedRecord.status === "Izin" || selectedRecord.status === "Sakit") && selectedRecord.keterangan && (
                 <div>
                   <div style={{
                     fontSize: 14,
@@ -590,7 +509,6 @@ export default function DaftarKetidakhadiranWaliKelas({
                     backgroundColor: "#F9FAFB",
                     borderRadius: 8,
                     border: "2px solid #E5E7EB",
-                    marginBottom: 24
                   }}>
                     <p style={{
                       margin: 0,
@@ -605,9 +523,8 @@ export default function DaftarKetidakhadiranWaliKelas({
                 </div>
               )}
 
-              {/* Area Bukti Foto */}
-              {selectedRecord.bukti && (
-                <div style={{ marginTop: 0 }}>
+              {(selectedRecord.status === "Izin" || selectedRecord.status === "Sakit") && (
+                <div style={{ marginTop: selectedRecord.keterangan ? 24 : 0 }}>
                   <div style={{
                     fontSize: 14,
                     fontWeight: 800,
@@ -617,7 +534,7 @@ export default function DaftarKetidakhadiranWaliKelas({
                     Bukti Foto :
                   </div>
                   <div style={{
-                    padding: "16px",
+                    padding: "40px 16px",
                     backgroundColor: "#F9FAFB",
                     borderRadius: 8,
                     border: "2px solid #E5E7EB",
@@ -626,12 +543,37 @@ export default function DaftarKetidakhadiranWaliKelas({
                     alignItems: "center",
                     justifyContent: "center",
                   }}>
-                    {/* Placeholder for image */}
-                    <div style={{ textAlign: 'center' }}>
-                      {/* In real app, render <img src={selectedRecord.bukti} /> */}
-                      <p style={{ color: '#9CA3AF' }}>📷 {selectedRecord.bukti}</p>
-                    </div>
+                    <p style={{
+                      margin: 0,
+                      fontSize: 14,
+                      color: "#9CA3AF",
+                      textAlign: "center",
+                      fontWeight: 600,
+                    }}>
+                      {selectedRecord.bukti || "[Area untuk menampilkan bukti foto]"}
+                    </p>
                   </div>
+                </div>
+              )}
+
+              {selectedRecord.status === "Alfa" && (
+                <div style={{ 
+                  marginTop: 24,
+                  padding: "14px 18px",
+                  backgroundColor: "#FEF2F2",
+                  borderRadius: 8,
+                  border: "2px solid #FECACA",
+                }}>
+                  <p style={{
+                    margin: 0,
+                    fontSize: 14,
+                    color: "#991B1B",
+                    lineHeight: 1.5,
+                    textAlign: "center",
+                    fontWeight: 700,
+                  }}>
+                    ⚠ Siswa tidak hadir tanpa keterangan
+                  </p>
                 </div>
               )}
             </div>

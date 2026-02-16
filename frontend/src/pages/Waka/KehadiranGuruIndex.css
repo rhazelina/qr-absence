@@ -153,6 +153,7 @@ th, td {
   text-align: left;
 }
 
+
 tbody tr:hover {
   background: #f9fafb;
 }
@@ -179,7 +180,7 @@ tbody tr:hover {
 .status-pulang { background: #FF5F1A; }
 .status-izin { background: #7f6904; }
 .status-sakit { background: #9A0898; }
-.status-alpha { background: #D90000; }
+.status-alfa { background: #D90000; }
 .status-belum { background: #9ca3af; }
 
 /* PER COLUMN */
@@ -243,13 +244,13 @@ tbody tr:hover {
 }
 
 .jam-hadir { background: #22c55e; }
-.jam-alpha { background: #ef4444; }
+.jam-alfa { background: #ef4444; }
 .jam-izin  { background: #d8bf1a; }
 .jam-sakit { background: #a855f7; }
 
 /* STATUS WARNA */
 .status-hadir { background: #22c55e; }
-.status-alpha { background: #ef4444; }
+.status-alfa { background: #ef4444; }
 .status-izin  { background: #d8bf1a; }
 .status-sakit { background: #a855f7; }
 
@@ -304,7 +305,7 @@ tbody tr:hover {
 
 /* WARNA */
 .legend-hadir  { background: #22c55e; }
-.legend-alpha  { background: #ef4444; }
+.legend-alfa  { background: #ef4444; }
 .legend-izin   { background: #facc15; }
 .legend-sakit  { background: #a855f7; }
 .legend-pulang { background: #ff7a00; }

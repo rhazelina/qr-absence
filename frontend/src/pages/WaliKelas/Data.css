@@ -282,7 +282,7 @@ td.col-aksi { padding: 12px 10px !important; }
 .status.hadir    { background: #4caf50; }
 .status.izin     { background: #fac629; color: #000; }
 .status.sakit    { background: #9c27b0; }
-.status.alpha    { background: #d3281c; }
+.status.alfa     { background: #d3281c; }
 .status.pulang   { background: #123cd3; }
 .status.terlambat{ background: #ff9800; color: #000; }
 

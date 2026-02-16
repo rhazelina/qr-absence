@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import './KehadiranSiswaIndex.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaBriefcase, FaChevronDown, FaDoorOpen, FaEye, FaInbox, FaSpinner, FaTable, FaUser } from 'react-icons/fa';
-import { wakaService } from '../../services/waka';
 
 function KehadiranSiswaIndex() {
   const navigate = useNavigate();
@@ -12,29 +11,26 @@ function KehadiranSiswaIndex() {
   const [filterJurusan, setFilterJurusan] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
 
-  const jurusanList = ['TKJ', 'RPL', 'MM', 'TBSM', 'TKR'];
+  const jurusanList = ['RPL', 'TKJ', 'MM', 'AN', 'BC', 'EI', 'MT', 'AV'];
   const kelasOptions = ['X', 'XI', 'XII'];
 
   useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const data = await wakaService.getClasses();
-        setKelasList(data);
-      } catch (error) {
-        console.error('Failed to fetch classes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClasses();
+    // TODO: Ganti dengan API call untuk fetch data kelas
+    // Contoh:
+    // fetchKelasList().then(data => {
+    //   setKelasList(data);
+    //   setLoading(false);
+    // }).catch(error => {
+    //   console.error('Error fetching data:', error);
+    //   setLoading(false);
+    // });
+    
+    setLoading(false);
   }, []);
 
   const filteredKelasList = kelasList.filter(kelas => {
-    // Determine major name safely
-    const majorName = kelas.major?.code || kelas.major?.name || '';
-    const matchesJurusan = filterJurusan ? majorName.includes(filterJurusan) : true;
-    const matchesKelas = filterKelas ? kelas.grade.startsWith(filterKelas) : true;
+    const matchesJurusan = filterJurusan ? kelas.jurusan.nama_jurusan === filterJurusan : true;
+    const matchesKelas = filterKelas ? kelas.nama_kelas.startsWith(filterKelas + ' ') : true;
     return matchesJurusan && matchesKelas;
   });
 
@@ -149,12 +145,12 @@ function KehadiranSiswaIndex() {
                       </td>
                       <td className="td-kelas">
                         <div className="info-kelas">
-                          <span className="nama-kelas">{item.name}</span>
+                          <span className="nama-kelas">{item.nama_kelas}</span>
                         </div>
                       </td>
                       <td>
                         <span className="lencana-jurusan">
-                          {item.major?.name || '-'}
+                          {item.jurusan?.nama_jurusan || '-'}
                         </span>
                       </td>
                       <td>
@@ -162,7 +158,7 @@ function KehadiranSiswaIndex() {
                           <div className="avatar-wali">
                             <FaUser />
                           </div>
-                          <span className="nama-wali">{item.homeroom_teacher?.user?.name || '-'}</span>
+                          <span className="nama-wali">{item.wali_kelas || '-'}</span>
                         </div>
                       </td>
                       <td className="td-tengah">

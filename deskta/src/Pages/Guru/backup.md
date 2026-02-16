@@ -1,4 +1,4 @@
-﻿
+
 import { useState, useEffect } from 'react';
 import GuruLayout from '../../component/Guru/GuruLayout';
 import { StatusBadge } from '../../component/Shared/StatusBadge';
@@ -60,7 +60,7 @@ export default function KehadiranSiswaGuru({
   );
 
   const handleEdit = (item: KehadiranSiswa) => {
-    popupAlert(`Edit absensi: ${item.nama}`);
+    alert(`Edit absensi: ${item.nama}`);
   };
 
   const StatCard = ({ label, value, color, bgColor, icon }: any) => (

@@ -13,6 +13,7 @@ import {
 function JadwalSiswaIndex() {
   const [dataSiswa, setDataSiswa] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const [filterKompetensi, setFilterKompetensi] = useState('');
@@ -26,81 +27,35 @@ function JadwalSiswaIndex() {
 
   const kelasOptions = ['X RPL 1', 'X RPL 2', 'XI RPL 1', 'X TKJ 1', 'X DKV 1'];
 
-  // DATA DUMMY
-  const dummyData = [
-    {
-      id: 'dummy-1',
-      kompetensi_keahlian: 'RPL',
-      wali_kelas: 'Budi Santoso, S.Pd',
-      kelas: 'X RPL 1'
-    },
-    {
-      id: 'dummy-2',
-      kompetensi_keahlian: 'RPL',
-      wali_kelas: 'Siti Aminah, S.Kom',
-      kelas: 'X RPL 2'
-    },
-    {
-      id: 'dummy-3',
-      kompetensi_keahlian: 'TKJ',
-      wali_kelas: 'Ahmad Dahlan, S.T',
-      kelas: 'X TKJ 1'
-    },
-    {
-      id: 'dummy-4',
-      kompetensi_keahlian: 'DKV',
-      wali_kelas: 'Dewi Lestari, S.Sn',
-      kelas: 'X DKV 1'
-    },
-    {
-      id: 'dummy-5',
-      kompetensi_keahlian: 'RPL',
-      wali_kelas: 'Eko Prasetyo, S.Pd',
-      kelas: 'XI RPL 1'
-    }
-  ];
-
   useEffect(() => {
-    const items = [];
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-
-      if (key.startsWith('jadwal-siswa-')) {
-        try {
-          const data = JSON.parse(localStorage.getItem(key));
-          
-          // Filter data yang valid - harus memiliki semua field yang dibutuhkan
-          if (data && 
-              data.id && 
-              data.kompetensi_keahlian && 
-              data.wali_kelas && 
-              data.kelas) {
-            items.push({
-              id: data.id,
-              kompetensi_keahlian: data.kompetensi_keahlian,
-              wali_kelas: data.wali_kelas,
-              kelas: data.kelas
-            });
-          }
-        } catch (error) {
-          console.error('Error parsing localStorage data:', error);
-        }
-      }
-    }
-
-    // Gabungkan data dummy dengan data dari localStorage
-    // Prioritaskan data dummy jika tidak ada data dari localStorage
-    const allData = [...dummyData, ...items];
-    
-    // Hapus duplikasi berdasarkan ID (prioritaskan yang pertama muncul - yaitu dummy data)
-    const uniqueData = allData.filter((item, index, self) =>
-      index === self.findIndex((t) => t.id === item.id)
-    );
-    
-    setDataSiswa(uniqueData);
-    setFilteredData(uniqueData);
+    fetchJadwalSiswa();
   }, []);
+
+  const fetchJadwalSiswa = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/jadwal-siswa', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDataSiswa(data);
+        setFilteredData(data);
+      } else {
+        console.error('Gagal memuat data jadwal siswa');
+        alert('Gagal memuat data jadwal siswa');
+      }
+    } catch (error) {
+      console.error('Error fetching jadwal siswa:', error);
+      alert('Terjadi kesalahan saat memuat data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let filtered = dataSiswa;
@@ -201,63 +156,69 @@ function JadwalSiswaIndex() {
         </div>
 
         <div className="jadwal-siswa-index-table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>Kompetensi Keahlian</th>
-                <th>Wali Kelas</th>
-                <th>Kelas</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredData.length > 0 ? (
-                filteredData.map((siswa, index) => (
-                  <tr key={siswa.id}>
-                    <td>{index + 1}</td>
-
-                    <td>
-                      <span className="jadwal-siswa-index-badge-blue">
-                        {siswa.kompetensi_keahlian}
-                      </span>
-                    </td>
-
-                    <td>{siswa.wali_kelas}</td>
-                    <td className="siswa-mapel">{siswa.kelas}</td>
-
-                    <td>
-                      <div className="jadwal-siswa-index-action">
-                        <button
-                          className="jadwal-siswa-index-btn-view"
-                          onClick={(e) => handleView(e, siswa.id)}
-                          title="Lihat Detail"
-                        >
-                          <FaEye />
-                        </button>
-
-                        <button
-                          className="jadwal-siswa-index-btn-edit"
-                          onClick={(e) => handleEdit(e, siswa.id)}
-                          title="Edit Data"
-                        >
-                          <FaEdit />
-                        </button>
-                      </div>
-                    </td>
-
-                  </tr>
-                ))
-              ) : (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              Memuat data...
+            </div>
+          ) : (
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                    Tidak ada data yang sesuai dengan filter
-                  </td>
+                  <th>No</th>
+                  <th>Kompetensi Keahlian</th>
+                  <th>Wali Kelas</th>
+                  <th>Kelas</th>
+                  <th>Aksi</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {filteredData.length > 0 ? (
+                  filteredData.map((siswa, index) => (
+                    <tr key={siswa.id}>
+                      <td>{index + 1}</td>
+
+                      <td>
+                        <span className="jadwal-siswa-index-badge-blue">
+                          {siswa.kompetensi_keahlian}
+                        </span>
+                      </td>
+
+                      <td>{siswa.wali_kelas}</td>
+                      <td className="siswa-mapel">{siswa.kelas}</td>
+
+                      <td>
+                        <div className="jadwal-siswa-index-action">
+                          <button
+                            className="jadwal-siswa-index-btn-view"
+                            onClick={(e) => handleView(e, siswa.id)}
+                            title="Lihat Detail"
+                          >
+                            <FaEye />
+                          </button>
+
+                          <button
+                            className="jadwal-siswa-index-btn-edit"
+                            onClick={(e) => handleEdit(e, siswa.id)}
+                            title="Edit Data"
+                          >
+                            <FaEdit />
+                          </button>
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                      Tidak ada data yang sesuai dengan filter
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

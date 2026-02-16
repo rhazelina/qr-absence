@@ -2,7 +2,7 @@
 .tampilan-kehadiran-siswa {
   min-height: 100vh;
   position: relative;
-  padding-top: 600px;
+  margin-top: 60000px;
 }
 
 .kontainer-tampilan {
@@ -230,13 +230,13 @@
   color: #9A0898;
 }
 
-.stat-alpha {
+.stat-alfa {
   background: linear-gradient(135deg, white);
   border-color: #fecaca;
   text-align: center;
 }
 
-.stat-alpha .jumlah-stat {
+.stat-alfa .jumlah-stat {
   color: #D90000;
 }
 
@@ -408,7 +408,7 @@
   border-color: #bfdbfe;
 }
 
-.status-alpha {
+.status-alfa {
   background: #D90000;
   color: #ffffff;
   border-color: #fecaca;
@@ -969,7 +969,7 @@
   font-weight: 600;
 }
 
-.teks-alpha {
+.teks-alfa {
   color: #dc2626;
   font-weight: 600;
 }

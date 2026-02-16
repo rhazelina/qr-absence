@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HalamanUtama from '../assets/Icon/HalamanUtama.png';
-import settingService from '../services/setting';
 
 // ==================== INTERFACE DEFINITIONS ====================
 interface LandingPageProps {
@@ -54,43 +53,34 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownContentRef = useRef<HTMLDivElement>(null);
 
-  // ==================== LOAD SCHOOL DATA FROM BACKEND ====================
+  // ==================== LOAD SCHOOL DATA FROM STORAGE ====================
   useEffect(() => {
-    const fetchSchoolData = async () => {
+    const loadSchoolData = () => {
       try {
-        const settings = await settingService.getPublicSettings();
-        if (settings) {
-          setSchoolData({
-            nama_sekolah: settings.school_name || DEFAULT_LANDING_DATA.nama_sekolah,
-            logo_sekolah: settings.school_logo_url || '',
-            maskot_sekolah: settings.school_mascot_url || '',
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching school data:', error);
-        
-        // Fallback to localStorage if API fails (for backward compatibility during migration)
         const savedData = localStorage.getItem('schoolData');
         if (savedData) {
           const parsedData = JSON.parse(savedData);
           setSchoolData({
             nama_sekolah: parsedData.nama_sekolah || DEFAULT_LANDING_DATA.nama_sekolah,
-            logo_sekolah: parsedData.logo_sekolah || '',
-            maskot_sekolah: parsedData.maskot_sekolah || '',
+            logo_sekolah: parsedData.logo_sekolah || '', // Hanya tampil jika ada, kosong jika tidak
+            maskot_sekolah: parsedData.maskot_sekolah || '', // Hanya tampil jika ada, kosong jika tidak
           });
         } else {
           setSchoolData(DEFAULT_LANDING_DATA);
         }
+      } catch (error) {
+        console.error('Error loading school data:', error);
+        setSchoolData(DEFAULT_LANDING_DATA);
       }
     };
 
-    fetchSchoolData();
+    loadSchoolData();
 
     // ==================== LISTEN FOR SCHOOL DATA UPDATES ====================
-    window.addEventListener('schoolDataUpdated', fetchSchoolData);
+    window.addEventListener('schoolDataUpdated', loadSchoolData);
 
     return () => {
-      window.removeEventListener('schoolDataUpdated', fetchSchoolData);
+      window.removeEventListener('schoolDataUpdated', loadSchoolData);
     };
   }, []);
 

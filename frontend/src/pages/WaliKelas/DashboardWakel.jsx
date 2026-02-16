@@ -2,39 +2,71 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardWakel.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
-import { authService } from '../../services/auth';
-import { authHelpers } from '../../utils/authHelpers';
-import attendanceService from '../../services/attendance';
 
 const DashboardWakel = () => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSchedule, setSelectedSchedule] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [user] = useState(authHelpers.getUserData());
-  
-  // 🔥 STATE TERPISAH: scanSuccess dan mulaiAbsen
   const [scanSuccess, setScanSuccess] = useState(false);
-  
+
+  const [waliKelas, setWaliKelas] = useState({
+    nama: "",
+    nip: "",
+    role: ""
+  });
+
+  const [siswaPerKelas, setSiswaPerKelas] = useState({});
+
+  const [scheduleData, setScheduleData] = useState([]);
+
+  const [stats, setStats] = useState({
+    totalKelas: 0,
+    totalSiswa: 0
+  });
+
   const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const data = await attendanceService.getTeacherDashboard();
-      setDashboardData(data);
-    } catch (err) {
-      console.error("Error fetching wakel dashboard data:", err);
-      setError("Gagal mengambil data dashboard.");
-    } finally {
-      setLoading(false);
+  const checkTodayAttendanceStatus = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const savedData = localStorage.getItem('studentAttendanceData');
+
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+          const todayData = parsedData.filter(item => item.tanggal === today);
+
+          if (todayData.length > 0) {
+            const mapelYangSudahAbsen = new Set(todayData.map(s => s.mapel));
+            const completedIds = new Set();
+
+            scheduleData.forEach(jadwal => {
+              if (mapelYangSudahAbsen.has(jadwal.mataPelajaran)) {
+                completedIds.add(jadwal.id);
+              }
+            });
+
+            setCompletedAbsensi(completedIds);
+          } else {
+            setCompletedAbsensi(new Set());
+          }
+        } else {
+          setCompletedAbsensi(new Set());
+        }
+      } catch (e) {
+        setCompletedAbsensi(new Set());
+      }
+    } else {
+      setCompletedAbsensi(new Set());
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    checkTodayAttendanceStatus();
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -51,102 +83,76 @@ const DashboardWakel = () => {
     return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
-  // 🔥 FUNGSI: Buka modal jadwal
   const handleIconClick = (jadwal) => {
-    setSelectedSchedule({
-      id: jadwal.id,
-      mataPelajaran: jadwal.subject,
-      kelas: jadwal.class_name,
-      jamKe: jadwal.time_slot.replace('Jam Ke ', ''),
-      waktu: `${jadwal.start_time} - ${jadwal.end_time}`
-    });
-    setScanSuccess(false); // Reset scan status
+    const isCompleted = completedAbsensi.has(jadwal.id);
+
+    if (isCompleted) {
+      navigate('/walikelas/presensi');
+    } else {
+      setSelectedSchedule(jadwal);
+      setScanSuccess(false);
+    }
   };
 
-  // 🔥 FUNGSI: Tutup modal
   const handleCloseModal = () => {
     setSelectedSchedule(null);
     setScanSuccess(false);
   };
 
-  // 🔥 FUNGSI: Simulasi scan berhasil
   const handleScanSuccess = () => {
     setScanSuccess(true);
-    console.log('✅ Scan berhasil!');
   };
 
-  // 🔥 FUNGSI: Mulai absen (setelah scan berhasil)
   const handleMulaiAbsen = () => {
-    if (!selectedSchedule) {
-      console.error('❌ No schedule selected');
-      return;
-    }
+    if (!selectedSchedule) return;
 
     if (!scanSuccess) {
       alert('⚠️ Harap scan QR Code terlebih dahulu!');
       return;
     }
 
-    console.log('=== MULAI NAVIGASI KE PRESENSI SISWA ===');
-    console.log('✅ Selected schedule:', selectedSchedule);
+    const daftarSiswaYangDipilih = siswaPerKelas[selectedSchedule.kelas] || [];
 
     const dataToSend = {
-      scheduleId: selectedSchedule.id,
       mataPelajaran: selectedSchedule.mataPelajaran,
       jamKe: selectedSchedule.jamKe,
       kelas: selectedSchedule.kelas,
       waktu: selectedSchedule.waktu,
       tanggal: formatDate(currentTime),
+      namaGuru: waliKelas.nama,
+      nipGuru: waliKelas.nip,
+      daftarSiswa: daftarSiswaYangDipilih,
+      totalSiswa: daftarSiswaYangDipilih.length
     };
 
-    console.log('📦 Data yang akan dikirim:', dataToSend);
-
-    // Update completed status
     setCompletedAbsensi((prev) => new Set([...prev, selectedSchedule.id]));
-    
-    // Simpan ke sessionStorage sebagai backup
     sessionStorage.setItem('presensiData', JSON.stringify(dataToSend));
-    console.log('💾 Data disimpan ke sessionStorage');
 
-    // Tutup modal
     handleCloseModal();
 
-    // Navigate ke PresensiSiswa
     setTimeout(() => {
-      console.log('🚀 Navigasi ke /presensi-siswa...');
       navigate('/walikelas/presensi', { state: dataToSend });
-      console.log('✅ Navigate dipanggil!');
     }, 100);
   };
 
   const handleLogout = () => {
-    if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      authService.logout();
+    const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
+
+    if (confirmLogout) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
       navigate('/login');
+      alert('Anda telah berhasil logout');
     }
   };
-
-  if (loading) {
-    return <div className="loading-container">Memuat data dashboard...</div>;
-  }
-
-  if (error) {
-    return <div className="error-container">{error}</div>;
-  }
-
-  const teacher = dashboardData?.teacher || {};
-  const stats = {
-    totalKelas: dashboardData?.schedule_today?.length || 0,
-    totalSiswa: teacher.is_homeroom ? "Lihat Data" : "-"
-  };
-  const scheduleData = dashboardData?.schedule_today || [];
 
   const renderStatusIcon = (jadwalId) => {
     const isCompleted = completedAbsensi.has(jadwalId);
 
     if (isCompleted) {
       return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="action-icon eye-icon" style={{ width: '22px', height: '22px' }}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="action-icon eye-icon" style={{ width: '22px', height: '22px', color: '#0066cc' }}>
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
           <circle cx="12" cy="12" r="3" />
         </svg>
@@ -167,7 +173,7 @@ const DashboardWakel = () => {
       <div className="circle-decoration right-top"></div>
 
       <div className="dashboard-containerr">
-        
+
         <div className="left-section">
           <div className="profile-section">
             <div className="profile-content">
@@ -179,11 +185,9 @@ const DashboardWakel = () => {
                 </div>
               </div>
               <div className="profile-info">
-                <h2 className="profile-name">{teacher.name || user?.name}</h2>
-                <p className="profile-nip">{teacher.nip || user?.nip || "-"}</p>
-                {teacher.is_homeroom && (
-                  <p className="profile-role">Wali Kelas {teacher.homeroom_class}</p>
-                )}
+                <h2 className="profile-name">{waliKelas.nama}</h2>
+                <p className="profile-nip">{waliKelas.nip}</p>
+                <p className="profile-role">{waliKelas.role}</p>
               </div>
               <button className="btn-logout" onClick={handleLogout}>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -198,7 +202,7 @@ const DashboardWakel = () => {
         <div className="right-section">
           <div className="header-sectionn">
             <h2 className="header-title">Kehadiran Siswa</h2>
-            
+
             <div className="top-cards-grid">
               <div className="datetime-card figma-style">
                 <div className="datetime-left">
@@ -221,21 +225,19 @@ const DashboardWakel = () => {
                 <p className="stats-value">{stats.totalKelas} Kelas</p>
               </div>
 
-              {teacher.is_homeroom && (
-                <div
-                  className="stats-card clickable"
-                  onClick={() => navigate('/walikelas/datasiswa')}
-                >
-                  <p className="stats-label">Wali Kelas</p>
-                  <p className="stats-value">{teacher.homeroom_class}</p>
-                </div>
-              )}
+              <div
+                className="stats-card clickable"
+                onClick={() => navigate('/walikelas/datasiswa')}
+              >
+                <p className="stats-label">Total Siswa Kelas {waliKelas.role.split(' ').slice(-2).join(' ')}</p>
+                <p className="stats-value">{stats.totalSiswa}</p>
+              </div>
             </div>
           </div>
 
           <div className="jadwal-section">
             <h3 className="jadwal-titlee">Jadwal Hari Ini</h3>
-            
+
             <div className="schedule-list">
               {scheduleData.length > 0 ? (
                 scheduleData.map((item) => (
@@ -246,9 +248,9 @@ const DashboardWakel = () => {
                       </svg>
                     </div>
                     <div className="schedule-info">
-                      <p className="schedule-subject">{item.subject}</p>
+                      <p className="schedule-subject">{item.mataPelajaran}</p>
                       <p className="schedule-details">
-                        {item.class_name} | {item.time_slot} | {item.start_time} - {item.end_time}
+                        {item.kelas} | Jam ke {item.jamKe} | {item.waktu}
                       </p>
                     </div>
                     <button className="schedule-action">
@@ -269,7 +271,7 @@ const DashboardWakel = () => {
         </div>
       </div>
 
-      {/* 🔥 MODAL - TAHAP 1: SCAN QR */}
+      {/* MODAL - TAHAP 1: SCAN QR */}
       {selectedSchedule && !scanSuccess && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal-absen-scan" onClick={(e) => e.stopPropagation()}>
@@ -314,7 +316,7 @@ const DashboardWakel = () => {
                       <rect x="80" y="105" width="15" height="15" fill="#000"/>
                       <rect x="105" y="105" width="15" height="15" fill="#000"/>
                     </svg>
-                    
+
                     <div className="magnify-icon">
                       <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="40" cy="40" r="25" stroke="#000" strokeWidth="6" fill="none"/>
@@ -332,7 +334,7 @@ const DashboardWakel = () => {
         </div>
       )}
 
-      {/* 🔥 MODAL - TAHAP 2: DETAIL JADWAL (SETELAH SCAN BERHASIL) */}
+      {/* MODAL - TAHAP 2: DETAIL JADWAL */}
       {selectedSchedule && scanSuccess && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal-absen-detail" onClick={(e) => e.stopPropagation()}>
@@ -363,22 +365,26 @@ const DashboardWakel = () => {
                   <span className="label">Jam ke-</span>
                   <span className="value">{selectedSchedule.waktu} (Jam ke {selectedSchedule.jamKe})</span>
                 </div>
+                <div className="info-row">
+                  <span className="label">Jumlah Siswa</span>
+                  <span className="value">
+                    {(siswaPerKelas[selectedSchedule.kelas] || []).length} Siswa
+                  </span>
+                </div>
               </div>
             </div>
 
             <div className="guru-status-section">
-              {/* 🔥 STATUS GURU - BADGE DI KANAN */}
               <div className="info-row">
                 <span className="label">Status Guru</span>
                 <span className="status-badge hadir">Hadir</span>
               </div>
-              
-              {/* 🔥 TOMBOL MULAI ABSEN */}
-              <button 
-                className="btn-mulai-absensi" 
+
+              <button
+                className="btn-mulai-absensi"
                 onClick={handleMulaiAbsen}
               >
-                Mulai Absen
+                Mulai Absen ({(siswaPerKelas[selectedSchedule.kelas] || []).length} Siswa)
               </button>
             </div>
           </div>

@@ -1,12 +1,12 @@
 ﻿// src/Pages/WakaStaff/DetailSiswaStaff.tsx
 import { useEffect, useMemo, useState, useRef } from "react";
-import { FileText, FileSpreadsheet, GraduationCap } from "lucide-react";
-import { getStatusConfig } from "../../utils/statusMapping";
+import { FileText, FileSpreadsheet, GraduationCap, Calendar, ChevronDown } from "lucide-react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Button } from "../../component/Shared/Button";
+import { FormModal } from "../../component/Shared/FormModal";
+import { Select } from "../../component/Shared/Select";
 import { Table } from "../../component/Shared/Table";
 import { Modal } from "../../component/Shared/Modal";
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
 
 type DetailStatusType =
   | "hadir"
@@ -38,8 +38,20 @@ interface DetailSiswaStaffProps {
   currentPage: string;
   onMenuClick: (page: string) => void;
   kelasId?: string;
+  namaKelas?: string;
+  waliKelas?: string;
   onBack?: () => void;
 }
+
+// ✅ PERBAIKAN: Mapping mata pelajaran dengan daftar guru LENGKAP
+const MATA_PELAJARAN_GURU: Record<string, string[]> = {
+  "Matematika": ["SOLIKAH, S.Pd", "SITTI HADIJAH, S.Pd", "WIWIN WINANGSIH, S.Pd,M.Pd"],
+  "Bahasa Indonesia": ["Hj. TITIK MARIYATI, S.Pd"],
+  "Bahasa Inggris": ["FAJAR NINGTYAS, S.Pd"],
+  "MPKK": ["RR. HENNING GRATYANIS ANGGRAENI, S.Pd", "ALIFAH DIANTEBES AINDRA S.Pd"],
+};
+
+const MATA_PELAJARAN_LIST = Object.keys(MATA_PELAJARAN_GURU);
 
 // Declare jsPDF types for CDN usage
 declare global {
@@ -114,88 +126,223 @@ export default function DetailSiswaStaff({
   currentPage,
   onMenuClick,
   kelasId: _kelasId,
+  namaKelas = "12 Rekayasa Perangkat Lunak 1",
+  waliKelas = "RR. HENNING GRATYANIS ANGGRAENI, S.Pd",
   onBack,
 }: DetailSiswaStaffProps) {
-  const { alert: popupAlert } = usePopup();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [loading, setLoading] = useState(false);
-
+  
   // Tanggal otomatis update setiap hari
   const [selectedTanggal, setSelectedTanggal] = useState(
-    new Date().toISOString().slice(0, 10)
+    new Date().toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
   );
 
   const [selectedMapel, setSelectedMapel] = useState("");
   const [selectedGuru, setSelectedGuru] = useState("");
   const [jsPDFLoaded, setJsPDFLoaded] = useState(false);
-
+  
   // State untuk dropdown ekspor
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Info dummy kelas
-  const [kelasInfo, setKelasInfo] = useState({
-    namaKelas: "Memuat...",
-  });
+  const kelasInfo = {
+    namaKelas: namaKelas,
+  };
 
-  // ✅ Data dari backend
-  const [rows, setRows] = useState<KehadiranRow[]>([]);
+  // ✅ PERBAIKAN: Dummy data kehadiran siswa DENGAN NAMA GURU LENGKAP dan detail
+  const [rows, setRows] = useState<KehadiranRow[]>([
+    { 
+      id: "1", 
+      nisn: "0078980482", 
+      namaSiswa: "NOVITA AZZAHRA", 
+      mataPelajaran: "Matematika", 
+      namaGuru: "WIWIN WINANGSIH, S.Pd,M.Pd", 
+      status: "hadir", 
+      waktuMasuk: "07:30 WIB", 
+      waktuKeluar: "12:00 WIB", 
+      lokasi: "Sekolah - Gerbang Utama",
+      jamPelajaran: "1-4",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "2", 
+      nisn: "0079312790", 
+      namaSiswa: "RAENA WESTI DHEANOFA HERLIANI", 
+      mataPelajaran: "Matematika", 
+      namaGuru: "SITTI HADIJAH, S.Pd", 
+      status: "hadir", 
+      waktuMasuk: "07:25 WIB", 
+      waktuKeluar: "12:05 WIB", 
+      lokasi: "Sekolah - Gerbang Utama",
+      jamPelajaran: "1-4",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "3", 
+      nisn: "0061631562", 
+      namaSiswa: "NADIA SINTA DEVI OKTAVIA", 
+      mataPelajaran: "Bahasa Indonesia", 
+      namaGuru: "Hj. TITIK MARIYATI, S.Pd", 
+      status: "izin", 
+      keterangan: "Ijin tidak masuk karena ada keperluan keluarga",
+      jamPelajaran: "1-4",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "4", 
+      nisn: "1348576395", 
+      namaSiswa: "NURUL KHASANAH", 
+      mataPelajaran: "Bahasa Inggris", 
+      namaGuru: "FAJAR NINGTYAS, S.Pd", 
+      status: "sakit", 
+      keterangan: "Demam tinggi dan dokter menyarankan istirahat",
+      jamPelajaran: "1-4",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "5", 
+      nisn: "0076610748", 
+      namaSiswa: "RITA AURA AGUSTINA", 
+      mataPelajaran: "Matematika", 
+      namaGuru: "WIWIN WINANGSIH, S.Pd,M.Pd", 
+      status: "tidak-hadir",
+      jamPelajaran: "1-4",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "6", 
+      nisn: "0072620559", 
+      namaSiswa: "SHISILIA ISMU PUTRI", 
+      mataPelajaran: "Matematika", 
+      namaGuru: "SITTI HADIJAH, S.Pd", 
+      status: "tidak-hadir",
+      jamPelajaran: "5-8",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "7", 
+      nisn: "0089965810", 
+      namaSiswa: "NINDI NARITA MAULIDYA", 
+      mataPelajaran: "Matematika", 
+      namaGuru: "WIWIN WINANGSIH, S.Pd,M.Pd", 
+      status: "hadir", 
+      waktuMasuk: "07:45 WIB", 
+      waktuKeluar: "11:50 WIB", 
+      lokasi: "Sekolah - Gerbang Timur",
+      jamPelajaran: "1-4",
+      tanggal: "25-01-2025"
+    },
+    { 
+      id: "8", 
+      nisn: "0074320819", 
+      namaSiswa: "LELY SAGITA", 
+      mataPelajaran: "MPKK", 
+      namaGuru: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd", 
+      status: "hadir", 
+      waktuMasuk: "07:20 WIB", 
+      waktuKeluar: "12:10 WIB", 
+      lokasi: "Sekolah - Gerbang Utama",
+      jamPelajaran: "5-8",
+      tanggal: "26-01-2025"
+    },
+    { 
+      id: "9", 
+      nisn: "0074182519", 
+      namaSiswa: "LAURA LAVIDA LOCA", 
+      mataPelajaran: "MPKK", 
+      namaGuru: "ALIFAH DIANTEBES AINDRA S.Pd", 
+      status: "hadir", 
+      waktuMasuk: "07:35 WIB", 
+      waktuKeluar: "12:00 WIB", 
+      lokasi: "Sekolah - Gerbang Utama",
+      jamPelajaran: "5-8",
+      tanggal: "26-01-2025"
+    },
+    { 
+      id: "10", 
+      nisn: "0081112175", 
+      namaSiswa: "NADJWA KIRANA FIRDAUS", 
+      mataPelajaran: "MPKK", 
+      namaGuru: "ALIFAH DIANTEBES AINDRA S.Pd", 
+      status: "hadir", 
+      waktuMasuk: "07:40 WIB", 
+      waktuKeluar: "12:15 WIB", 
+      lokasi: "Sekolah - Gerbang Utama",
+      jamPelajaran: "1-4",
+      tanggal: "26-01-2025"
+    },
+    { 
+      id: "11", 
+      nisn: "0085834363", 
+      namaSiswa: "NISWATUL KHOIRIYAH", 
+      mataPelajaran: "MPKK", 
+      namaGuru: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd", 
+      status: "sakit", 
+      keterangan: "Flu berat dan batuk",
+      jamPelajaran: "1-4",
+      tanggal: "26-01-2025"
+    },
+    { 
+      id: "12", 
+      nisn: "0084924963", 
+      namaSiswa: "RAYHANUN", 
+      mataPelajaran: "Bahasa Inggris", 
+      namaGuru: "FAJAR NINGTYAS, S.Pd", 
+      status: "izin", 
+      keterangan: "Menghadiri acara keluarga",
+      jamPelajaran: "5-8",
+      tanggal: "26-01-2025"
+    },
+    { 
+      id: "13", 
+      nisn: "0081838771", 
+      namaSiswa: "RACHEL ALUNA MEIZHA", 
+      mataPelajaran: "Matematika", 
+      namaGuru: "SOLIKAH, S.Pd", 
+      status: "pulang", 
+      keterangan: "Pulang lebih awal karena sakit perut", 
+      waktuMasuk: "07:30 WIB", 
+      waktuKeluar: "10:15 WIB",
+      jamPelajaran: "1-4",
+      tanggal: "26-01-2025"
+    },
+  ]);
 
   // State untuk modal detail
   const [selectedRow, setSelectedRow] = useState<KehadiranRow | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Fetch data
+  // Update tanggal otomatis setiap hari
   useEffect(() => {
-    const fetchData = async () => {
-      if (!_kelasId) return;
-      setLoading(true);
-      try {
-        const { attendanceService } = await import("../../services/attendance");
-        const { classService } = await import("../../services/class");
-
-        // 1. Get Class Info
-        const classData = await classService.getClassById(_kelasId);
-        setKelasInfo({
-          namaKelas: classData.name || `${classData.grade} ${classData.label}`,
-        });
-
-        // 2. Get Attendance History for the date
-        const response: any = await attendanceService.getClassAttendanceByDate(
-          Number(_kelasId),
-          selectedTanggal
-        );
-
-        const mappedRows: KehadiranRow[] = response.map((item: any) => ({
-          id: item.id.toString(),
-          nisn: item.student?.nis || "-",
-          namaSiswa: item.student?.user?.name || "Siswa",
-          mataPelajaran: item.schedule?.subject?.name || item.schedule?.subject_name || "-",
-          namaGuru: item.schedule?.teacher?.user?.name || "-",
-          status: (item.status === 'present' ? 'hadir' :
-            item.status === 'late' ? 'hadir' :
-              item.status === 'excused' ? 'izin' :
-                item.status === 'sick' ? 'sakit' :
-                  item.status === 'absent' ? 'alpha' :
-                    item.status === 'alpha' ? 'alpha' :
-                      item.status === 'dinas' ? 'izin' :
-                        item.status === 'pulang' ? 'pulang' : 'alpha') as DetailStatusType,
-          keterangan: item.reason || "-",
-          waktuMasuk: item.checked_in_at ? item.checked_in_at.slice(0, 5) : "-",
-          jamPelajaran: item.schedule?.start_time ? `${item.schedule.start_time.slice(0, 5)} - ${item.schedule.end_time.slice(0, 5)}` : "-",
-          tanggal: item.date,
-        }));
-
-        setRows(mappedRows);
-      } catch (error) {
-        console.error("Failed to fetch student details:", error);
-      } finally {
-        setLoading(false);
-      }
+    const updateDate = () => {
+      setSelectedTanggal(
+        new Date().toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      );
     };
 
-    fetchData();
-  }, [_kelasId, selectedTanggal]);
+    // Update setiap tengah malam
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timeUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    const timeout = setTimeout(() => {
+      updateDate();
+      // Setelah tengah malam, set interval untuk update setiap 24 jam
+      const interval = setInterval(updateDate, 86400000);
+      return () => clearInterval(interval);
+    }, timeUntilMidnight);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   // Load jsPDF from CDN
   useEffect(() => {
@@ -245,23 +392,21 @@ export default function DetailSiswaStaff({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ AMBIL DAFTAR MAPEL & GURU DARI DATA
-  const MATA_PELAJARAN_LIST = useMemo(() => {
-    const mapelSet = new Set<string>();
-    rows.forEach(row => {
-      if (row.mataPelajaran) mapelSet.add(row.mataPelajaran);
-    });
-    return Array.from(mapelSet).sort();
-  }, [rows]);
-
+  // ✅ PERBAIKAN: Ambil daftar guru dari MAPPING, bukan dari data tabel
   const availableGurus = useMemo(() => {
-    const guruSet = new Set<string>();
-    rows.forEach(row => {
-      if (!selectedMapel || row.mataPelajaran === selectedMapel) {
-        if (row.namaGuru && row.namaGuru !== "-") guruSet.add(row.namaGuru);
-      }
-    });
-    return Array.from(guruSet).sort();
+    if (!selectedMapel) {
+      // Jika tidak ada mapel dipilih, ambil semua guru unik dari data
+      const guruSet = new Set<string>();
+      rows.forEach(row => {
+        if (row.namaGuru && row.namaGuru.trim() !== "") {
+          guruSet.add(row.namaGuru);
+        }
+      });
+      return Array.from(guruSet).sort();
+    }
+    
+    // Jika ada mapel dipilih, ambil dari mapping
+    return MATA_PELAJARAN_GURU[selectedMapel] || [];
   }, [selectedMapel, rows]);
 
   // Reset guru ketika ganti mapel
@@ -287,16 +432,13 @@ export default function DetailSiswaStaff({
 
   // Fungsi untuk mendapatkan style badge BOLD dengan klik
   const getStatusStyle = (status: string) => {
-    const config = getStatusConfig(status);
-    
-    return {
-      backgroundColor: config.color, // Default hadir
+    const baseStyle = {
+      backgroundColor: "#1FA83D", // Default hadir
       color: "#FFFFFF",
       padding: "6px 16px",
       borderRadius: "20px",
       fontSize: "12px",
       fontWeight: "700",
-      textTransform: "uppercase" as const,
       letterSpacing: "0.5px",
       border: "none",
       minWidth: "90px",
@@ -307,14 +449,38 @@ export default function DetailSiswaStaff({
       gap: "6px",
       cursor: "pointer",
       transition: "all 0.2s ease",
-      boxShadow: `0 2px 4px ${config.color}4D`,
+      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
       minHeight: "36px",
     };
+
+    switch (status) {
+      case "hadir":
+        return { ...baseStyle, backgroundColor: "#1FA83D", boxShadow: "0 2px 4px rgba(31, 168, 61, 0.3)" };
+      case "izin":
+        return { ...baseStyle, backgroundColor: "#ACA40D", boxShadow: "0 2px 4px rgba(172, 164, 13, 0.3)" };
+      case "sakit":
+        return { ...baseStyle, backgroundColor: "#520C8F", boxShadow: "0 2px 4px rgba(82, 12, 143, 0.3)" };
+      case "tidak-hadir":
+      case "alpha":
+        return { ...baseStyle, backgroundColor: "#D90000", boxShadow: "0 2px 4px rgba(217, 0, 0, 0.3)" };
+      case "pulang":
+        return { ...baseStyle, backgroundColor: "#2F85EB", boxShadow: "0 2px 4px rgba(47, 133, 235, 0.3)" };
+      default:
+        return { ...baseStyle, backgroundColor: "#6B7280" };
+    }
   };
 
   // Fungsi untuk mendapatkan label status
   const getStatusLabel = (status: string) => {
-    return getStatusConfig(status).label;
+    switch (status) {
+      case "hadir": return "Hadir";
+      case "izin": return "Izin";
+      case "sakit": return "Sakit";
+      case "tidak-hadir":
+      case "alpha": return "Alfa";
+      case "pulang": return "Pulang";
+      default: return status;
+    }
   };
 
   // Fungsi untuk mendapatkan teks penjelasan status
@@ -322,13 +488,13 @@ export default function DetailSiswaStaff({
     switch (status) {
       case "alpha":
       case "tidak-hadir":
-        return "Siswa tidak hadir tanpa keterangan";
+        return "Siswa Alfa tanpa keterangan";
       case "izin":
         return "Siswa izin dengan keterangan";
       case "sakit":
         return "Siswa sakit dengan surat dokter";
       case "hadir":
-        return waktuMasuk
+        return waktuMasuk 
           ? `Siswa hadir tepat waktu pada ${waktuMasuk}`
           : "Siswa hadir tepat waktu";
       case "pulang":
@@ -340,12 +506,21 @@ export default function DetailSiswaStaff({
 
   // Fungsi untuk mendapatkan warna status
   const getStatusColor = (status: string) => {
-    return getStatusConfig(status).color;
+    switch (status) {
+      case "alpha":
+      case "tidak-hadir": return "#D90000";
+      case "izin": return "#ACA40D";
+      case "sakit": return "#520C8F";
+      case "hadir": return "#1FA83D";
+      case "pulang": return "#2F85EB";
+      default: return "#6B7280";
+    }
   };
 
   // Fungsi untuk membuka modal detail
-  const handleStatusClick = (row: KehadiranRow, e?: React.MouseEvent) => {
-    e?.stopPropagation();
+  const handleStatusClick = (row: KehadiranRow, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     console.log("Status diklik:", row);
     setSelectedRow(row);
     setIsDetailModalOpen(true);
@@ -381,8 +556,8 @@ export default function DetailSiswaStaff({
     { key: "nisn", label: "NISN" },
     { key: "namaSiswa", label: "Nama Siswa" },
     { key: "mataPelajaran", label: "Mata Pelajaran" },
-    {
-      key: "namaGuru",
+    { 
+      key: "namaGuru", 
       label: "Nama Guru",
       render: (value: string) => (
         <div style={{ fontWeight: 500 }}>{value || "-"}</div>
@@ -403,11 +578,44 @@ export default function DetailSiswaStaff({
     },
   ], []);
 
+  // Modal edit
+  const [editingRow, setEditingRow] = useState<KehadiranRow | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editStatus, setEditStatus] = useState<DetailStatusType>("hadir");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const statusOptions = [
+    { label: 'Hadir', value: 'hadir' as DetailStatusType },
+    { label: 'Sakit', value: 'sakit' as DetailStatusType },
+    { label: 'Izin', value: 'izin' as DetailStatusType },
+    { label: 'Alfa', value: 'tidak-hadir' as DetailStatusType },
+    { label: 'Pulang', value: 'pulang' as DetailStatusType },
+  ];
 
-  const handleExportPDF = async () => {
+  const handleOpenEdit = (row: KehadiranRow) => {
+    setEditingRow(row);
+    setEditStatus(row.status);
+    setIsEditOpen(true);
+  };
+
+  const handleCloseEdit = () => {
+    setIsEditOpen(false);
+    setEditingRow(null);
+  };
+
+  const handleSubmitEdit = () => {
+    if (!editingRow) return;
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setRows(prev => prev.map(r => r.id === editingRow.id ? { ...r, status: editStatus } : r));
+      setIsSubmitting(false);
+      handleCloseEdit();
+    }, 300);
+  };
+
+  const handleExportPDF = () => {
     if (!jsPDFLoaded || !window.jspdf) {
-      await popupAlert("PDF library belum dimuat. Silakan coba lagi.");
+      alert("PDF library belum dimuat. Silakan coba lagi.");
       return;
     }
 
@@ -425,9 +633,9 @@ export default function DetailSiswaStaff({
       doc.setFont(undefined, 'normal');
       doc.text(`Kelas: ${kelasInfo.namaKelas}`, 14, 25);
       doc.text(`Tanggal: ${selectedTanggal}`, 14, 32);
-
+      
       if (selectedMapel) {
-        const mapelText = selectedGuru
+        const mapelText = selectedGuru 
           ? `Mata Pelajaran: ${selectedMapel} (${selectedGuru})`
           : `Mata Pelajaran: ${selectedMapel}`;
         doc.text(mapelText, 14, 39);
@@ -441,7 +649,7 @@ export default function DetailSiswaStaff({
       doc.text(`Hadir: ${totalHadir}`, 14, summaryY + 7);
       doc.text(`Sakit: ${totalSakit}`, 14, summaryY + 14);
       doc.text(`Izin: ${totalIzin}`, 14, summaryY + 21);
-      doc.text(`Alpha/Tidak Hadir: ${totalAlpha}`, 14, summaryY + 28);
+      doc.text(`Alfa: ${totalAlpha}`, 14, summaryY + 28);
       doc.text(`Pulang: ${totalPulang}`, 14, summaryY + 35);
       doc.text(`Total Siswa: ${filteredRows.length}`, 14, summaryY + 42);
 
@@ -476,33 +684,33 @@ export default function DetailSiswaStaff({
       // Save PDF
       const filename = `Rekap_Kehadiran_${kelasInfo.namaKelas}_${selectedTanggal.replace(/\//g, '-')}.pdf`;
       doc.save(filename);
-
-      await popupAlert("PDF berhasil diunduh!");
+      
+      alert("PDF berhasil diunduh!");
       setShowExportDropdown(false);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      await popupAlert("Gagal membuat PDF: " + error);
+      alert("Gagal membuat PDF: " + error);
     }
   };
 
-  const handleExportCSV = async () => {
+  const handleExportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "REKAP KEHADIRAN SISWA\n";
     csvContent += `Kelas: ${kelasInfo.namaKelas}\n`;
     csvContent += `Tanggal: ${selectedTanggal}\n`;
-
+    
     if (selectedMapel) {
-      const mapelText = selectedGuru
+      const mapelText = selectedGuru 
         ? `Mata Pelajaran: ${selectedMapel} (${selectedGuru})`
         : `Mata Pelajaran: ${selectedMapel}`;
       csvContent += `${mapelText}\n`;
     }
-
+    
     csvContent += "\nRINGKASAN,\n";
     csvContent += `Hadir,${totalHadir}\n`;
     csvContent += `Sakit,${totalSakit}\n`;
     csvContent += `Izin,${totalIzin}\n`;
-    csvContent += `Alpha/Tidak Hadir,${totalAlpha}\n`;
+    csvContent += `Alfa,${totalAlpha}\n`;
     csvContent += `Pulang,${totalPulang}\n`;
     csvContent += `Total Siswa,${filteredRows.length}\n\n`;
     csvContent += "DETAIL KEHADIRAN\n";
@@ -519,7 +727,7 @@ export default function DetailSiswaStaff({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    await popupAlert("Rekap kehadiran berhasil diunduh");
+    alert("Rekap kehadiran berhasil diunduh");
     setShowExportDropdown(false);
   };
 
@@ -551,22 +759,26 @@ export default function DetailSiswaStaff({
         {/* Bar atas: tanggal + card kelas + tombol */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-
-            {/* DATE PICKER */}
-            <input
-              type="date"
-              value={selectedTanggal}
-              onChange={(e) => setSelectedTanggal(e.target.value)}
+            
+            {/* BUTTON TANGGAL BARU - DENGAN BACKGROUND BIRU */}
+            <div
               style={{
-                padding: "10px 16px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#0066CC",
+                color: "#FFFFFF",
                 borderRadius: 8,
-                border: "1px solid #D1D5DB",
+                padding: "10px 16px",
                 fontWeight: 600,
                 fontSize: "14px",
-                cursor: "pointer",
+                boxShadow: "0 2px 4px rgba(0, 102, 204, 0.3)",
               }}
-            />
-
+            >
+              <Calendar size={18} strokeWidth={2.5} />
+              <span>{selectedTanggal}</span>
+            </div>
+            
             {/* CARD KELAS */}
             <div
               style={{
@@ -614,8 +826,7 @@ export default function DetailSiswaStaff({
                     color: "rgba(255, 255, 255, 0.85)",
                   }}
                 >
-                  {selectedMapel || "Semua Mapel"}
-                  {selectedGuru && ` - ${selectedGuru}`}
+                  Wali Kelas: {waliKelas}
                 </div>
               </div>
             </div>
@@ -625,11 +836,11 @@ export default function DetailSiswaStaff({
             {/* Dropdown Ekspor */}
             <div ref={exportDropdownRef} style={{ position: "relative" }}>
               <Button
-                label="Ekspor"
+                label="Unduh"
                 icon={<FileText size={16} />}
                 onClick={toggleExportDropdown}
-                style={{
-                  backgroundColor: "#3B82F6",
+                style={{ 
+                  backgroundColor: "#3B82F6", 
                   borderColor: "#3B82F6",
                   display: "flex",
                   alignItems: "center",
@@ -691,7 +902,7 @@ export default function DetailSiswaStaff({
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                   >
                     <FileSpreadsheet size={16} color="#10B981" />
-                    <span>Unduh CSV/Excel</span>
+                    <span>Unduh Excel</span>
                   </button>
                 </div>
               )}
@@ -702,9 +913,9 @@ export default function DetailSiswaStaff({
               label="Lihat Rekap"
               icon={<FileText size={16} />}
               onClick={() => onMenuClick("rekap-kehadiran-siswa")}
-              style={{
-                backgroundColor: "#3B82F6",
-                borderColor: "#3B82F6"
+              style={{ 
+                backgroundColor: "#3B82F6", 
+                borderColor: "#3B82F6" 
               }}
             />
 
@@ -721,14 +932,14 @@ export default function DetailSiswaStaff({
               <label style={{ display: "block", fontWeight: 500, marginBottom: 6, fontSize: 13, color: "#6B7280" }}>
                 Mata Pelajaran
               </label>
-              <select
-                value={selectedMapel}
-                onChange={e => setSelectedMapel(e.target.value)}
-                style={{
+              <select 
+                value={selectedMapel} 
+                onChange={e => setSelectedMapel(e.target.value)} 
+                style={{ 
                   width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #D1D5DB",
+                  padding: "10px 12px", 
+                  borderRadius: 8, 
+                  border: "1px solid #D1D5DB", 
                   fontSize: 14,
                   backgroundColor: "#FFFFFF",
                   cursor: "pointer",
@@ -748,14 +959,14 @@ export default function DetailSiswaStaff({
               <label style={{ display: "block", fontWeight: 500, marginBottom: 6, fontSize: 13, color: "#6B7280" }}>
                 Nama Guru
               </label>
-              <select
-                value={selectedGuru}
-                onChange={e => setSelectedGuru(e.target.value)}
-                style={{
+              <select 
+                value={selectedGuru} 
+                onChange={e => setSelectedGuru(e.target.value)} 
+                style={{ 
                   width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #D1D5DB",
+                  padding: "10px 12px", 
+                  borderRadius: 8, 
+                  border: "1px solid #D1D5DB", 
                   fontSize: 14,
                   backgroundColor: availableGurus.length === 0 ? "#F3F4F6" : "#FFFFFF",
                   cursor: availableGurus.length === 0 ? "not-allowed" : "pointer",
@@ -785,47 +996,32 @@ export default function DetailSiswaStaff({
           <SummaryCard label="Hadir" value={totalHadir.toString()} color="#1FA83D" /> {/* BOLD HIJAU */}
           <SummaryCard label="Izin" value={totalIzin.toString()} color="#ACA40D" /> {/* BOLD KUNING KEEMASAN */}
           <SummaryCard label="Sakit" value={totalSakit.toString()} color="#520C8F" /> {/* BOLD UNGU */}
-          <SummaryCard label="Tidak Hadir" value={totalAlpha.toString()} color="#D90000" /> {/* BOLD MERAH */}
+          <SummaryCard label="Alfa" value={totalAlpha.toString()} color="#D90000" /> {/* BOLD MERAH */}
           <SummaryCard label="Pulang" value={totalPulang.toString()} color="#2F85EB" /> {/* BOLD BIRU */}
         </div>
 
-        <div
-          style={{
-            background: "#FFFFFF",
-            borderRadius: 12,
-            border: "1px solid #E5E7EB",
-            padding: isMobile ? 12 : 16,
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
-            position: "relative",
-            minHeight: "200px"
-          }}
-        >
-          {loading && (
-            <div style={{
-              position: "absolute",
-              top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: "rgba(255,255,255,0.7)",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 12,
-              fontWeight: 600,
-              color: "#1E3A5F"
-            }}>
-              <div className="animate-spin" style={{ width: 24, height: 24, border: "3px solid #1E3A5F", borderTopColor: "transparent", borderRadius: "50%" }} />
-              Memuat data...
-            </div>
-          )}
-          <Table
-            columns={columns}
-            data={filteredRows}
-            onView={handleStatusClick}
-            keyField="id"
-            emptyMessage={loading ? "Memuat data..." : "Belum ada data kehadiran untuk kriteria ini."}
+        {/* Table */}
+        <Table
+          columns={columns}
+          data={filteredRows}
+          onEdit={handleOpenEdit}
+          keyField="id"
+          emptyMessage="Belum ada data kehadiran siswa."
+        />
+      </div>
+
+      {/* Modal Edit */}
+      <FormModal isOpen={isEditOpen} onClose={handleCloseEdit} title="Ubah Kehadiran" onSubmit={handleSubmitEdit} submitLabel="Simpan" isSubmitting={isSubmitting}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <p style={{ margin: 0, marginBottom: 8, fontSize: 14, fontWeight: 600 }}>Pilih Kehadiran</p>
+          <Select
+            value={editStatus}
+            onChange={(val) => setEditStatus(val as DetailStatusType)}
+            options={statusOptions}
+            placeholder="Pilih status kehadiran"
           />
         </div>
-      </div>
+      </FormModal>
 
       {/* Modal Detail Kehadiran */}
       <Modal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)}>
@@ -877,7 +1073,7 @@ export default function DetailSiswaStaff({
             </div>
 
             {/* Content Modal */}
-            <div style={{
+            <div style={{ 
               padding: 24,
               overflowY: "auto",
               flex: 1,
@@ -930,7 +1126,6 @@ export default function DetailSiswaStaff({
                     borderRadius: "20px",
                     fontSize: "12px",
                     fontWeight: "700",
-                    textTransform: "uppercase",
                     letterSpacing: "0.5px",
                     border: "none",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
@@ -947,20 +1142,25 @@ export default function DetailSiswaStaff({
                 margin: "16px 0",
               }} />
 
-              {/* Info Box - Sesuai dengan gambar */}
-              <div style={{
-                padding: "16px",
-                textAlign: "center",
-              }}>
+              {/* Info Box untuk Hadir dan Alfa */}
+              {(selectedRow.status === "hadir" || selectedRow.status === "alpha" || selectedRow.status === "tidak-hadir") && (
                 <div style={{
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  color: "#374151",
-                  lineHeight: 1.5,
+                  backgroundColor: selectedRow.status === "hadir" ? "#F0FDF4" : "#F3F4F6",
+                  borderRadius: 8,
+                  padding: "16px 20px",
+                  textAlign: "center",
+                  marginBottom: 20,
+                  border: selectedRow.status === "hadir" ? "1px solid #DCFCE7" : "1px solid #E5E7EB",
                 }}>
-                  {getStatusText(selectedRow.status, selectedRow.waktuMasuk)}
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: selectedRow.status === "hadir" ? "#166534" : "#374151",
+                  }}>
+                    {getStatusText(selectedRow.status, selectedRow.waktuMasuk)}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Keterangan tambahan untuk izin, sakit, dan pulang */}
               {(selectedRow.status === "izin" || selectedRow.status === "sakit" || selectedRow.status === "pulang") && selectedRow.keterangan && (
@@ -1041,26 +1241,26 @@ export default function DetailSiswaStaff({
 /** Kartu ringkasan dengan warna BOLD */
 function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div style={{
+    <div style={{ 
       backgroundColor: color, // BACKGROUND BOLD COLOR
-      borderRadius: 12,
-      padding: 16,
-      boxShadow: "0 4px 8px rgba(0,0,0,0.15)"
+      borderRadius: 12, 
+      padding: 16, 
+      boxShadow: "0 4px 8px rgba(0,0,0,0.15)" 
     }}>
-      <div style={{
-        fontSize: 13,
+      <div style={{ 
+        fontSize: 13, 
         color: "#FFFFFF", // TEXT PUTIH
-        marginBottom: 6,
+        marginBottom: 6, 
         fontWeight: 600,
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
-        opacity: 0.9
+        opacity: 0.9 
       }}>
         {label}
       </div>
-      <div style={{
-        fontSize: 28,
-        fontWeight: 800,
+      <div style={{ 
+        fontSize: 28, 
+        fontWeight: 800, 
         color: "#FFFFFF", // TEXT PUTIH
         textShadow: "0 2px 4px rgba(0,0,0,0.2)"
       }}>
@@ -1069,4 +1269,3 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
     </div>
   );
 }
-

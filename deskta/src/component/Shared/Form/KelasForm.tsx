@@ -11,7 +11,6 @@ interface KelasFormProps {
     waliKelasId: string;
   }) => void;
   isEdit?: boolean;
-  isLoading?: boolean;
   initialData?: {
     namaKelas: string;
     jurusanId: string;
@@ -29,7 +28,6 @@ export function TambahKelasForm({
   onClose,
   onSubmit,
   isEdit = false,
-  isLoading = false,
   initialData,
   jurusanList,
   kelasList = [],
@@ -96,7 +94,6 @@ export function TambahKelasForm({
           waliKelasId,
         })
       }
-      isSubmitting={isLoading}
       contentStyle={{
         backgroundColor: "rgba(255, 255, 255, 0.95)",
         backdropFilter: "blur(8px)",
@@ -128,7 +125,6 @@ export function TambahKelasForm({
           <select
             value={jurusanId}
             onChange={(e) => setJurusanId(e.target.value)}
-            disabled={isLoading}
             style={{
               width: "100%",
               padding: "14px 16px",
@@ -174,7 +170,6 @@ export function TambahKelasForm({
           <select
             value={kelasId}
             onChange={(e) => setKelasId(e.target.value)}
-            disabled={isLoading}
             style={{
               width: "100%",
               padding: "14px 16px",
@@ -227,7 +222,6 @@ export function TambahKelasForm({
           <select
             value={namaKelas}
             onChange={(e) => setNamaKelas(e.target.value)}
-            disabled={isLoading}
             style={{
               width: "100%",
               padding: "14px 16px",
@@ -279,7 +273,6 @@ export function TambahKelasForm({
           <select
             value={waliKelasId}
             onChange={(e) => setWaliKelasId(e.target.value)}
-            disabled={isLoading}
             style={{
               width: "100%",
               padding: "14px 16px",

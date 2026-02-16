@@ -27,8 +27,10 @@
 
 .logo {
   height: 48px;
-  object-fit: contain;
+  width: 48px;
+  object-fit: cover;
   display: block;
+  border-radius: 50%;
 }
 
 .school-name {
@@ -76,6 +78,37 @@
     border-radius: 2px;
 }
 
+/* Button Logout */
+.btn-logoutt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 30px 12px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-logoutt:hover {
+    background: #ff0000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
+}
+
+.btn-logoutt:active {
+    transform: translateY(0);
+}
+
+.btn-logoutt i {
+    font-size: 16px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .navbar {
@@ -94,5 +127,19 @@
     
     .school-name {
         font-size: 15px;
+    }
+
+    .btn-logoutt {
+        padding: 6px 15px;
+        font-size: 13px;
+        margin-left: 5px;
+    }
+
+    .btn-logoutt span {
+        display: none;
+    }
+
+    .btn-logoutt i {
+        font-size: 18px;
     }
 }

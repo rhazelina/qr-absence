@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/auth';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -9,13 +8,12 @@ const LoginPage = () => {
   
   const [formData, setFormData] = useState({
     identifier: '',
-    password: '',
-    additionalField: ''
+    password: ''
   });
 
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Konfigurasi untuk setiap role
   const roleConfig = {
@@ -79,26 +77,53 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     
+    // Validasi field kosong
     const emptyFields = config.fields.filter(field => !formData[field.name]);
     if (emptyFields.length > 0) {
       setError('Mohon isi semua field!');
       return;
     }
 
-    setIsLoggingIn(true);
     try {
-      const { user } = await authService.login(formData.identifier, formData.password);
-      console.log('Login berhasil sebagai', user.role, user);
+      setLoading(true);
+
+      // TODO: Ganti dengan endpoint API yang sesuai
+      // const response = await fetch('YOUR_API_ENDPOINT/login', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({
+      //     role: role,
+      //     identifier: formData.identifier,
+      //     password: formData.password
+      //   }),
+      // });
+
+      // if (!response.ok) {
+      //   throw new Error('Login gagal');
+      // }
+
+      // const data = await response.json();
+
+      // Simpan token dan data user ke localStorage
+      // localStorage.setItem('token', data.token);
+      // localStorage.setItem('userRole', role);
+      // localStorage.setItem('userData', JSON.stringify(data.user));
+
+      // Sementara untuk development (hapus saat production)
+      console.log('Login berhasil sebagai', role, formData);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userIdentifier', formData.identifier);
       
-      // Navigate ke dashboard berdasarkan role dari backend atau config
-      // Note: authService.login sudah menyimpan role & data ke localStorage
+      // Navigate ke dashboard
       navigate(config.dashboard);
+
     } catch (err) {
+      setError(err.message || 'Terjadi kesalahan saat login');
       console.error('Login error:', err);
-      const message = err.response?.data?.message || 'NISN tidak ditemukan atau data login salah!';
-      setError(message);
     } finally {
-      setIsLoggingIn(false);
+      setLoading(false);
     }
   };
 
@@ -148,8 +173,8 @@ const LoginPage = () => {
                   value={formData[field.name]}
                   onChange={(e) => handleInputChange(field.name, e.target.value)}
                   className="form-input"
+                  disabled={loading}
                   required
-                  disabled={isLoggingIn}
                 />
                 {/* Toggle password visibility hanya untuk field password */}
                 {field.type === 'password' && (
@@ -158,7 +183,7 @@ const LoginPage = () => {
                     onClick={togglePasswordVisibility}
                     className="password-toggle"
                     aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                    disabled={isLoggingIn}
+                    disabled={loading}
                   >
                     {showPassword ? (
                       // Eye slash icon (hide)
@@ -180,12 +205,21 @@ const LoginPage = () => {
           ))}
           
           <div className="button-group">
-            <button type="button" onClick={handleBack} className="back-button" disabled={isLoggingIn}>
+            <button 
+              type="button" 
+              onClick={handleBack} 
+              className="back-button"
+              disabled={loading}
+            >
               Kembali
             </button>
             
-            <button type="submit" className="login-button" disabled={isLoggingIn}>
-              {isLoggingIn ? 'Memproses...' : 'Masuk'}
+            <button 
+              type="submit" 
+              className="login-button"
+              disabled={loading}
+            >
+              {loading ? 'Memproses...' : 'Masuk'}
             </button>
           </div>
         </form>

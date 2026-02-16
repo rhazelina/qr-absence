@@ -1,9 +1,9 @@
-import { type ReactNode, useState, useEffect, useRef } from 'react';
-import { storage } from '../../utils/storage';
+//PengurusKelasLayout.tsx
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import type { ReactNode } from "react";
 import Sidebar from "../Sidebar";
 import { useLocalLenis } from "../Shared/SmoothScroll";
-import LogoSchool from "../../assets/Icon/logo smk.png";
 
 interface PengurusKelasLayoutProps {
   user: { name: string; phone: string; role?: string };
@@ -22,14 +22,44 @@ export default function PengurusKelasLayout({
   children,
   pageTitle = "Dashboard",
 }: PengurusKelasLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(() => storage.getSidebarState('pengurus'));
+  const [isOpen, setOpen] = useState(() => {
+    const saved = localStorage.getItem("sidebarOpenPengurus");
+    return saved ? saved === "true" : true;
+  });
+
+  // ✅ DIUBAH: State untuk logo_sekolah
+  const [logoSekolah, setLogoSekolah] = useState<string>('');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useLocalLenis(scrollContainerRef);
 
   useEffect(() => {
-    storage.setSidebarState('pengurus', sidebarOpen);
-  }, [sidebarOpen]);
+    localStorage.setItem("sidebarOpenPengurus", isOpen.toString());
+  }, [isOpen]);
+
+  // ✅ DIUBAH: Load logo_sekolah dari localStorage
+  useEffect(() => {
+    const loadLogoSekolah = () => {
+      const schoolData = localStorage.getItem('schoolData');
+      if (schoolData) {
+        try {
+          const parsed = JSON.parse(schoolData);
+          setLogoSekolah(parsed.logo_sekolah || '');
+        } catch (error) {
+          console.error('Error loading school data:', error);
+        }
+      }
+    };
+
+    loadLogoSekolah();
+
+    // ✅ DIUBAH: Listen untuk update event dari ProfilSekolah
+    const handleUpdate = () => {
+      loadLogoSekolah();
+    };
+    window.addEventListener('schoolDataUpdated', handleUpdate);
+    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+  }, []);
 
   return (
     <div
@@ -50,8 +80,8 @@ export default function PengurusKelasLayout({
           currentPage={currentPage}
           onMenuClick={onMenuClick}
           onLogout={onLogout}
-          isOpen={sidebarOpen}
-          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          isOpen={isOpen}
+          onToggle={() => setOpen((v) => !v)}
           userRole="pengurus_kelas"
         />
       </div>
@@ -70,19 +100,20 @@ export default function PengurusKelasLayout({
         }}
       >
         {/* Header */}
-        <header
+          <header
           style={{
+            backgroundColor: "white",
             height: "72px",
-            minHeight: "72px",
-            background: "white",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 28px",
+            gap: "16px",
             boxShadow: "0 2px 12px rgba(0, 31, 62, 0.08)",
             borderBottom: "1px solid #E5E7EB",
-            zIndex: 5,
             flexShrink: 0,
+            zIndex: 15,
+            position: "relative",
           }}
         >
           <div style={{ flex: 1 }}>
@@ -107,20 +138,20 @@ export default function PengurusKelasLayout({
               />
               {pageTitle}
             </h1>
-            {pageTitle === "Dashboard" && (
+            {pageTitle === "Beranda" && (
               <p style={{ margin: "4px 0 0 16px", fontSize: "14px", color: "#6B7280" }}>
-                Selamat bertugas, {user.name}!
+                Selamat datang kembali, {user.name}!
               </p>
             )}
           </div>
-
-          <div style={{
-            display: "flex",
-            alignItems: "center",
+          
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
             gap: "16px",
-            flexShrink: 0
+            flexShrink: 0 
           }}>
-            <div style={{
+            <div style={{ 
               textAlign: "right",
               paddingRight: "16px",
               borderRight: "1px solid #E5E7EB"
@@ -128,23 +159,26 @@ export default function PengurusKelasLayout({
               <div style={{ fontSize: "14px", fontWeight: "600", color: "#001F3E" }}>
                 {user.name}
               </div>
-              <div style={{ fontSize: "12px", color: "#6B7280" }}>
-                Pengurus Kelas
+              <div style={{ fontSize: "12px", color: "#6B7280", textTransform: "capitalize" }}>
+                {user.role.replace('_', ' ')}
               </div>
             </div>
-            <img
-              src={LogoSchool}
-              alt="Logo SMK"
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                padding: "4px",
-                backgroundColor: "white",
-                border: "1px solid #E5E7EB",
-              }}
-            />
+            {/* ✅ DIUBAH: Hanya tampilkan logo jika logo_sekolah tidak kosong */}
+            {logoSekolah && (
+              <img
+                src={logoSekolah}
+                alt="Logo SMK"
+                style={{ 
+                  width: "48px", 
+                  height: "48px",
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                  padding: "4px",
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                }}
+              />
+            )}
           </div>
         </header>
 

@@ -1,24 +1,24 @@
-﻿import { type ReactNode } from "react";
+﻿// FILE: FormModal.tsx
+import { type ReactNode } from "react";
 
+// Props untuk komponen FormModal
 interface FormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
-  onSubmit?: () => void;
-  submitLabel?: string;
-  isSubmitting?: boolean;
-  titleStyle?: React.CSSProperties;
-  showSubmitButton?: boolean;
-  style?: React.CSSProperties;
-  contentStyle?: React.CSSProperties;
-  maxHeight?: string;
-  topOffset?: string;
-  bottomMargin?: string; // ⬅️ TAMBAH PROP BARU untuk margin bawah
-  onReset?: () => void;
-  resetLabel?: string;
+  isOpen: boolean; // Apakah modal terbuka
+  onClose: () => void; // Fungsi untuk menutup modal
+  title: string; // Judul modal
+  children: ReactNode; // Konten form
+  onSubmit?: () => void; // Fungsi saat submit
+  submitLabel?: string; // Label tombol submit
+  isSubmitting?: boolean; // Status loading submit
+  titleStyle?: React.CSSProperties; // Style khusus untuk judul
+  showSubmitButton?: boolean; // Tampilkan tombol submit?
+  style?: React.CSSProperties; // Style tambahan untuk modal
+  maxHeight?: string; // Tinggi maksimal modal
+  topOffset?: string; // Jarak dari atas viewport
+  bottomMargin?: string; // Margin bawah modal
 }
 
+// Komponen modal generik untuk form
 export function FormModal({
   isOpen,
   onClose,
@@ -30,17 +30,14 @@ export function FormModal({
   titleStyle = {},
   showSubmitButton = true,
   style,
-  contentStyle,
-  // ⬇️ JARAK ATAS: TETAP atau SEDIKIT DITAMBAH
+  // Jarak dari atas viewport
   topOffset = "14vh",
-  // ⬇️ TINGGI MODAL: DITAMBAH BANYAK untuk lebih panjang ke bawah
-  maxHeight = "83vh", // ⬅️ DARI 55vh KE 85vh (30% lebih tinggi!)
-  // ⬇️ MARGIN BAWAH: TAMBAH untuk ruang di bawah modal
-  // ⬇️ MARGIN BAWAH: TAMBAH untuk ruang di bawah modal
+  // Tinggi maksimal modal
+  maxHeight = "83vh", // Modal lebih tinggi
+  // Margin bawah untuk ruang ekstra
   bottomMargin = "20px",
-  onReset,
-  resetLabel = "Reset",
 }: FormModalProps) {
+  // Handler submit form
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (onSubmit) {
@@ -48,6 +45,7 @@ export function FormModal({
     }
   };
 
+  // Jangan render jika modal tidak terbuka
   if (!isOpen) return null;
 
   return (
@@ -58,57 +56,59 @@ export function FormModal({
         left: "0",
         right: "0",
         bottom: "0",
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        backgroundColor: "rgba(0, 0, 0, 0.7)", // Overlay gelap
         display: "flex",
-        alignItems: "flex-start", // ⬅️ PENTING: flex-start
+        alignItems: "flex-start", // Modal di-align ke atas
         justifyContent: "center",
-        zIndex: 9999,
-        // ⬇️ JARAK ATAS: TETAP, TAMBAH MARGIN BAWAH
-        padding: `${topOffset} 20px ${bottomMargin} 20px`, // ⬅️ Tambah bottomMargin
-        overflowY: "auto",
+        zIndex: 9999, // Pastikan modal di atas semua
+        // Tambah padding bawah untuk ruang ekstra
+        padding: `${topOffset} 20px ${bottomMargin} 20px`,
+        overflowY: "auto", // Biarkan scroll jika konten panjang
       }}
-      onClick={onClose}
+      onClick={onClose} // Tutup modal saat klik overlay
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "500px",
-          // ⬇️ TINGGI: DITAMBAH BANYAK!
-          maxHeight: maxHeight, // ⬅️ SEKARANG 85vh (sangat tinggi!)
+          maxWidth: "500px", // Lebar maksimal modal
+          // Modal lebih tinggi
+          maxHeight: maxHeight,
           display: "flex",
           flexDirection: "column",
-          border: "3px solid #1e40af",
+          border: "3px solid #1e40af", // Border biru tebal
           borderRadius: "16px",
-          overflow: "hidden",
+          overflow: "hidden", // Biar border radius kerja
           backgroundColor: "white",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-          ...style,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)", // Shadow tebal
+          ...style, // Style tambahan dari props
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // Jangan tutup modal saat klik konten
       >
-        {/* Header */}
+        {/* Header modal */}
         <div
           style={{
-            backgroundColor: "#0f172a",
+            backgroundColor: "#0f172a", // Warna biru gelap
             color: "white",
             padding: "16px 24px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            flexShrink: 0,
-            borderBottom: "3px solid #1e40af",
+            flexShrink: 0, // Jangan shrink header
+            borderBottom: "3px solid #1e40af", // Border bawah biru
           }}
         >
+          {/* Judul modal */}
           <h2
             style={{
               fontSize: "18px",
               fontWeight: "bold",
               margin: 0,
-              ...titleStyle,
+              ...titleStyle, // Style khusus untuk judul
             }}
           >
             {title}
           </h2>
+          {/* Tombol close (X) */}
           <button
             onClick={onClose}
             style={{
@@ -125,34 +125,34 @@ export function FormModal({
               justifyContent: "center",
             }}
             type="button"
+            aria-label="Tutup modal"
           >
             ×
           </button>
         </div>
 
-        {/* Scrollable Content - AREA KONTEN LEBIH BESAR */}
+        {/* Konten form yang bisa di-scroll */}
         <div
           style={{
-            flex: 1,
-            overflowY: "auto",
-            // ⬇️ AREA KONTEN: DITAMBAH KARENA MODAL LEBIH TINGGI
-            maxHeight: `calc(${maxHeight} - 130px)`, // ⬅️ Untuk header+footer
+            flex: 1, // Ambil sisa space
+            overflowY: "auto", // Scroll jika konten terlalu panjang
+            // Tinggi konten disesuaikan dengan tinggi modal
+            maxHeight: `calc(${maxHeight} - 130px)`, // Kurangi tinggi header + footer
           }}
         >
           <form onSubmit={handleSubmit}>
-            <div style={{
-              padding: "24px",
+            <div style={{ 
+              padding: "24px", 
               backgroundColor: "white",
-              // ⬇️ MINIMAL HEIGHT: TAMBAH agar konten cukup panjang
+              // Tinggi minimal untuk konten
               minHeight: "350px",
-              ...contentStyle,
             }}>
-              {children}
+              {children} {/* Render konten form dari props */}
             </div>
           </form>
         </div>
 
-        {/* Footer */}
+        {/* Footer modal dengan tombol aksi */}
         <div
           style={{
             padding: "16px 24px",
@@ -160,10 +160,11 @@ export function FormModal({
             display: "flex",
             gap: "12px",
             justifyContent: "center",
-            borderTop: "1px solid #e5e7eb",
-            flexShrink: 0,
+            borderTop: "1px solid #e5e7eb", // Border atas tipis
+            flexShrink: 0, // Jangan shrink footer
           }}
         >
+          {/* Tombol Batal */}
           <button
             type="button"
             onClick={onClose}
@@ -171,39 +172,21 @@ export function FormModal({
             style={{
               padding: "10px 24px",
               borderRadius: "8px",
-              border: "2px solid #1e40af",
+              border: "2px solid #1e40af", // Border biru
               backgroundColor: "white",
-              color: "#1e40af",
+              color: "#1e40af", // Warna teks biru
               fontWeight: "600",
               cursor: isSubmitting ? "not-allowed" : "pointer",
               fontSize: "14px",
               minWidth: "100px",
-              opacity: isSubmitting ? 0.5 : 1,
+              opacity: isSubmitting ? 0.5 : 1, // Transparan jika loading
             }}
+            aria-label="Batal"
           >
             Batal
           </button>
-          {onReset && (
-            <button
-              type="button"
-              onClick={onReset}
-              disabled={isSubmitting}
-              style={{
-                padding: "10px 24px",
-                borderRadius: "8px",
-                border: "2px solid #ea580c", // Orange for reset
-                backgroundColor: "white",
-                color: "#ea580c",
-                fontWeight: "600",
-                cursor: isSubmitting ? "not-allowed" : "pointer",
-                fontSize: "14px",
-                minWidth: "100px",
-                opacity: isSubmitting ? 0.5 : 1,
-              }}
-            >
-              {resetLabel}
-            </button>
-          )}
+          
+          {/* Tombol Submit (opsional) */}
           {showSubmitButton && (
             <button
               type="submit"
@@ -213,14 +196,15 @@ export function FormModal({
                 padding: "10px 24px",
                 borderRadius: "8px",
                 border: "none",
-                backgroundColor: "#1e40af",
-                color: "white",
+                backgroundColor: "#1e40af", // Background biru
+                color: "white", // Warna teks putih
                 fontWeight: "600",
                 cursor: isSubmitting ? "not-allowed" : "pointer",
                 fontSize: "14px",
                 minWidth: "100px",
-                opacity: isSubmitting ? 0.7 : 1,
+                opacity: isSubmitting ? 0.7 : 1, // Sedikit transparan jika loading
               }}
+              aria-label={isSubmitting ? "Menyimpan..." : submitLabel}
             >
               {isSubmitting ? "Menyimpan..." : submitLabel}
             </button>

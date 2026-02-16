@@ -1,10 +1,9 @@
+//GuruLayout.tsx
 import { type ReactNode, useState, useEffect, useRef } from 'react';
-import { storage } from '../../utils/storage';
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from '../Sidebar';
 import AWANKIRI from '../../assets/Icon/AWANKIRI.png';
 import AwanBawahkanan from '../../assets/Icon/AwanBawahkanan.png';
-import LogoSchool from '../../assets/Icon/logo smk.png';
 import { useLocalLenis } from '../Shared/SmoothScroll';
 
 interface GuruLayoutProps {
@@ -27,14 +26,44 @@ export default function GuruLayout({
   user,
   onLogout,
 }: GuruLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(() => storage.getSidebarState('guru'));
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('guruSidebarOpen');
+    return saved ? saved === 'true' : true;
+  });
+
+  // ✅ DIUBAH: State untuk logo_sekolah
+  const [logoSekolah, setLogoSekolah] = useState<string>('');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useLocalLenis(scrollContainerRef);
 
   useEffect(() => {
-    storage.setSidebarState('guru', sidebarOpen);
+    localStorage.setItem('guruSidebarOpen', sidebarOpen.toString());
   }, [sidebarOpen]);
+
+  // ✅ DIUBAH: Load logo_sekolah dari localStorage
+  useEffect(() => {
+    const loadLogoSekolah = () => {
+      const schoolData = localStorage.getItem('schoolData');
+      if (schoolData) {
+        try {
+          const parsed = JSON.parse(schoolData);
+          setLogoSekolah(parsed.logo_sekolah || '');
+        } catch (error) {
+          console.error('Error loading school data:', error);
+        }
+      }
+    };
+
+    loadLogoSekolah();
+
+    // ✅ DIUBAH: Listen untuk update event dari ProfilSekolah
+    const handleUpdate = () => {
+      loadLogoSekolah();
+    };
+    window.addEventListener('schoolDataUpdated', handleUpdate);
+    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+  }, []);
 
   const handleToggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -149,18 +178,21 @@ export default function GuruLayout({
                 {user.role}
               </div>
             </div>
-            <img
-              src={LogoSchool}
-              alt="Logo SMK"
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                padding: "4px",
-                backgroundColor: "white",
-              }}
-            />
+            {/* ✅ DIUBAH: Hanya tampilkan logo jika logo_sekolah tidak kosong */}
+            {logoSekolah && (
+              <img
+                src={logoSekolah}
+                alt="Logo SMK"
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                  padding: "4px",
+                  backgroundColor: "white",
+                }}
+              />
+            )}
           </div>
         </header>
 

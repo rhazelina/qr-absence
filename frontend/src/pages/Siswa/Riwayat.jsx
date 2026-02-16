@@ -1,8 +1,83 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Eye, X, ZoomIn, Loader } from 'lucide-react';
+import { Calendar, Eye, X, ZoomIn } from 'lucide-react';
 import './Riwayat.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
-import { getMyAttendanceHistory } from '../../services/attendance';
+
+// ==================== API CONFIGURATION ====================
+const baseURL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
+
+const API_CONFIG = {
+  BASE_URL: API_BASE_URL,
+  ENDPOINTS: {
+    PROFILE: '/student/profile',
+    ATTENDANCE_RECORDS: '/student/attendance/records',
+    ATTENDANCE_STATS: '/student/attendance/stats'
+  }
+};
+
+// ==================== API SERVICE ====================
+const apiService = {
+  async request(endpoint, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    };
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        throw new Error('Unauthorized');
+      }
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async getProfile() {
+    return this.request(API_CONFIG.ENDPOINTS.PROFILE);
+  },
+
+  async getAttendanceRecords(studentId, startDate, endDate) {
+    const params = new URLSearchParams({
+      studentId,
+      startDate,
+      endDate
+    });
+    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE_RECORDS}?${params}`);
+  },
+
+  async getAttendanceStats(studentId, startDate, endDate) {
+    const params = new URLSearchParams({
+      studentId,
+      startDate,
+      endDate
+    });
+    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE_STATS}?${params}`);
+  }
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+const getStatusColor = (status) => {
+  const statusColors = {
+    'Hadir': 'status-hadir',
+    'Izin': 'status-izin',
+    'Sakit': 'status-sakit',
+    'Alpha': 'status-alpha',
+    'Terlambat': 'status-terlambat',
+    'Pulang': 'status-pulang'
+  };
+  return statusColors[status] || '';
+};
 
 function Riwayat() {
   const today = new Date();
@@ -10,69 +85,117 @@ function Riwayat() {
   
   const [startDate, setStartDate] = useState(firstDayOfMonth.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [loading, setLoading] = useState(false);
-  
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [currentStudent, setCurrentStudent] = useState(null);
+  const [stats, setStats] = useState({
+    hadir: 0,
+    terlambat: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0,
+    pulang: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const maxDate = today.toISOString().split('T')[0];
 
+  // Fetch student profile
   useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profile = await apiService.getProfile();
+        setCurrentStudent({
+          studentId: profile.studentId,
+          name: profile.name,
+          nis: profile.id
+        });
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        // Set default student data
+        setCurrentStudent({
+          studentId: null,
+          name: '',
+          nis: ''
+        });
+      }
+    };
+
+    fetchProfile();
     window.scrollTo(0, 0);
   }, []);
 
+  // Fetch attendance records and stats
   useEffect(() => {
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            const data = await getMyAttendanceHistory({ 
-                params: { 
-                    from: startDate, 
-                    to: endDate,
-                    per_page: 100 
-                } 
-            });
-            // Map API response to component format
-            // data is { data: [...], links: ..., meta: ... } from Resource collection
-            const records = (data.data || []).map(item => ({
-                id: item.id,
-                recordDate: item.date,
-                date: new Date(item.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' }),
-                period: item.schedule ? `${item.schedule.start_time?.slice(0,5)} - ${item.schedule.end_time?.slice(0,5)}` : '-',
-                subject: item.schedule?.subject_name || '-',
-                teacher: item.schedule?.teacher?.user?.name || '-', // Nested relation might need adjustment based on valid API response
-                status: item.status_label || item.status, // Use label from resource
-                rawStatus: item.status,
-                reason: item.reason,
-                proofImage: item.reason_file_url || (item.attachments && item.attachments.length > 0 ? item.attachments[0].file_url : null),
-                statusColor: getStatusColor(item.status)
-            }));
-            setAttendanceRecords(records);
-        } catch (error) {
-            console.error("Failed to fetch attendance history:", error);
-        } finally {
-            setLoading(false);
-        }
+    if (!currentStudent?.studentId) return;
+
+    const fetchAttendanceData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch attendance records
+        const records = await apiService.getAttendanceRecords(
+          currentStudent.studentId,
+          startDate,
+          endDate
+        );
+        
+        // Format records
+        const formattedRecords = records.map(record => ({
+          recordDate: record.date,
+          date: formatDisplayDate(record.date),
+          period: record.period || '',
+          subject: record.subject || '',
+          teacher: record.teacher || '',
+          status: record.status || '',
+          statusColor: getStatusColor(record.status),
+          reason: record.reason || null,
+          proofDocument: record.proofDocument || null,
+          proofImage: record.proofImageUrl || null,
+          studentId: record.studentId,
+          studentName: record.studentName || '',
+          nis: record.nis || ''
+        }));
+        
+        setAttendanceRecords(formattedRecords);
+        
+        // Fetch stats
+        const statsData = await apiService.getAttendanceStats(
+          currentStudent.studentId,
+          startDate,
+          endDate
+        );
+        
+        setStats({
+          hadir: statsData.hadir || 0,
+          terlambat: statsData.terlambat || 0,
+          izin: statsData.izin || 0,
+          sakit: statsData.sakit || 0,
+          alpha: statsData.alpha || 0,
+          pulang: statsData.pulang || 0
+        });
+        
+      } catch (error) {
+        console.error('Error fetching attendance data:', error);
+        // UI tetap dirender dengan state default
+        setAttendanceRecords([]);
+        setStats({
+          hadir: 0,
+          terlambat: 0,
+          izin: 0,
+          sakit: 0,
+          alpha: 0,
+          pulang: 0
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    fetchData();
-  }, [startDate, endDate]);
+    fetchAttendanceData();
+  }, [currentStudent?.studentId, startDate, endDate]);
 
-  const getStatusColor = (status) => {
-      switch(status) {
-          case 'present': return 'hadir';
-          case 'late': return 'terlambat';
-          case 'excused':
-          case 'izin': return 'izin';
-          case 'sick': return 'sakit';
-          case 'absent': return 'alpha';
-          case 'return':
-          case 'pulang': return 'pulang';
-          default: return 'alpha';
-      }
-  };
-
-  // Format tanggal untuk ditampilkan dengan format dd/mm/yy
   const formatDisplayDate = (dateString) => {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
@@ -81,58 +204,35 @@ function Riwayat() {
     return `${day}/${month}/${year}`;
   };
 
-  // Handle start date change dengan validasi
   const handleStartDateChange = (e) => {
     const newStartDate = e.target.value;
+    const todayDate = new Date().toISOString().split('T')[0];
+    
+    if (newStartDate > todayDate) {
+      alert('Tidak dapat memilih tanggal setelah hari ini!');
+      return;
+    }
+    
     setStartDate(newStartDate);
     
-    // Jika tanggal akhir lebih kecil dari tanggal awal yang baru, update tanggal akhir
     if (new Date(endDate) < new Date(newStartDate)) {
-      setEndDate(newEndDate);
+      setEndDate(newStartDate);
     }
   };
 
-  // Handle end date change dengan validasi
   const handleEndDateChange = (e) => {
     const newEndDate = e.target.value;
-    // Hanya update jika tanggal akhir >= tanggal awal
+    const todayDate = new Date().toISOString().split('T')[0];
+    
+    if (newEndDate > todayDate) {
+      alert('Tidak dapat memilih tanggal setelah hari ini!');
+      return;
+    }
+    
     if (new Date(newEndDate) >= new Date(startDate)) {
       setEndDate(newEndDate);
     }
   };
-
-  // Hitung statistik berdasarkan data yang difilter
-  const calculateStats = () => {
-    const stats = {
-      hadir: 0,
-      terlambat: 0,
-      izin: 0,
-      sakit: 0,
-      alpha: 0,
-      pulang: 0
-    };
-
-    attendanceRecords.forEach(record => {
-      const status = record.rawStatus.toLowerCase();
-      // Map backend status to stats keys
-      let key = status;
-      if (status === 'excused') key = 'izin';
-      if (status === 'return') key = 'pulang';
-      if (status === 'absent') key = 'alpha'; // Ensure absent maps to alpha
-
-      if (stats.hasOwnProperty(key)) {
-        stats[key]++;
-      } else if (key === 'present') {
-          stats.hadir++;
-      } else if (key === 'late') {
-          stats.terlambat++;
-      }
-    });
-
-    return stats;
-  };
-
-  const stats = calculateStats();
 
   const handleViewDetail = (record) => {
     setSelectedRecord(record);
@@ -152,7 +252,6 @@ function Riwayat() {
     setZoomedImage(null);
   };
 
-  // Cek apakah status memerlukan bukti
   const requiresProof = (status) => {
     return ['Izin', 'Sakit', 'Pulang'].includes(status);
   };
@@ -161,7 +260,6 @@ function Riwayat() {
     <div className="riwayat-page">
       <NavbarSiswa />
       <main className="riwayat-main">
-        {/* Date Range Filter */}
         <div className="date-range-filter">
           <div className="date-inputt-group">
             <label htmlFor="startDate">
@@ -172,6 +270,7 @@ function Riwayat() {
               type="date"
               id="startDate"
               value={startDate}
+              max={maxDate}
               onChange={handleStartDateChange}
               className="date-inputt"
             />
@@ -189,13 +288,13 @@ function Riwayat() {
               id="endDate"
               value={endDate}
               min={startDate}
+              max={maxDate}
               onChange={handleEndDateChange}
               className="date-inputt"
             />
           </div>
         </div>
 
-        {/* Statistics Cards */}
         <div className="riwayat-stats-wrapper">
           <div className="riwayat-stats-grid">
             <div className="riwayat-stat-box box-hadir">
@@ -225,15 +324,37 @@ function Riwayat() {
           </div>
         </div>
 
-        {/* Table Card */}
-        {loading ? (
-             <div className="loading-state">
-                 <Loader className="animate-spin" size={32} />
-                 <p>Memuat data...</p>
-             </div>
-        ) : attendanceRecords.length > 0 ? (
+        {/* Loading State */}
+        {isLoading && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '80px 20px',
+            background: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px dashed #d1d5db'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid #e5e7eb',
+              borderTopColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+            <p style={{
+              marginTop: '16px',
+              fontSize: '16px',
+              color: '#6b7280',
+              fontWeight: '600'
+            }}>Memuat data kehadiran...</p>
+          </div>
+        )}
+
+        {!isLoading && attendanceRecords.length > 0 ? (
           <div className="table-card">
-            {/* Table Header */}
             <div className="table-header">
               <div>No</div>
               <div>Tanggal</div>
@@ -244,7 +365,6 @@ function Riwayat() {
               <div>Detail</div>
             </div>
 
-            {/* Table Rows */}
             {attendanceRecords.map((record, index) => (
               <div key={index} className="table-row">
                 <div className="table-cell">{index + 1}</div>
@@ -269,7 +389,7 @@ function Riwayat() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : !isLoading && (
           <div className="empty-state">
             <Calendar size={64} />
             <h3>Tidak ada data kehadiran</h3>
@@ -278,7 +398,6 @@ function Riwayat() {
         )}
       </main>
 
-      {/* Modal Detail */}
       {showModal && selectedRecord && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -328,7 +447,6 @@ function Riwayat() {
                 </>
               )}
 
-              {/* Bukti Foto Section */}
               {requiresProof(selectedRecord.status) && (
                 <>
                   <div className="detail-divider"></div>
@@ -379,7 +497,6 @@ function Riwayat() {
         </div>
       )}
 
-      {/* Image Zoom Modal */}
       {zoomedImage && (
         <div className="image-zoom-overlay" onClick={closeImageZoom}>
           <div className="image-zoom-content" onClick={(e) => e.stopPropagation()}>
@@ -394,6 +511,12 @@ function Riwayat() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

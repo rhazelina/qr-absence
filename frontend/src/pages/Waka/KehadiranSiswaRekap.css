@@ -300,7 +300,7 @@
   font-weight: bold;
 }
 
-.kehadiran-siswa-rekap-table .alpha {
+.kehadiran-siswa-rekap-table .alfa {
   color: #D90000;
   font-weight: bold;
 }
@@ -684,7 +684,7 @@
   text-align: center;
 }
 
-.badge.alpha {
+.badge.alfa {
   background: #dc2626;
   color: white;
   padding: 6px 14px;
@@ -782,8 +782,8 @@
   color: #ffffff;
 }
 
-/* ALPHA */
-.badge.alpha {
+/* ALFA */
+.badge.alfa {
   background: #D90000;
   color: #ffffff;
 }

@@ -1,21 +1,36 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import bgLogin from "../assets/Background/bgLogin.png";
-import LogoSchool from "../assets/Icon/logo smk.png";
-import { storage } from "../utils/storage";
 
+// ==================== INTERFACE DEFINITIONS ====================
 interface LoginPageProps {
   role: string | null;
   onLogin: (role: string, identifier: string, phone: string) => void;
   onBack: () => void;
 }
 
+interface SchoolData {
+  nama_sekolah: string;
+  logo_sekolah?: string;
+}
+
+// ==================== DEFAULT DATA ====================
+const DEFAULT_SCHOOL_DATA: SchoolData = {
+  nama_sekolah: 'SMKN 2 SINGOSARI',
+  logo_sekolah: '',
+};
+
+// ==================== MAIN COMPONENT ====================
 export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
+  // ==================== NAVIGATION ====================
   const navigate = useNavigate();
+
+  // ==================== STATE MANAGEMENT ====================
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [hasRedirected, setHasRedirected] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [schoolData, setSchoolData] = useState<SchoolData>(DEFAULT_SCHOOL_DATA);
 
   const [form, setForm] = useState({
     identifier: "",
@@ -23,9 +38,38 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
     phone: "",
   });
 
-  // FIXED: Use a more controlled approach
+  // ==================== LOAD SCHOOL DATA FROM STORAGE ====================
   useEffect(() => {
-    // Only redirect once when role is null
+    const loadSchoolData = () => {
+      try {
+        const savedData = localStorage.getItem('schoolData');
+        if (savedData) {
+          const parsedData = JSON.parse(savedData);
+          setSchoolData({
+            nama_sekolah: parsedData.nama_sekolah || DEFAULT_SCHOOL_DATA.nama_sekolah,
+            logo_sekolah: parsedData.logo_sekolah || '',
+          });
+        } else {
+          setSchoolData(DEFAULT_SCHOOL_DATA);
+        }
+      } catch (error) {
+        console.error('Error loading school data:', error);
+        setSchoolData(DEFAULT_SCHOOL_DATA);
+      }
+    };
+
+    loadSchoolData();
+
+    // ==================== LISTEN FOR SCHOOL DATA UPDATES ====================
+    window.addEventListener('schoolDataUpdated', loadSchoolData);
+
+    return () => {
+      window.removeEventListener('schoolDataUpdated', loadSchoolData);
+    };
+  }, []);
+
+  // ==================== CHECK ROLE & REDIRECT ====================
+  useEffect(() => {
     if (!role && !hasRedirected) {
       setHasRedirected(true);
       onBack();
@@ -33,73 +77,29 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
     }
   }, [role, hasRedirected, navigate, onBack]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ==================== HANDLE FORM SUBMIT ====================
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    // Validation - password not required for siswa and pengurus_kelas
-    const isStudentRole = role === 'siswa' || role === 'pengurus_kelas';
-
-    if (!form.identifier.trim()) {
-      setError("NISN harus diisi");
-      return;
-    }
-
-    if (!isStudentRole && !form.password.trim()) {
-      setError("Password harus diisi");
+    if (!form.identifier.trim() || !form.password.trim()) {
+      setError("Semua field harus diisi");
       return;
     }
 
     setIsLoading(true);
 
-    try {
-      // Call real API login
-      const { authService } = await import('../services/auth');
-      const isStudentRole = role === 'siswa' || role === 'pengurus_kelas';
-
-      const response = await authService.login({
-        login: form.identifier.trim(), // Backend expects 'login' field
-        password: isStudentRole ? '' : form.password.trim(), // Empty password for students (NISN login)
-      });
-
-      // Get precise role from API response (already standardized in backend)
-      const actualRole = response.user.role || (response.user as any).user_type;
-
-      // Login successful - call onLogin with user data
-      if (actualRole) {
-        // Store user data in storage using standardized utility
-        storage.setRole(actualRole);
-        storage.setUserData(response.user);
-        storage.setToken(response.token);
-
-        // Call onLogin callback
-        onLogin(actualRole, response.user.name, response.user.phone || '');
-
-        // Navigate to appropriate dashboard based on ACTUAL role
-        const dashboardRoutes: Record<string, string> = {
-          'admin': '/admin/dashboard',
-          'waka': '/waka/dashboard',
-          'guru': '/guru/dashboard',
-          'wakel': '/wakel/dashboard',
-          'siswa': '/siswa/dashboard',
-          'pengurus_kelas': '/pengurus_kelas/dashboard',
-        };
-
-        const dashboardPath = dashboardRoutes[actualRole] || '/';
-        navigate(dashboardPath, { replace: true });
+    setTimeout(() => {
+      if (role) {
+        onLogin(role, form.identifier.trim(), form.phone.trim());
       } else {
-        setError("Role tidak valid dikembalikan oleh server");
+        setError("Halaman tidak ditemukan");
       }
-    } catch (err) {
-      // Handle login error
-      const { getErrorMessage } = await import('../services/api');
-      const errorMsg = getErrorMessage(err);
-      setError(errorMsg);
-    } finally {
       setIsLoading(false);
-    }
+    }, 500);
   };
 
+  // ==================== GET IDENTIFIER LABEL ====================
   const getIdentifierLabel = () => {
     switch (role) {
       case "admin":
@@ -110,12 +110,13 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         return "Kode Guru";
       case "siswa":
       case "pengurus_kelas":
-        return "NIS / NISN";
+        return "NISN";
       default:
         return "Identitas";
     }
   };
 
+  // ==================== GET PLACEHOLDER ====================
   const getPlaceholder = () => {
     switch (role) {
       case "admin":
@@ -126,13 +127,18 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         return "Masukkan kode guru";
       case "siswa":
       case "pengurus_kelas":
-        return "Masukkan NIS atau NISN";
+        return "Masukkan NISN";
       default:
         return "Masukkan identitas";
     }
   };
 
-  // ✅ INPUT STYLE (PUTIH)
+  // ==================== TOGGLE PASSWORD VISIBILITY ====================
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // ==================== INPUT STYLE ====================
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "12px 14px",
@@ -146,6 +152,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
     transition: "border-color 0.2s",
   };
 
+  // ==================== HANDLE LOGO CLICK ====================
   const handleLogoClick = () => {
     onBack();
     navigate("/");
@@ -153,6 +160,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
 
   return (
     <>
+      {/* ==================== GLOBAL STYLES ==================== */}
       <style>
         {`
           input,
@@ -212,7 +220,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         `}
       </style>
 
-      {/* BACKGROUND */}
+      {/* ==================== BACKGROUND ==================== */}
       <div
         style={{
           position: "fixed",
@@ -225,7 +233,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         }}
       />
 
-      {/* CONTENT */}
+      {/* ==================== MAIN CONTENT ==================== */}
       <div
         style={{
           position: "relative",
@@ -238,34 +246,37 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
           padding: "20px",
         }}
       >
-        {/* LOGO */}
-        <button
-          onClick={handleLogoClick}
-          style={{
-            position: "absolute",
-            top: 20,
-            right: 40,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            zIndex: 2,
-          }}
-          aria-label="Kembali ke halaman utama"
-        >
-          <img
-            src={LogoSchool}
-            alt="Logo SMK"
+        {/* ==================== LOGO BUTTON ==================== */}
+        {schoolData.logo_sekolah && (
+          <button
+            onClick={handleLogoClick}
             style={{
-              width: 90,
-              height: "auto",
-              transition: "transform 0.2s",
+              position: "absolute",
+              top: 20,
+              right: 40,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              zIndex: 2,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-            onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
-          />
-        </button>
+            aria-label="Kembali ke halaman utama"
+          >
+            <img
+              src={schoolData.logo_sekolah}
+              alt="Logo SMK"
+              style={{
+                width: 90,
+                height: "auto",
+                transition: "transform 0.2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+            />
+          </button>
+        )}
 
+        {/* ==================== FORM CONTAINER ==================== */}
         <div
           style={{
             width: "100%",
@@ -274,7 +285,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
             textAlign: "center",
           }}
         >
-          {/* TITLE */}
+          {/* ==================== HEADER SECTION ==================== */}
           <div
             style={{
               color: "#ffffff",
@@ -290,7 +301,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
             </h2>
           </div>
 
-          {/* CARD */}
+          {/* ==================== LOGIN CARD ==================== */}
           <div
             style={{
               backgroundColor: "rgba(229,231,235,0.95)",
@@ -299,6 +310,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
               boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
             }}
           >
+            {/* Error Message */}
             {error && (
               <div
                 style={{
@@ -315,6 +327,7 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
               </div>
             )}
 
+            {/* No Role Warning */}
             {!role && (
               <div
                 style={{
@@ -331,8 +344,9 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
               </div>
             )}
 
+            {/* ==================== LOGIN FORM ==================== */}
             <form onSubmit={handleSubmit}>
-              {/* IDENTIFIER */}
+              {/* Identifier Input */}
               <div style={{ marginBottom: 20, textAlign: "left" }}>
                 <label
                   style={{
@@ -356,97 +370,55 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
                   disabled={isLoading || !role}
                   aria-label={getIdentifierLabel()}
                 />
-                {/* Info for NISN Login */}
-                {(role === 'siswa' || role === 'pengurus_kelas') && (
-                  <div style={{
-                    marginTop: 8,
-                    padding: '8px 12px',
-                    backgroundColor: '#DBEAFE',
-                    border: '1px solid #93C5FD',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    color: '#1E40AF',
-                  }}>
-                    💡 Masukkan NISN saja untuk login cepat (tanpa password)
-                  </div>
-                )}
               </div>
 
-              {/* PASSWORD - Hidden for siswa and pengurus_kelas */}
-              {role !== 'siswa' && role !== 'pengurus_kelas' && (
-                <div style={{ marginBottom: 24, textAlign: "left" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      fontWeight: 600,
-                      color: "#0a1944",
-                      marginBottom: 8,
-                      fontSize: 14,
-                    }}
+              {/* Password Input */}
+              <div style={{ marginBottom: 24, textAlign: "left" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: 600,
+                    color: "#0a1944",
+                    marginBottom: 8,
+                    fontSize: 14,
+                  }}
+                >
+                  Kata Sandi
+                </label>
+                <div className="password-container">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({ ...form, password: e.target.value })
+                    }
+                    placeholder="Masukkan Kata Sandi"
+                    style={inputStyle}
+                    disabled={isLoading || !role}
+                    aria-label="Password"
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={togglePasswordVisibility}
+                    disabled={isLoading || !role}
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                   >
-                    Kata Sandi
-                  </label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={form.password}
-                      onChange={(e) =>
-                        setForm({ ...form, password: e.target.value })
-                      }
-                      placeholder="Masukkan kata sandi"
-                      style={inputStyle}
-                      disabled={isLoading || !role}
-                      aria-label="Kata Sandi"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: "absolute",
-                        right: 12,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 4,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                      aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                    >
-                      {showPassword ? (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#6B7280"
-                          strokeWidth="2"
-                        >
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                          <line x1="1" y1="1" x2="23" y2="23" />
-                        </svg>
-                      ) : (
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#6B7280"
-                          strokeWidth="2"
-                        >
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
+                    {showPassword ? (
+                      <svg className="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
-              )}
+              </div>
 
-              {/* BUTTON */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading || !role}

@@ -2,40 +2,62 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardGuru.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
-import { authService } from '../../services/auth';
-import { authHelpers } from '../../utils/authHelpers';
-import attendanceService from '../../services/attendance';
+import { isJadwalCompleted, getAbsensiSummary } from '../../utils/dataManager';
 
 function DashboardGuru() {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
+  const [currentFormattedDate, setCurrentFormattedDate] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [qrVerified, setQrVerified] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [user] = useState(authHelpers.getUserData());
 
   // State untuk melacak jadwal yang sudah selesai absensi
   const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const data = await attendanceService.getTeacherDashboard();
-      setDashboardData(data);
-    } catch (err) {
-      console.error("Error fetching guru dashboard data:", err);
-      setError("Gagal mengambil data dashboard.");
-    } finally {
-      setLoading(false);
+  // ✅ JADWAL KOSONG - akan diisi dari API/database
+  const allJadwal = [];
+
+  // Effect untuk load completed absensi saat component mount dan saat kembali dari presensi
+  useEffect(() => {
+    const loadCompletedAbsensi = () => {
+      const completed = new Set();
+      allJadwal.forEach(jadwal => {
+        if (isJadwalCompleted(jadwal.id, currentFormattedDate)) {
+          completed.add(jadwal.id);
+        }
+      });
+      setCompletedAbsensi(completed);
+    };
+
+    if (currentFormattedDate) {
+      loadCompletedAbsensi();
     }
-  };
+
+    // Event listener untuk refresh ketika kembali dari halaman presensi
+    const handleVisibilityChange = () => {
+      if (!document.hidden && currentFormattedDate) {
+        loadCompletedAbsensi();
+      }
+    };
+
+    const handleFocus = () => {
+      if (currentFormattedDate) {
+        loadCompletedAbsensi();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [currentFormattedDate]);
 
   useEffect(() => {
-    fetchDashboardData();
     const updateDateTime = () => {
       const now = new Date();
       
@@ -55,6 +77,12 @@ function DashboardGuru() {
       const year = now.getFullYear();
       
       setCurrentDate(`${dayName}, ${date} ${monthName} ${year}`);
+      
+      // Format untuk key storage
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const formattedDate = `${day}-${month}-${year} (${dayName})`;
+      setCurrentFormattedDate(formattedDate);
     };
 
     updateDateTime();
@@ -67,13 +95,7 @@ function DashboardGuru() {
   };
 
   const handleIconClick = (jadwal) => {
-    setSelectedSchedule({
-      id: jadwal.id,
-      mataPelajaran: jadwal.subject,
-      kelas: jadwal.class_name,
-      jamKe: jadwal.time_slot.replace('Jam Ke ', ''),
-      waktu: `${jadwal.start_time} - ${jadwal.end_time}`
-    });
+    setSelectedSchedule(jadwal);
     setQrVerified(false);
   };
 
@@ -88,30 +110,24 @@ function DashboardGuru() {
 
   const handleAbsensiSelesai = () => {
     if (selectedSchedule) {
-      setCompletedAbsensi(prev => new Set(prev).add(selectedSchedule.id));
-    }
-    
-    // Format tanggal untuk navigasi
-    const now = new Date();
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const dayName = days[now.getDay()];
-    const formattedDate = `${day}-${month}-${year} (${dayName})`;
-    
-    handleCloseModal();
+      // Cek apakah jadwal ini sudah pernah diabsen
+      const isCompleted = isJadwalCompleted(selectedSchedule.id, currentFormattedDate);
+      
+      handleCloseModal();
 
-    navigate('/guru/presensi', {
-      state: {
-        scheduleId: selectedSchedule?.id,
-        mataPelajaran: selectedSchedule?.mataPelajaran,
-        jamKe: selectedSchedule?.jamKe,
-        kelas: selectedSchedule?.kelas,
-        waktu: selectedSchedule?.waktu,
-        tanggal: formattedDate
-      }
-    });
+      // Navigate ke halaman presensi
+      navigate('/guru/presensi', {
+        state: {
+          jadwalId: selectedSchedule.id,
+          mataPelajaran: selectedSchedule.mataPelajaran,
+          jamKe: selectedSchedule.jamKe,
+          kelas: selectedSchedule.kelas,
+          waktu: selectedSchedule.waktu,
+          tanggal: currentFormattedDate,
+          isEdit: isCompleted // Flag untuk mengetahui apakah ini edit atau input baru
+        }
+      });
+    }
   };
 
   const simulateScanSuccess = () => {
@@ -119,9 +135,14 @@ function DashboardGuru() {
   };
 
   const handleLogout = () => {
-    if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      authService.logout();
+    const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
+    
+    if (confirmLogout) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
       navigate('/login');
+      alert('Anda telah berhasil keluar');
     }
   };
 
@@ -143,17 +164,6 @@ function DashboardGuru() {
     );
   };
 
-  if (loading) {
-    return <div className="loading-container">Memuat data dashboard...</div>;
-  }
-
-  if (error) {
-    return <div className="error-container">{error}</div>;
-  }
-
-  const teacher = dashboardData?.teacher || {};
-  const allJadwal = dashboardData?.schedule_today || [];
-
   return (
     <div className="dashboard-container">
       <NavbarGuru />
@@ -164,8 +174,8 @@ function DashboardGuru() {
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>
           </div>
-          <h2 className="profile-name">{teacher.name || user?.name}</h2>
-          <p className="profile-id">{teacher.nip || user?.nip || "-"}</p>
+          <h2 className="profile-name3"></h2>
+          <p className="profile-id"></p>
           
           <button className="btn-logout" onClick={handleLogout}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -204,26 +214,36 @@ function DashboardGuru() {
           </h2>
 
           <div className="schedule-list">
-            {allJadwal.map((jadwal) => (
-              <div key={jadwal.id} className="schedule-card-compact" onClick={() => handleIconClick(jadwal)}>
-                <div className="card-content">
-                  <div className="schedule-icon-compact">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                    </svg>
-                  </div>
-                  <div className="schedule-info-compact">
-                    <div className="schedule-name">{jadwal.subject}</div>
-                    <div className="schedule-class">{jadwal.class_name}</div>
-                  </div>
-                  <button 
-                    className="btn-qr-compact"
-                  >
-                    {renderStatusIcon(jadwal.id)}
-                  </button>
-                </div>
+            {allJadwal.length === 0 ? (
+              <div className="empty-schedule">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ width: '64px', height: '64px', opacity: 0.3, margin: '20px auto' }}>
+                  <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                </svg>
+                <p style={{ textAlign: 'center', color: '#666', fontSize: '16px' }}>Tidak ada jadwal mengajar hari ini</p>
               </div>
-            ))}
+            ) : (
+              allJadwal.map((jadwal) => (
+                <div key={jadwal.id} className="schedule-card-compact">
+                  <div className="card-content">
+                    <div className="schedule-icon-compact">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                      </svg>
+                    </div>
+                    <div className="schedule-info-compact">
+                      <div className="schedule-name">{jadwal.mataPelajaran}</div>
+                      <div className="schedule-class">{jadwal.kelas}</div>
+                    </div>
+                    <button 
+                      className="btn-qr-compact" 
+                      onClick={() => handleIconClick(jadwal)}
+                    >
+                      {renderStatusIcon(jadwal.id)}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </main>
@@ -243,7 +263,7 @@ function DashboardGuru() {
                       <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                     </svg>
                   </button>
-                  <h3>Scan</h3>
+                  <h3>Scan QR Code - {selectedSchedule.kelas}</h3>
                   <button className="close-btn" onClick={handleCloseModal}>×</button>
                 </div>
 
@@ -298,6 +318,9 @@ function DashboardGuru() {
                         </div>
                       </div>
                     </div>
+                    <p style={{ marginTop: '20px', color: '#666', textAlign: 'center' }}>
+                      Scan QR Code untuk kelas <strong>{selectedSchedule.kelas}</strong>
+                    </p>
                     <button onClick={simulateScanSuccess} className="btn-simulasi">
                       Simulasi Scan Berhasil
                     </button>
@@ -348,7 +371,7 @@ function DashboardGuru() {
                   <p className="status-description">Anda terjadwal mengajar kelas ini</p>
                   
                   <button className="btn-mulai-absen-full" onClick={handleAbsensiSelesai}>
-                    Mulai Presensi
+                    {completedAbsensi.has(selectedSchedule.id) ? 'Lihat/Edit Presensi' : 'Mulai Presensi'}
                   </button>
                 </div>
               </>

@@ -1,9 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import PengurusKelasLayout from "../../component/PengurusKelas/PengurusKelasLayout";
 import { Select } from "../../component/Shared/Select";
 import { Modal } from "../../component/Shared/Modal";
-import { dashboardService } from "../../services/dashboard";
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
 
 interface AbsensiRecord {
   id: string;
@@ -11,13 +9,110 @@ interface AbsensiRecord {
   jamPelajaran: string;
   mataPelajaran: string;
   guru: string;
-  status: 'present' | 'absent' | 'sick' | 'excused' | 'late' | 'early_departure';
+  status: "alfa" | "izin" | "sakit" | "hadir" | "pulang";
   keterangan?: string; // Tambahan untuk izin/sakit/pulang
   namaSiswa?: string;
   nis?: string;
 }
 
-
+// Dummy data - nanti dari API
+const dummyData: AbsensiRecord[] = [
+  {
+    id: "1",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+    namaSiswa: "Ahmad Fauzi",
+    nis: "20250001",
+  },
+  {
+    id: "2",
+    tanggal: "24-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+    namaSiswa: "Budi Santoso",
+    nis: "20250002",
+  },
+  {
+    id: "3",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "izin",
+    keterangan: "Ijin tidak masuk karena ada keperluan keluarga",
+    namaSiswa: "Citra Dewi",
+    nis: "20250003",
+  },
+  {
+    id: "4",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "sakit",
+    keterangan: "Demam tinggi dan dokter menyarankan istirahat",
+    namaSiswa: "Dewi Lestari",
+    nis: "20250004",
+  },
+  {
+    id: "5",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+    namaSiswa: "Eko Pratama",
+    nis: "20250005",
+  },
+  {
+    id: "6",
+    tanggal: "25-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Matematika",
+    guru: "Alifah Diantebes Aindra S.pd",
+    status: "alfa",
+    namaSiswa: "Fitri Amelia",
+    nis: "20250006",
+  },
+  {
+    id: "7",
+    tanggal: "26-05-2025",
+    jamPelajaran: "1-4",
+    mataPelajaran: "Bahasa Indonesia",
+    guru: "Budi Santoso S.Pd",
+    status: "izin",
+    keterangan: "Menghadiri acara keluarga",
+    namaSiswa: "Gunawan Setiawan",
+    nis: "20250007",
+  },
+  {
+    id: "8",
+    tanggal: "26-05-2025",
+    jamPelajaran: "5-8",
+    mataPelajaran: "Bahasa Inggris",
+    guru: "Siti Nurhaliza S.Pd",
+    status: "sakit",
+    keterangan: "Flu berat dan batuk",
+    namaSiswa: "Hana Putri",
+    nis: "20250008",
+  },
+  {
+    id: "10",
+    tanggal: "26-05-2025",
+    jamPelajaran: "5-8",
+    mataPelajaran: "Bahasa Inggris",
+    guru: "Siti Nurhaliza S.Pd",
+    status: "pulang",
+    keterangan: "Pulang lebih awal karena sakit perut",
+    namaSiswa: "Joko Widodo",
+    nis: "20250010",
+  },
+];
 
 function CalendarIcon() {
   return (
@@ -132,75 +227,53 @@ export default function TidakHadirPenguruskelas({
   onMenuClick = () => { },
   onLogout = () => { },
 }: TidakHadirPenguruskelasProps) {
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState("2025-05-24");
+  const [endDate, setEndDate] = useState("2025-05-26");
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   const [selectedRecord, setSelectedRecord] = useState<AbsensiRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [attendanceData, setAttendanceData] = useState<AbsensiRecord[]>([]);
-  const { alert: popupAlert } = usePopup();
 
-  const fetchAttendance = async () => {
-    try {
-      // Fetch attendance separately for start and end date if they are different, or loop?
-      // For now, let's just fetch for the start date as 'date' param, 
-      // since the API seems to support single date.
-      // Ideally backend supports range.
-      const response = await dashboardService.getMyClassAttendance({ date: startDate });
-
-      // Transform response to match AbsensiRecord if needed
-      // Assuming response is an array of attendance records
-      const formattedData: AbsensiRecord[] = response.map((item: any) => ({
-        id: item.id.toString(),
-        tanggal: item.date, // Assuming YYYY-MM-DD
-        jamPelajaran: `${item.schedule?.start_time?.slice(0, 5)} - ${item.schedule?.end_time?.slice(0, 5)} `,
-        mataPelajaran: item.schedule?.subject_name || '-',
-        guru: item.schedule?.teacher?.user?.name || '-',
-        status: item.status,
-        keterangan: item.reason,
-        namaSiswa: item.student?.user?.name || item.user?.name || '-',
-        nis: item.student?.nis || item.user?.nis || '-',
-      }));
-      setAttendanceData(formattedData);
-    } catch (error) {
-      console.error("Error fetching attendance:", error);
-      popupAlert("Gagal mengambil data kehadiran");
-    }
-  };
-
-  useEffect(() => {
-    fetchAttendance();
-  }, [startDate]); // Re-fetch when date changes. Note: logic only supports single date for now based on API.
-
-  // Filter data (Client side filtering for Status, Date Range logic adjustment)
+  // Filter data
   const filteredData = useMemo(() => {
-    // If we only fetch for 'startDate', we don't strictly need date range filtering client side 
-    // unless we accumulate data. For now, assuming single date view is acceptable or we'd need loop.
+    if (!startDate || !endDate) return dummyData;
 
-    return attendanceData.filter((item) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    return dummyData.filter((item) => {
+      const [day, month, year] = item.tanggal.split("-").map(Number);
+      const itemDate = new Date(year, month - 1, day);
+
+      const inDateRange = itemDate >= start && itemDate <= end;
+
       let statusMatch = true;
       if (statusFilter !== "semua") {
-        if (statusFilter === "excused/sick") {
-          statusMatch = item.status === "excused" || item.status === "sick";
-        } else if (statusFilter === "absent") {
-          statusMatch = item.status === "absent";
-        } else {
-          statusMatch = item.status === statusFilter;
+        if (statusFilter === "izin/sakit") {
+          statusMatch = item.status === "izin" || item.status === "sakit";
+        } else if (statusFilter === "alfa") {
+          statusMatch = item.status === "alfa";
+        } else if (statusFilter === "pulang") {
+          statusMatch = item.status === "pulang";
+        } else if (statusFilter === "hadir") {
+          statusMatch = item.status === "hadir";
         }
       }
-      return statusMatch;
+
+      return inDateRange && statusMatch;
     });
-  }, [attendanceData, statusFilter]);
+  }, [startDate, endDate, statusFilter]);
 
   // Hitung summary berdasarkan data filtered
   const summary = useMemo(() => {
-    const hadir = attendanceData.filter((d) => d.status === "present").length;
-    const pulang = attendanceData.filter((d) => d.status === "early_departure").length;
-    const izin = attendanceData.filter((d) => d.status === "excused").length;
-    const sakit = attendanceData.filter((d) => d.status === "sick").length;
-    const alpha = attendanceData.filter((d) => d.status === "absent" || d.status === "late").length; // Treating late as alpha for now? Or separating? Original code mapped absent to alpha.
+    const hadir = filteredData.filter((d) => d.status === "hadir").length;
+    const pulang = filteredData.filter((d) => d.status === "pulang").length;
+    const izin = filteredData.filter((d) => d.status === "izin").length;
+    const sakit = filteredData.filter((d) => d.status === "sakit").length;
+    const alfa = filteredData.filter((d) => d.status === "alfa").length;
 
-    return { hadir, pulang, izin, sakit, alpha, total: attendanceData.length };
-  }, [attendanceData]);
+    return { hadir, pulang, izin, sakit, alfa, total: filteredData.length };
+  }, [filteredData]);
 
   // Fungsi untuk membuka modal detail - SEMUA STATUS bisa diklik
   const handleStatusClick = (record: AbsensiRecord, e: React.MouseEvent) => {
@@ -213,25 +286,22 @@ export default function TidakHadirPenguruskelas({
 
   // Custom Status Renderer dengan icon mata - SEMUA STATUS bisa diklik
   const StatusButton = ({ status, row }: { status: string; row: AbsensiRecord }) => {
-    let bgColor = "#D90000"; // MERAH - Tidak Hadir
-    let label = "Tidak Hadir";
-    const textColor = "#FFFFFF";
+    let bgColor = "#D90000"; // MERAH - alfa
+    let label = "alfa";
+    let textColor = "#FFFFFF";
 
-    if (status === "excused") {
+    if (status === "izin") {
       bgColor = "#ACA40D"; // KUNING - Izin
       label = "Izin";
-    } else if (status === "sick") {
+    } else if (status === "sakit") {
       bgColor = "#520C8F"; // UNGU - Sakit
       label = "Sakit";
-    } else if (status === "early_departure") {
+    } else if (status === "pulang") {
       bgColor = "#2F85EB"; // BIRU - Pulang
       label = "Pulang";
-    } else if (status === "present") {
+    } else if (status === "hadir") {
       bgColor = "#1FA83D"; // HIJAU - Hadir
       label = "Hadir";
-    } else if (status === "late") {
-      bgColor = "#F59E0B"; // ORANGE - Terlambat
-      label = "Terlambat";
     }
 
     return (
@@ -245,8 +315,9 @@ export default function TidakHadirPenguruskelas({
           minWidth: "100px",
           padding: "8px 14px",
           borderRadius: "20px",
-          fontSize: "12px",
-          fontWeight: 600,
+          fontSize: "14px",
+          fontWeight: 700,
+          letterSpacing: "0.5px",
           color: textColor,
           backgroundColor: bgColor,
           cursor: "pointer", // SEMUA STATUS bisa diklik
@@ -311,30 +382,27 @@ export default function TidakHadirPenguruskelas({
     },
   ];
 
-  // Status filter options - Alpha diubah jadi Tidak Hadir
+  // Status filter options
   const statusOptions = [
     { label: "Semua Status", value: "semua" },
-    { label: "Hadir", value: "present" },
-    { label: "Tidak Hadir", value: "absent" },
-    { label: "Izin/Sakit", value: "excused/sick" },
-    { label: "Pulang", value: "early_departure" },
+    { label: "alfa", value: "alfa" },
+    { label: "Izin/Sakit", value: "izin/sakit" },
+    { label: "Pulang", value: "pulang" },
   ];
 
   // Fungsi untuk mendapatkan teks status
   const getStatusText = (status: string) => {
     switch (status) {
-      case "absent":
+      case "alfa":
         return "Siswa tidak hadir tanpa keterangan";
-      case "excused":
+      case "izin":
         return "Siswa izin dengan keterangan";
-      case "sick":
+      case "sakit":
         return "Siswa sakit dengan surat dokter";
-      case "present":
+      case "hadir":
         return "Siswa hadir tepat waktu";
-      case "early_departure":
+      case "pulang":
         return "Siswa pulang lebih awal karena ada kepentingan";
-      case "late":
-        return "Siswa terlambat hadir";
       default:
         return status;
     }
@@ -343,12 +411,11 @@ export default function TidakHadirPenguruskelas({
   // Helper function untuk warna status
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "absent": return "#D90000"; // MERAH - Tidak Hadir
-      case "excused": return "#ACA40D"; // KUNING - Izin
-      case "sick": return "#520C8F"; // UNGU - Sakit
-      case "present": return "#1FA83D"; // HIJAU - Hadir
-      case "early_departure": return "#2F85EB"; // BIRU - Pulang
-      case "late": return "#F59E0B"; // ORANGE - Terlambat
+      case "alfa": return "#D90000"; // MERAH - alfa
+      case "izin": return "#ACA40D"; // KUNING - Izin
+      case "sakit": return "#520C8F"; // UNGU - Sakit
+      case "hadir": return "#1FA83D"; // HIJAU - Hadir
+      case "pulang": return "#2F85EB"; // BIRU - Pulang
       default: return "#6B7280";
     }
   };
@@ -422,7 +489,7 @@ export default function TidakHadirPenguruskelas({
               justifyContent: "space-between",
             }}
           >
-            {/* Date Picker */}
+            {/* Date Range Picker */}
             <div
               style={{
                 background: "#0B2948",
@@ -479,6 +546,38 @@ export default function TidakHadirPenguruskelas({
                     }}
                   />
                 </div>
+
+                <span style={{ fontWeight: "bold", color: "#FFFFFF", fontSize: "14px" }}>-</span>
+
+                <div
+                  style={{
+                    background: "#FFFFFF",
+                    borderRadius: "6px",
+                    padding: "6px 10px",
+                    color: "#0F172A",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: "#0F172A",
+                      fontWeight: "600",
+                      fontSize: "13px",
+                      outline: "none",
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      colorScheme: "light",
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -512,8 +611,7 @@ export default function TidakHadirPenguruskelas({
             }}
           >
             <TotalCard />
-            <SummaryCard label="Hadir" value={summary.hadir} color="#1FA83D" />
-            <SummaryCard label="Tidak Hadir" value={summary.alpha} color="#D90000" />
+            <SummaryCard label="alfa" value={summary.alfa} color="#D90000" />
             <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" />
             <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" />
             <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" />
@@ -598,11 +696,11 @@ export default function TidakHadirPenguruskelas({
                               textAlign: col.align || "left",
                             }}
                           >
-                            {col.key === "no"
+                            {col.key === "no" 
                               ? index + 1
                               : col.render
-                                ? col.render(row[col.key as keyof AbsensiRecord], row)
-                                : row[col.key as keyof AbsensiRecord]}
+                              ? col.render(row[col.key as keyof AbsensiRecord], row)
+                              : row[col.key as keyof AbsensiRecord]}
                           </td>
                         ))}
                       </tr>
@@ -638,7 +736,7 @@ export default function TidakHadirPenguruskelas({
                 fontSize: "14px",
                 color: "#64748B",
               }}>
-                <span>Menampilkan {filteredData.length} data</span>
+                <span>Menampilkan {filteredData.length} dari {dummyData.length} data</span>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   <button
                     style={{
@@ -724,7 +822,7 @@ export default function TidakHadirPenguruskelas({
             </div>
 
             {/* Content Modal */}
-            <div style={{
+            <div style={{ 
               padding: 24,
               overflowY: "auto",
               flex: 1,
@@ -765,12 +863,11 @@ export default function TidakHadirPenguruskelas({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {selectedRecord.status === "absent" ? "Tidak Hadir" :
-                      selectedRecord.status === "sick" ? "Sakit" :
-                        selectedRecord.status === "excused" ? "Izin" :
-                          selectedRecord.status === "present" ? "Hadir" :
-                            selectedRecord.status === "late" ? "Terlambat" :
-                              "Pulang"}
+                    {selectedRecord.status === "alfa" ? "alfa" :
+                      selectedRecord.status === "sakit" ? "Sakit" :
+                        selectedRecord.status === "izin" ? "Izin" :
+                          selectedRecord.status === "hadir" ? "Hadir" :
+                            "Pulang"}
                   </span>
                 </div>
               </div>
@@ -782,7 +879,7 @@ export default function TidakHadirPenguruskelas({
                 borderRadius: 8,
                 padding: 16,
                 textAlign: "center",
-                marginBottom: (selectedRecord.status === "excused" || selectedRecord.status === "sick" || selectedRecord.status === "early_departure") && selectedRecord.keterangan ? 24 : 0,
+                marginBottom: (selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && selectedRecord.keterangan ? 24 : 0,
               }}>
                 <div style={{
                   fontSize: 14,
@@ -794,7 +891,7 @@ export default function TidakHadirPenguruskelas({
               </div>
 
               {/* Keterangan untuk izin, sakit, DAN PULANG */}
-              {(selectedRecord.status === "excused" || selectedRecord.status === "sick" || selectedRecord.status === "early_departure") && selectedRecord.keterangan && (
+              {(selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && selectedRecord.keterangan && (
                 <div>
                   <div style={{
                     fontSize: 14,
@@ -823,7 +920,7 @@ export default function TidakHadirPenguruskelas({
               )}
 
               {/* Area Bukti Foto untuk izin, sakit, DAN PULANG */}
-              {(selectedRecord.status === "excused" || selectedRecord.status === "sick" || selectedRecord.status === "early_departure") && (
+              {(selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && (
                 <div style={{ marginTop: selectedRecord.keterangan ? 24 : 0 }}>
                   <div style={{
                     fontSize: 14,
@@ -849,15 +946,17 @@ export default function TidakHadirPenguruskelas({
                       color: "#9CA3AF",
                       textAlign: "center",
                     }}>
-                      [Area untuk menampilkan bukti foto]
+                      {selectedRecord.status === "hadir" 
+                        ? "Tidak ada bukti foto yang diperlukan" 
+                        : "[Area untuk menampilkan bukti foto]"}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Catatan untuk status Hadir */}
-              {selectedRecord.status === "present" && (
-                <div style={{
+              {selectedRecord.status === "hadir" && (
+                <div style={{ 
                   marginTop: 24,
                   padding: "12px 16px",
                   backgroundColor: "#F0FDF4",
@@ -891,7 +990,7 @@ function SummaryCard({ label, value, color = "#0B2948" }: { label: string; value
         background: "#FFFFFF",
         borderRadius: "12px",
         padding: "12px 24px",
-        border: `1px solid ${color} 20`,
+        border: `1px solid ${color}20`,
         boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
         minWidth: "100px",
         textAlign: "center",

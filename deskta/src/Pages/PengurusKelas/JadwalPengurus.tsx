@@ -1,5 +1,5 @@
 import PengurusKelasLayout from "../../component/PengurusKelas/PengurusKelasLayout";
-import JadwalImg from "../../assets/Icon/jadwal.jpeg";
+import JadwalImg from "../../assets/Icon/DummyJadwal.png";
 
 type PengurusKelasPage = "dashboard" | "jadwal-anda" | "notifikasi";
 
@@ -16,11 +16,10 @@ export default function JadwalPengurus({
     onMenuClick,
     onLogout,
 }: JadwalPengurusProps) {
-    // Data default jika tidak ada props
-    const kelasInfo = {
-        namaKelas: "-",
-        waliKelas: "-",
-    };
+      const kelasInfo = {
+        namaKelas: "X Mekatronika 1",
+        waliKelas: "Ewit Erniyah S.pd",
+      };
 
     return (
         <PengurusKelasLayout
@@ -73,27 +72,27 @@ export default function JadwalPengurus({
                     </div>
 
                     <div style={{ flex: 1 }}>
-                        <div
-                            style={{
-                                color: "#FFFFFF",
-                                fontSize: "18px",
-                                fontWeight: 700,
-                                marginBottom: 4,
-                            }}
-                        >
-                            {kelasInfo.namaKelas}
+            <div
+              style={{
+                color: "#FFFFFF",
+                fontSize: "18px",
+                fontWeight: 700,
+                marginBottom: 4,
+              }}
+            >
+              {kelasInfo.namaKelas}
 
-                        </div>
-                        <div
-                            style={{
-                                color: "rgba(255, 255, 255, 0.8)",
-                                fontSize: "14px",
-                                fontWeight: 500,
-                            }}
-                        >
-                            {kelasInfo.waliKelas}
-                        </div>
-                    </div>
+            </div>
+            <div
+              style={{
+                color: "rgba(255, 255, 255, 0.8)",
+                fontSize: "14px",
+                fontWeight: 500,
+              }}
+            >
+              {kelasInfo.waliKelas}
+            </div>
+          </div>
                 </div>
 
                 {/* Jadwal sebagai Gambar */}
@@ -115,7 +114,7 @@ export default function JadwalPengurus({
                     </div>
 
                     <div style={{ padding: 16 }}>
-                        <div
+                         <div
                             style={{
                                 width: "100%",
                                 overflowX: "auto",
@@ -132,10 +131,10 @@ export default function JadwalPengurus({
                                     display: "block",
                                     width: "100%",
                                     height: "auto",
-                                    maxWidth: 1200,
+                                    maxWidth: 1200, 
                                     margin: "0 auto",
                                 }}
-                            />
+                            /> 
                         </div>
 
                         <div style={{ marginTop: 12, textAlign: "right" }}>

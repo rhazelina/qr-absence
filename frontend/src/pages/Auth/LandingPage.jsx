@@ -1,15 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 
-// Import gambar dari src/assets
-import logo from "../../assets/logo.png";
-import ino from "../../assets/ino.png";
-import rasi from "../../assets/rasi.png";
+// Import gambar default dari src/assets
+import defaultLogo from "../../assets/logo.png";
 
 const LandingPage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  
+  // State untuk data dinamis dari localStorage
+  const [logo, setLogo] = useState(defaultLogo);
+  const [maskot, setMaskot] = useState(null);
+  const [judulAplikasi, setJudulAplikasi] = useState('PRESENSI PEMBELAJARAN DIGITAL');
+  const [namaSekolah, setNamaSekolah] = useState('SMKN 2 SINGOSARI');
+
+  // Load data dari localStorage
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('logoSekolah');
+    const savedMaskot = localStorage.getItem('maskotSekolah');
+    const savedProfile = localStorage.getItem('profileSekolah');
+    
+    if (savedLogo) {
+      setLogo(savedLogo);
+    }
+    
+    // Hanya set maskot jika ada di localStorage
+    if (savedMaskot) {
+      setMaskot(savedMaskot);
+    }
+    
+    if (savedProfile) {
+      try {
+        const profileData = JSON.parse(savedProfile);
+        if (profileData.judulAplikasi) {
+          setJudulAplikasi(profileData.judulAplikasi);
+        }
+        if (profileData.namaSekolah) {
+          setNamaSekolah(profileData.namaSekolah);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    }
+  }, []);
 
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
@@ -31,25 +65,24 @@ const LandingPage = () => {
 
   return (
     <div className="container">
-      {/* Logo sekolah */}
-      <img src={logo} alt="SMKN 2 Singosari Logo" className="school-logo" />
+      {/* Logo sekolah - dinamis dari localStorage */}
+      <img src={logo} alt="Logo Sekolah" className="school-logo" />
 
       <div className="title">
-        <h1>PRESENSI PEMBELAJARAN</h1>
-        <h2>DIGITAL SMKN 2 SINGOSARI</h2>
+        <h2>{judulAplikasi}</h2>
+        <h2>{namaSekolah}</h2>
       </div>
 
-      <div className="characters-container">
-        <div className="character left">
-          <div className="circle orange-circle"></div>
-          <img src={rasi} alt="Rasi" className="character-img" />
+      {/* Hanya tampilkan maskot jika sudah di-upload */}
+      {maskot && (
+        <div className="maskot-container">
+          <img 
+            src={maskot} 
+            alt="Maskot Sekolah" 
+            className="maskot-image" 
+          />
         </div>
-
-        <div className="character right">
-          <div className="circle blue-circle"></div>
-          <img src={ino} alt="Ino" className="character-img" />
-        </div>
-      </div>
+      )}
 
       {/* Dropdown Masuk Sebagai */}
       <div className="login-dropdown">
@@ -84,7 +117,7 @@ const LandingPage = () => {
         )}
       </div>
 
-      <div className="footer">@SMKN 2 SINGOSARI</div>
+      <div className="footer">@{namaSekolah}</div>
     </div>
   );
 };

@@ -3,275 +3,72 @@ import { Calendar, ChevronDown, Eye, X, Users, ZoomIn } from 'lucide-react';
 import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
 import './RiwayatKelas.css';
 
-// Data siswa kelas 12 RPL 2
-const studentList = [
-  { id: 1, name: 'Ahmad Fauzi', nis: '2024001' },
-  { id: 2, name: 'Siti Nurhaliza', nis: '2024002' },
-  { id: 3, name: 'Budi Santoso', nis: '2024003' },
-  { id: 4, name: 'Dewi Lestari', nis: '2024004' },
-  { id: 5, name: 'Eko Prasetyo', nis: '2024005' },
-  { id: 6, name: 'Fitri Handayani', nis: '2024006' },
-  { id: 7, name: 'Gilang Ramadan', nis: '2024007' },
-  { id: 8, name: 'Hana Permata', nis: '2024008' },
-  { id: 9, name: 'Indra Kusuma', nis: '2024009' },
-  { id: 10, name: 'Joko Widodo', nis: '2024010' }
-];
+// ==================== API CONFIGURATION ====================
+const baseURL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
-// Data dummy dengan nama siswa, proof image, dan status Terlambat
-const dummyAttendanceRecords = [
-  // Ahmad Fauzi
-  {
-    recordDate: '2026-01-25',
-    date: '25/01/26',
-    period: '1-4',
-    subject: 'Matematika',
-    teacher: 'Afifah Diantebas Andra S.pd',
-    status: 'Hadir',
-    statusColor: 'status-hadir',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 1,
-    studentName: 'Ahmad Fauzi',
-    nis: '2024001'
-  },
-  {
-    recordDate: '2026-01-26',
-    date: '26/01/26',
-    period: '5-8',
-    subject: 'Bahasa Indonesia',
-    teacher: 'Siti Nurhaliza S.pd',
-    status: 'Izin',
-    statusColor: 'status-izin',
-    reason: 'Keperluan keluarga mendadak',
-    proofDocument: 'Surat izin orang tua',
-    proofImage: 'https://via.placeholder.com/400x600/3b82f6/ffffff?text=Surat+Izin+Orang+Tua',
-    studentId: 1,
-    studentName: 'Ahmad Fauzi',
-    nis: '2024001'
-  },
-  // Siti Nurhaliza
-  {
-    recordDate: '2026-01-25',
-    date: '25/01/26',
-    period: '1-4',
-    subject: 'Matematika',
-    teacher: 'Afifah Diantebas Andra S.pd',
-    status: 'Terlambat',
-    statusColor: 'status-terlambat',
-    reason: 'Terjebak macet di jalan',
-    proofDocument: null,
-    proofImage: null,
-    studentId: 2,
-    studentName: 'Siti Nurhaliza',
-    nis: '2024002'
-  },
-  {
-    recordDate: '2026-01-27',
-    date: '27/01/26',
-    period: '1-4',
-    subject: 'Fisika',
-    teacher: 'Budi Santoso S.pd',
-    status: 'Sakit',
-    statusColor: 'status-sakit',
-    reason: 'Demam dan flu',
-    proofDocument: 'Surat keterangan dokter',
-    proofImage: 'https://via.placeholder.com/400x600/22c55e/ffffff?text=Surat+Keterangan+Dokter',
-    studentId: 2,
-    studentName: 'Siti Nurhaliza',
-    nis: '2024002'
-  },
-  // Budi Santoso
-  {
-    recordDate: '2026-01-28',
-    date: '28/01/26',
-    period: '5-8',
-    subject: 'Kimia',
-    teacher: 'Dr. Ani Widiastuti',
-    status: 'Pulang',
-    statusColor: 'status-pulang',
-    reason: 'Merasa tidak enak badan saat jam pelajaran ke-6',
-    proofDocument: 'Surat izin dari guru BK',
-    proofImage: 'https://via.placeholder.com/400x600/a855f7/ffffff?text=Surat+Izin+Guru+BK',
-    studentId: 3,
-    studentName: 'Budi Santoso',
-    nis: '2024003'
-  },
-  {
-    recordDate: '2026-01-29',
-    date: '29/01/26',
-    period: '1-4',
-    subject: 'Sejarah',
-    teacher: 'Ahmad Fauzi S.pd',
-    status: 'Alpha',
-    statusColor: 'status-alpha',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 3,
-    studentName: 'Budi Santoso',
-    nis: '2024003'
-  },
-  // Dewi Lestari
-  {
-    recordDate: '2026-01-31',
-    date: '31/01/26',
-    period: '1-4',
-    subject: 'Matematika',
-    teacher: 'Afifah Diantebas Andra S.pd',
-    status: 'Hadir',
-    statusColor: 'status-hadir',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 4,
-    studentName: 'Dewi Lestari',
-    nis: '2024004'
-  },
-  {
-    recordDate: '2026-02-01',
-    date: '01/02/26',
-    period: '5-8',
-    subject: 'Pemrograman Web',
-    teacher: 'Eko Prasetyo S.Kom',
-    status: 'Terlambat',
-    statusColor: 'status-terlambat',
-    reason: 'Bangun kesiangan',
-    proofDocument: null,
-    proofImage: null,
-    studentId: 4,
-    studentName: 'Dewi Lestari',
-    nis: '2024004'
-  },
-  // Eko Prasetyo
-  {
-    recordDate: '2026-03-15',
-    date: '15/03/26',
-    period: '1-4',
-    subject: 'Basis Data',
-    teacher: 'Linda Wijaya S.Kom',
-    status: 'Izin',
-    statusColor: 'status-izin',
-    reason: 'Mengikuti lomba olimpiade matematika tingkat provinsi',
-    proofDocument: 'Surat tugas dari sekolah',
-    proofImage: 'https://via.placeholder.com/400x600/f97316/ffffff?text=Surat+Tugas+Sekolah',
-    studentId: 5,
-    studentName: 'Eko Prasetyo',
-    nis: '2024005'
-  },
-  {
-    recordDate: '2026-05-10',
-    date: '10/05/26',
-    period: '5-8',
-    subject: 'Bahasa Inggris',
-    teacher: 'Sarah Johnson M.pd',
-    status: 'Sakit',
-    statusColor: 'status-sakit',
-    reason: 'Sakit perut akut',
-    proofDocument: 'Surat keterangan dokter RS Saiful Anwar',
-    proofImage: 'https://via.placeholder.com/400x600/ef4444/ffffff?text=Surat+Dokter+RS',
-    studentId: 5,
-    studentName: 'Eko Prasetyo',
-    nis: '2024005'
-  },
-  // Fitri Handayani
-  {
-    recordDate: '2026-01-25',
-    date: '25/01/26',
-    period: '1-4',
-    subject: 'Matematika',
-    teacher: 'Afifah Diantebas Andra S.pd',
-    status: 'Hadir',
-    statusColor: 'status-hadir',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 6,
-    studentName: 'Fitri Handayani',
-    nis: '2024006'
-  },
-  {
-    recordDate: '2026-01-26',
-    date: '26/01/26',
-    period: '5-8',
-    subject: 'Bahasa Indonesia',
-    teacher: 'Siti Nurhaliza S.pd',
-    status: 'Hadir',
-    statusColor: 'status-hadir',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 6,
-    studentName: 'Fitri Handayani',
-    nis: '2024006'
-  },
-  // Gilang Ramadan
-  {
-    recordDate: '2026-01-27',
-    date: '27/01/26',
-    period: '1-4',
-    subject: 'Fisika',
-    teacher: 'Budi Santoso S.pd',
-    status: 'Alpha',
-    statusColor: 'status-alpha',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 7,
-    studentName: 'Gilang Ramadan',
-    nis: '2024007'
-  },
-  // Hana Permata
-  {
-    recordDate: '2026-01-28',
-    date: '28/01/26',
-    period: '5-8',
-    subject: 'Kimia',
-    teacher: 'Dr. Ani Widiastuti',
-    status: 'Izin',
-    statusColor: 'status-izin',
-    reason: 'Urusan keluarga penting',
-    proofDocument: 'Surat izin orang tua',
-    proofImage: 'https://via.placeholder.com/400x600/fbbf24/ffffff?text=Surat+Izin+Orang+Tua',
-    studentId: 8,
-    studentName: 'Hana Permata',
-    nis: '2024008'
-  },
-  // Indra Kusuma
-  {
-    recordDate: '2026-01-29',
-    date: '29/01/26',
-    period: '1-4',
-    subject: 'Sejarah',
-    teacher: 'Ahmad Fauzi S.pd',
-    status: 'Hadir',
-    statusColor: 'status-hadir',
-    reason: null,
-    proofDocument: null,
-    proofImage: null,
-    studentId: 9,
-    studentName: 'Indra Kusuma',
-    nis: '2024009'
-  },
-  // Joko Widodo
-  {
-    recordDate: '2026-01-31',
-    date: '31/01/26',
-    period: '1-4',
-    subject: 'Matematika',
-    teacher: 'Afifah Diantebas Andra S.pd',
-    status: 'Sakit',
-    statusColor: 'status-sakit',
-    reason: 'Flu berat',
-    proofDocument: 'Surat dokter',
-    proofImage: 'https://via.placeholder.com/400x600/10b981/ffffff?text=Surat+Dokter',
-    studentId: 10,
-    studentName: 'Joko Widodo',
-    nis: '2024010'
+const API_CONFIG = {
+  BASE_URL: API_BASE_URL,
+  ENDPOINTS: {
+    STUDENTS: '/class/students',
+    ATTENDANCE_RECORDS: '/class/attendance/records',
+    ATTENDANCE_STATS: '/class/attendance/stats'
   }
-];
+};
 
-function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
+// ==================== API SERVICE ====================
+const apiService = {
+  async request(endpoint, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers
+    };
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        throw new Error('Unauthorized');
+      }
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async getStudents(classId) {
+    return this.request(`${API_CONFIG.ENDPOINTS.STUDENTS}?classId=${classId}`);
+  },
+
+  async getAttendanceRecords(classId, startDate, endDate, studentId = null) {
+    const params = new URLSearchParams({
+      classId,
+      startDate,
+      endDate,
+      ...(studentId && { studentId })
+    });
+    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE_RECORDS}?${params}`);
+  },
+
+  async getAttendanceStats(classId, startDate, endDate, studentId = null) {
+    const params = new URLSearchParams({
+      classId,
+      startDate,
+      endDate,
+      ...(studentId && { studentId })
+    });
+    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE_STATS}?${params}`);
+  }
+};
+
+function Riwayat() {
   // Set default tanggal awal bulan dan hari ini
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -284,10 +81,118 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [studentList, setStudentList] = useState([]);
+  const [stats, setStats] = useState({
+    hadir: 0,
+    terlambat: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0,
+    pulang: 0
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const maxDate = today.toISOString().split('T')[0];
 
+  // Fetch students list
   useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const classId = localStorage.getItem('classId') || '1';
+        const students = await apiService.getStudents(classId);
+        setStudentList(students);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        // UI tetap dirender dengan array kosong
+      }
+    };
+
+    fetchStudents();
     window.scrollTo(0, 0);
   }, []);
+
+  // Fetch attendance records and stats
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        setIsLoading(true);
+        const classId = localStorage.getItem('classId') || '1';
+        
+        // Fetch attendance records
+        const records = await apiService.getAttendanceRecords(
+          classId,
+          startDate,
+          endDate,
+          selectedStudent === 0 ? null : selectedStudent
+        );
+        
+        // Format records
+        const formattedRecords = records.map(record => ({
+          recordDate: record.date,
+          date: formatDateDisplay(record.date),
+          period: record.period || '',
+          subject: record.subject || '',
+          teacher: record.teacher || '',
+          status: record.status || '',
+          statusColor: getStatusColor(record.status),
+          reason: record.reason || null,
+          proofDocument: record.proofDocument || null,
+          proofImage: record.proofImageUrl || null,
+          studentId: record.studentId,
+          studentName: record.studentName || '',
+          nis: record.nis || ''
+        }));
+        
+        setAttendanceRecords(formattedRecords);
+        
+        // Fetch stats
+        const statsData = await apiService.getAttendanceStats(
+          classId,
+          startDate,
+          endDate,
+          selectedStudent === 0 ? null : selectedStudent
+        );
+        
+        setStats({
+          hadir: statsData.hadir || 0,
+          terlambat: statsData.terlambat || 0,
+          izin: statsData.izin || 0,
+          sakit: statsData.sakit || 0,
+          alpha: statsData.alpha || 0,
+          pulang: statsData.pulang || 0
+        });
+        
+      } catch (error) {
+        console.error('Error fetching attendance data:', error);
+        // UI tetap dirender dengan state default
+        setAttendanceRecords([]);
+        setStats({
+          hadir: 0,
+          terlambat: 0,
+          izin: 0,
+          sakit: 0,
+          alpha: 0,
+          pulang: 0
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAttendanceData();
+  }, [startDate, endDate, selectedStudent]);
+
+  const getStatusColor = (status) => {
+    const statusColors = {
+      'Hadir': 'status-hadir',
+      'Izin': 'status-izin',
+      'Sakit': 'status-sakit',
+      'Alpha': 'status-alpha',
+      'Terlambat': 'status-terlambat',
+      'Pulang': 'status-pulang'
+    };
+    return statusColors[status] || '';
+  };
 
   const formatDateDisplay = (dateString) => {
     const date = new Date(dateString);
@@ -297,72 +202,37 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
     return `${day}/${month}/${year}`;
   };
 
-  // Handle start date change dengan auto-adjust end date jika perlu
   const handleStartDateChange = (e) => {
     const newStartDate = e.target.value;
+    const todayDate = new Date().toISOString().split('T')[0];
+    
+    if (newStartDate > todayDate) {
+      alert('Tidak dapat memilih tanggal setelah hari ini!');
+      return;
+    }
+    
     setStartDate(newStartDate);
     
-    // Jika tanggal akhir lebih kecil dari tanggal awal yang baru, update tanggal akhir
     if (new Date(endDate) < new Date(newStartDate)) {
       setEndDate(newStartDate);
     }
   };
 
-  // Handle end date change dengan validasi
   const handleEndDateChange = (e) => {
     const newEndDate = e.target.value;
-    // Hanya update jika tanggal akhir >= tanggal awal
+    const todayDate = new Date().toISOString().split('T')[0];
+    
+    if (newEndDate > todayDate) {
+      alert('Tidak dapat memilih tanggal setelah hari ini!');
+      return;
+    }
+    
     if (new Date(newEndDate) >= new Date(startDate)) {
       setEndDate(newEndDate);
     }
   };
 
-  const filterRecords = (records) => {
-    return records.filter(record => {
-      if (!record.recordDate) return false;
-      
-      const recordDate = new Date(record.recordDate);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      
-      // Set time to 00:00:00 for proper date comparison
-      recordDate.setHours(0, 0, 0, 0);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(0, 0, 0, 0);
-      
-      const matchDate = recordDate >= start && recordDate <= end;
-      const matchStudent = selectedStudent === 0 || record.studentId === selectedStudent;
-      
-      return matchDate && matchStudent;
-    });
-  };
-
-  const filteredRecords = filterRecords(attendanceRecords);
-
-  const calculateStats = () => {
-    const stats = {
-      hadir: 0,
-      terlambat: 0,
-      izin: 0,
-      sakit: 0,
-      alpha: 0,
-      pulang: 0
-    };
-
-    filteredRecords.forEach(record => {
-      const status = record.status.toLowerCase();
-      if (stats.hasOwnProperty(status)) {
-        stats[status]++;
-      }
-    });
-
-    return stats;
-  };
-
-  const stats = calculateStats();
-
   const handleDateApply = () => {
-    // Validasi tanggal
     if (new Date(startDate) > new Date(endDate)) {
       alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir!');
       return;
@@ -399,7 +269,6 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
     return student ? student.name : 'Semua Siswa';
   };
 
-  // Cek apakah status memerlukan bukti
   const requiresProof = (status) => {
     return ['Izin', 'Sakit', 'Pulang'].includes(status);
   };
@@ -451,6 +320,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
                     <input
                       type="date"
                       value={startDate}
+                      max={maxDate}
                       onChange={handleStartDateChange}
                       style={{
                         width: '100%',
@@ -480,6 +350,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
                       type="date"
                       value={endDate}
                       min={startDate}
+                      max={maxDate}
                       onChange={handleEndDateChange}
                       style={{
                         width: '100%',
@@ -586,7 +457,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
           </div>
         </div>
 
-        {/* Statistics Cards - FIXED dengan class name baru */}
+        {/* Statistics Cards */}
         <div className="pengurus-stats-wrapper">
           <div className="pengurus-stats-grid">
             <div className="pengurus-stat-box box-hadir">
@@ -616,8 +487,37 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
           </div>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '80px 20px',
+            background: '#f9fafb',
+            borderRadius: '16px',
+            border: '2px dashed #d1d5db'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid #e5e7eb',
+              borderTopColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+            <p style={{
+              marginTop: '16px',
+              fontSize: '16px',
+              color: '#6b7280',
+              fontWeight: '600'
+            }}>Memuat data kehadiran...</p>
+          </div>
+        )}
+
         {/* Table Card */}
-        {filteredRecords.length > 0 ? (
+        {!isLoading && attendanceRecords.length > 0 ? (
           <div className="table-card">
             {/* Table Header */}
             <div className="table-header" style={{ gridTemplateColumns: '60px 200px 130px 150px 1fr 1.5fr 150px 100px' }}>
@@ -632,7 +532,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
             </div>
 
             {/* Table Rows */}
-            {filteredRecords.map((record, index) => (
+            {attendanceRecords.map((record, index) => (
               <div key={index} className="table-row" style={{ gridTemplateColumns: '60px 200px 130px 150px 1fr 1.5fr 150px 100px' }}>
                 <div className="table-cell">{index + 1}</div>
                 <div className="table-cell" style={{ fontWeight: '600' }}>{record.studentName}</div>
@@ -657,7 +557,7 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
               </div>
             ))}
           </div>
-        ) : (
+        ) : !isLoading && (
           <div className="empty-state">
             <Calendar size={64} />
             <h3>Tidak ada data kehadiran</h3>
@@ -794,6 +694,12 @@ function Riwayat({ attendanceRecords = dummyAttendanceRecords }) {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

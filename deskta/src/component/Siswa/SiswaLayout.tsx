@@ -1,11 +1,10 @@
+//SiswaLayout.tsx
 import { type ReactNode, useState, useEffect, useRef } from "react";
-import { storage } from '../../utils/storage';
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from "../Sidebar";
 import { useLocalLenis } from "../Shared/SmoothScroll";
-import LogoSchool from "../../assets/Icon/logo smk.png";
 
-export type MenuKey = "dashboard" | "jadwal-anda" | "absensi" | "notifikasi";
+type MenuKey = "dashboard" | "jadwal-anda" | "absensi" | "notifikasi";
 
 interface SiswaLayoutProps {
   user: { name: string; phone: string };
@@ -24,14 +23,44 @@ export default function SiswaLayout({
   children,
   pageTitle = "Dashboard",
 }: SiswaLayoutProps) {
-  const [isOpen, setOpen] = useState(() => storage.getSidebarState('siswa'));
+  const [isOpen, setOpen] = useState(() => {
+    const saved = localStorage.getItem("sidebarOpenSiswa");
+    return saved ? saved === "true" : true;
+  });
+
+  // ✅ DIUBAH: State untuk logo_sekolah
+  const [logoSekolah, setLogoSekolah] = useState<string>('');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useLocalLenis(scrollContainerRef);
 
   useEffect(() => {
-    storage.setSidebarState('siswa', isOpen);
+    localStorage.setItem("sidebarOpenSiswa", isOpen.toString());
   }, [isOpen]);
+
+  // ✅ DIUBAH: Load logo_sekolah dari localStorage
+  useEffect(() => {
+    const loadLogoSekolah = () => {
+      const schoolData = localStorage.getItem('schoolData');
+      if (schoolData) {
+        try {
+          const parsed = JSON.parse(schoolData);
+          setLogoSekolah(parsed.logo_sekolah || '');
+        } catch (error) {
+          console.error('Error loading school data:', error);
+        }
+      }
+    };
+
+    loadLogoSekolah();
+
+    // ✅ DIUBAH: Listen untuk update event dari ProfilSekolah
+    const handleUpdate = () => {
+      loadLogoSekolah();
+    };
+    window.addEventListener('schoolDataUpdated', handleUpdate);
+    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+  }, []);
 
   return (
     <div
@@ -116,13 +145,14 @@ export default function SiswaLayout({
             )}
           </div>
 
-          <div style={{
-            display: "flex",
-            alignItems: "center",
+          {/* Bagian yang diubah - Menampilkan nama pengguna dan logo sekolah */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
             gap: "16px",
-            flexShrink: 0
+            flexShrink: 0 
           }}>
-            <div style={{
+            <div style={{ 
               textAlign: "right",
               paddingRight: "16px",
               borderRight: "1px solid #E5E7EB"
@@ -130,23 +160,26 @@ export default function SiswaLayout({
               <div style={{ fontSize: "14px", fontWeight: "600", color: "#001F3E" }}>
                 {user.name}
               </div>
-              <div style={{ fontSize: "12px", color: "#6B7280" }}>
-                Siswa
+              <div style={{ fontSize: "12px", color: "#6B7280", textTransform: "capitalize" }}>
+                {user.role ? user.role.replace('_', ' ') : "Siswa"}
               </div>
             </div>
-            <img
-              src={LogoSchool}
-              alt="Logo SMK"
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                padding: "4px",
-                backgroundColor: "white",
-                border: "1px solid #E5E7EB",
-              }}
-            />
+            {/* ✅ DIUBAH: Hanya tampilkan logo jika logo_sekolah tidak kosong */}
+            {logoSekolah && (
+              <img
+                src={logoSekolah}
+                alt="Logo SMK"
+                style={{ 
+                  width: "48px", 
+                  height: "48px",
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                  padding: "4px",
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                }}
+              />
+            )}
           </div>
         </header>
 
@@ -181,6 +214,3 @@ export default function SiswaLayout({
     </div>
   );
 }
-
-
-

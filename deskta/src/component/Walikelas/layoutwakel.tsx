@@ -1,12 +1,11 @@
+//layoutwakel.tsx
 import { type ReactNode, useState, useEffect, useRef } from 'react';
-import { storage } from '../../utils/storage';
 import { AnimatePresence, motion } from "framer-motion";
 import Sidebar from '../Sidebar';
 import AWANKANAN from '../../assets/Icon/AWANKANAN.png';
 import AWANKIRI from '../../assets/Icon/AWANKIRI.png';
 import INO from '../../assets/Icon/InoBlue.svg';
 import RASI from '../../assets/Icon/RasiRed.svg';
-import LogoSchool from '../../assets/Icon/logo smk.png';
 import { useLocalLenis } from '../Shared/SmoothScroll';
 
 interface WalikelasLayoutProps {
@@ -31,14 +30,44 @@ export default function WalikelasLayout({
   onLogout,
   hideBackground = false,
 }: WalikelasLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(() => storage.getSidebarState('walikelas'));
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('walikelasSidebarOpen');
+    return saved ? saved === 'true' : true;
+  });
+
+  // ✅ DIUBAH: State untuk logo_sekolah
+  const [logoSekolah, setLogoSekolah] = useState<string>('');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   useLocalLenis(scrollContainerRef);
 
   useEffect(() => {
-    storage.setSidebarState('walikelas', sidebarOpen);
+    localStorage.setItem('walikelasSidebarOpen', sidebarOpen.toString());
   }, [sidebarOpen]);
+
+  // ✅ DIUBAH: Load logo_sekolah dari localStorage
+  useEffect(() => {
+    const loadLogoSekolah = () => {
+      const schoolData = localStorage.getItem('schoolData');
+      if (schoolData) {
+        try {
+          const parsed = JSON.parse(schoolData);
+          setLogoSekolah(parsed.logo_sekolah || '');
+        } catch (error) {
+          console.error('Error loading school data:', error);
+        }
+      }
+    };
+
+    loadLogoSekolah();
+
+    // ✅ DIUBAH: Listen untuk update event dari ProfilSekolah
+    const handleUpdate = () => {
+      loadLogoSekolah();
+    };
+    window.addEventListener('schoolDataUpdated', handleUpdate);
+    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+  }, []);
 
   const handleToggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -74,7 +103,7 @@ export default function WalikelasLayout({
               backgroundColor: "#F8FAFC",
             }}
           />
-
+          
           {/* Awan dan dekorasi - sama seperti AdminLayout */}
           <img
             src={AWANKIRI}
@@ -137,7 +166,7 @@ export default function WalikelasLayout({
           onLogout={onLogout}
           isOpen={sidebarOpen}
           onToggle={handleToggleSidebar}
-          userRole="wakel"
+          userRole="walikelas"
         />
       </div>
 
@@ -198,14 +227,14 @@ export default function WalikelasLayout({
               </p>
             )}
           </div>
-
-          <div style={{
-            display: "flex",
-            alignItems: "center",
+          
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
             gap: "16px",
-            flexShrink: 0
+            flexShrink: 0 
           }}>
-            <div style={{
+            <div style={{ 
               textAlign: "right",
               paddingRight: "16px",
               borderRight: "1px solid #E5E7EB"
@@ -217,20 +246,22 @@ export default function WalikelasLayout({
                 Wali Kelas
               </div>
             </div>
-            {/* Logo SMK - Sama seperti AdminLayout */}
-            <img
-              src={LogoSchool}
-              alt="Logo SMK"
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                padding: "4px",
-                backgroundColor: "white",
-                border: "1px solid #E5E7EB",
-              }}
-            />
+            {/* ✅ DIUBAH: Hanya tampilkan logo jika logo_sekolah tidak kosong */}
+            {logoSekolah && (
+              <img
+                src={logoSekolah}
+                alt="Logo SMK"
+                style={{ 
+                  width: "48px", 
+                  height: "48px",
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                  padding: "4px",
+                  backgroundColor: "white",
+                  border: "1px solid #E5E7EB",
+                }}
+              />
+            )}
           </div>
         </header>
 

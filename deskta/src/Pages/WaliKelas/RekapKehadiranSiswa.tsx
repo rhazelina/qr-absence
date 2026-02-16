@@ -1,9 +1,6 @@
-﻿import { useState, useMemo, useEffect } from "react";
-import { Eye, FileDown, Calendar, ArrowLeft, Search } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Eye, FileDown, Calendar, ArrowLeft, Search, ClipboardPlus, X, Upload } from "lucide-react";
 import WalikelasLayout from "../../component/Walikelas/layoutwakel";
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
-import { dashboardService } from "../../services/dashboard";
-import { attendanceService } from "../../services/attendance";
 
 interface RekapKehadiranSiswaProps {
   user: { name: string; role: string };
@@ -20,10 +17,51 @@ interface RekapRow {
   hadir: number;
   izin: number;
   sakit: number;
-  tidakHadir: number;
+  alfa: number;
   pulang: number;
   status: 'aktif' | 'non-aktif';
 }
+
+interface PerizinanPulang {
+  id: string;
+  nisn: string;
+  namaSiswa: string;
+  alasanPulang: 'izin' | 'sakit' | 'dispensasi';
+  alasanDetail?: string;
+  mapel: string;
+  namaGuru: string;
+  tanggal: string;
+  jamPelajaran: string;
+  keterangan: string;
+  buktiFoto1: string;
+  buktiFoto2?: string;
+  createdAt: string;
+}
+
+const guruPerMapel: Record<string, string[]> = {
+  'Matematika': ['Solikhah S.pd', 'Budi Santoso S.pd', 'Dewi Lestari S.pd'],
+  'Bahasa Indonesia': ['Siti Aminah S.pd', 'Ahmad Fauzi S.pd'],
+  'Fisika': ['Dr. Bambang S.pd', 'Rina Kusuma S.pd'],
+  'Kimia': ['Arief Budiman S.pd', 'Lina Marlina S.pd'],
+  'MPKK': ['Tri Wahyuni S.pd', 'Eko Prasetyo S.pd', 'Yuni Astuti S.pd'],
+  'Bahasa Inggris': ['Sarah Johnson S.pd', 'David Brown S.pd'],
+  'Sejarah': ['Hendra Gunawan S.pd'],
+  'Ekonomi': ['Fitri Handayani S.pd', 'Rudi Hermawan S.pd'],
+};
+
+const jamPelajaranOptions = [
+  '1-2', '1-3', '1-4', '1-5', '1-6', '1-7', '1-8', '1-9', '1-10', '1-11', '1-12',
+  '2-3', '2-4', '2-5', '2-6', '2-7', '2-8', '2-9', '2-10', '2-11', '2-12',
+  '3-4', '3-5', '3-6', '3-7', '3-8', '3-9', '3-10', '3-11', '3-12',
+  '4-5', '4-6', '4-7', '4-8', '4-9', '4-10', '4-11', '4-12',
+  '5-6', '5-7', '5-8', '5-9', '5-10', '5-11', '5-12',
+  '6-7', '6-8', '6-9', '6-10', '6-11', '6-12',
+  '7-8', '7-9', '7-10', '7-11', '7-12',
+  '8-9', '8-10', '8-11', '8-12',
+  '9-10', '9-11', '9-12',
+  '10-11', '10-12',
+  '11-12'
+];
 
 export function RekapKehadiranSiswa({
   user,
@@ -31,92 +69,49 @@ export function RekapKehadiranSiswa({
   currentPage,
   onMenuClick,
 }: RekapKehadiranSiswaProps) {
-  const { alert: popupAlert } = usePopup();
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Default dates: First and last day of current month
-  const date = new Date();
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
-
-  const [periodeMulai, setPeriodeMulai] = useState(firstDay);
-  const [periodeSelesai, setPeriodeSelesai] = useState(lastDay);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Data kelas
-  const [kelasInfo, setKelasInfo] = useState({
-    id: 0,
-    namaKelas: 'Memuat...',
-    waliKelas: user.name,
+  const [periodeMulai, setPeriodeMulai] = useState('2026-02-03');
+  const [periodeSelesai, setPeriodeSelesai] = useState('2026-02-03');
+  const [isPerizinanOpen, setIsPerizinanOpen] = useState(false);
+  const [perizinanData, setPerizinanData] = useState({
+    nisn: '',
+    namaSiswa: '',
+    alasanPulang: '',
+    alasanDetail: '',
+    mapel: '',
+    namaGuru: '',
+    tanggal: '',
+    jamPelajaran: '',
+    file1: undefined as File | undefined,
+    file2: undefined as File | undefined,
   });
 
-  // Warna sesuai revisi
+  const kelasInfo = {
+    namaKelas: '12 Rekayasa Perangkat Lunak 2',
+    waliKelas: 'TRIANA ARDIANI, S.Pd',
+  };
+
   const COLORS = {
     HADIR: "#1FA83D",
     IZIN: "#ACA40D",
     PULANG: "#2F85EB",
-    TIDAK_HADIR: "#D90000",
+    ALFA: "#D90000",
     SAKIT: "#520C8F"
   };
 
-  // Data rows
-  const [rows, setRows] = useState<RekapRow[]>([]);
-
-  // Fetch Data
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // 1. Get Homeroom Class Info
-        const classData = await dashboardService.getMyHomeroom();
-        setKelasInfo({
-          id: classData.id,
-          namaKelas: classData.name,
-          waliKelas: classData.homeroom_teacher?.user?.name || user.name,
-        });
-
-        // 2. Get Students Summary
-        if (classData.id) {
-          const response = await attendanceService.getClassStudentsSummary(classData.id, {
-            from: periodeMulai,
-            to: periodeSelesai
-          });
-
-          // Assume response.data is the array of students with summary
-          // Adjust based on actual API response structure. 
-          // If response.data.data exists, use that.
-          const studentsData = (response.data as any).data || response.data;
-
-          if (Array.isArray(studentsData)) {
-            const mappedRows: RekapRow[] = studentsData.map((item: any, index: number) => ({
-              id: item.id.toString(),
-              no: index + 1,
-              nisn: item.nisn || '-',
-              namaSiswa: item.name,
-              hadir: item.attendance_summary?.present || 0,
-              izin: (item.attendance_summary?.izin || 0) + (item.attendance_summary?.excused || 0),
-              sakit: item.attendance_summary?.sick || 0,
-              tidakHadir: (item.attendance_summary?.absent || 0) + (item.attendance_summary?.alpha || 0),
-              pulang: (item.attendance_summary?.pulang || 0) + (item.attendance_summary?.dinas || 0), // Adjust mapping if needed
-              status: 'aktif' // Default active
-            }));
-            setRows(mappedRows);
-          }
-        }
-
-      } catch (error) {
-        console.error("Error fetching rekap data:", error);
-        // await popupAlert("Gagal memuat data rekap kehadiran."); // Optional: suppress error popup on load
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [periodeMulai, periodeSelesai, user.name]);
+  const [rows, setRows] = useState<RekapRow[]>([
+    { id: '1', no: 1, nisn: '0079312790', namaSiswa: 'RAENA WESTI DHEANOFA HERLIANI', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '2', no: 2, nisn: '0078980482', namaSiswa: 'NOVITA AZZAHRA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '3', no: 3, nisn: '0076610748', namaSiswa: 'RITA AURA AGUSTINA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '4', no: 4, nisn: '0061631562', namaSiswa: 'NADIA SINTA DEVI OKTAVIA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '5', no: 5, nisn: '0081838771', namaSiswa: 'RACHEL ALUNA MEIZHA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '6', no: 6, nisn: '0074320819', namaSiswa: 'LELY SAGITA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '7', no: 7, nisn: '0074182519', namaSiswa: 'LAURA LAVIDA LOCA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '8', no: 8, nisn: '0087884391', namaSiswa: 'NOVERITA PASCALIA RAHMA', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+    { id: '9', no: 9, nisn: '0078036100', namaSiswa: 'NURUL KHASANAH', hadir: 5, izin: 2, sakit: 3, alfa: 4, pulang: 1, status: 'aktif' },
+  ]);
 
   useEffect(() => {
-    // Inject CSS untuk ubah icon kalender jadi putih
     const style = document.createElement("style");
     style.innerHTML = `
       .custom-date-input::-webkit-calendar-picker-indicator {
@@ -141,10 +136,8 @@ export function RekapKehadiranSiswa({
     };
   }, []);
 
-  // Filter rows berdasarkan pencarian
   const filteredRows = useMemo(() => {
     if (!searchTerm.trim()) return rows;
-
     const term = searchTerm.toLowerCase();
     return rows.filter(row =>
       row.nisn.toLowerCase().includes(term) ||
@@ -152,19 +145,16 @@ export function RekapKehadiranSiswa({
     );
   }, [rows, searchTerm]);
 
-  // Hitung total
   const totalHadir = useMemo(() => filteredRows.reduce((sum, row) => sum + row.hadir, 0), [filteredRows]);
   const totalIzin = useMemo(() => filteredRows.reduce((sum, row) => sum + row.izin, 0), [filteredRows]);
   const totalSakit = useMemo(() => filteredRows.reduce((sum, row) => sum + row.sakit, 0), [filteredRows]);
-  const totalTidakHadir = useMemo(() => filteredRows.reduce((sum, row) => sum + row.tidakHadir, 0), [filteredRows]);
+  const totalAlfa = useMemo(() => filteredRows.reduce((sum, row) => sum + row.alfa, 0), [filteredRows]);
   const totalPulang = useMemo(() => filteredRows.reduce((sum, row) => sum + row.pulang, 0), [filteredRows]);
 
-  // Handler untuk klik tombol aksi (mata) - navigasi ke DaftarKetidakhadiranWaliKelas
   const handleViewDetail = (row: RekapRow) => {
     onMenuClick("daftar-ketidakhadiran-walikelas", {
       siswaName: row.namaSiswa,
       siswaIdentitas: row.nisn,
-      studentId: row.id, // Pass studentId for detail page fetching
     });
   };
 
@@ -173,16 +163,13 @@ export function RekapKehadiranSiswa({
   };
 
   const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return "-";
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}/${year}`;
   };
 
-  // Fungsi untuk mengekspor Excel (CSV)
-  const handleExportExcel = async () => {
+  const handleExportExcel = () => {
     try {
-      // Buat data untuk Excel
-      const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Tidak Hadir", "Pulang", "Status"];
+      const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Status"];
       const rowsData = filteredRows.map((row) => [
         row.no,
         row.nisn,
@@ -190,12 +177,11 @@ export function RekapKehadiranSiswa({
         row.hadir,
         row.izin,
         row.sakit,
-        row.tidakHadir,
+        row.alfa,
         row.pulang,
         row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'
       ]);
 
-      // Tambahkan baris total
       rowsData.push([
         'TOTAL',
         '',
@@ -203,22 +189,18 @@ export function RekapKehadiranSiswa({
         totalHadir,
         totalIzin,
         totalSakit,
-        totalTidakHadir,
+        totalAlfa,
         totalPulang,
         ''
       ]);
 
-      // Gabungkan headers dan rows
       const csvContent = [
         headers.join(","),
         ...rowsData.map((row) => row.join(",")),
       ].join("\n");
 
-      // Tambahkan BOM untuk support Unicode di Excel
       const BOM = "\uFEFF";
       const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
-
-      // Buat download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -227,161 +209,425 @@ export function RekapKehadiranSiswa({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
-      await popupAlert("✅ File Excel berhasil diunduh!");
+      
+      alert('✅ File Excel berhasil diunduh!');
     } catch (error) {
       console.error('Error exporting CSV:', error);
-      await popupAlert("❌ Terjadi kesalahan saat mengekspor Excel");
+      alert('❌ Terjadi kesalahan saat mengekspor Excel');
     }
   };
 
-  // Fungsi untuk mengekspor PDF
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     try {
-      // Import jsPDF secara dinamis
-      const { jsPDF } = await import('jspdf');
-      await import('jspdf-autotable');
+      let htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Rekap Kehadiran Siswa</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px; 
+              color: #333;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 30px;
+            }
+            .title { 
+              font-size: 24px; 
+              font-weight: bold; 
+              margin-bottom: 10px;
+              color: #1E40AF;
+            }
+            .info { 
+              margin-bottom: 20px;
+              padding-bottom: 15px;
+              border-bottom: 2px solid #3B82F6;
+            }
+            .info-row { 
+              display: flex; 
+              justify-content: space-between;
+              margin-bottom: 5px;
+            }
+            .info-label {
+              font-weight: bold;
+              color: #555;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th {
+              background-color: #3B82F6;
+              color: white;
+              padding: 12px 8px;
+              text-align: center;
+              font-weight: bold;
+              border: 1px solid #ddd;
+            }
+            td {
+              padding: 10px 8px;
+              border: 1px solid #ddd;
+              text-align: center;
+            }
+            tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            tr:hover {
+              background-color: #f3f4f6;
+            }
+            .total-row {
+              background-color: #3B82F6 !important;
+              color: white;
+              font-weight: bold;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 1px solid #ddd;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            }
+            .hadir { color: #1FA83D; font-weight: bold; }
+            .izin { color: #ACA40D; font-weight: bold; }
+            .sakit { color: #520C8F; font-weight: bold; }
+            .alfa { color: #D90000; font-weight: bold; }
+            .pulang { color: #2F85EB; font-weight: bold; }
+            .status-aktif { 
+              background-color: #D1FAE5; 
+              color: #065F46;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-weight: bold;
+            }
+            .status-nonaktif { 
+              background-color: #FEE2E2; 
+              color: #991B1B;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">REKAP KEHADIRAN SISWA</div>
+          </div>
+          
+          <div class="info">
+            <div class="info-row">
+              <span class="info-label">Kelas:</span>
+              <span>${kelasInfo.namaKelas}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Wali Kelas:</span>
+              <span>${kelasInfo.waliKelas}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Periode:</span>
+              <span>${formatDisplayDate(periodeMulai)} - ${formatDisplayDate(periodeSelesai)}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Total Data:</span>
+              <span>${filteredRows.length} Siswa</span>
+            </div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>NISN</th>
+                <th>Nama Siswa</th>
+                <th>Hadir</th>
+                <th>Izin</th>
+                <th>Sakit</th>
+                <th>Alfa</th>
+                <th>Pulang</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
 
-      // Buat dokumen PDF dengan orientasi landscape
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
+      filteredRows.forEach(row => {
+        htmlContent += `
+          <tr>
+            <td>${row.no}</td>
+            <td>${row.nisn}</td>
+            <td>${row.namaSiswa}</td>
+            <td class="hadir">${row.hadir}</td>
+            <td class="izin">${row.izin}</td>
+            <td class="sakit">${row.sakit}</td>
+            <td class="alfa">${row.alfa}</td>
+            <td class="pulang">${row.pulang}</td>
+            <td><span class="${row.status === 'aktif' ? 'status-aktif' : 'status-nonaktif'}">${row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}</span></td>
+          </tr>
+        `;
       });
 
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      htmlContent += `
+          <tr class="total-row">
+            <td colspan="3"><strong>TOTAL KESELURUHAN</strong></td>
+            <td><strong>${totalHadir}</strong></td>
+            <td><strong>${totalIzin}</strong></td>
+            <td><strong>${totalSakit}</strong></td>
+            <td><strong>${totalAlfa}</strong></td>
+            <td><strong>${totalPulang}</strong></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="footer">
+        <p>Dicetak pada: ${new Date().toLocaleString('id-ID', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })}</p>
+        <p>${kelasInfo.namaKelas} - ${kelasInfo.waliKelas}</p>
+      </div>
+      
+      </body>
+      </html>
+      `;
 
-      // Header - Title
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('REKAP KEHADIRAN SISWA', pageWidth / 2, 15, { align: 'center' });
-
-      // Info Kelas
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Kelas: ${kelasInfo.namaKelas}`, 14, 25);
-      doc.text(`Wali Kelas: ${kelasInfo.waliKelas}`, 14, 31);
-
-      // Periode (kanan atas)
-      doc.text(`Periode: ${formatDisplayDate(periodeMulai)} - ${formatDisplayDate(periodeSelesai)}`, pageWidth - 14, 25, { align: 'right' });
-
-      // Garis pemisah
-      doc.setDrawColor(37, 99, 235);
-      doc.setLineWidth(0.5);
-      doc.line(14, 35, pageWidth - 14, 35);
-
-      // Tabel Data Siswa
-      const tableData = filteredRows.map(row => [
-        row.no.toString(),
-        row.nisn,
-        row.namaSiswa,
-        row.hadir.toString(),
-        row.izin.toString(),
-        row.sakit.toString(),
-        row.tidakHadir.toString(),
-        row.pulang.toString(),
-        row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'
-      ]);
-
-      // Add summary row
-      tableData.push([
-        'TOTAL',
-        '',
-        'Total Keseluruhan',
-        totalHadir.toString(),
-        totalIzin.toString(),
-        totalSakit.toString(),
-        totalTidakHadir.toString(),
-        totalPulang.toString(),
-        ''
-      ]);
-
-      (doc as any).autoTable({
-        startY: 40,
-        head: [['No', 'NISN', 'Nama Siswa', 'Hadir', 'Izin', 'Sakit', 'Tidak Hadir', 'Pulang', 'Status']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [37, 99, 235],
-          textColor: 255,
-          fontSize: 9,
-          fontStyle: 'bold',
-          halign: 'center'
-        },
-        bodyStyles: {
-          fontSize: 8,
-          halign: 'center'
-        },
-        columnStyles: {
-          0: { cellWidth: 12, halign: 'center' },
-          1: { cellWidth: 25, halign: 'left' },
-          2: { cellWidth: 60, halign: 'left' },
-          3: { cellWidth: 18, halign: 'center' },
-          4: { cellWidth: 18, halign: 'center' },
-          5: { cellWidth: 18, halign: 'center' },
-          6: { cellWidth: 25, halign: 'center' },
-          7: { cellWidth: 18, halign: 'center' },
-          8: { cellWidth: 22, halign: 'center' }
-        },
-        alternateRowStyles: {
-          fillColor: [249, 250, 251]
-        },
-        margin: { left: 14, right: 14 },
-        footStyles: {
-          fillColor: [59, 130, 246],
-          textColor: 255,
-          fontSize: 9,
-          fontStyle: 'bold',
-          halign: 'center'
-        },
-        didParseCell: function (data: any) {
-          // Highlight total row
-          if (data.row.index === filteredRows.length) {
-            data.cell.styles.fillColor = [59, 130, 246];
-            data.cell.styles.textColor = 255;
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      });
-
-      // Footer - Timestamp
-      doc.setFontSize(8);
-      doc.setTextColor(128, 128, 128);
-      const timestamp = new Date().toLocaleString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-      doc.text(`Dicetak pada: ${timestamp}`, 14, pageHeight - 10);
-
-      // Nomor halaman
-      const pageCount = (doc as any).internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.text(
-          `Halaman ${i} dari ${pageCount}`,
-          pageWidth - 14,
-          pageHeight - 10,
-          { align: 'right' }
-        );
-      }
-
-      // Download PDF - langsung download otomatis
-      const filename = `Rekap_Kehadiran_${kelasInfo.namaKelas.replace(/\s+/g, '_')}_${periodeMulai}_${periodeSelesai}.pdf`;
-
-      // Simpan dan download langsung
-      doc.save(filename);
-
-      await popupAlert("✅ File PDF berhasil diunduh!");
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Rekap_Kehadiran_${kelasInfo.namaKelas.replace(/\s+/g, '_')}_${periodeMulai}_${periodeSelesai}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert('✅ File rekap kehadiran berhasil diunduh!');
+      
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      await popupAlert("❌ Terjadi kesalahan saat mengekspor PDF. Pastikan library jsPDF sudah terinstall.");
+      
+      try {
+        const csvHeaders = ["No,NISN,Nama Siswa,Hadir,Izin,Sakit,Alfa,Pulang,Status"];
+        const csvRows = filteredRows.map(row => 
+          `${row.no},${row.nisn},"${row.namaSiswa}",${row.hadir},${row.izin},${row.sakit},${row.alfa},${row.pulang},${row.status}`
+        );
+        csvRows.push(`TOTAL,,"Total Keseluruhan",${totalHadir},${totalIzin},${totalSakit},${totalAlfa},${totalPulang},`);
+        
+        const csvContent = csvHeaders.concat(csvRows).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Rekap_Kehadiran_${kelasInfo.namaKelas.replace(/\s+/g, '_')}_${periodeMulai}_${periodeSelesai}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        alert('✅ Data berhasil diunduh sebagai file CSV!');
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        alert('❌ Terjadi kesalahan saat mengekspor data. Silakan coba lagi.');
+      }
     }
   };
+
+  const handleBuatPerizinan = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+    
+    setPerizinanData(prev => ({
+      ...prev,
+      tanggal: todayString
+    }));
+    
+    setIsPerizinanOpen(true);
+  };
+
+  const handleClosePerizinan = () => {
+    setIsPerizinanOpen(false);
+    setPerizinanData({
+      nisn: '',
+      namaSiswa: '',
+      alasanPulang: '',
+      alasanDetail: '',
+      mapel: '',
+      namaGuru: '',
+      tanggal: '',
+      jamPelajaran: '',
+      file1: undefined,
+      file2: undefined,
+    });
+  };
+
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const validateFileType = (file: File): boolean => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    return allowedTypes.includes(file.type);
+  };
+
+  const handleSubmitPerizinan = async () => {
+    if (!perizinanData.nisn || !perizinanData.alasanPulang || !perizinanData.tanggal || 
+        !perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.file1 || !perizinanData.jamPelajaran) {
+      alert('⚠️ Mohon isi semua field yang diperlukan (termasuk foto dan jam pelajaran)');
+      return;
+    }
+    
+    const jamPattern = /^\d+-\d+$/;
+    if (!jamPattern.test(perizinanData.jamPelajaran)) {
+      alert('⚠️ Format jam pelajaran tidak valid. Gunakan format seperti: 2-10, 1-4, dll');
+      return;
+    }
+    
+    if (!validateFileType(perizinanData.file1)) {
+      alert('⚠️ Format file foto pertama harus JPG atau PNG');
+      return;
+    }
+    
+    if (perizinanData.file2 && !validateFileType(perizinanData.file2)) {
+      alert('⚠️ Format file foto kedua harus JPG atau PNG');
+      return;
+    }
+    
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+    
+    if (perizinanData.tanggal !== todayString) {
+      alert('⚠️ Tanggal perizinan hanya bisa diisi dengan tanggal hari ini');
+      return;
+    }
+    
+    const siswa = rows.find(r => r.nisn === perizinanData.nisn);
+    if (!siswa) {
+      alert('⚠️ Siswa tidak ditemukan');
+      return;
+    }
+    
+    try {
+      const buktiFoto1 = await convertFileToBase64(perizinanData.file1);
+      const buktiFoto2 = perizinanData.file2 ? await convertFileToBase64(perizinanData.file2) : undefined;
+      
+      const formatDateToDisplay = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-');
+        return `${day}-${month}-${year}`;
+      };
+      
+      const formattedTanggal = formatDateToDisplay(perizinanData.tanggal);
+      
+      const alasanText = perizinanData.alasanPulang === 'izin' ? 'izin' : 
+                        perizinanData.alasanPulang === 'sakit' ? 'sakit' : 
+                        'dispensasi';
+      
+      const keterangan = `Pulang karena ${alasanText}${perizinanData.alasanDetail ? `: ${perizinanData.alasanDetail}` : ''}`;
+      
+      const newPerizinan: PerizinanPulang = {
+        id: Date.now().toString(),
+        nisn: perizinanData.nisn,
+        namaSiswa: perizinanData.namaSiswa || siswa.namaSiswa,
+        alasanPulang: perizinanData.alasanPulang as 'izin' | 'sakit' | 'dispensasi',
+        alasanDetail: perizinanData.alasanDetail,
+        mapel: perizinanData.mapel,
+        namaGuru: perizinanData.namaGuru,
+        tanggal: formattedTanggal,
+        jamPelajaran: perizinanData.jamPelajaran,
+        keterangan,
+        buktiFoto1,
+        buktiFoto2,
+        createdAt: new Date().toLocaleString('id-ID'),
+      };
+      
+      const existingPerizinan = localStorage.getItem('perizinanPulangList');
+      let perizinanList = existingPerizinan ? JSON.parse(existingPerizinan) : [];
+      perizinanList.push(newPerizinan);
+      localStorage.setItem('perizinanPulangList', JSON.stringify(perizinanList));
+      
+      window.dispatchEvent(new Event('storage'));
+      
+      setRows(prevRows => 
+        prevRows.map(row => {
+          if (row.nisn === perizinanData.nisn) {
+            return { ...row, pulang: row.pulang + 1 };
+          }
+          return row;
+        })
+      );
+      
+      alert(`✅ Perizinan PULANG berhasil dibuat!\n\n` +
+            `Siswa: ${perizinanData.namaSiswa || siswa.namaSiswa}\n` +
+            `Status: PULANG\n` +
+            `Alasan Pulang: ${alasanText}\n` +
+            `Mata Pelajaran: ${perizinanData.mapel}\n` +
+            `Guru: ${perizinanData.namaGuru}\n` +
+            `Tanggal: ${formattedTanggal}\n` +
+            `Jam: ${perizinanData.jamPelajaran}\n` +
+            `Keterangan: ${keterangan}\n\n` +
+            `✅ Status PULANG telah ditambahkan ke halaman Kehadiran Siswa!`);
+      
+      handleClosePerizinan();
+    } catch (error) {
+      console.error('Error processing files:', error);
+      alert('❌ Terjadi kesalahan saat memproses foto');
+    }
+  };
+
+  const perizinanMapelOptions = useMemo(() => {
+    const mapelSet = new Set([
+      'Matematika', 'Bahasa Indonesia', 'Fisika', 'Kimia', 
+      'MPKK', 'Bahasa Inggris', 'Sejarah', 'Ekonomi'
+    ]);
+    
+    return [
+      { label: 'Pilih Mata Pelajaran', value: '' },
+      ...Array.from(mapelSet).map((mapel) => ({
+        label: mapel,
+        value: mapel,
+      })),
+    ];
+  }, []);
+
+  const perizinanGuruOptions = useMemo(() => {
+    if (!perizinanData.mapel) {
+      return [{ label: 'Pilih mata pelajaran terlebih dahulu', value: '' }];
+    }
+    
+    const guruList = guruPerMapel[perizinanData.mapel] || [];
+    return [
+      { label: 'Pilih Guru', value: '' },
+      ...guruList.map((guru) => ({
+        label: guru,
+        value: guru,
+      })),
+    ];
+  }, [perizinanData.mapel]);
+
+  const todayString = (() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  })();
 
   return (
     <WalikelasLayout
@@ -391,7 +637,6 @@ export function RekapKehadiranSiswa({
       user={user}
       onLogout={onLogout}
     >
-      {/* Button Kembali */}
       <div style={{ marginBottom: 16 }}>
         <button
           onClick={handleBack}
@@ -432,7 +677,6 @@ export function RekapKehadiranSiswa({
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         }}
       >
-        {/* Header Section */}
         <div
           style={{
             display: "flex",
@@ -443,7 +687,6 @@ export function RekapKehadiranSiswa({
             gap: 16,
           }}
         >
-          {/* Kelas Info - KIRI */}
           <div
             style={{
               backgroundColor: "#062A4A",
@@ -466,15 +709,15 @@ export function RekapKehadiranSiswa({
                 justifyContent: "center",
               }}
             >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="white"
-                stroke="white"
+              <svg 
+                width="22" 
+                height="22" 
+                viewBox="0 0 24 24" 
+                fill="white" 
+                stroke="white" 
                 strokeWidth="0.5"
               >
-                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
+                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
               </svg>
             </div>
             <div>
@@ -487,7 +730,6 @@ export function RekapKehadiranSiswa({
             </div>
           </div>
 
-          {/* Search Bar */}
           <div style={{
             position: 'relative',
             width: '300px',
@@ -517,7 +759,6 @@ export function RekapKehadiranSiswa({
           </div>
         </div>
 
-        {/* Periode dan Export */}
         <div
           style={{
             display: "flex",
@@ -528,7 +769,6 @@ export function RekapKehadiranSiswa({
             gap: 16,
           }}
         >
-          {/* Periode Box - Navy Style */}
           <div
             style={{
               display: "flex",
@@ -540,7 +780,6 @@ export function RekapKehadiranSiswa({
               color: "#FFFFFF",
             }}
           >
-            {/* Icon Kalender */}
             <div
               style={{
                 display: "flex",
@@ -555,10 +794,8 @@ export function RekapKehadiranSiswa({
               <Calendar size={18} />
             </div>
 
-            {/* Label Periode */}
             <span style={{ fontSize: 14, fontWeight: 600 }}>Periode:</span>
 
-            {/* Start Date */}
             <input
               type="date"
               value={periodeMulai}
@@ -577,10 +814,8 @@ export function RekapKehadiranSiswa({
               className="custom-date-input"
             />
 
-            {/* Separator */}
             <span style={{ fontWeight: 600, fontSize: 16 }}>—</span>
 
-            {/* End Date */}
             <input
               type="date"
               value={periodeSelesai}
@@ -600,7 +835,6 @@ export function RekapKehadiranSiswa({
             />
           </div>
 
-          {/* Export Buttons */}
           <div
             style={{
               display: "flex",
@@ -609,28 +843,46 @@ export function RekapKehadiranSiswa({
             }}
           >
             <button
-              onClick={handleExportExcel}
-              disabled={isLoading || rows.length === 0}
+              onClick={handleBuatPerizinan}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 padding: "10px 16px",
-                backgroundColor: (isLoading || rows.length === 0) ? "#9CA3AF" : "#10B981",
+                backgroundColor: "#10B981",
                 color: "#FFFFFF",
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: (isLoading || rows.length === 0) ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 transition: "all 0.2s",
               }}
-              onMouseEnter={(e) => {
-                if (!isLoading && rows.length > 0) e.currentTarget.style.backgroundColor = "#059669";
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#059669"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#10B981"}
+            >
+              <ClipboardPlus size={16} />
+              Buat Perizinan
+            </button>
+
+            <button
+              onClick={handleExportExcel}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "10px 16px",
+                backgroundColor: "#3B82F6",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
               }}
-              onMouseLeave={(e) => {
-                if (!isLoading && rows.length > 0) e.currentTarget.style.backgroundColor = "#10B981";
-              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#2563EB"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#3B82F6"}
             >
               <FileDown size={16} />
               Unduh Excel
@@ -638,27 +890,22 @@ export function RekapKehadiranSiswa({
 
             <button
               onClick={handleExportPDF}
-              disabled={isLoading || rows.length === 0}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
                 padding: "10px 16px",
-                backgroundColor: (isLoading || rows.length === 0) ? "#9CA3AF" : "#EF4444",
+                backgroundColor: "#EF4444",
                 color: "#FFFFFF",
                 border: "none",
                 borderRadius: 8,
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: (isLoading || rows.length === 0) ? "not-allowed" : "pointer",
+                cursor: "pointer",
                 transition: "all 0.2s",
               }}
-              onMouseEnter={(e) => {
-                if (!isLoading && rows.length > 0) e.currentTarget.style.backgroundColor = "#DC2626";
-              }}
-              onMouseLeave={(e) => {
-                if (!isLoading && rows.length > 0) e.currentTarget.style.backgroundColor = "#EF4444";
-              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#DC2626"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#EF4444"}
             >
               <FileDown size={16} />
               Unduh PDF
@@ -666,7 +913,6 @@ export function RekapKehadiranSiswa({
           </div>
         </div>
 
-        {/* Statistik Total */}
         <div style={{
           backgroundColor: '#FFFFFF',
           borderRadius: '12px',
@@ -701,8 +947,8 @@ export function RekapKehadiranSiswa({
               <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.SAKIT }}>{totalSakit}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px', fontWeight: '600' }}>Tidak Hadir</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.TIDAK_HADIR }}>{totalTidakHadir}</div>
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px', fontWeight: '600' }}>Alfa</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.ALFA }}>{totalAlfa}</div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px', fontWeight: '600' }}>Pulang</div>
@@ -711,7 +957,6 @@ export function RekapKehadiranSiswa({
           </div>
         </div>
 
-        {/* Tabel Rekap Kehadiran */}
         <div style={{
           backgroundColor: '#FFFFFF',
           border: '1px solid #E5E7EB',
@@ -719,7 +964,6 @@ export function RekapKehadiranSiswa({
           overflow: 'hidden',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
         }}>
-          {/* Header Tabel */}
           <div style={{
             backgroundColor: '#F9FAFB',
             padding: '14px 20px',
@@ -740,19 +984,14 @@ export function RekapKehadiranSiswa({
               <div style={{ textAlign: 'center' }}>Hadir</div>
               <div style={{ textAlign: 'center' }}>Izin</div>
               <div style={{ textAlign: 'center' }}>Sakit</div>
-              <div style={{ textAlign: 'center' }}>Tidak Hadir</div>
+              <div style={{ textAlign: 'center' }}>Alfa</div>
               <div style={{ textAlign: 'center' }}>Pulang</div>
               <div style={{ textAlign: 'center' }}>Aksi</div>
             </div>
           </div>
 
-          {/* Body Tabel */}
           <div>
-            {isLoading ? (
-              <div style={{ padding: '60px 20px', textAlign: 'center', color: '#6B7280' }}>
-                Memuat data...
-              </div>
-            ) : filteredRows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <div style={{
                 padding: '60px 20px',
                 textAlign: 'center',
@@ -770,7 +1009,7 @@ export function RekapKehadiranSiswa({
                   Belum ada data kehadiran siswa.
                 </p>
                 <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#B9B9B9' }}>
-                  Filter mungkin perlu disesuaikan atau belum ada data untuk periode ini.
+                  Data rekap kehadiran akan muncul di sini setelah Anda menginput kehadiran.
                 </p>
               </div>
             ) : (
@@ -796,9 +1035,9 @@ export function RekapKehadiranSiswa({
                   <div style={{ textAlign: 'center', color: COLORS.HADIR, fontWeight: '700' }}>{row.hadir}</div>
                   <div style={{ textAlign: 'center', color: COLORS.IZIN, fontWeight: '700' }}>{row.izin}</div>
                   <div style={{ textAlign: 'center', color: COLORS.SAKIT, fontWeight: '700' }}>{row.sakit}</div>
-                  <div style={{ textAlign: 'center', color: COLORS.TIDAK_HADIR, fontWeight: '700' }}>{row.tidakHadir}</div>
+                  <div style={{ textAlign: 'center', color: COLORS.ALFA, fontWeight: '700' }}>{row.alfa}</div>
                   <div style={{ textAlign: 'center', color: COLORS.PULANG, fontWeight: '700' }}>{row.pulang}</div>
-                  <div style={{
+                  <div style={{ 
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -840,6 +1079,595 @@ export function RekapKehadiranSiswa({
           </div>
         </div>
       </div>
+
+      {isPerizinanOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: '#0F172A',
+                padding: '20px 24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0,
+                color: '#FFFFFF',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <ClipboardPlus size={20} color="#FFFFFF" />
+                <h2 style={{ 
+                  margin: 0, 
+                  fontSize: '18px', 
+                  fontWeight: '700',
+                  color: '#FFFFFF'
+                }}>
+                  Buat Perizinan 
+                </h2>
+              </div>
+              <button
+                onClick={handleClosePerizinan}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  color: '#FFFFFF',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: '24px',
+                overflowY: 'auto',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 20,
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    Pilih Siswa *
+                  </p>
+                  <select
+                    value={perizinanData.nisn}
+                    onChange={(e) => {
+                      const selectedStudent = rows.find((r) => r.nisn === e.target.value);
+                      setPerizinanData((prev) => ({
+                        ...prev,
+                        nisn: e.target.value,
+                        namaSiswa: selectedStudent?.namaSiswa || '',
+                      }));
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Pilih siswa</option>
+                    {rows.map((r) => (
+                      <option key={r.nisn} value={r.nisn}>
+                        {r.namaSiswa} ({r.nisn})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    Alasan Pulang *
+                  </p>
+                  <select
+                    value={perizinanData.alasanPulang}
+                    onChange={(e) =>
+                      setPerizinanData((prev) => ({
+                        ...prev,
+                        alasanPulang: e.target.value,
+                      }))
+                    }
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Pilih alasan pulang</option>
+                    <option value="izin">Izin (karena ada keperluan/izin)</option>
+                    <option value="sakit">Sakit (tidak enak badan)</option>
+                    <option value="dispensasi">Dispensasi</option>
+                  </select>
+                  <p style={{ 
+                    margin: '4px 0 0 0', 
+                    fontSize: '12px', 
+                    color: '#6B7280', 
+                    fontStyle: 'italic',
+                  }}>
+                    *Pilih alasan kenapa siswa pulang lebih awal
+                  </p>
+                </div>
+
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    Pilih Mata Pelajaran *
+                  </p>
+                  <select
+                    value={perizinanData.mapel}
+                    onChange={(e) =>
+                      setPerizinanData((prev) => ({
+                        ...prev,
+                        mapel: e.target.value,
+                        namaGuru: '',
+                      }))
+                    }
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Pilih mata pelajaran</option>
+                    <option value="Matematika">Matematika</option>
+                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                    <option value="Fisika">Fisika</option>
+                    <option value="Kimia">Kimia</option>
+                    <option value="MPKK">MPKK</option>
+                    <option value="Bahasa Inggris">Bahasa Inggris</option>
+                    <option value="Sejarah">Sejarah</option>
+                    <option value="Ekonomi">Ekonomi</option>
+                  </select>
+                </div>
+
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    Pilih Guru *
+                  </p>
+                  <select
+                    value={perizinanData.namaGuru}
+                    onChange={(e) =>
+                      setPerizinanData((prev) => ({
+                        ...prev,
+                        namaGuru: e.target.value,
+                      }))
+                    }
+                    disabled={!perizinanData.mapel}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: !perizinanData.mapel ? '#F9FAFB' : '#FFFFFF',
+                      color: !perizinanData.mapel ? '#9CA3AF' : '#1F2937',
+                      cursor: !perizinanData.mapel ? 'not-allowed' : 'pointer',
+                      opacity: !perizinanData.mapel ? 0.7 : 1,
+                    }}
+                  >
+                    {!perizinanData.mapel ? (
+                      <option value="">Pilih guru</option>
+                    ) : (
+                      <>
+                        <option value="">Pilih guru</option>
+                        {guruPerMapel[perizinanData.mapel]?.map((guru) => (
+                          <option key={guru} value={guru}>
+                            {guru}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    Tanggal dan Jam *
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <p style={{ 
+                        margin: '0 0 8px 0', 
+                        fontSize: 13, 
+                        color: '#6B7280', 
+                        fontWeight: 500 
+                      }}>
+                        Tanggal
+                      </p>
+                      <input
+                        type="date"
+                        value={perizinanData.tanggal}
+                        onChange={(e) =>
+                          setPerizinanData((prev) => ({
+                            ...prev,
+                            tanggal: e.target.value,
+                          }))
+                        }
+                        min={todayString}
+                        max={todayString}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          boxSizing: 'border-box',
+                          backgroundColor: '#FFFFFF',
+                          color: '#1F2937',
+                        }}
+                      />
+                      <p style={{ 
+                        margin: '4px 0 0 0', 
+                        fontSize: '12px', 
+                        color: '#6B7280', 
+                        fontStyle: 'italic',
+                      }}>
+                        *Tanggal hanya bisa diisi dengan tanggal hari ini
+                      </p>
+                    </div>
+
+                    <div>
+                      <p style={{ 
+                        margin: '0 0 8px 0', 
+                        fontSize: 13, 
+                        color: '#6B7280', 
+                        fontWeight: 500 
+                      }}>
+                        Jam Pelajaran *
+                      </p>
+                      <input
+                        type="text"
+                        value={perizinanData.jamPelajaran}
+                        onChange={(e) =>
+                          setPerizinanData((prev) => ({
+                            ...prev,
+                            jamPelajaran: e.target.value,
+                          }))
+                        }
+                        list="jamPelajaranOptions"
+                        placeholder="Contoh: 2-10, 1-4, 5-8"
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          backgroundColor: '#FFFFFF',
+                          color: '#1F2937',
+                        }}
+                      />
+                      <datalist id="jamPelajaranOptions">
+                        {jamPelajaranOptions.map((jam) => (
+                          <option key={jam} value={jam}>
+                            Jam {jam}
+                          </option>
+                        ))}
+                      </datalist>
+                      <p style={{ 
+                        margin: '4px 0 0 0', 
+                        fontSize: '12px', 
+                        color: '#6B7280', 
+                        fontStyle: 'italic',
+                      }}>
+                        *Masukkan rentang jam, contoh: 2-10 untuk jam ke-2 sampai jam ke-10
+                      </p>
+                    </div>
+
+                    <div>
+                      <p style={{ 
+                        margin: '0 0 8px 0', 
+                        fontSize: 13, 
+                        color: '#6B7280', 
+                        fontWeight: 500 
+                      }}>
+                        Keterangan (Opsional)
+                      </p>
+                      <textarea
+                        value={perizinanData.alasanDetail}
+                        onChange={(e) =>
+                          setPerizinanData((prev) => ({
+                            ...prev,
+                            alasanDetail: e.target.value,
+                          }))
+                        }
+                        placeholder="Contoh: Pulang karena sakit kepala, ada keperluan keluarga, dll."
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          minHeight: '80px',
+                          backgroundColor: '#FFFFFF',
+                          color: '#1F2937',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      marginBottom: 8,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#111827',
+                    }}
+                  >
+                    Tambahkan Foto *
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        border: '2px dashed #D1D5DB',
+                        borderRadius: '8px',
+                        backgroundColor: '#F9FAFB',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.jpg,.jpeg,.png';
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            setPerizinanData((prev) => ({
+                              ...prev,
+                              file1: file,
+                            }));
+                          }
+                        };
+                        input.click();
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F3F4F6';
+                        e.currentTarget.style.borderColor = '#9CA3AF';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F9FAFB';
+                        e.currentTarget.style.borderColor = '#D1D5DB';
+                      }}
+                    >
+                      <Upload size={24} color="#6B7280" />
+                      <span style={{ 
+                        fontSize: '14px', 
+                        color: '#6B7280', 
+                        fontWeight: 500 
+                      }}>
+                        {perizinanData.file1 ? perizinanData.file1.name : 'Upload foto bukti pertama* (JPG/PNG)'}
+                      </span>
+                    </div>
+                    <p style={{ 
+                      margin: '0 0 8px 0', 
+                      fontSize: '12px', 
+                      color: '#6B7280', 
+                      fontStyle: 'italic',
+                      marginTop: '-8px'
+                    }}>
+                      *Wajib diisi (surat izin/surat dokter/foto lain) - Format JPG/PNG
+                    </p>
+
+                    <div
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        border: '2px dashed #D1D5DB',
+                        borderRadius: '8px',
+                        backgroundColor: '#F9FAFB',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.jpg,.jpeg,.png';
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            setPerizinanData((prev) => ({
+                              ...prev,
+                              file2: file,
+                            }));
+                          }
+                        };
+                        input.click();
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F3F4F6';
+                        e.currentTarget.style.borderColor = '#9CA3AF';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#F9FAFB';
+                        e.currentTarget.style.borderColor = '#D1D5DB';
+                      }}
+                    >
+                      <Upload size={24} color="#6B7280" />
+                      <span style={{ 
+                        fontSize: '14px', 
+                        color: '#6B7280', 
+                        fontWeight: 500 
+                      }}>
+                        {perizinanData.file2 ? perizinanData.file2.name : 'Upload foto bukti kedua (opsional) - JPG/PNG'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: '20px 24px',
+                borderTop: '1px solid #E5E7EB',
+                backgroundColor: '#F9FAFB',
+                flexShrink: 0,
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                onClick={handleClosePerizinan}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#FFFFFF',
+                  color: '#374151',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                  minWidth: '100px',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F3F4F6';
+                  e.currentTarget.style.borderColor = '#9CA3AF';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#D1D5DB';
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSubmitPerizinan}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#10B981',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                  minWidth: '100px',
+                  boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.4)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                  e.currentTarget.style.boxShadow = '0 6px 8px -1px rgba(16, 185, 129, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#10B981';
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.4)';
+                }}
+              >
+                Simpan Perizinan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </WalikelasLayout>
   );
 }

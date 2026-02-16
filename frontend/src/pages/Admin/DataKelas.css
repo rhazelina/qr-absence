@@ -1,24 +1,26 @@
 /* DataKelas.css */
 
-.data-container {
-  padding: 80px 40px 40px;
+.kelas-data-container {
+  padding: 40px 60px 80px;
   min-height: 100vh;
   background-image: url(../../assets/bg.png);
   background-size: cover;
   background-position: center;
+  margin-top: 75px;
 }
 
-/* Title Data Kelas - WARNA PUTIH, POSISI SAMA DENGAN DATA JURUSAN */
-.page-title-kelas {
+/* Title Data Kelas - WARNA PUTIH */
+.kelas-page-title {
   color: white;
-    font-size: 48px;
-    font-weight: 700;
-    margin-bottom: 25px;
-    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
-    text-align: center;
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  margin-top: 20px;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+  text-align: center;
 }
 
-.table-wrapper {
+.kelas-table-wrapper {
   background: white;
   border-radius: 25px;
   padding: 30px;
@@ -28,7 +30,7 @@
 }
 
 /* Filter Box - Background BIRU GELAP */
-.filter-box {
+.kelas-filter-box {
   background: #001F3E;
   display: flex;
   align-items: center;
@@ -39,41 +41,22 @@
   margin: -30px -30px 0 -30px;
 }
 
-.search {
-  flex: 1;
-  min-width: 280px;
-  padding: 12px 15px 12px 45px;
-  border: none;
-  border-radius: 25px;
-  font-size: 14px;
-  outline: none;
-  background: white;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: 15px center;
-  background-size: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.search::placeholder {
-  color: #999;
-}
-
-.select-group {
+.kelas-select-group {
   display: flex;
   align-items: center;
   gap: 15px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
-.select-group label {
+.kelas-select-group label {
   font-weight: 600;
   color: white;
   white-space: nowrap;
   font-size: 15px;
 }
 
-.select-group select {
+.kelas-select-group select {
   padding: 11px 35px 11px 15px;
   border: none;
   border-radius: 8px;
@@ -90,7 +73,27 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.btn-tambah {
+/* Button Reset Filter */
+.kelas-btn-reset-filter {
+  padding: 11px 24px;
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.kelas-btn-reset-filter:hover {
+  background: #f57c00;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+}
+
+.kelas-btn-tambah {
   padding: 11px 30px;
   background: #0052A4;
   color: white;
@@ -103,78 +106,78 @@
   white-space: nowrap;
 }
 
-.btn-tambah:hover {
+.kelas-btn-tambah:hover {
   background: #0052cc;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 102, 255, 0.4);
 }
 
 /* Table Styles */
-.tabel-siswa {
+.kelas-tabel {
   width: 100%;
   border-collapse: collapse;
   background: white;
   margin-top: 0;
 }
 
-.tabel-siswa thead {
+.kelas-tabel thead {
   background: white;
   border-bottom: 2px solid #e0e0e0;
 }
 
-.tabel-siswa th {
+.kelas-tabel th {
   padding: 18px 20px;
   text-align: left;
   font-weight: 700;
-  color: #1a1a1a !important;
+  color: #1a1a1a;
   white-space: nowrap;
   font-size: 15px;
 }
 
-.tabel-siswa th:first-child {
+.kelas-tabel th:first-child {
   text-align: center;
   width: 80px;
 }
 
-.tabel-siswa th:last-child {
+.kelas-tabel th:last-child {
   text-align: center;
   width: 120px;
 }
 
-.tabel-siswa td {
+.kelas-tabel td {
   padding: 20px;
   border-bottom: 1px solid #f0f0f0;
-  color: #333 !important;
+  color: #333;
   font-size: 14.5px;
 }
 
-.tabel-siswa td:first-child {
+.kelas-tabel td:first-child {
   text-align: center;
   font-weight: 700;
-  color: #1a1a1a !important;
+  color: #1a1a1a;
 }
 
-.tabel-siswa tbody tr {
+.kelas-tabel tbody tr {
   transition: background 0.2s;
 }
 
-.tabel-siswa tbody tr:hover {
+.kelas-tabel tbody tr:hover {
   background: #fafafa;
 }
 
-.tabel-siswa tbody tr:last-child td {
+.kelas-tabel tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Action Buttons - DIPERBAIKI UNTUK SVG ICON */
-.aksi-cell {
+/* Action Buttons */
+.kelas-aksi-cell {
   text-align: center;
   display: flex;
   justify-content: center;
   gap: 8px;
 }
 
-.aksi {
+.kelas-aksi {
   width: 38px;
   height: 38px;
   border: none;
@@ -188,105 +191,374 @@
   padding: 0;
 }
 
-/* STYLING KHUSUS UNTUK SVG ICON */
-.aksi svg {
+.kelas-aksi svg {
   width: 18px !important;
   height: 18px !important;
   display: block !important;
   pointer-events: none;
 }
 
-.aksi.edit {
+.kelas-aksi.kelas-edit {
   background: #ffc107;
   color: white;
 }
 
-.aksi.edit:hover {
+.kelas-aksi.kelas-edit:hover {
   background: #e0a800;
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
 }
 
-.aksi.hapus {
+.kelas-aksi.kelas-hapus {
   background: #dc3545;
   color: white;
 }
 
-.aksi.hapus:hover {
+.kelas-aksi.kelas-hapus:hover {
   background: #c82333;
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
 }
 
+/* ========== MODAL STYLES ========== */
+
+.kelas-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.kelas-modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 550px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: kelasModalSlideIn 0.3s ease-out;
+}
+
+@keyframes kelasModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kelas-modal-header {
+  background: linear-gradient(135deg, #0052A4 0%, #003d7a 100%);
+  color: white;
+  padding: 25px 30px;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kelas-modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.kelas-modal-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s;
+  line-height: 1;
+  padding: 0;
+}
+
+.kelas-modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+.kelas-form {
+  padding: 30px;
+}
+
+.kelas-form-group {
+  margin-bottom: 25px;
+}
+
+.kelas-form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.kelas-required {
+  color: #dc3545;
+  margin-left: 3px;
+}
+
+.kelas-form-group input,
+.kelas-form-group select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.3s;
+  outline: none;
+  background: white;
+  color: #333;
+}
+
+.kelas-form-group input:focus,
+.kelas-form-group select:focus {
+  border-color: #0052A4;
+  box-shadow: 0 0 0 3px rgba(0, 82, 164, 0.1);
+}
+
+.kelas-form-group input.kelas-error,
+.kelas-form-group select.kelas-error {
+  border-color: #dc3545;
+}
+
+.kelas-form-group input.kelas-error:focus,
+.kelas-form-group select.kelas-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.kelas-error-message {
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+  font-weight: 500;
+}
+
+.kelas-helper-text {
+  color: #666;
+  font-size: 12px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  font-style: italic;
+}
+
+.kelas-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.kelas-btn-cancel,
+.kelas-btn-submit {
+  flex: 1;
+  padding: 13px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.kelas-btn-cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.kelas-btn-cancel:hover {
+  background: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+.kelas-btn-submit {
+  background: linear-gradient(135deg, #0052A4 0%, #003d7a 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 82, 164, 0.3);
+}
+
+.kelas-btn-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 82, 164, 0.4);
+}
+
+.kelas-btn-submit:active {
+  transform: translateY(0);
+}
+
+/* Custom Select Arrow for Modal */
+.kelas-form-group select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  padding-right: 40px;
+}
+
+/* Disabled option styling */
+.kelas-form-group select option:disabled {
+  color: #999 !important;
+  font-style: italic;
+  background: #f5f5f5;
+}
+
+/* Scrollbar Styling */
+.kelas-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.kelas-modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.kelas-modal-content::-webkit-scrollbar-thumb {
+  background: #0052A4;
+  border-radius: 10px;
+}
+
+.kelas-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #003d7a;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-  .data-container {
-    padding: 100px 15px 20px;
+  .kelas-data-container {
+    padding: 80px 15px 20px;
   }
 
-  .page-title-kelas {
+  .kelas-page-title {
     font-size: 36px;
   }
 
-  .table-wrapper {
+  .kelas-table-wrapper {
     border-radius: 15px;
     padding: 20px;
   }
 
-  .filter-box {
+  .kelas-filter-box {
     flex-direction: column;
     align-items: stretch;
     padding-bottom: 20px;
   }
 
-  .search {
-    min-width: 100%;
-  }
-
-  .select-group {
+  .kelas-select-group {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
     gap: 10px;
   }
 
-  .select-group label {
+  .kelas-select-group label {
     margin-bottom: -5px;
   }
 
-  .select-group select {
+  .kelas-select-group select {
     width: 100%;
   }
 
-  .btn-tambah {
+  .kelas-btn-reset-filter,
+  .kelas-btn-tambah {
     width: 100%;
   }
 
-  .tabel-siswa {
+  .kelas-tabel {
     font-size: 12px;
   }
 
-  .tabel-siswa th,
-  .tabel-siswa td {
+  .kelas-tabel th,
+  .kelas-tabel td {
     padding: 12px 10px;
   }
 
-  .aksi {
+  .kelas-aksi {
     width: 32px;
     height: 32px;
     font-size: 14px;
   }
   
-  .aksi svg {
+  .kelas-aksi svg {
     width: 16px !important;
     height: 16px !important;
+  }
+
+  /* Modal Responsive */
+  .kelas-modal-content {
+    max-width: 95%;
+    border-radius: 15px;
+  }
+
+  .kelas-modal-header {
+    padding: 20px 20px;
+    border-radius: 15px 15px 0 0;
+  }
+
+  .kelas-modal-header h2 {
+    font-size: 20px;
+  }
+
+  .kelas-form {
+    padding: 20px;
+  }
+
+  .kelas-form-group {
+    margin-bottom: 20px;
+  }
+
+  .kelas-modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .kelas-btn-cancel,
+  .kelas-btn-submit {
+    width: 100%;
   }
 }
 
 @media (max-width: 576px) {
-  .tabel-siswa {
+  .kelas-tabel {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .kelas-modal-overlay {
+    padding: 10px;
+  }
+
+  .kelas-modal-header h2 {
+    font-size: 18px;
+  }
+
+  .kelas-form-group input,
+  .kelas-form-group select {
+    padding: 10px 12px;
+    font-size: 13px;
   }
 }

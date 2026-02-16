@@ -1,8 +1,8 @@
-import SiswaLayout, { type MenuKey } from "../../component/Siswa/SiswaLayout";
+import SiswaLayout from "../../component/Siswa/SiswaLayout";
 
-import JadwalImg from "../../assets/Icon/jadwal.jpeg";
+import JadwalImg from "../../assets/Icon/DummyJadwal.png";
 
-type SiswaPage = MenuKey;
+type SiswaPage = "dashboard" | "jadwal-anda" | "notifikasi";
 
 interface JadwalSiswaProps {
     user: { name: string; phone: string };
@@ -22,10 +22,10 @@ export default function JadwalSiswa({
     onMenuClick,
     onLogout,
 }: JadwalSiswaProps) {
-    const kelasInfo = {
-        namaKelas: "Jadwal Pelajaran", // Generic title since we don't have class name in props yet
-        waliKelas: "-",
-    };
+      const kelasInfo = {
+        namaKelas: "XII RPL 2",
+        waliKelas: "Triana Ardiane S.pd",
+      };
 
     return (
         <SiswaLayout
@@ -78,27 +78,27 @@ export default function JadwalSiswa({
                     </div>
 
                     <div style={{ flex: 1 }}>
-                        <div
-                            style={{
-                                color: "#FFFFFF",
-                                fontSize: "18px",
-                                fontWeight: 700,
-                                marginBottom: 4,
-                            }}
-                        >
-                            {kelasInfo.namaKelas}
+            <div
+              style={{
+                color: "#FFFFFF",
+                fontSize: "18px",
+                fontWeight: 700,
+                marginBottom: 4,
+              }}
+            >
+              {kelasInfo.namaKelas}
 
-                        </div>
-                        <div
-                            style={{
-                                color: "rgba(255, 255, 255, 0.8)",
-                                fontSize: "14px",
-                                fontWeight: 500,
-                            }}
-                        >
-                            {kelasInfo.waliKelas}
-                        </div>
-                    </div>
+            </div>
+            <div
+              style={{
+                color: "rgba(255, 255, 255, 0.8)",
+                fontSize: "14px",
+                fontWeight: 500,
+              }}
+            >
+              {kelasInfo.waliKelas}
+            </div>
+          </div>
                 </div>
 
                 {/* Jadwal sebagai Gambar */}
@@ -120,7 +120,7 @@ export default function JadwalSiswa({
                     </div>
 
                     <div style={{ padding: 16 }}>
-                        <div
+                         <div
                             style={{
                                 width: "100%",
                                 overflowX: "auto",
@@ -140,7 +140,7 @@ export default function JadwalSiswa({
                                     maxWidth: 1200, // biar tetap enak di desktop
                                     margin: "0 auto",
                                 }}
-                            />
+                            /> 
                         </div>
 
                         {/* tombol opsional: buka gambar full */}

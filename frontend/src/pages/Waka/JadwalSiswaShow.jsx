@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import './JadwalSiswaShow.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import {
@@ -16,38 +16,73 @@ import {
 
 function JadwalSiswaShow() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [jadwal, setJadwal] = useState(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`jadwal-siswa-${id}`);
-
-    if (saved) {
-      setJadwal(JSON.parse(saved));
-    } else {
-      setJadwal({
-        id,
-        kompetensi_keahlian: 'Belum diisi',
-        wali_kelas: '-',
-        kelas: '-',
-        gambar_jadwal: null
-      });
-    }
+    fetchJadwalSiswa();
   }, [id]);
+
+  const fetchJadwalSiswa = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/jadwal-siswa/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setJadwal(data);
+      } else {
+        console.error('Gagal memuat data jadwal siswa');
+        alert('Gagal memuat data jadwal siswa');
+        navigate('/waka/jadwal-siswa');
+      }
+    } catch (error) {
+      console.error('Error fetching jadwal siswa:', error);
+      alert('Terjadi kesalahan saat memuat data');
+      navigate('/waka/jadwal-siswa');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeleteImage = async () => {
     if (!window.confirm('Yakin ingin menghapus jadwal ini?')) return;
 
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    setDeleteLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/jadwal-siswa/${id}/delete-image`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-    const updated = { ...jadwal, gambar_jadwal: null };
-    setJadwal(updated);
-    localStorage.setItem(`jadwal-siswa-${id}`, JSON.stringify(updated));
-
-    setLoading(false);
+      if (response.ok) {
+        alert('Jadwal berhasil dihapus');
+        setJadwal(prev => ({
+          ...prev,
+          gambar_jadwal: null
+        }));
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Gagal menghapus jadwal');
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Terjadi kesalahan saat menghapus jadwal');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -56,13 +91,26 @@ function JadwalSiswaShow() {
     return () => document.removeEventListener('keydown', esc);
   }, []);
 
-  if (!jadwal) {
+  if (loading) {
     return (
       <div className="jadwal-siswa-show-loading-screen">
         <FaSpinner /> Loading...
       </div>
     );
   }
+
+  if (!jadwal) {
+    return (
+      <div className="jadwal-siswa-show-loading-screen">
+        <p>Data tidak ditemukan</p>
+        <Link to="/waka/jadwal-siswa">Kembali</Link>
+      </div>
+    );
+  }
+
+  const imageUrl = jadwal.gambar_jadwal
+    ? `http://localhost:5000${jadwal.gambar_jadwal}`
+    : null;
 
   return (
     <>
@@ -121,26 +169,26 @@ function JadwalSiswaShow() {
             </div>
 
             <div className="jadwal-siswa-show-card-body">
-              {jadwal.gambar_jadwal ? (
+              {imageUrl ? (
                 <>
                   <div
                     className="jadwal-siswa-show-image-wrapper"
                     onClick={() => setShowFullscreen(true)}
                   >
-                    <img src={jadwal.gambar_jadwal} alt="Jadwal" />
+                    <img src={imageUrl} alt="Jadwal" />
                   </div>
 
                   <div className="jadwal-siswa-show-action">
                     <button
                       onClick={handleDeleteImage}
-                      disabled={loading}
+                      disabled={deleteLoading}
                       className="jadwal-siswa-show-btn-delete"
                     >
-                      <FaTrash /> Hapus
+                      <FaTrash /> {deleteLoading ? 'Menghapus...' : 'Hapus'}
                     </button>
 
                     <a
-                      href={jadwal.gambar_jadwal}
+                      href={imageUrl}
                       download
                       className="jadwal-siswa-show-btn-download"
                     >
@@ -159,7 +207,7 @@ function JadwalSiswaShow() {
           </div>
 
           {/* FULLSCREEN */}
-          {showFullscreen && (
+          {showFullscreen && imageUrl && (
             <div
               className="jadwal-siswa-show-fullscreen"
               onClick={() => setShowFullscreen(false)}
@@ -168,7 +216,7 @@ function JadwalSiswaShow() {
                 <FaTimes />
               </button>
               <img
-                src={jadwal.gambar_jadwal}
+                src={imageUrl}
                 alt="Fullscreen"
                 onClick={(e) => e.stopPropagation()}
               />

@@ -260,7 +260,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 16.5px;
+  font-size: 16px;
   color: black;
 }
 
@@ -269,15 +269,26 @@
 }
 
 .presensi-table th {
-  padding: 18px 15px;
-  text-align: left;
+  padding: 18px 10px;
+  text-align: center;
   font-weight: 600;
   color: #000000;
   border-bottom: 3px solid #000000;
+  white-space: nowrap;
 }
 
 .presensi-table th:first-child {
   border-top-left-radius: 12px;
+  text-align: center;
+}
+
+.presensi-table th:nth-child(2) {
+  text-align: center;
+}
+
+.presensi-table th:nth-child(3) {
+  text-align: left;
+  padding-left: 15px;
 }
 
 .presensi-table th:last-child {
@@ -285,8 +296,23 @@
 }
 
 .presensi-table td {
-  padding: 18px 15px;
+  padding: 18px 10px;
   border-bottom: 1px solid #eee;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.presensi-table td:first-child {
+  text-align: center;
+}
+
+.presensi-table td:nth-child(2) {
+  text-align: center;
+}
+
+.presensi-table td:nth-child(3) {
+  text-align: left;
+  padding-left: 15px;
 }
 
 .presensi-table tr:hover {
@@ -294,7 +320,8 @@
 }
 
 .radio-cell {
-  text-align: center;
+  text-align: center !important;
+  padding: 18px 10px !important;
 }
 
 .presensi-table input[type="radio"] {
@@ -302,6 +329,8 @@
   height: 20px;
   accent-color: #1976d2;
   cursor: pointer;
+  margin: 0 auto;
+  display: block;
 }
 
 /* ============ Tabel View Kehadiran ============ */
@@ -319,6 +348,7 @@
   border-spacing: 0;
   font-size: 17px;
   color: black;
+  table-layout: fixed;
 }
 
 .kehadiran-view-table thead tr {
@@ -327,23 +357,76 @@
 
 .kehadiran-view-table th {
   padding: 18px 15px;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   color: #1976d2;
   border-bottom: 3px solid #1976d2;
 }
 
+/* ✅ PERBAIKAN: Kolom No, NISN, Nama Siswa rata kiri */
 .kehadiran-view-table th:first-child {
   border-top-left-radius: 12px;
+  width: 50px;
+  text-align: center;
 }
 
-.kehadiran-view-table th:last-child {
+.kehadiran-view-table th:nth-child(2) {
+  width: 130px;
+  text-align: center;
+}
+
+.kehadiran-view-table th:nth-child(3) {
+  width: 200px;
+  text-align: left;
+}
+
+.kehadiran-view-table th:nth-child(4) {
+  width: 140px;
+  text-align: center;
+}
+
+.kehadiran-view-table th:nth-child(5) {
+  width: 180px;
+  text-align: center;
+}
+
+.kehadiran-view-table th:nth-child(6) {
+  width: auto;
+  text-align: left;
+}
+
+.kehadiran-view-table th:nth-child(7) {
   border-top-right-radius: 12px;
+  width: 70px;
+  text-align: center;
 }
 
 .kehadiran-view-table td {
   padding: 18px 15px;
   border-bottom: 1px solid #eee;
+  vertical-align: middle;
+  text-align: center;
+}
+
+/* ✅ PERBAIKAN: TD juga rata sesuai header */
+.kehadiran-view-table td:first-child {
+  text-align: center;
+}
+
+.kehadiran-view-table td:nth-child(2) {
+  text-align: center;
+}
+
+.kehadiran-view-table td:nth-child(3) {
+  text-align: left;
+}
+
+.kehadiran-view-table td:nth-child(6) {
+  text-align: left;
+}
+
+.kehadiran-view-table td:nth-child(7) {
+  text-align: center;
 }
 
 .kehadiran-view-table tr:hover {
@@ -375,7 +458,7 @@
   color: #333;
 }
 
-.status-badge.alpha {
+.status-badge.alfa {
   background: #D90000;
   color: white;
 }
@@ -398,6 +481,13 @@
   flex-wrap: wrap;
 }
 
+/* ✅ WRAPPER BARU untuk kolom keterangan */
+.keterangan-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .btn-lihat-dokumen {
   background: #2196F3;
   color: white;
@@ -411,6 +501,7 @@
   align-items: center;
   gap: 6px;
   transition: all 0.3s ease;
+  width: fit-content;
 }
 
 .btn-lihat-dokumen:hover {
@@ -434,6 +525,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  width: fit-content;
 }
 
 .no-dokumen-label svg {
@@ -472,6 +564,63 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* ✅ Keterangan Auto (Hadir tepat waktu) */
+.keterangan-auto {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+}
+
+.keterangan-auto svg {
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+/* ✅ Keterangan Alfa (Tidak hadir tanpa keterangan) */
+.keterangan-alfa {
+  background: #ffebee;
+  color: #c62828;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+}
+
+.keterangan-alfa svg {
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+/* ✅ Keterangan Terlambat */
+.keterangan-terlambat {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+}
+
+.keterangan-terlambat svg {
+  stroke: currentColor;
+  flex-shrink: 0;
 }
 
 .keterangan-jam {
@@ -607,7 +756,7 @@
   margin-bottom: 8px;
   font-weight: 600;
   color: #333;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 /* INPUT SERAGAM */
@@ -689,6 +838,61 @@
   margin-top: 25px;
 }
 
+/* ✅ FILE UPLOAD STYLING */
+.file-upload-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-upload-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 2px dashed #1976d2;
+  border-radius: 12px;
+  background: #f0f7ff;
+  color: #1976d2;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.file-upload-label:hover {
+  background: #e3f2fd;
+  border-color: #1565c0;
+}
+
+.file-upload-label svg {
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+.btn-remove-file {
+  background: #f44336;
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.btn-remove-file:hover {
+  background: #d32f2f;
+  transform: scale(1.1);
+}
+
 .btn-batal-keterangan,
 .btn-simpan-keterangan {
   flex: 1;
@@ -722,175 +926,196 @@
   box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
 }
 
-/* ============ MODAL DOKUMEN ============ */
-.modal-dokumen {
-  background: white;
-  border-radius: 20px;
-  width: 550px;
-  max-width: 90%;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
+/* ============ MODAL LIHAT DOKUMEN - STYLE WALI KELAS ============ */
+.preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
 }
 
-.modal-dokumen-header {
+.preview-modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 900px;
+  max-width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.preview-modal-header {
   background: linear-gradient(135deg, #0D4A8F 40%, #186FC8 100%);
   color: white;
-  padding: 18px 30px;
+  padding: 20px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
 }
 
-.modal-dokumen-header h2 {
-  font-size: 20px;
+.preview-modal-header h3 {
+  font-size: 22px;
   font-weight: 700;
+  margin: 0 0 5px 0;
+}
+
+.preview-modal-header .file-name {
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 400;
   margin: 0;
+  color: white;
+}
+
+.close-preview {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
 }
 
-.dokumen-content {
-  padding: 30px;
-  background: white;
+.close-preview:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
 }
 
-.dokumen-info {
+.preview-info-card {
   background: #f8f9fa;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.info-row {
-  display: flex;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
+  padding: 20px 30px;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.info-row:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+.preview-info-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 15px;
 }
 
-.info-label {
-  font-weight: 600;
-  color: #555;
-  min-width: 140px;
-  flex-shrink: 0;
-}
-
-.info-value {
-  color: #333;
-  flex: 1;
-}
-
-.dokumen-file-preview {
-  background: #f0f7ff;
-  border: 2px dashed #1976d2;
-  border-radius: 12px;
-  padding: 20px;
+.preview-info-item {
   display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.file-icon {
-  flex-shrink: 0;
-  color: #1976d2;
-}
-
-.file-icon svg {
-  stroke: currentColor;
-}
-
-.file-info {
-  flex: 1;
-}
-
-.file-name {
-  font-weight: 600;
-  color: #1976d2;
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-
-.file-type {
+.preview-info-label {
   font-size: 13px;
-  color: #666;
-}
-
-.btn-download {
-  background: #1976d2;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
   font-weight: 600;
-  cursor: pointer;
+  color: #666;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.3s ease;
-  white-space: nowrap;
 }
 
-.btn-download:hover {
-  background: #1565c0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+.preview-info-label svg {
+  width: 16px;
+  height: 16px;
 }
 
-.btn-download svg {
-  stroke: currentColor;
-  flex-shrink: 0;
+.preview-info-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
-.dokumen-note {
-  background: #fff3cd;
-  border-left: 4px solid #ffc107;
+.preview-status-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-block;
+  color: white;
+}
+
+.preview-info-keterangan {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 5px;
+}
+
+.preview-keterangan-text {
+  background: white;
   padding: 12px 16px;
   border-radius: 8px;
-  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
   font-size: 14px;
-  color: #856404;
+  line-height: 1.5;
+  color: #555;
+  font-weight: normal;
 }
 
-.dokumen-note strong {
-  font-weight: 700;
+.preview-modal-body {
+  padding: 30px;
+  background: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
-.btn-tutup-dokumen {
-  width: 100%;
-  background: #1976d2;
+.image-preview {
+  max-width: 100%;
+  max-height: 600px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.preview-modal-footer {
+  padding: 20px 30px;
+  background: white;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.preview-modal-footer .btn-download {
+  padding: 12px 24px;
+  font-size: 15px;
+  background: #28a745;
   color: white;
   border: none;
-  padding: 14px;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   transition: all 0.3s ease;
 }
 
-.btn-tutup-dokumen:hover {
-  background: #1565c0;
+.preview-modal-footer .btn-download:hover {
+  background: #218838;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
 }
 
 /* Responsive untuk modal */
 @media (max-width: 576px) {
-  .modal-keterangan,
-  .modal-dokumen {
+  .modal-keterangan {
     width: 95%;
   }
   
-  .keterangan-form,
-  .dokumen-content {
+  .keterangan-form {
     padding: 20px 25px;
   }
   
@@ -902,18 +1127,18 @@
   .btn-simpan-keterangan {
     width: 100%;
   }
-  
-  .dokumen-file-preview {
-    flex-direction: column;
-    text-align: center;
+
+  .preview-info-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
   }
-  
-  .info-row {
-    flex-direction: column;
-    gap: 5px;
+
+  .preview-modal-content {
+    width: 98%;
+    max-height: 95vh;
   }
-  
-  .info-label {
-    min-width: auto;
+
+  .preview-modal-body {
+    padding: 20px;
   }
 }

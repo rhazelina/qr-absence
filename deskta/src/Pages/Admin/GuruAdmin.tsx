@@ -1,30 +1,21 @@
-﻿// FILE: GuruAdmin.tsx - Halaman Admin untuk mengelola data guru
+// FILE: GuruAdmin.tsx - Halaman Admin untuk mengelola data guru
 // ✅ PERBAIKAN: Layout lebih pendek dan kompak
 import { useState, useRef, useEffect } from 'react';
 import AdminLayout from '../../component/Admin/AdminLayout';
 import { Button } from '../../component/Shared/Button';
 import { Select } from '../../component/Shared/Select';
-import { Table } from '../../component/Shared/Table';
 import { 
+  MoreVertical,
   Trash2,
   Eye,
+  Grid,
   FileDown,
   Upload,
   FileText,
   Download,
   Search,
   X,
-  Loader2,
-  Edit2,
-  MoreVertical
 } from 'lucide-react';
-
-import { teacherService } from '../../services/teacher';
-import type { Teacher } from '../../services/teacher';
-import { classService } from '../../services/class';
-import type { ClassRoom } from '../../services/class';
-import { subjectService } from '../../services/subject';
-import type { Subject } from '../../services/subject';
 
 /* ============ IMPORT GAMBAR AWAN ============ */
 import AWANKIRI from '../../assets/Icon/AWANKIRI.png';
@@ -45,7 +36,6 @@ interface Guru {
   noTelp?: string;
   waliKelasDari?: string;
   jenisKelamin?: string;
-  email?: string;
 }
 
 interface GuruAdminProps {
@@ -56,8 +46,71 @@ interface GuruAdminProps {
   onNavigateToDetail?: (guruId: string) => void;
 }
 
+/* ===================== DUMMY DATA ===================== */
+const initialGuruData: Guru[] = [
+  {
+    id: '1',
+    kodeGuru: '0918415784',
+    namaGuru: 'TRIANA ARDIANI, S.Pd',
+    keterangan: '12 Rekayasa Perangkat Lunak 2',
+    role: 'Wali Kelas',
+    noTelp: '082183748591',
+    waliKelasDari: '12 Rekayasa Perangkat Lunak 2',
+    jenisKelamin: 'Perempuan',
+  },
+  {
+    id: '2',
+    kodeGuru: '0918417765',
+    namaGuru: 'SOLIKAH,S.Pd',
+    keterangan: 'Matematika',
+    role: 'Guru',
+    noTelp: '081234567890',
+    waliKelasDari: '',
+    jenisKelamin: 'Laki-Laki',
+  },
+  {
+    id: '3',
+    kodeGuru: '0918415785',
+    namaGuru: 'WIWIN WINANGSIH, S.Pd,M.Pd',
+    keterangan: 'Matematika',
+    role: 'Guru',
+    noTelp: '082345678901',
+    waliKelasDari: '11 Teknik Komputer dan Jaringan 1',
+    jenisKelamin: 'Perempuan',
+  },
+  {
+    id: '4',
+    kodeGuru: '0918775542',
+    namaGuru: 'FAJAR NINGTYAS, S.Pd',
+    keterangan: 'Bahasa Inggris',
+    role: 'Guru',
+    noTelp: '083456789012',
+    waliKelasDari: '',
+    jenisKelamin: 'Perempuan',
+  },
+  {
+    id: '5',
+    kodeGuru: '0919765542',
+    namaGuru: 'Hj. TITIK MARIYATI, S.Pd',
+    keterangan: 'Bahasa Indonesia',
+    role: 'Guru',
+    noTelp: '083456766543',
+    waliKelasDari: '',
+    jenisKelamin: 'Perempuan',
+  },
+];
+
 /* ===================== KELAS OPTIONS ===================== */
-// const kelasOptions = [ ... ]; // Deleted legacy dummy data
+const kelasOptions = [
+  '10 Rekayasa Perangkat Lunak 1',
+  '10 Rekayasa Perangkat Lunak 2',
+  '10 Rekayasa Perangkat Lunak 3',
+  '11 Rekayasa Perangkat Lunak 1',
+  '11 Teknik Komputer dan Jaringan 1',
+  '12 Teknik Komputer dan Jaringan 1',
+  '12 Rekayasa Perangkat Lunak 1',
+  '12 Rekayasa Perangkat Lunak 2',
+];
 
 /* ===================== MAIN COMPONENT ===================== */
 export default function GuruAdmin({
@@ -73,14 +126,10 @@ export default function GuruAdmin({
   const [selectedKeterangan, setSelectedKeterangan] = useState('');
   const [isEksporDropdownOpen, setIsEksporDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [guruList, setGuruList] = useState<Guru[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [classes, setClasses] = useState<ClassRoom[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [guruList, setGuruList] = useState<Guru[]>(initialGuruData);
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateWarningMessage, setDuplicateWarningMessage] = useState('');
-  const [editingGuruId, setEditingGuruId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     namaGuru: '',
@@ -90,8 +139,6 @@ export default function GuruAdmin({
     keterangan: '',
     noTelp: '',
     waliKelasDari: '',
-    email: '',
-    password: '',
   });
   
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
@@ -118,13 +165,22 @@ export default function GuruAdmin({
   };
 
   const roleOptions = [
-    { label: 'Guru', value: 'guru' },
-    { label: 'Wali Kelas', value: 'wakel' },
-    { label: 'Staff', value: 'waka' },
+    { label: 'Guru', value: 'Guru' },
+    { label: 'Wali Kelas', value: 'Wali Kelas' },
+    { label: 'Staff', value: 'Staff' },
   ];
 
   // ==================== OPTIONS UNTUK FORM MODAL ====================
   
+  const mataPelajaranOptions = [
+    { label: 'Matematika', value: 'Matematika' },
+    { label: 'Bahasa Indonesia', value: 'Bahasa Indonesia' },
+    { label: 'Bahasa Inggris', value: 'Bahasa Inggris' },
+    { label: 'Seni Budaya', value: 'Seni Buddaya' },
+    { label: 'Sejarah', value: 'Sejarah' },
+    { label: 'Bahasa Jawa', value: 'Bahasa Jawa' },
+  ];
+
   const bagianStaffOptions = [
     { label: 'Tata Usaha', value: 'Tata Usaha' },
     { label: 'Administrasi', value: 'Administrasi' },
@@ -133,14 +189,12 @@ export default function GuruAdmin({
     { label: 'Keuangan', value: 'Keuangan' },
   ];
 
-  const mataPelajaranOptions = subjects.map(s => ({ value: s.name, label: s.name }));
-
   const getAvailableKelasOptions = () => {
     const occupiedKelas = guruList
-      .filter(guru => (guru.role === 'wakel' || guru.role === 'Wali Kelas') && guru.waliKelasDari)
+      .filter(guru => guru.role === 'Wali Kelas' && guru.waliKelasDari)
       .map(guru => guru.waliKelasDari);
     
-    return classes.map(c => c.name || `${c.grade} ${c.label}`).filter(name => !occupiedKelas.includes(name || ''));
+    return kelasOptions.filter(kelas => !occupiedKelas.includes(kelas));
   };
 
   // ==================== LISTEN TO UPDATES FROM DETAIL PAGE ====================
@@ -181,39 +235,6 @@ export default function GuruAdmin({
     window.addEventListener('storage', checkLocalStorageUpdate);
     const interval = setInterval(checkLocalStorageUpdate, 500);
     
-    // FETCH REAL DATA
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [teachersData, classesData, subjectsData] = await Promise.all([
-          teacherService.getTeachers(),
-          classService.getClasses(),
-          subjectService.getSubjects(),
-        ]);
-
-        const mappedTeachers: Guru[] = teachersData.map((t: Teacher) => ({
-          id: String(t.id),
-          kodeGuru: t.nip || t.code || '',
-          namaGuru: t.name,
-          role: (t.role || '').toLowerCase(),
-          keterangan: t.subject || (t.homeroom_class ? t.homeroom_class.name : ''),
-          noTelp: t.phone || '',
-          waliKelasDari: t.homeroom_class ? t.homeroom_class.name : '',
-          email: t.email || '',
-        }));
-
-        setGuruList(mappedTeachers);
-        setClasses(classesData);
-        setSubjects(subjectsData);
-      } catch (error) {
-        console.error('Error fetching guru data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-    
     return () => {
       window.removeEventListener('guruUpdated', handleGuruUpdate as EventListener);
       window.removeEventListener('storage', checkLocalStorageUpdate);
@@ -238,7 +259,7 @@ export default function GuruAdmin({
     if (field === 'kodeGuru') {
       if (!value.trim()) {
         newErrors.kodeGuru = 'Kode guru harus diisi';
-      } else if (guruList.some(g => g.kodeGuru === value && g.id !== editingGuruId)) {
+      } else if (guruList.some(g => g.kodeGuru === value)) {
         newErrors.kodeGuru = 'Kode guru sudah terdaftar';
       } else {
         delete newErrors.kodeGuru;
@@ -258,14 +279,14 @@ export default function GuruAdmin({
     }
 
     if (field === 'waliKelasDari') {
-      if (formData.role === 'wakel' && value) {
+      if (formData.role === 'Wali Kelas' && value) {
         const isKelasOccupied = guruList.some(
-          guru => guru.role === 'wakel' && guru.waliKelasDari === value
+          guru => guru.role === 'Wali Kelas' && guru.waliKelasDari === value
         );
         
         if (isKelasOccupied) {
           const waliKelasExist = guruList.find(
-            guru => guru.role === 'wakel' && guru.waliKelasDari === value
+            guru => guru.role === 'Wali Kelas' && guru.waliKelasDari === value
           );
           newErrors.waliKelasDari = `Kelas "${value}" sudah memiliki wali kelas (${waliKelasExist?.namaGuru})`;
         } else {
@@ -288,7 +309,7 @@ export default function GuruAdmin({
     
     if (!formData.kodeGuru.trim()) {
       errors.kodeGuru = 'Kode guru harus diisi';
-    } else if (guruList.some(g => g.kodeGuru === formData.kodeGuru && g.id !== editingGuruId)) {
+    } else if (guruList.some(g => g.kodeGuru === formData.kodeGuru)) {
       errors.kodeGuru = 'Kode guru sudah terdaftar';
     }
 
@@ -296,28 +317,28 @@ export default function GuruAdmin({
       errors.role = 'Peran harus dipilih';
     }
     
-    if (formData.role === 'guru' && !formData.keterangan) {
+    if (formData.role === 'Guru' && !formData.keterangan) {
       errors.keterangan = 'Mata pelajaran harus dipilih';
     }
     
-    if (formData.role === 'wakel') {
+    if (formData.role === 'Wali Kelas') {
       if (!formData.waliKelasDari) {
         errors.waliKelasDari = 'Wali kelas dari harus dipilih';
       } else {
         const isKelasOccupied = guruList.some(
-          guru => guru.role === 'wakel' && guru.waliKelasDari === formData.waliKelasDari
+          guru => guru.role === 'Wali Kelas' && guru.waliKelasDari === formData.waliKelasDari
         );
         
         if (isKelasOccupied) {
           const waliKelasExist = guruList.find(
-            guru => guru.role === 'wakel' && guru.waliKelasDari === formData.waliKelasDari
+            guru => guru.role === 'Wali Kelas' && guru.waliKelasDari === formData.waliKelasDari
           );
           errors.waliKelasDari = `Kelas "${formData.waliKelasDari}" sudah memiliki wali kelas (${waliKelasExist?.namaGuru})`;
         }
       }
     }
     
-    if (formData.role === 'waka' && !formData.keterangan) {
+    if (formData.role === 'Staff' && !formData.keterangan) {
       errors.keterangan = 'Bagian staff harus dipilih';
     }
 
@@ -367,8 +388,6 @@ export default function GuruAdmin({
       keterangan: '',
       noTelp: '',
       waliKelasDari: '',
-      email: '',
-      password: '',
     });
     setFormErrors({});
     setShowDuplicateWarning(false);
@@ -376,26 +395,8 @@ export default function GuruAdmin({
     setIsModalOpen(true);
   };
 
-  const handleEdit = (guru: Guru) => {
-    setEditingGuruId(guru.id);
-    setFormData({
-      namaGuru: guru.namaGuru,
-      kodeGuru: guru.kodeGuru,
-      jenisKelamin: guru.jenisKelamin || 'Laki-Laki',
-      role: guru.role,
-      keterangan: guru.keterangan || '',
-      noTelp: guru.noTelp || '',
-      waliKelasDari: guru.waliKelasDari || '',
-      email: guru.email || '',
-      password: '',
-    });
-    setIsModalOpen(true);
-    setOpenActionId(null);
-  };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingGuruId(null);
     setFormData({
       namaGuru: '',
       kodeGuru: '',
@@ -404,112 +405,61 @@ export default function GuruAdmin({
       keterangan: '',
       noTelp: '',
       waliKelasDari: '',
-      email: '',
-      password: '',
     });
     setFormErrors({});
     setShowDuplicateWarning(false);
     setDuplicateWarningMessage('');
   };
 
-  const handleSubmitForm = async (e: React.FormEvent) => {
+  const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
       return;
     }
 
-    if (formData.role === 'wakel' && !editingGuruId) {
+    if (formData.role === 'Wali Kelas') {
       const isKelasOccupied = guruList.some(
-        guru => guru.role === 'wakel' && guru.waliKelasDari === formData.waliKelasDari
+        guru => guru.role === 'Wali Kelas' && guru.waliKelasDari === formData.waliKelasDari
       );
       
       if (isKelasOccupied) {
         const waliKelasExist = guruList.find(
-          guru => guru.role === 'wakel' && guru.waliKelasDari === formData.waliKelasDari
+          guru => guru.role === 'Wali Kelas' && guru.waliKelasDari === formData.waliKelasDari
         );
         setDuplicateWarningMessage(`Kelas "${formData.waliKelasDari}" sudah memiliki wali kelas (${waliKelasExist?.namaGuru}).`);
         setShowDuplicateWarning(true);
         return;
       }
     }
+
+    let keteranganFinal = formData.keterangan;
+    if (formData.role === 'Wali Kelas') {
+      keteranganFinal = formData.waliKelasDari;
+    }
     
-    const payload = {
-      name: formData.namaGuru.trim(),
-      username: formData.kodeGuru.trim(), 
-      email: formData.email.trim() || undefined,
-      password: formData.password || undefined,
-      nip: formData.kodeGuru.trim(),
-      phone: formData.noTelp.trim() || undefined,
+    const newGuru: Guru = {
+      id: String(Math.max(0, ...guruList.map(g => parseInt(g.id) || 0)) + 1),
+      kodeGuru: formData.kodeGuru.trim(),
+      namaGuru: formData.namaGuru.trim(),
+      keterangan: keteranganFinal,
       role: formData.role,
-      subject: (formData.role === 'guru' ? formData.keterangan : undefined),
-      jabatan: (formData.role === 'waka' ? 'Staff' : (formData.role === 'wakel' ? 'Wali Kelas' : 'Guru')),
-      bidang: (formData.role === 'waka' ? formData.keterangan : (formData.role === 'wakel' ? formData.waliKelasDari : undefined)),
-      homeroom_class_id: (formData.role === 'wakel' ? classes.find(c => (c.name || `${c.grade} ${c.label}`) === formData.waliKelasDari)?.id : undefined),
-      gender: formData.jenisKelamin === 'Laki-Laki' ? 'L' : 'P',
+      noTelp: formData.noTelp.trim(),
+      waliKelasDari: formData.waliKelasDari,
+      jenisKelamin: formData.jenisKelamin,
     };
 
-    try {
-      setIsLoading(true);
-      if (editingGuruId) {
-        const res = await teacherService.updateTeacher(editingGuruId, payload);
-        
-        const updatedGuru: Guru = {
-          id: String(res.id),
-          kodeGuru: res.nip || '',
-          namaGuru: res.name,
-          keterangan: res.subject || (res.homeroom_class ? res.homeroom_class.name : (res.bidang || '')),
-          role: res.role || formData.role,
-          noTelp: res.phone || '',
-          waliKelasDari: res.homeroom_class ? res.homeroom_class.name : '',
-          jenisKelamin: formData.jenisKelamin,
-          email: res.email || '',
-        };
-
-        setGuruList(prev => prev.map(g => g.id === editingGuruId ? updatedGuru : g));
-        alert(`✓ Data guru "${updatedGuru.namaGuru}" berhasil diperbarui!`);
-      } else {
-        const res = await teacherService.createTeacher(payload);
-        
-        const newGuru: Guru = {
-          id: String(res.id),
-          kodeGuru: res.nip || '',
-          namaGuru: res.name,
-          keterangan: res.subject || (res.homeroom_class ? res.homeroom_class.name : (res.bidang || '')),
-          role: res.role || formData.role,
-          noTelp: res.phone || '',
-          waliKelasDari: res.homeroom_class ? res.homeroom_class.name : '',
-          jenisKelamin: formData.jenisKelamin,
-          email: res.email || '',
-        };
-
-        setGuruList(prev => [newGuru, ...prev]);
-        alert(`✓ Guru "${newGuru.namaGuru}" berhasil ditambahkan!`);
-      }
-      handleCloseModal();
-    } catch (error: any) {
-      console.error('Error saving teacher:', error);
-      alert('Gagal menyimpan data guru: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setIsLoading(false);
-    }
+    setGuruList([...guruList, newGuru]);
+    alert(`✓ Guru "${newGuru.namaGuru}" berhasil ditambahkan!`);
+    handleCloseModal();
   };
 
-  const handleDeleteGuru = async (id: string) => {
+  const handleDeleteGuru = (id: string) => {
     const guru = guruList.find(g => g.id === id);
     if (confirm(`Apakah Anda yakin ingin menghapus data guru "${guru?.namaGuru}"?`)) {
-      try {
-        setIsLoading(true);
-        await teacherService.deleteTeacher(id);
-        setGuruList(prevList => prevList.filter(guru => guru.id !== id));
-        alert('✓ Data guru berhasil dihapus!');
-        setOpenActionId(null);
-      } catch (error: any) {
-        console.error('Error deleting teacher:', error);
-        alert('Gagal menghapus guru: ' + (error.response?.data?.message || error.message));
-      } finally {
-        setIsLoading(false);
-      }
+      setGuruList(prevList => prevList.filter(guru => guru.id !== id));
+      alert('✓ Data guru berhasil dihapus!');
+      setOpenActionId(null);
     }
   };
 
@@ -664,142 +614,6 @@ export default function GuruAdmin({
     border: 'none',
   } as const;
 
-  /* ===================== TABLE CONFIGURATION ===================== */
-  const columns = [
-    { key: 'kodeGuru', label: 'Kode Guru' },
-    { key: 'namaGuru', label: 'Nama Guru' },
-    { key: 'role', label: 'Peran' },
-    { key: 'keterangan', label: 'Keterangan' },
-    {
-      key: 'aksi',
-      label: 'Aksi',
-      render: (_: any, row: Guru) => (
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setOpenActionId(openActionId === row.id ? null : row.id)}
-            style={{ 
-              border: 'none', 
-              background: 'transparent', 
-              cursor: 'pointer' 
-            }}
-          >
-            <MoreVertical size={22} strokeWidth={1.5} />
-          </button>
-
-          {openActionId === row.id && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: 6,
-                background: '#FFFFFF',
-                borderRadius: 8,
-                boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
-                minWidth: 180,
-                zIndex: 10,
-                overflow: 'hidden',
-                border: '1px solid #E2E8F0',
-              }}
-            >
-              <button
-                onClick={() => handleNavigateToDetail(row.id)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#0F172A',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  borderBottom: '1px solid #F1F5F9',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F0F4FF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0F172A';
-                }}
-              >
-                <Eye size={16} color="#64748B" strokeWidth={2} />
-                Lihat Detail
-              </button>
-
-              <button
-                onClick={() => handleEdit(row)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#0F172A',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  borderBottom: '1px solid #F1F5F9',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F0F4FF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0F172A';
-                }}
-              >
-                <Edit2 size={16} color="#64748B" strokeWidth={2} />
-                Edit Data
-              </button>
-              
-              <button
-                onClick={() => handleDeleteGuru(row.id)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#0F172A',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FEF2F2';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#DC2626';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#0F172A';
-                }}
-              >
-                <Trash2 size={16} color="#64748B" strokeWidth={2} />
-                Hapus
-              </button>
-            </div>
-          )}
-        </div>
-      ),
-    },
-  ];
-
   return (
     <AdminLayout
       pageTitle="Data Guru"
@@ -842,7 +656,7 @@ export default function GuruAdmin({
           background: "rgba(255,255,255,0.85)",
           backdropFilter: "blur(6px)",
           borderRadius: 16,
-          padding: 'clamp(12px, 2vw, 20px)',
+          padding: '16px',
           boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
           border: "1px solid rgba(255,255,255,0.6)",
           display: "flex",
@@ -851,23 +665,14 @@ export default function GuruAdmin({
           position: "relative",
           zIndex: 1,
           minHeight: "70vh",
-          justifyContent: isLoading ? "center" : "flex-start",
-          alignItems: isLoading ? "center" : "stretch",
         }}
       >
-        {isLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, margin: 'auto' }}>
-            <Loader2 className="animate-spin" size={48} color="#2563EB" />
-            <p style={{ fontWeight: 600, color: '#64748B' }}>Memuat data guru...</p>
-          </div>
-        ) : (
-          <>
-        {/* ============ FILTER, SEARCH, & ACTION BUTTONS ============ */}
+        {/* ============ FILTER & ACTION BUTTONS ============ */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '0.8fr 0.8fr 1.8fr auto',
-            gap: '8px',
+            gridTemplateColumns: '200px 200px 1fr auto auto auto auto',
+            gap: '12px',
             alignItems: 'flex-end',
           }}
         >
@@ -901,101 +706,57 @@ export default function GuruAdmin({
             />
           </div>
 
-          {/* Cari Guru */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <label
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#252525',
-                display: 'block',
-                marginBottom: '4px',
-              }}
-            >
-              Cari guru
-            </label>
-            <div
-              style={{
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-                width: '100%',
-              }}
-            >
-              <Search
-                size={16}
-                color="#9CA3AF"
-                style={{
-                  position: 'absolute',
-                  left: '10px',
-                  pointerEvents: 'none',
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Cari guru"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px 8px 32px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  outline: 'none',
-                  transition: 'all 0.2s',
-                  backgroundColor: '#D9D9D9',
-                  height: '36px',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#3B82F6';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#D1D5DB';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-          </div>
+          {/* Empty space */}
+          <div></div>
 
-          {/* Buttons Group */}
-          <div
+          {/* Buttons - auto layout */}
+          <Button
+            label="Tambahkan"
+            onClick={handleTambahGuru}
+            variant="primary"
+          />
+          
+          <button
+            onClick={handleDownloadFormatExcel}
             style={{
-              display: 'flex',
-              gap: '6px',
-              justifyContent: 'flex-end',
-              height: '36px',
+              ...buttonBaseStyle,
+              backgroundColor: '#10B981',
+              color: '#FFFFFF',
+              border: '1px solid #10B981',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10B981';
             }}
           >
-            <Button
-              label="Tambahkan"
-              onClick={handleTambahGuru}
-              variant="primary"
-            />
-            
-            <button
-              onClick={handleDownloadFormatExcel}
-              style={{
-                ...buttonBaseStyle,
-                backgroundColor: '#10B981',
-                color: '#FFFFFF',
-                border: '1px solid #10B981',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10B981';
-              }}
-            >
-              <Download size={14} color="#FFFFFF" />
-              Format Excel
-            </button>
+            <Download size={14} color="#FFFFFF" />
+            Format Excel
+          </button>
 
+          <button
+            onClick={handleImport}
+            style={{
+              ...buttonBaseStyle,
+              backgroundColor: '#0B1221',
+              color: '#FFFFFF',
+              border: '1px solid #0B1221',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1a2332';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0B1221';
+            }}
+          >
+            <Upload size={14} color="#FFFFFF" />
+            Impor
+          </button>
+
+          <div style={{ position: 'relative' }}>
             <button
-              onClick={handleImport}
+              onClick={() => setIsEksporDropdownOpen(!isEksporDropdownOpen)}
               style={{
                 ...buttonBaseStyle,
                 backgroundColor: '#0B1221',
@@ -1009,99 +770,137 @@ export default function GuruAdmin({
                 (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0B1221';
               }}
             >
-              <Upload size={14} color="#FFFFFF" />
-              Impor
+              <FileDown size={14} color="#FFFFFF" />
+              Ekspor
             </button>
 
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setIsEksporDropdownOpen(!isEksporDropdownOpen)}
+            {isEksporDropdownOpen && (
+              <div
                 style={{
-                  ...buttonBaseStyle,
-                  backgroundColor: '#0B1221',
-                  color: '#FFFFFF',
-                  border: '1px solid #0B1221',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1a2332';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0B1221';
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: 4,
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 8,
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                  overflow: 'hidden',
+                  zIndex: 20,
+                  minWidth: 120,
+                  border: '1px solid #E5E7EB',
                 }}
               >
-                <FileDown size={14} color="#FFFFFF" />
-                Ekspor
-              </button>
-
-              {isEksporDropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: 4,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 8,
-                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-                    overflow: 'hidden',
-                    zIndex: 20,
-                    minWidth: 120,
-                    border: '1px solid #E5E7EB',
+                <button
+                  onClick={() => {
+                    setIsEksporDropdownOpen(false);
+                    handleExportPDF();
                   }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    color: '#111827',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
                 >
-                  <button
-                    onClick={() => {
-                      setIsEksporDropdownOpen(false);
-                      handleExportPDF();
-                    }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '8px 12px',
-                      border: 'none',
-                      background: 'white',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      color: '#111827',
-                      textAlign: 'left',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-                  >
-                    <FileText size={14} />
-                    PDF
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      setIsEksporDropdownOpen(false);
-                      handleOpenInExcel();
-                    }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '8px 12px',
-                      border: 'none',
-                      background: 'white',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      color: '#111827',
-                      textAlign: 'left',
-                      borderTop: '1px solid #F1F5F9',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-                  >
-                    <Download size={14} />
-                    Excel
-                  </button>
-                </div>
-              )}
-            </div>
+                  <FileText size={14} />
+                  PDF
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setIsEksporDropdownOpen(false);
+                    handleOpenInExcel();
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    color: '#111827',
+                    textAlign: 'left',
+                    borderTop: '1px solid #F1F5F9',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
+                >
+                  <Download size={14} />
+                  Excel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ============ SEARCH INPUT ============ */}
+        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '400px' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#252525',
+              display: 'block',
+              marginBottom: '4px',
+            }}
+          >
+            Cari guru
+          </label>
+          <div
+            style={{
+              position: 'relative',
+              display: 'inline-flex',
+              alignItems: 'center',
+              width: '100%',
+            }}
+          >
+            <Search
+              size={16}
+              color="#9CA3AF"
+              style={{
+                position: 'absolute',
+                left: '10px',
+                pointerEvents: 'none',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Cari guru"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 10px 6px 32px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '13px',
+                outline: 'none',
+                transition: 'all 0.2s',
+                backgroundColor: '#D9D9D9',
+                height: '32px',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#3B82F6';
+                e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#D1D5DB';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
           </div>
         </div>
 
@@ -1111,10 +910,215 @@ export default function GuruAdmin({
           overflow: 'hidden', 
           boxShadow: '0 0 0 1px #E5E7EB'
         }}>
-          <Table columns={columns} data={filteredData} keyField="id" />
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            backgroundColor: '#FFFFFF',
+          }}>
+            <thead>
+              <tr style={{
+                backgroundColor: '#F3F4F6',
+                borderBottom: '1px solid #E5E7EB',
+              }}>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>No</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Kode Guru</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Nama Guru</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Peran</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Keterangan</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                }}>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((guru, index) => (
+                <tr key={guru.id} style={{
+                  borderBottom: '1px solid #E5E7EB',
+                  backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#F0F4FF';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
+                }}>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{index + 1}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{guru.kodeGuru}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{guru.namaGuru}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{guru.role}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    borderRight: '1px solid #E5E7EB',
+                  }}>{guru.keterangan}</td>
+                  <td style={{
+                    padding: '12px 16px',
+                    fontSize: '13px',
+                    color: '#374151',
+                    textAlign: 'center',
+                    position: 'relative',
+                  }}>
+                    <button
+                      onClick={() => setOpenActionId(openActionId === guru.id ? null : guru.id)}
+                      style={{ 
+                        border: 'none', 
+                        background: 'transparent', 
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <MoreVertical size={20} strokeWidth={1.5} />
+                    </button>
+
+                    {openActionId === guru.id && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          marginTop: 6,
+                          background: '#FFFFFF',
+                          borderRadius: 8,
+                          boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
+                          minWidth: 180,
+                          zIndex: 10,
+                          overflow: 'hidden',
+                          border: '1px solid #E2E8F0',
+                        }}
+                      >
+                        <button
+                          onClick={() => handleNavigateToDetail(guru.id)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: 'none',
+                            background: 'none',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            color: '#0F172A',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease',
+                            borderBottom: '1px solid #F1F5F9',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F0F4FF';
+                            (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
+                            (e.currentTarget as HTMLButtonElement).style.color = '#0F172A';
+                          }}
+                        >
+                          <Eye size={16} color="#64748B" strokeWidth={2} />
+                          Lihat Detail
+                        </button>
+                        
+                        <button
+                          onClick={() => handleDeleteGuru(guru.id)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: 'none',
+                            background: 'none',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            color: '#0F172A',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FEF2F2';
+                            (e.currentTarget as HTMLButtonElement).style.color = '#DC2626';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#FFFFFF';
+                            (e.currentTarget as HTMLButtonElement).style.color = '#0F172A';
+                          }}
+                        >
+                          <Trash2 size={16} color="#64748B" strokeWidth={2} />
+                          Hapus
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-          </>
-        )}
       </div>
 
       {/* ============ HIDDEN FILE INPUT ============ */}
@@ -1420,9 +1424,9 @@ export default function GuruAdmin({
                       }}
                     >
                       <option value="">Pilih Peran</option>
-                      <option value="guru">Guru</option>
-                      <option value="wakel">Wali Kelas</option>
-                      <option value="waka">Staff</option>
+                      <option value="Guru">Guru</option>
+                      <option value="Wali Kelas">Wali Kelas</option>
+                      <option value="Staff">Staff</option>
                     </select>
                     {formErrors.role && (
                       <p style={{ color: '#EF4444', fontSize: '10px', marginTop: '3px', marginBottom: 0 }}>
@@ -1432,7 +1436,7 @@ export default function GuruAdmin({
                   </div>
 
                   {/* Mata Pelajaran (hanya untuk Guru) */}
-                  {formData.role === 'guru' && (
+                  {formData.role === 'Guru' && (
                     <div>
                       <label style={{
                         display: 'block',
@@ -1472,7 +1476,7 @@ export default function GuruAdmin({
                   )}
 
                   {/* Wali Kelas (hanya untuk Wali Kelas) */}
-                  {formData.role === 'wakel' && (
+                  {formData.role === 'Wali Kelas' && (
                     <div>
                       <label style={{
                         display: 'block',
@@ -1532,7 +1536,7 @@ export default function GuruAdmin({
                   )}
 
                   {/* Bagian Staff (hanya untuk Staff) */}
-                  {formData.role === 'waka' && (
+                  {formData.role === 'Staff' && (
                     <div>
                       <label style={{
                         display: 'block',
@@ -1570,67 +1574,6 @@ export default function GuruAdmin({
                       )}
                     </div>
                   )}
-
-                  {/* Email */}
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '5px',
-                    }}>
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="Masukkan email (opsional)"
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        backgroundColor: '#FFFFFF',
-                      }}
-                    />
-                  </div>
-
-                  {/* Password */}
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '5px',
-                    }}>
-                      Password
-                    </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Masukkan password baru"
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                        backgroundColor: '#FFFFFF',
-                      }}
-                    />
-                    <p style={{ color: '#64748B', fontSize: '10px', marginTop: '3px' }}>
-                      Bawaan: password123
-                    </p>
-                  </div>
 
                   {/* No. Telepon */}
                   <div>
@@ -1704,21 +1647,26 @@ export default function GuruAdmin({
                   </button>
                   <button
                     type="submit"
-                    disabled={isLoading}
                     style={{
                       flex: 1,
-                      padding: '10px',
-                      border: 'none',
-                      borderRadius: '8px',
+                      padding: '9px 18px',
                       backgroundColor: '#2563EB',
                       color: '#FFFFFF',
-                      fontSize: '14px',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '13px',
                       fontWeight: '600',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      opacity: isLoading ? 0.7 : 1,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#1D4ED8';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#2563EB';
                     }}
                   >
-                    {isLoading ? 'Menyimpan...' : 'Simpan Data'}
+                    Simpan Data
                   </button>
                 </div>
               </form>
@@ -1729,4 +1677,3 @@ export default function GuruAdmin({
     </AdminLayout>
   );
 }
-

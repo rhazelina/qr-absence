@@ -8,7 +8,6 @@ interface JurusanFormProps {
   onSubmit: (data: { namaJurusan: string; kodeJurusan: string }) => void;
   initialData?: { namaJurusan: string; kodeJurusan: string };
   isEdit?: boolean;
-  isLoading?: boolean;
 }
 
 export function JurusanForm({
@@ -17,11 +16,11 @@ export function JurusanForm({
   onSubmit,
   initialData,
   isEdit = false,
-  isLoading = false,
 }: JurusanFormProps) {
   const [kodeJurusan, setKodeJurusan] = useState('');
   const [namaJurusan, setNamaJurusan] = useState('');
   const [errors, setErrors] = useState<{ namaJurusan?: string; kodeJurusan?: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form ketika modal dibuka/ditutup atau initialData berubah
   useEffect(() => {
@@ -36,6 +35,7 @@ export function JurusanForm({
         setNamaJurusan('');
       }
       setErrors({});
+      setIsSubmitting(false);
     }
   }, [isOpen, initialData, isEdit]);
 
@@ -58,6 +58,7 @@ export function JurusanForm({
       setNamaJurusan('');
     }
     setErrors({});
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
@@ -85,10 +86,18 @@ export function JurusanForm({
   const handleSubmit = () => {
     if (!validate()) return;
 
-    onSubmit({
-      kodeJurusan: kodeJurusan.trim().toUpperCase(),
-      namaJurusan: namaJurusan.trim(),
-    });
+    setIsSubmitting(true);
+    setTimeout(() => {
+      onSubmit({
+        kodeJurusan: kodeJurusan.trim().toUpperCase(),
+        namaJurusan: namaJurusan.trim(),
+      });
+      setIsSubmitting(false);
+      // Reset form hanya jika bukan mode ubah
+      if (!isEdit) {
+        handleReset();
+      }
+    }, 500);
   };
 
   const inputStyle = (hasError?: boolean): React.CSSProperties => ({
@@ -126,7 +135,7 @@ export function JurusanForm({
       title={isEdit ? 'Ubah Konsentrasi Keahlian' : 'Tambah Konsentrasi Keahlian'}
       onSubmit={handleSubmit}
       submitLabel={isEdit ? 'Simpan Perubahan' : 'Tambahkan'}
-      isSubmitting={isLoading}
+      isSubmitting={isSubmitting}
       onReset={isEdit ? handleReset : undefined}
       resetLabel={isEdit ? 'Reset' : undefined}
     >
@@ -145,7 +154,7 @@ export function JurusanForm({
               if (errors.namaJurusan) setErrors({ ...errors, namaJurusan: undefined });
             }}
             style={inputStyle(!!errors.namaJurusan)}
-            disabled={isLoading}
+            disabled={isSubmitting}
           />
           {errors.namaJurusan && <p style={errorStyle}>{errors.namaJurusan}</p>}
         </div>
@@ -169,7 +178,7 @@ export function JurusanForm({
             }}
             maxLength={10}
             style={inputStyle(!!errors.kodeJurusan)}
-            disabled={isLoading}
+            disabled={isSubmitting}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
             {errors.kodeJurusan ? (

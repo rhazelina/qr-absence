@@ -1,9 +1,9 @@
 import WalikelasLayout from '../../component/Walikelas/layoutwakel';
-import Jadwal from "../../assets/Icon/jadwal.jpeg";
+import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { User } from "lucide-react";
 
 interface JadwalPengurusProps {
-    user: { name: string; phone: string; role?: string };
+    user: { name: string; phone: string };
     currentPage: string;
     onMenuClick: (page: string) => void;
     onLogout: () => void;
@@ -25,9 +25,9 @@ export default function JadwalPengurus({
 }: JadwalPengurusProps) {
     // Data default jika tidak ada props
     const kelasInfo = {
-        namaKelas: namaKelas || "-",
-        waliKelas: waliKelas || "-",
-        jadwalImage: jadwalImage || Jadwal
+        namaKelas: namaKelas || "XII RPL 2",
+        waliKelas: waliKelas || "Triana Ardiane S.pd",
+        jadwalImage: jadwalImage || DummyJadwal
     };
 
     return (
@@ -35,7 +35,7 @@ export default function JadwalPengurus({
             pageTitle="Jadwal Kelas"
             currentPage={currentPage}
             onMenuClick={onMenuClick}
-            user={{ ...user, role: user.role || 'wali_kelas' }}
+            user={user}
             onLogout={onLogout}
         >
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -88,9 +88,9 @@ export default function JadwalPengurus({
                 </div>
 
                 {/* Jadwal Image */}
-                <div style={{
-                    background: "#FFFFFF",
-                    borderRadius: 14,
+                <div style={{ 
+                    background: "#FFFFFF", 
+                    borderRadius: 14, 
                     padding: 16,
                     border: "1px solid #E2E8F0",
                 }}>
@@ -107,7 +107,7 @@ export default function JadwalPengurus({
                 </div>
 
                 {/* Tombol Download/View Full */}
-                {kelasInfo.jadwalImage !== Jadwal && (
+                {kelasInfo.jadwalImage !== DummyJadwal && (
                     <div style={{ display: "flex", justifyContent: "center" }}>
                         <a
                             href={kelasInfo.jadwalImage}

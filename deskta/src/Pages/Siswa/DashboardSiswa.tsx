@@ -1,25 +1,23 @@
-﻿import { useState, useEffect } from "react";
-import SiswaLayout, { type MenuKey } from "../../component/Siswa/SiswaLayout";
+﻿import { useMemo, useState, useEffect } from "react";
+import SiswaLayout from "../../component/Siswa/SiswaLayout";
 // import openBook from "../../assets/Icon/open-book.png";
 import { Modal } from "../../component/Shared/Modal";
 import JadwalSiswa from "./JadwalSiswa.tsx";
 import AbsensiSiswa from "./AbsensiSiswa";
-import logoSmk from "../../assets/Icon/logo smk.png";
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
-import QRScanButton from "../../component/Siswa/QRScanButton";
-import { isCancellation } from "../../utils/errorHelpers";
+// ✅ UBAH: Hapus import logoSmk karena tidak dipakai lagi
 import {
   Bell,
   Megaphone,
   Clock,
+  GraduationCap,
+  Target,
   BookOpen,
   BookOpenCheck,
   BarChart3,
-  TrendingUp,
-  Target,
+  PieChart,
   ArrowRight,
-  PieChart, // Re-adding because it is used
-  AlarmClock, // Re-adding because it is used
+  TrendingUp,
+  AlarmClock,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -33,7 +31,7 @@ import {
   ArcElement,
   Filler,
 } from "chart.js";
-import { Doughnut, Line } from "react-chartjs-2";
+import { Line, Doughnut } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -47,7 +45,7 @@ ChartJS.register(
   Filler
 );
 
-type SiswaPage = MenuKey;
+type SiswaPage = "dashboard" | "jadwal-anda" | "notifikasi" | "absensi";
 
 interface ScheduleItem {
   id: string;
@@ -62,42 +60,82 @@ interface DashboardSiswaProps {
   onLogout: () => void;
 }
 
-// Helper to format schedule from API
-const formatScheduleFromAPI = (schedule: any): ScheduleItem => {
-  // API returns start_time/end_time directly as strings (HH:mm:ss)
-  const start = schedule.start_time?.substring(0, 5) || '00:00';
-  const end = schedule.end_time?.substring(0, 5) || '00:00';
+// Mapping ID siswa ke nama - TAMBAHKAN DATA SISWA DISINI
+const studentNameMapping: { [key: string]: string } = {
+  "0075802873": "TALITHA NUDIA RISMATULLAH",
+  "0061631562": "NADIA SINTA DEVI OKTAVIA",
+  "0089965810": "NINDI NARITA MAULIDYA",
+  // Tambahkan mapping ID siswa lainnya di sini
+  // "ID_SISWA": "Nama Siswa",
+};
 
-  return {
-    id: schedule.id.toString(),
-    mapel: schedule.subject_name || schedule.subject?.name || 'Mata Pelajaran',
-    guru: schedule.teacher?.user?.name || schedule.teacher?.name || 'Guru',
-    start,
-    end,
-  };
+// Fungsi untuk mendapatkan nama siswa dari ID
+const getStudentName = (user: { name: string; phone: string }): string => {
+  // Jika user.name berisi angka saja (ID), convert ke nama
+  if (/^\d+$/.test(user.name)) {
+    return studentNameMapping[user.name] || user.name;
+  }
+  // Jika user.phone berisi ID yang ada di mapping, gunakan itu
+  if (user.phone && studentNameMapping[user.phone]) {
+    return studentNameMapping[user.phone];
+  }
+  // Jika tidak, return user.name seperti biasa
+  return user.name;
+};
+
+// Fungsi untuk mendapatkan NISN dari user
+const getStudentNISN = (user: { name: string; phone: string }): string => {
+  // Jika user.name adalah angka (ID/NISN), return itu
+  if (/^\d+$/.test(user.name)) {
+    return user.name;
+  }
+  // Jika user.phone ada dan berupa angka, return itu
+  if (user.phone && /^\d+$/.test(user.phone)) {
+    return user.phone;
+  }
+  // Cari NISN dari mapping berdasarkan nama
+  const nisn = Object.keys(studentNameMapping).find(
+    key => studentNameMapping[key] === user.name
+  );
+  return nisn || user.phone || "0000000000";
+};
+
+// Dummy data untuk statistik
+const monthlyTrendData = [
+  { month: "Jan", hadir: 8, izin: 5, sakit: 3, alpha: 2, pulang: 1 },
+  { month: "Feb", hadir: 9, izin: 5, sakit: 2, alpha: 3, pulang: 1 },
+  { month: "Mar", hadir: 10, izin: 4, sakit: 3, alpha: 2, pulang: 1 },
+  { month: "Apr", hadir: 11, izin: 2, sakit: 2, alpha: 1, pulang: 2 },
+  { month: "Mei", hadir: 12, izin: 3, sakit: 1, alpha: 2, pulang: 1 },
+  { month: "Jun", hadir: 13, izin:3, sakit: 2, alpha: 1, pulang: 2 },
+];
+
+const weeklyStats = {
+  hadir: 3,
+  izin: 1,
+  sakit: 1,
+  alpha: 0,
+  pulang: 0,
 };
 
 export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) {
-  // const { alert: popupAlert } = usePopup();
   const [currentPage, setCurrentPage] = useState<SiswaPage>("dashboard");
   const [currentDate, setCurrentDate] = useState("");
   const [currentTime, setCurrentTime] = useState("");
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-  // API Data State
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [isLoadingSchedules, setIsLoadingSchedules] = useState(true);
-  const [attendanceSummary, setAttendanceSummary] = useState({
-    hadir: 0,
-    izin: 0,
-    sakit: 0,
-    alpha: 0,
-    dispen: 0,
-  });
-  const [isLoadingAttendance, setIsLoadingAttendance] = useState(true);
-  const [trendData, setTrendData] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // Convert ID ke nama siswa
+  const displayName = getStudentName(user);
+  
+  // Get NISN siswa
+  const displayNISN = getStudentNISN(user);
+  
+  // Update user object dengan nama yang sudah diconvert
+  const userWithName = {
+    name: displayName,
+    phone: user.phone
+  };
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -109,7 +147,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
         day: "numeric",
       };
       setCurrentDate(now.toLocaleDateString("id-ID", options));
-
+      
       // Format waktu dengan jam:menit:detik
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -123,109 +161,15 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch schedules
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchSchedules = async () => {
-      try {
-        setIsLoadingSchedules(true);
-        setError(null);
-        const { dashboardService } = await import('../../services/dashboard');
-        const today = new Date().toISOString().split('T')[0];
-        const data = await dashboardService.getMySchedules(
-          { date: today },
-          { signal: controller.signal }
-        );
-        const formattedSchedules = data.map(formatScheduleFromAPI);
-        setSchedules(formattedSchedules);
-      } catch (error: any) {
-        if (!isCancellation(error)) {
-          console.error('Failed to fetch schedules:', error);
-          setError('Gagal memuat jadwal pelajaran.');
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoadingSchedules(false);
-        }
-      }
-    };
-    fetchSchedules();
-    return () => controller.abort();
-  }, []);
-
-  // Fetch attendance summary
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchAttendance = async () => {
-      try {
-        setIsLoadingAttendance(true);
-        const { dashboardService } = await import('../../services/dashboard');
-        // Fetch last 6 months for trend
-        const fromDate = new Date();
-        fromDate.setMonth(fromDate.getMonth() - 5);
-        fromDate.setDate(1);
-
-        const data = await dashboardService.getMyAttendanceHistory({
-          from: fromDate.toISOString().split('T')[0]
-        });
-
-        // 1. Process Status Summary for Donut Chart
-        const summary = { hadir: 0, izin: 0, sakit: 0, alpha: 0, dispen: 0 };
-        data.status_summary.forEach((item: any) => {
-          switch (item.status) {
-            case 'present':
-            case 'late': summary.hadir += item.total; break;
-            case 'excused':
-            case 'izin': summary.izin += item.total; break;
-            case 'sick': summary.sakit += item.total; break;
-            case 'absent': summary.alpha += item.total; break;
-            case 'return': summary.dispen += item.total; break;
-          }
-        });
-        setAttendanceSummary(summary);
-
-        // 2. Process Daily Summary for Trend Line Chart
-        const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
-        const trendMap: Record<string, any> = {};
-
-        // Initialize last 6 months
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
-          const mLabel = months[d.getMonth()];
-          trendMap[mLabel] = { month: mLabel, hadir: 0, izin: 0, tidak_hadir: 0, sakit: 0, pulang: 0 };
-        }
-
-        data.daily_summary.forEach((item: any) => {
-          const d = new Date(item.day);
-          const mLabel = months[d.getMonth()];
-          if (trendMap[mLabel]) {
-            switch (item.status) {
-              case 'present':
-              case 'late': trendMap[mLabel].hadir += item.total; break;
-              case 'excused':
-              case 'izin': trendMap[mLabel].izin += item.total; break;
-              case 'sick': trendMap[mLabel].sakit += item.total; break;
-              case 'absent': trendMap[mLabel].tidak_hadir += item.total; break;
-              case 'return': trendMap[mLabel].pulang += item.total; break;
-            }
-          }
-        });
-
-        setTrendData(Object.values(trendMap));
-
-      } catch (error) {
-        console.error('Failed to fetch attendance:', error);
-        setError((prev) => prev || 'Gagal memuat ringkasan kehadiran.');
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoadingAttendance(false);
-        }
-      }
-    };
-    fetchAttendance();
-    return () => controller.abort();
-  }, []);
+  const schedules = useMemo<ScheduleItem[]>(
+    () => [
+      { id: "1", mapel: "Mata Pelajaran Pilihan", guru: "Ewit Erniyah S.Pd", start: "07:00", end: "08:30" },
+      { id: "2", mapel: "Bahasa Indonesia", guru: "Devi Arfani S.Pd", start: "08:30", end: "10:00" },
+      { id: "3", mapel: "Bahasa Inggris", guru: "Fajar Ningtyas S.Pd", start: "10:15", end: "11:45" },
+      { id: "4", mapel: "Matematika", guru: "Solikah S.Pd", start: "11:45", end: "15:00" },
+    ],
+    []
+  );
 
   const handleMenuClick = (page: string) => {
     setCurrentPage(page as SiswaPage);
@@ -240,10 +184,10 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     setIsScheduleModalOpen(true);
   };
 
-  // User info
+  // Dummy user data
   const userInfo = {
-    name: user.name || "-",
-    id: user.phone || "-", // Assuming phone is used as ID/NISN temporarily or passed prop
+    name: displayName,
+    id: displayNISN,
   };
 
   const renderPage = () => {
@@ -251,7 +195,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
       case "absensi":
         return (
           <AbsensiSiswa
-            user={user}
+            user={userWithName}
             currentPage={currentPage}
             onMenuClick={handleMenuClick}
             onLogout={handleLogout}
@@ -260,7 +204,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
       case "jadwal-anda":
         return (
           <JadwalSiswa
-            user={user}
+            user={userWithName}
             currentPage={currentPage}
             onMenuClick={handleMenuClick}
             onLogout={handleLogout}
@@ -272,7 +216,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
             pageTitle="Notifikasi"
             currentPage={currentPage}
             onMenuClick={handleMenuClick}
-            user={user}
+            user={userWithName}
             onLogout={handleLogout}
           >
             <div
@@ -351,7 +295,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
             pageTitle="Beranda"
             currentPage={currentPage}
             onMenuClick={handleMenuClick}
-            user={user}
+            user={userWithName}
             onLogout={handleLogout}
           >
             <div
@@ -364,25 +308,6 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 gap: "28px",
               }}
             >
-              {/* Error Alert */}
-              {error && (
-                <div style={{
-                  padding: "16px 20px",
-                  backgroundColor: "#FEF2F2",
-                  border: "1px solid #FEE2E2",
-                  borderRadius: "12px",
-                  color: "#B91C1C",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px"
-                }}>
-                  <Megaphone size={20} />
-                  <span>{error}</span>
-                </div>
-              )}
-
               {/* Welcome Section */}
               <div style={{
                 backgroundColor: "white",
@@ -390,7 +315,6 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 padding: "28px 32px",
                 boxShadow: "0 4px 20px rgba(0, 31, 62, 0.08)",
                 border: "1px solid #E5E7EB",
-                opacity: isLoadingSchedules || isLoadingAttendance ? 0.7 : 1,
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "20px" }}>
                   <div>
@@ -408,7 +332,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                       margin: 0,
                       maxWidth: "600px"
                     }}>
-                      Pantau jadwal, kehadiran, dan statistik belajar Anda hari ini
+                      Pantau jadwal, kehadiran, dan statistik belajar anda hari ini
                     </p>
                   </div>
                   <div style={{
@@ -452,7 +376,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
                 gap: "20px",
               }}>
-                {/* User Info Card */}
+                {/* User Info Card - ✅ UBAH: Logo sekolah diganti dengan icon profil */}
                 <div style={{
                   backgroundColor: "#001F3F",
                   borderRadius: "16px",
@@ -483,9 +407,9 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                     justifyContent: "center",
                     fontSize: "28px",
                     color: "white",
-                    overflow: "hidden"
                   }}>
-                    <img src={logoSmk} alt="Logo SMK" style={{ width: "48px", height: "48px", objectFit: "contain" }} />
+                    {/* ✅ UBAH: Ganti logo sekolah dengan GraduationCap icon */}
+                    <GraduationCap size={32} color="white" strokeWidth={1.5} />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{
@@ -574,7 +498,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                       color: "#6B7280",
                       marginBottom: "20px"
                     }}>
-                      {isLoadingSchedules ? 'Memuat...' : `${schedules.length} mata pelajaran dijadwalkan`}
+                      {schedules.length} mata pelajaran dijadwalkan
                     </div>
                   </div>
                   <div style={{
@@ -653,103 +577,93 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                   gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
                   gap: "16px",
                 }}>
-                  {isLoadingSchedules ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280', gridColumn: '1 / -1' }}>
-                      Memuat jadwal...
-                    </div>
-                  ) : schedules.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280', gridColumn: '1 / -1' }}>
-                      Tidak ada jadwal hari ini
-                    </div>
-                  ) : (
-                    schedules.map((schedule) => (
-                      <div
-                        key={schedule.id}
-                        onClick={() => handleScheduleClick(schedule)}
-                        style={{
-                          padding: "20px",
-                          borderRadius: "12px",
-                          border: "1px solid #E5E7EB",
-                          backgroundColor: "#F9FAFB",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-4px)";
-                          e.currentTarget.style.backgroundColor = "#F0F9FF";
-                          e.currentTarget.style.borderColor = "#0EA5E9";
-                          e.currentTarget.style.boxShadow = "0 8px 24px rgba(14, 165, 233, 0.15)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.backgroundColor = "#F9FAFB";
-                          e.currentTarget.style.borderColor = "#E5E7EB";
-                          e.currentTarget.style.boxShadow = "none";
-                        }}
-                      >
+                  {schedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      onClick={() => handleScheduleClick(schedule)}
+                      style={{
+                        padding: "20px",
+                        borderRadius: "12px",
+                        border: "1px solid #E5E7EB",
+                        backgroundColor: "#F9FAFB",
+                        cursor: "pointer",
+                        transition: "all 0.3s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.backgroundColor = "#F0F9FF";
+                        e.currentTarget.style.borderColor = "#0EA5E9";
+                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(14, 165, 233, 0.15)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.backgroundColor = "#F9FAFB";
+                        e.currentTarget.style.borderColor = "#E5E7EB";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <div style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "16px",
+                        marginBottom: "16px"
+                      }}>
                         <div style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: "16px",
-                          marginBottom: "16px"
-                        }}>
-                          <div style={{
-                            width: "48px",
-                            height: "48px",
-                            backgroundColor: "#EFF6FF",
-                            borderRadius: "10px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "20px"
-                          }}>
-                            <BookOpenCheck size={20} color="#1D4ED8" />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{
-                              margin: "0 0 6px 0",
-                              fontSize: "17px",
-                              fontWeight: "600",
-                              color: "#001F3E"
-                            }}>
-                              {schedule.mapel}
-                            </h4>
-                            <p style={{
-                              margin: "0",
-                              fontSize: "14px",
-                              color: "#6B7280"
-                            }}>
-                              {schedule.guru}
-                            </p>
-                          </div>
-                        </div>
-                        <div style={{
+                          width: "48px",
+                          height: "48px",
+                          backgroundColor: "#EFF6FF",
+                          borderRadius: "10px",
                           display: "flex",
                           alignItems: "center",
-                          gap: "12px",
-                          padding: "10px 14px",
-                          backgroundColor: "#F3F4F6",
-                          borderRadius: "8px",
-                          border: "1px solid #E5E7EB"
+                          justifyContent: "center",
+                          fontSize: "20px"
                         }}>
-                          <span style={{
-                            fontSize: "14px",
-                            color: "#6B7280",
-                            fontWeight: "500"
-                          }}>
-                            <Clock size={14} />
-                          </span>
-                          <span style={{
-                            fontSize: "14px",
+                          <BookOpenCheck size={20} color="#1D4ED8" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{
+                            margin: "0 0 6px 0",
+                            fontSize: "17px",
                             fontWeight: "600",
-                            color: "#111827"
+                            color: "#001F3E"
                           }}>
-                            {schedule.start} - {schedule.end}
-                          </span>
+                            {schedule.mapel}
+                          </h4>
+                          <p style={{
+                            margin: "0",
+                            fontSize: "14px",
+                            color: "#6B7280"
+                          }}>
+                            {schedule.guru}
+                          </p>
                         </div>
                       </div>
-                    ))
-                  )}
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "10px 14px",
+                        backgroundColor: "#F3F4F6",
+                        borderRadius: "8px",
+                        border: "1px solid #E5E7EB"
+                      }}>
+                        <span style={{
+                          fontSize: "14px",
+                          color: "#6B7280",
+                          fontWeight: "500"
+                        }}>
+                          <Clock size={14} />
+                        </span>
+                        <span style={{
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#111827"
+                        }}>
+                          {schedule.start} - {schedule.end}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -804,13 +718,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                       Grafik Kehadiran Bulanan
                     </h3>
                   </div>
-                  {isLoadingAttendance ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                      Memuat data kehadiran...
-                    </div>
-                  ) : (
-                    <MonthlyLineChart data={trendData} />
-                  )}
+                  <MonthlyLineChart data={monthlyTrendData} />
                 </div>
 
                 {/* Weekly Statistics */}
@@ -857,13 +765,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                       Statistik Minggu Ini
                     </h3>
                   </div>
-                  {isLoadingAttendance ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                      Memuat data kehadiran...
-                    </div>
-                  ) : (
-                    <WeeklyDonutChart data={attendanceSummary} />
-                  )}
+                  <WeeklyDonutChart data={weeklyStats} />
                 </div>
               </div>
 
@@ -913,13 +815,6 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
               }}
               data={selectedSchedule}
             />
-            {/* QR Scan Button - Floating Action Button */}
-            {currentPage === "dashboard" && (
-              <QRScanButton onSuccess={() => {
-                // Refresh attendance data after successful scan
-                window.location.reload();
-              }} />
-            )}
           </SiswaLayout>
         );
     }
@@ -928,73 +823,85 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
   return renderPage();
 }
 
-// Monthly Line Chart Component - GRAFIK GARIS REAL
+// Monthly Line Chart Component - KOMPONEN BARU DENGAN GRAFIK GARIS
 function MonthlyLineChart({
   data,
 }: {
-  data: Array<{ month: string; hadir: number; izin: number; tidak_hadir: number; sakit: number; pulang: number }>;
+  data: Array<{ month: string; hadir: number; izin: number; sakit: number; alpha: number; pulang: number }>;
 }) {
-  const COLORS = {
-    HADIR: "#1FA83D",
-    IZIN: "#ACA40D",
-    PULANG: "#2F85EB",
-    TIDAK_HADIR: "#D90000",
-    SAKIT: "#520C8F",
-  };
-
   const chartData = {
     labels: data.map((d) => d.month),
     datasets: [
       {
         label: "Hadir",
         data: data.map((d) => d.hadir),
-        borderColor: COLORS.HADIR,
-        backgroundColor: `${COLORS.HADIR}20`,
+        borderColor: "#1FA83D", // REVISI: Hadir > #1FA83D
+        backgroundColor: "rgba(31, 168, 61, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#1FA83D",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
         tension: 0.4,
         fill: true,
       },
       {
         label: "Izin",
         data: data.map((d) => d.izin),
-        borderColor: COLORS.IZIN,
-        backgroundColor: `${COLORS.IZIN}20`,
+        borderColor: "#ACA40D", // REVISI: Izin > #ACA40D
+        backgroundColor: "rgba(172, 164, 13, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
-        tension: 0.4,
-        fill: true,
-      },
-      {
-        label: "Pulang",
-        data: data.map((d) => d.pulang),
-        borderColor: COLORS.PULANG,
-        backgroundColor: `${COLORS.PULANG}20`,
-        borderWidth: 3,
-        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#ACA40D",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
         tension: 0.4,
         fill: true,
       },
       {
         label: "Sakit",
         data: data.map((d) => d.sakit),
-        borderColor: COLORS.SAKIT,
-        backgroundColor: `${COLORS.SAKIT}20`,
+        borderColor: "#520C8F", // REVISI: Sakit > #520C8F
+        backgroundColor: "rgba(82, 12, 143, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#520C8F",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
         tension: 0.4,
         fill: true,
       },
       {
-        label: "Alpha",
-        data: data.map((d) => d.tidak_hadir),
-        borderColor: COLORS.TIDAK_HADIR,
-        backgroundColor: `${COLORS.TIDAK_HADIR}20`,
+        label: "Alfa",
+        data: data.map((d) => d.alpha),
+        borderColor: "#D90000", // REVISI: Alfa> #D90000
+        backgroundColor: "rgba(217, 0, 0, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#D90000",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
         tension: 0.4,
         fill: true,
-      }
+      },
+      {
+        label: "Pulang", // Mengganti Dispen dengan Pulang
+        data: data.map((d) => d.pulang),
+        borderColor: "#2F85EB", // REVISI: Pulang > #2F85EB
+        backgroundColor: "rgba(47, 133, 235, 0.1)",
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#2F85EB",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        tension: 0.4,
+        fill: true,
+      },
     ],
   };
 
@@ -1002,10 +909,69 @@ function MonthlyLineChart({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const },
+      legend: {
+        position: "bottom" as const,
+        labels: {
+          usePointStyle: true,
+          boxWidth: 8,
+          padding: 20,
+          font: {
+            size: 12,
+            family: "'Inter', sans-serif",
+          },
+        },
+      },
+      tooltip: {
+        backgroundColor: "#1F2937",
+        padding: 12,
+        titleFont: { size: 13, family: "'Inter', sans-serif" },
+        bodyFont: { size: 12, family: "'Inter', sans-serif" },
+        cornerRadius: 8,
+        displayColors: true,
+        callbacks: {
+          label: function(context: any) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            label += context.parsed.y + ' hari';
+            return label;
+          }
+        }
+      },
     },
     scales: {
-      y: { beginAtZero: true },
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 11,
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: "#F3F4F6",
+          drawBorder: false,
+        },
+        border: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 11,
+          },
+          padding: 8,
+          stepSize: 10,
+        },
+      },
+    },
+    interaction: {
+      mode: "index" as const,
+      intersect: false,
     },
   };
 
@@ -1016,29 +982,22 @@ function MonthlyLineChart({
   );
 }
 
-// Add the Line import from chartjs
-// Duplicate Line import removed
-
-
-
-
-
 // Weekly Donut Chart Component
 function WeeklyDonutChart({
   data,
 }: {
-  data: { hadir: number; izin: number; sakit: number; alpha: number; dispen: number };
+  data: { hadir: number; izin: number; sakit: number; alpha: number; pulang: number };
 }) {
   const chartData = {
-    labels: ["Hadir", "Izin", "Sakit", "Tidak Hadir", "Pulang"], // Mengganti Dispen dengan Pulang
+    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang"], // Mengganti Dispen dengan Pulang
     datasets: [
       {
-        data: [data.hadir, data.izin, data.sakit, data.alpha, data.dispen],
+        data: [data.hadir, data.izin, data.sakit, data.alpha, data.pulang],
         backgroundColor: [
           "#1FA83D", // REVISI: Hadir > #1FA83D
           "#ACA40D", // REVISI: Izin > #ACA40D
           "#520C8F", // REVISI: Sakit > #520C8F
-          "#D90000", // REVISI: Tidak Hadir > #D90000
+          "#D90000", // REVISI: Alfa > #D90000
           "#2F85EB", // REVISI: Pulang > #2F85EB
         ],
         borderColor: "#ffffff",
@@ -1096,7 +1055,6 @@ function WeeklyDonutChart({
   );
 }
 
-
 // Modal Component untuk Siswa
 interface JadwalSiswaModalProps {
   isOpen: boolean;
@@ -1105,7 +1063,6 @@ interface JadwalSiswaModalProps {
 }
 
 function JadwalSiswaModal({ isOpen, onClose, data }: JadwalSiswaModalProps) {
-  const { alert: popupAlert } = usePopup();
   if (!data) return null;
 
   return (
@@ -1234,8 +1191,8 @@ function JadwalSiswaModal({ isOpen, onClose, data }: JadwalSiswaModalProps) {
           </button>
           <button
             type="button"
-            onClick={async () => {
-              await popupAlert("Pengingat ditambahkan!");
+            onClick={() => {
+              alert("Pengingat ditambahkan!");
               onClose();
             }}
             style={{
@@ -1308,4 +1265,3 @@ function TimePill({ label }: { label: string }) {
     </div>
   );
 }
-

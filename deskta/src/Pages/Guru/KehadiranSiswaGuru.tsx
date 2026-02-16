@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import GuruLayout from '../../component/Guru/GuruLayout.tsx';
 import CalendarIcon from '../../assets/Icon/calender.png';
 import EditIcon from '../../assets/Icon/Edit.png';
 import ChalkboardIcon from '../../assets/Icon/Chalkboard.png';
-import { usePopup } from "../../component/Shared/Popup/PopupProvider";
-import { STATUS_BACKEND_TO_FRONTEND, STATUS_COLORS_HEX } from "../../utils/statusMapping";
+
+// STATUS COLOR PALETTE - High Contrast for Accessibility
+const STATUS_COLORS = {
+  hadir: '#1FA83D',   // HIJAU - Hadir
+  izin: '#ACA40D',    // KUNING - Izin
+  sakit: '#520C8F',   // UNGU - Sakit
+  alfa: '#D90000',   // MERAH - Tidak Hadir
+  pulang: '#2F85EB',  // BIRU - Pulang
+};
 
 interface KehadiranSiswaGuruProps {
   user: { name: string; role: string };
@@ -12,34 +19,19 @@ interface KehadiranSiswaGuruProps {
   currentPage: string;
   onMenuClick: (page: string) => void;
 }
-const styles = {
-  th: {
-    padding: '16px',
-    textAlign: 'left' as const,
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: '0.025em'
-  },
-  td: {
-    padding: '16px',
-    fontSize: '14px',
-    color: '#1F2937',
-    verticalAlign: 'middle'
-  }
-};
 
 interface SiswaData {
   id: string;
   nisn: string;
   nama: string;
   mapel: string;
-  status: 'present' | 'late' | 'excused' | 'sick' | 'absent' | null;
+  status: 'hadir' | 'izin' | 'sakit' | 'alfa' | 'pulang';
   keterangan?: string;
   tanggal?: string;
   jamPelajaran?: string;
   guru?: string;
   waktuHadir?: string;
+  suratPulang?: File | null;
 }
 
 export default function KehadiranSiswaGuru({
@@ -48,144 +40,101 @@ export default function KehadiranSiswaGuru({
   currentPage,
   onMenuClick,
 }: KehadiranSiswaGuruProps) {
-  const { alert: popupAlert, confirm: popupConfirm } = usePopup();
-  const [currentDate] = useState(new Date().toLocaleDateString('id-ID'));
-
-  const [selectedKelas, setSelectedKelas] = useState('Memuat...');
-  const [selectedMapel, setSelectedMapel] = useState('Memuat...');
+  const [currentDate] = useState('25-01-2025');
+  const [selectedKelas] = useState('XII REKAYASA PERANGKAT LUNAK 2');
+  const [selectedMapel] = useState('MPKK (1-4)');
   const [editingSiswa, setEditingSiswa] = useState<SiswaData | null>(null);
   const [selectedSiswa, setSelectedSiswa] = useState<SiswaData | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [siswaList, setSiswaList] = useState<SiswaData[]>([]);
-  const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchData = async () => {
-      try {
-        const { dashboardService } = await import('../../services/dashboard');
-        // Fetch teacher's schedules for today to get the class
-        const schedules = await dashboardService.getTeacherSchedules(
-          { date: new Date().toISOString().split('T')[0] },
-          { signal: controller.signal }
-        );
-
-        if (schedules.length > 0) {
-          const schedule = schedules[0];
-          setActiveScheduleId(schedule.id.toString());
-          setSelectedKelas(schedule.class?.name || 'Kelas');
-          setSelectedMapel(schedule.subject_name || schedule.title || 'Mapel');
-
-          if (schedule.class_id) {
-            // Fetch class students
-            const classData = await dashboardService.getClassDetails(
-              schedule.class_id.toString(),
-              { signal: controller.signal }
-            );
-
-            // Fetch existing attendance for this schedule
-            let attendanceRecords: any[] = [];
-            try {
-              attendanceRecords = await dashboardService.getAttendanceBySchedule(
-                schedule.id.toString(),
-                {
-                  params: { date: new Date().toISOString().split('T')[0] },
-                  signal: controller.signal
-                }
-              );
-            } catch (err: any) {
-              if (err.name !== 'AbortError') {
-                console.error("Failed to fetch attendance records", err);
-              }
-            }
-
-            if (classData && classData.students) {
-              const mappedStudents = classData.students.map((s: any) => {
-                // Find existing record
-                // Find existing record by student_id or student.id
-                const record = attendanceRecords.find((a: any) =>
-                  (a.student_id ? a.student_id.toString() : (a.student?.id?.toString())) === s.id.toString()
-                );
-
-                let status = record ? record.status : null;
-                // Normalize 'return' from backend to 'pulang' for frontend UI
-                if (status === 'return') status = 'pulang';
-
-                return {
-                  id: s.id.toString(),
-                  nisn: s.nisn || '-',
-                  nama: s.user?.name || 'Siswa',
-                  mapel: schedule.subject_name || schedule.title || 'Mapel',
-                  status: status, // Default to null if no record
-                  tanggal: currentDate,
-                  jamPelajaran: '1-2',
-                  guru: user.name,
-                  keterangan: record?.reason,
-                  waktuHadir: record ? new Date(record.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : undefined
-                };
-              });
-              setSiswaList(mappedStudents);
-            }
-          }
-        } else {
-          setSelectedKelas("Tidak ada jadwal");
-          setSelectedMapel("-");
-          setSiswaList([]);
-        }
-      } catch (e: any) {
-        if (e.name !== 'AbortError' && e.name !== 'CanceledError' && e.code !== 'ERR_CANCELED') {
-          console.error(e);
-        }
-      }
-    };
-    fetchData();
-
-    return () => controller.abort();
-  }, [user.name, currentDate]);
-
-  const handleCloseAttendance = async () => {
-    if (!activeScheduleId) {
-      await popupAlert("Tidak ada jadwal aktif saat ini.");
-      return;
-    }
-
-    const confirmed = await popupConfirm(
-      "Siswa yang belum absen akan otomatis ditandai sebagai ALPHA (Tidak Hadir). Lanjutkan?",
-      {
-        title: "Tutup Absensi?",
-        confirmText: "Ya, Tutup Absensi",
-        cancelText: "Batal"
-      }
-    );
-
-    if (!confirmed) return;
-
-    try {
-      const { default: apiClient } = await import('../../services/api');
-      const response = await apiClient.post(`/me/schedules/${activeScheduleId}/close`);
-
-      const data = response.data || response;
-      await popupAlert(`✅ ${data.message || 'Absensi berhasil ditutup'}`);
-      window.location.reload();
-
-    } catch (e: any) {
-      console.error(e);
-      const { getErrorMessage } = await import('../../services/api');
-      await popupAlert(`❌ Error: ${getErrorMessage(e)}`);
-    }
-  };
+  const [siswaList, setSiswaList] = useState<SiswaData[]>([
+    { 
+      id: '1', 
+      nisn: '0074182519', 
+      nama: 'Laura Lavida Loca', 
+      mapel: 'MPKK', 
+      status: 'hadir',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd',
+      waktuHadir: '07:00 WIB'
+    },
+    { 
+      id: '2', 
+      nisn: '0074320819', 
+      nama: 'Lely Sagita', 
+      mapel: 'MPKK', 
+      status: 'hadir',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd',
+      waktuHadir: '08:00 WIB'
+    },
+    { 
+      id: '3', 
+      nisn: '0078658367', 
+      nama: 'Maya Melinda', 
+      mapel: 'MPKK', 
+      status: 'izin',
+      keterangan: 'Ijin tidak masuk karena ada keperluan keluarga',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd'
+    },
+    { 
+      id: '4', 
+      nisn: '0079292238', 
+      nama: 'Moch Abyl Gustian', 
+      mapel: 'MPKK', 
+      status: 'sakit',
+      keterangan: 'Demam tinggi dan dokter menyarankan istirahat',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd'
+    },
+    { 
+      id: '5', 
+      nisn: '0084421457', 
+      nama: 'Muhammad Aminullah', 
+      mapel: 'MPKK', 
+      status: 'alfa',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd'
+    },
+    { 
+      id: '6', 
+      nisn: '0089104721', 
+      nama: 'Muhammad Azka Fadli Attaya', 
+      mapel: 'MPKK', 
+      status: 'alfa',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd'
+    },
+    { 
+      id: '7', 
+      nisn: '0087917739', 
+      nama: 'Muhammad Hadi Firmansyah', 
+      mapel: 'MPKK', 
+      status: 'pulang',
+      keterangan: 'Pulang lebih awal karena sakit perut',
+      tanggal: '25-01-2025',
+      jamPelajaran: '1-4',
+      guru: 'Alifah Diantebes Aindra S.pd'
+    },
+  ]);
 
   const handleEditClick = (siswa: SiswaData) => {
     setEditingSiswa(siswa);
   };
 
-  const handleSaveStatus = (newStatus: SiswaData['status'], newKeterangan?: string) => {
+  const handleSaveStatus = (newStatus: SiswaData['status']) => {
     if (!editingSiswa) return;
 
     setSiswaList(prevList =>
       prevList.map(s =>
-        s.id === editingSiswa.id ? { ...s, status: newStatus, keterangan: newKeterangan } : s
+        s.id === editingSiswa.id ? { ...s, status: newStatus } : s
       )
     );
     setEditingSiswa(null);
@@ -193,36 +142,60 @@ export default function KehadiranSiswaGuru({
 
   // Fungsi untuk membuka modal detail status - SEMUA STATUS BISA DIKLIK
   const handleStatusClick = (siswa: SiswaData) => {
-    setSelectedSiswa(siswa);
-    setIsDetailModalOpen(true);
+  setSelectedSiswa({ ...siswa }); // clone object
+  setIsDetailModalOpen(true);
+};
+
+  const handleSaveDetail = () => {
+    if (!selectedSiswa) return;
+    setSiswaList(prevList =>
+      prevList.map(s =>
+        s.id === selectedSiswa.id ? selectedSiswa : s
+      )
+    );
+    setIsDetailModalOpen(false);
+    setSelectedSiswa(null);
   };
 
   // Fungsi untuk mendapatkan teks status
   const getStatusText = (status: string, waktuHadir?: string) => {
-    switch (status) {
-      case "absent":
-        return "Siswa tidak hadir tanpa keterangan";
-      case "excused":
-        return "Siswa izin dengan keterangan";
-      case "sick":
-        return "Siswa sakit dengan surat dokter";
-      case "present":
-        return waktuHadir ? `Siswa hadir tepat waktu pada ${waktuHadir}` : "Siswa hadir tepat waktu";
-      case "late":
-        return waktuHadir ? `Siswa terlambat hadir pada ${waktuHadir}` : "Siswa terlambat";
-      default:
-        return status;
-    }
-  };
+  switch (status) {
+    case "alfa":
+      return "Siswa tidak hadir tanpa keterangan";
+
+    case "izin":
+      return "Siswa izin dengan keterangan";
+
+    case "sakit":
+      return "Siswa sakit dengan surat dokter";
+
+    case "hadir":
+      if (!waktuHadir) return "Siswa hadir";
+
+      const jamMasuk = waktuHadir.split(":");
+      const jam = parseInt(jamMasuk[0], 10);
+      const menit = parseInt(jamMasuk[1], 10);
+
+      // batas jam 07:00
+      if (jam > 7 || (jam === 7 && menit > 0)) {
+        return `Siswa hadir tetapi terlambat pada ${waktuHadir}`;
+      }
+
+      return `Siswa hadir tepat waktu pada ${waktuHadir}`;
+
+    case "pulang":
+      return "Siswa pulang lebih awal karena ada kepentingan";
+
+    default:
+      return status;
+  }
+};
 
   // Custom Status Renderer dengan icon mata untuk SEMUA STATUS
-  const StatusButton = ({ status, siswa }: { status: string | null | undefined; siswa: SiswaData }) => {
-    if (!status) return <span style={{ color: '#9CA3AF', fontSize: '13px' }}>-</span>;
-
-    const color = STATUS_COLORS_HEX[status] || '#6B7280';
-    // Use mapped label or fallback to Title Case
-    const label = STATUS_BACKEND_TO_FRONTEND[status] || (status.charAt(0).toUpperCase() + status.slice(1));
-
+  const StatusButton = ({ status, siswa }: { status: string; siswa: SiswaData }) => {
+    const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#1FA83D';
+    const label = status === 'alfa' ? 'Alfa' : status.charAt(0).toUpperCase() + status.slice(1);
+    
     return (
       <div
         onClick={() => handleStatusClick(siswa)}
@@ -317,7 +290,7 @@ export default function KehadiranSiswaGuru({
   );
 
   // Icon check untuk status hadir
-  const CheckIcon = ({ size = 24, color = "currentColor" }: { size?: number; color?: string }) => (
+  const CheckIcon = ({ size = 24 }: { size?: number }) => (
     <svg
       width={size}
       height={size}
@@ -328,7 +301,7 @@ export default function KehadiranSiswaGuru({
     >
       <path
         d="M20 6L9 17L4 12"
-        stroke={color}
+        stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -364,24 +337,29 @@ export default function KehadiranSiswaGuru({
 
   // Fungsi helper untuk DetailRow
   const DetailRow = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
-    <div style={{
+  <div
+    style={{
       display: 'grid',
-      gridTemplateColumns: '140px 20px 1fr',
+      gridTemplateColumns: '160px 20px 1fr',
       alignItems: 'center',
       marginBottom: 16,
       paddingBottom: 12,
       borderBottom: '1px solid #E5E7EB',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {icon}
-        <div style={{ fontWeight: 600, color: '#374151' }}>{label}</div>
-      </div>
-      <div style={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>:</div>
-      <div style={{ fontWeight: 500, color: '#1F2937', textAlign: 'right' }}>
-        {value}
-      </div>
+    }}
+  >
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#374151' }}>
+      {icon}
+      {label}
     </div>
-  );
+
+    <div style={{ textAlign: 'center', fontWeight: 600 }}>:</div>
+
+    <div style={{ fontWeight: 500, color: '#1F2937' }}>
+      {value}
+    </div>
+  </div>
+);
+
 
   return (
     <GuruLayout
@@ -413,77 +391,37 @@ export default function KehadiranSiswaGuru({
             {currentDate}
           </div>
 
-          {/* Class Info & Action Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {/* Class Info Card */}
+          {/* Class Info Card */}
+          <div style={{
+            backgroundColor: '#0F172A',
+            color: 'white',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            width: 'fit-content',
+            minWidth: '250px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Decorative circle */}
             <div style={{
-              backgroundColor: '#0F172A',
-              color: 'white',
-              padding: '16px 20px',
-              borderRadius: '12px',
-              width: 'fit-content',
-              minWidth: '250px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              {/* Decorative circle */}
-              <div style={{
-                position: 'absolute',
-                left: -10,
-                bottom: -20,
-                width: 60,
-                height: 60,
-                backgroundColor: 'rgba(255,255,255,0.05)',
-                borderRadius: '50%'
-              }} />
+              position: 'absolute',
+              left: -10,
+              bottom: -20,
+              width: 60,
+              height: 60,
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderRadius: '50%'
+            }} />
 
-              <img src={ChalkboardIcon} alt="Class" style={{ width: 24, height: 24, filter: 'brightness(0) invert(1)', zIndex: 1 }} />
-              <div style={{ zIndex: 1 }}>
-                <div style={{ fontSize: '16px', fontWeight: '700' }}>{selectedKelas}</div>
-                <div style={{ fontSize: '13px', opacity: 0.8 }}>{selectedMapel}</div>
-              </div>
+            <img src={ChalkboardIcon} alt="Class" style={{ width: 24, height: 24, filter: 'brightness(0) invert(1)', zIndex: 1 }} />
+            <div style={{ zIndex: 1 }}>
+              <div style={{ fontSize: '16px', fontWeight: '700' }}>{selectedKelas}</div>
+              <div style={{ fontSize: '13px', opacity: 0.8 }}>{selectedMapel}</div>
             </div>
-
-            {/* Close Attendance Button */}
-            <button
-              onClick={handleCloseAttendance}
-              disabled={!activeScheduleId || activeScheduleId === '0'}
-              style={{
-                backgroundColor: '#DC2626',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '12px',
-                border: 'none',
-                fontWeight: 600,
-                fontSize: '14px',
-                cursor: activeScheduleId ? 'pointer' : 'not-allowed',
-                boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                opacity: activeScheduleId ? 1 : 0.6,
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (activeScheduleId) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(220, 38, 38, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeScheduleId) {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(220, 38, 38, 0.3)';
-                }
-              }}
-            >
-              <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'white', opacity: 0.8 }}></div>
-              Tutup Absensi
-            </button>
           </div>
         </div>
 
@@ -498,14 +436,14 @@ export default function KehadiranSiswaGuru({
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
               <thead>
-                <tr style={{ backgroundColor: '#1E293B', color: 'white' }}>
-                  <th style={{ ...styles.th, color: 'white' }}>No</th>
-                  <th style={{ ...styles.th, color: 'white' }}>NISN</th>
-                  <th style={{ ...styles.th, color: 'white' }}>Nama Siswa</th>
-                  <th style={{ ...styles.th, color: 'white' }}>Mata Pelajaran</th>
-                  <th style={{ ...styles.th, color: 'white' }}>Guru</th>
-                  <th style={{ ...styles.th, textAlign: 'center', color: 'white' }}>Status</th>
-                  <th style={{ ...styles.th, textAlign: 'center', color: 'white' }}>Aksi</th>
+                <tr style={{ backgroundColor: '#1E293B', color: 'black' }}>
+                  <th style={{ ...styles.th, color: 'black' }}>No</th>
+                  <th style={{ ...styles.th, color: 'black' }}>NISN</th>
+                  <th style={{ ...styles.th, color: 'black' }}>Nama Siswa</th>
+                  <th style={{ ...styles.th, color: 'black' }}>Mata Pelajaran</th>
+                  <th style={{ ...styles.th, color: 'black' }}>Guru</th>
+                  <th style={{ ...styles.th, textAlign: 'center', color: 'black' }}>Status</th>
+                  <th style={{ ...styles.th, textAlign: 'center', color: 'black' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -586,7 +524,7 @@ export default function KehadiranSiswaGuru({
               alignItems: 'center'
             }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', margin: 0 }}>
-                Edit Status Kehadiran
+                Sunting Status Kehadiran
               </h3>
               <button
                 onClick={() => setEditingSiswa(null)}
@@ -633,7 +571,7 @@ export default function KehadiranSiswaGuru({
                 </label>
                 <div style={{ position: 'relative' }}>
                   <select
-                    value={editingSiswa.status || 'present'}
+                    value={editingSiswa.status}
                     onChange={(e) => setEditingSiswa({ ...editingSiswa, status: e.target.value as SiswaData['status'] })}
                     style={{
                       width: '100%',
@@ -653,36 +591,12 @@ export default function KehadiranSiswaGuru({
                       paddingRight: '2.5rem'
                     }}
                   >
-                    <option value="present">Hadir</option>
-                    <option value="excused">Izin</option>
-                    <option value="sick">Sakit</option>
-                    <option value="absent">Tidak Hadir</option>
-                    <option value="late">Terlambat</option>
+                    <option value="hadir">Hadir</option>
+                    <option value="izin">Izin</option>
+                    <option value="sakit">Sakit</option>
+                    <option value="alfa">Alfa</option>
+                    <option value="pulang">Pulang</option>
                   </select>
-                </div>
-
-                {/* Keterangan field */}
-                <div style={{ marginTop: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Keterangan
-                  </label>
-                  <textarea
-                    value={editingSiswa.keterangan || ''}
-                    onChange={(e) => setEditingSiswa({ ...editingSiswa, keterangan: e.target.value })}
-                    placeholder="Tambahkan keterangan (opsional)..."
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #D1D5DB',
-                      fontSize: '15px',
-                      color: '#1F2937',
-                      backgroundColor: 'white',
-                      minHeight: '100px',
-                      resize: 'vertical',
-                      outline: 'none'
-                    }}
-                  />
                 </div>
               </div>
             </div>
@@ -713,7 +627,7 @@ export default function KehadiranSiswaGuru({
                 Batal
               </button>
               <button
-                onClick={() => handleSaveStatus(editingSiswa.status, editingSiswa.keterangan)}
+                onClick={() => handleSaveStatus(editingSiswa.status)}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -797,150 +711,270 @@ export default function KehadiranSiswaGuru({
             </div>
 
             {/* Content Modal */}
-            <div style={{
+            <div style={{ 
               padding: 24,
               overflowY: 'auto',
               flex: 1,
+              WebkitOverflowScrolling: 'touch', // Smooth scrolling for iOS
             }}>
               {/* Row Tanggal */}
-              <DetailRow
-                label="Tanggal"
-                value={selectedSiswa.tanggal || currentDate}
+              <DetailRow 
+                label="Tanggal" 
+                value={selectedSiswa.tanggal || currentDate} 
                 icon={<img src={CalendarIcon} alt="Calendar" style={{ width: 16, height: 16, opacity: 0.7 }} />}
               />
 
-              {/* Row Jam Pelajaran */}
-              <DetailRow
-                label="Jam Pelajaran"
-                value={selectedSiswa.jamPelajaran || '1-4'}
-              />
-
+            
               {/* Row Nama Siswa */}
-              <DetailRow
-                label="Nama Siswa"
-                value={selectedSiswa.nama}
-              />
+             {/* Row Jam Pelajaran (DROPLIST) */}
+<div style={{
+  display: 'flex',
+  justifyContent: 'space-between',
+  marginBottom: 16,
+  paddingBottom: 12,
+  borderBottom: '1px solid #E5E7EB',
+}}>
+  <div style={{ fontWeight: 600, color: '#374151' }}>
+    Jam Pelajaran :
+  </div>
+
+  <select
+    value={selectedSiswa.jamPelajaran || ""}
+    onChange={(e) =>
+      setSelectedSiswa({ ...selectedSiswa, jamPelajaran: e.target.value })
+    }
+    style={{
+      padding: '6px 10px',
+      borderRadius: 6,
+      border: '1px solid #D1D5DB',
+      fontSize: 14,
+      cursor: 'pointer',
+    }}
+  >
+    <option value="">Pilih Jam</option>
+    <option value="1-2">1 - 2</option>
+    <option value="3-4">3 - 4</option>
+    <option value="5-6">5 - 6</option>
+    <option value="7-8">7 - 8</option>
+    <option value="9-10">9 - 10</option>
+  </select>
+</div>
+    {/* Row Upload Surat (KHUSUS PULANG) */}
+{selectedSiswa.status === 'pulang' && (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottom: '1px solid #E5E7EB',
+    alignItems: 'center'
+  }}>
+    <div style={{ fontWeight: 600, color: '#374151' }}>
+      Upload Surat :
+    </div>
+
+    <div style={{ textAlign: 'right' }}>
+      <input
+        type="file"
+        accept=".pdf,.jpg,.png"
+        onChange={(e) =>
+          setSelectedSiswa({
+            ...selectedSiswa,
+            suratPulang: e.target.files?.[0] || null,
+          })
+        }
+        style={{ fontSize: 13 }}
+      />
+
+      {selectedSiswa.suratPulang && (
+        <div style={{
+          fontSize: 12,
+          color: '#2563EB',
+          marginTop: 4
+        }}>
+          {selectedSiswa.suratPulang.name}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
 
               {/* Row NISN */}
-              <DetailRow
-                label="NISN"
-                value={selectedSiswa.nisn}
+              <DetailRow 
+                label="NISN" 
+                value={selectedSiswa.nisn} 
               />
 
               {/* Row Mata Pelajaran */}
-              <DetailRow
-                label="Mata Pelajaran"
-                value={selectedSiswa.mapel}
+              <DetailRow 
+                label="Mata Pelajaran" 
+                value={selectedSiswa.mapel} 
               />
 
               {/* Row Guru */}
-              <DetailRow
-                label="Guru"
-                value={selectedSiswa.guru || '-'}
+              <DetailRow 
+                label="Guru" 
+                value={selectedSiswa.guru || '-'} 
               />
 
               {/* Row Waktu Hadir (khusus untuk status hadir) */}
-              {selectedSiswa.status === 'present' && selectedSiswa.waktuHadir && (
-                <DetailRow
-                  label="Waktu Hadir"
-                  value={selectedSiswa.waktuHadir}
+              {selectedSiswa.status === 'hadir' && selectedSiswa.waktuHadir && (
+                <DetailRow 
+                  label="Waktu Hadir" 
+                  value={selectedSiswa.waktuHadir} 
                   icon={<TimeIcon size={16} />}
                 />
               )}
 
               {/* Row Status */}
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '140px 20px 1fr',
-                alignItems: 'center',
+                display: 'flex',
+                justifyContent: 'space-between',
                 marginBottom: 24,
                 paddingBottom: 12,
                 borderBottom: '1px solid #E5E7EB',
               }}>
                 <div style={{ fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {selectedSiswa.status === 'present' && <CheckIcon size={18} color="#1FA83D" />}
-                  Status
+                  {selectedSiswa.status === 'hadir' && <CheckIcon size={18} color="#1FA83D" />}
+                  Status :
                 </div>
-                <div style={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>:</div>
-                <div style={{ textAlign: 'right' }}>
+                <div>
                   <span style={{
-                    backgroundColor: STATUS_COLORS_HEX[selectedSiswa.status || 'present'], // Fallback to avoid error if null
+                    backgroundColor: STATUS_COLORS[selectedSiswa.status],
                     color: '#FFFFFF',
                     padding: '4px 16px',
                     borderRadius: 6,
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {selectedSiswa.status === 'absent' ? 'Tidak Hadir' :
-                      selectedSiswa.status === 'sick' ? 'Sakit' :
-                        selectedSiswa.status === 'excused' ? 'Izin' :
-                          selectedSiswa.status === 'present' ? 'Hadir' :
-                            selectedSiswa.status === 'late' ? 'Terlambat' :
-                              'Pulang'}
+                    {selectedSiswa.status === 'alfa' ? 'alfa' :
+                     selectedSiswa.status === 'sakit' ? 'Sakit' :
+                     selectedSiswa.status === 'izin' ? 'Izin' :
+                     selectedSiswa.status === 'hadir' ? 'Hadir' :
+                     'Pulang'}
                   </span>
                 </div>
               </div>
 
               {/* Info Box - Ditampilkan untuk SEMUA status */}
               <div style={{
-                backgroundColor: selectedSiswa.status === 'present' ? '#F0FDF4' : '#EFF6FF',
-                border: `1px solid ${selectedSiswa.status === 'present' ? '#BBF7D0' : '#BFDBFE'}`,
+                backgroundColor: selectedSiswa.status === 'hadir' ? '#F0FDF4' : '#EFF6FF',
+                border: `1px solid ${selectedSiswa.status === 'hadir' ? '#BBF7D0' : '#BFDBFE'}`,
                 borderRadius: 8,
                 padding: 16,
                 textAlign: 'center',
-                marginBottom: (selectedSiswa.status === 'excused' || selectedSiswa.status === 'sick' || selectedSiswa.status === 'late') && selectedSiswa.keterangan ? 24 : 0,
+                marginBottom: 24,
               }}>
                 <div style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: selectedSiswa.status === 'present' ? '#166534' : '#1E40AF',
+                  color: selectedSiswa.status === 'hadir' ? '#166534' : '#1E40AF',
                 }}>
-                  {getStatusText(selectedSiswa.status || 'present', selectedSiswa.waktuHadir)}
+                  {getStatusText(selectedSiswa.status, selectedSiswa.waktuHadir)}
                 </div>
               </div>
 
-              {/* Keterangan untuk izin, sakit, DAN PULANG */}
-              {(selectedSiswa.status === 'excused' || selectedSiswa.status === 'sick' || selectedSiswa.status === 'late') && selectedSiswa.keterangan && (
-                <div>
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '140px 20px 1fr',
-                    alignItems: 'center',
-                    marginBottom: 12,
-                  }}>
-                    <div style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: '#374151',
-                    }}>
-                      Keterangan
-                    </div>
-                    <div style={{ fontWeight: 600, color: '#374151', textAlign: 'center' }}>:</div>
-                    <div></div>
-                  </div>
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: '#F9FAFB',
-                    borderRadius: 8,
-                    border: '1px solid #E5E7EB',
-                  }}>
-                    <p style={{
-                      margin: 0,
-                      fontSize: 14,
-                      color: '#6B7280',
-                      lineHeight: 1.5,
-                    }}>
-                      {selectedSiswa.keterangan}
-                    </p>
-                  </div>
+              {/* Keterangan Editable */}
+              <div>
+                <div style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#374151',
+                  marginBottom: 12,
+                }}>
+                  Keterangan (Opsional) :
                 </div>
-              )}
+                <textarea
+                  value={selectedSiswa.keterangan || ''}
+                  onChange={(e) => setSelectedSiswa({ ...selectedSiswa, keterangan: e.target.value })}
+                  placeholder={
+                    selectedSiswa.status === 'hadir' ? "Contoh: Hadir tepat waktu, aktif dalam pembelajaran..." :
+                    selectedSiswa.status === 'izin' ? "Contoh: Menghadiri acara keluarga, izin dokter..." :
+                    selectedSiswa.status === 'sakit' ? "Contoh: Demam tinggi, flu berat..." :
+                    selectedSiswa.status === 'pulang' ? "Contoh: Sakit perut, ada keperluan mendadak..." :
+                    "Alasan tidak hadir..."
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    backgroundColor: "white",
+                    borderRadius: 8,
+                    border: "1px solid #D1D5DB",
+                    fontSize: 14,
+                    color: "#374151",
+                    lineHeight: 1.5,
+                    resize: "vertical",
+                    minHeight: "80px",
+                    maxHeight: "200px", // Limit height
+                    overflowY: "auto",  // Enable internal scrolling
+                    fontFamily: "inherit",
+                    outline: "none",
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+                  onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
+                />
+                <div style={{
+                  fontSize: 12,
+                  color: "#9CA3AF",
+                  marginTop: 4,
+                }}>
+                  *Keterangan akan tersimpan dalam catatan kehadiran
+                </div>
+              </div>
+            </div>
 
+            {/* Footer Modal - Fixed at bottom */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #E5E7EB',
+              backgroundColor: '#F9FAFB',
+              display: 'flex',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={handleSaveDetail}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#2563EB',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.4)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Simpan Perubahan
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      
     </GuruLayout>
   );
 }
 
+const styles = {
+  th: {
+    padding: '16px',
+    textAlign: 'left' as const,
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: '0.025em'
+  },
+  td: {
+    padding: '16px',
+    fontSize: '14px',
+    color: '#1F2937',
+    verticalAlign: 'middle'
+  }
+
+  
+};

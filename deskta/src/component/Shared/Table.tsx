@@ -1,23 +1,23 @@
 import type { ReactNode } from "react";
 import { Edit, Trash2, Eye } from "lucide-react";
 
-interface Column<T> {
+interface Column {
   key: string;
   label: ReactNode;
-  render?: (value: any, row: T) => ReactNode;
+  render?: (value: any, row: any) => ReactNode;
 }
 
-interface TableProps<T> {
-  columns: Column<T>[];
-  data: T[];
-  onEdit?: (row: T) => void;
-  onDelete?: (row: T) => void;
-  onView?: (row: T) => void;
+interface TableProps {
+  columns: Column[];
+  data: any[];
+  onEdit?: (row: any) => void;
+  onDelete?: (row: any) => void;
+  onView?: (row: any) => void;
   emptyMessage?: string;
   keyField?: string;
 }
 
-export function Table<T extends Record<string, any>>({
+export function Table({
   columns,
   data,
   onEdit,
@@ -25,7 +25,7 @@ export function Table<T extends Record<string, any>>({
   onView,
   emptyMessage = "Data tidak ditemukan",
   keyField = "id",
-}: TableProps<T>) {
+}: TableProps) {
   const hasActions = onEdit || onDelete || onView;
 
   if (data.length === 0) {

@@ -1,29 +1,26 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { usePopup } from "../../Shared/Popup/PopupProvider";
-import QRScanner from "../../Shared/QRScanner";
+import QRCodeIcon from '../../../assets/Icon/qr_code.png';
 
 interface MetodeGuruProps {
   isOpen: boolean;
   onClose: () => void;
   onPilihQR: () => void;
-  // onPilihManual: () => void; // Removed
+  onPilihManual: () => void;
   onTidakBisaMengajar?: () => void;
   onSubmitDispensasi?: (data: { alasan: string; tanggal?: string; jamMulai?: string; jamSelesai?: string; keterangan?: string; bukti?: File; }) => void;
-  scheduleId?: string;
 }
 
 export function MetodeGuru({
   isOpen,
   onClose,
-  // onPilihManual,
+  onPilihQR,
+  onPilihManual,
   onSubmitDispensasi,
-  // scheduleId,
 }: MetodeGuruProps) {
-  const { alert: popupAlert } = usePopup();
   const [showDispensasi, setShowDispensasi] = useState(false);
+  const [liveMode, setLiveMode] = useState(true);
 
-  // Camera / Scanner State
   // Dispensasi inputs
   const [dispAlasan, setDispAlasan] = useState("");
   const [dispTanggal, setDispTanggal] = useState<string>("");
@@ -31,37 +28,8 @@ export function MetodeGuru({
   const [dispSelesai, setDispSelesai] = useState<string>("");
   const [dispKeterangan, setDispKeterangan] = useState("");
   const [dispBukti, setDispBukti] = useState<File | null>(null);
-  const [isScannerActive] = useState(true);
 
-  // ...
 
-  const handleScan = async (result: string) => {
-    if (!result) return;
-
-    // Play beep sound if possible? 
-    // console.log("Scanned:", result);
-
-    try {
-      const { dashboardService } = await import('../../../services/dashboard');
-      // Call scan API. 
-      // Teacher Scanning Student Token uses scanStudentQR
-      const response = await dashboardService.scanStudentQR(result);
-
-      // Show success
-      await popupAlert(`✅ Berhasil: ${response.message || 'Presensi tercatat'}`);
-
-      // Optional: Close modal or stay open for next student?
-      // Usually scan multiple students. So stay open.
-    } catch (e: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const error = e as any;
-      await popupAlert(`❌ Gagal: ${error.response?.data?.message || error.message || 'QR tidak valid'}`);
-    }
-  };
-
-  const handleError = (_err: string) => {
-    console.error("Scanner Error:", _err);
-  };
 
   const handleClose = () => {
     onClose();
@@ -73,20 +41,24 @@ export function MetodeGuru({
     if (e.target.files && e.target.files[0]) setDispBukti(e.target.files[0]);
   };
 
-  const handleSubmitDispensasi = async () => {
-    if (!dispAlasan) { await popupAlert("Isi alasan terlebih dahulu"); return; }
+  const handleSubmitDispensasi = () => {
+    if (!dispAlasan) { alert("Isi alasan terlebih dahulu"); return; }
     const payload = { alasan: dispAlasan, tanggal: dispTanggal, jamMulai: dispMulai, jamSelesai: dispSelesai, keterangan: dispKeterangan, bukti: dispBukti || undefined };
-    if (onSubmitDispensasi) onSubmitDispensasi(payload); else await popupAlert("Pengajuan dispensasi dikirim ke Waka/Pengurus Kelas untuk validasi.");
+    if (onSubmitDispensasi) onSubmitDispensasi(payload); else alert("Pengajuan dispensasi dikirim ke Waka/Pengurus Kelas untuk validasi.");
     setDispAlasan(""); setDispTanggal(""); setDispMulai(""); setDispSelesai(""); setDispKeterangan(""); setDispBukti(null);
     closeDispensasi();
   };
 
-  /* 
+  // const simpleScanMode = true; // Removed as per new structure
+
+  const handleScan = () => {
+    onPilihQR();
+  };
+
   const handleManual = () => {
     onPilihManual();
     handleClose();
   };
-  */
 
   return (
     <>
@@ -122,32 +94,30 @@ export function MetodeGuru({
                 textAlign: "center"
               }}
             >
-              SCAN PRESENSI SISWA
+              PRESENTASI PEMBELAJARAN DIGITAL
             </h2>
             <p style={{ fontSize: 14, color: "#6B7280", marginTop: 4, textTransform: 'uppercase', fontWeight: 600 }}>
-              ARAHKAN KAMERA KE QR SISWA
+              KODE QR UNTUK PRESENSI
             </p>
           </div>
 
           <div
             style={{
+              border: "1px dashed #D1D5DB",
+              borderRadius: 24,
+              padding: 24,
               marginBottom: 24,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              minHeight: 248,
-              backgroundColor: '#000', // Camera bg
-              borderRadius: 24,
-              overflow: 'hidden'
             }}
+            onClick={handleScan}
           >
-            {isOpen && (
-              <QRScanner
-                onScan={handleScan}
-                onError={handleError}
-                isActive={isOpen && isScannerActive}
-              />
-            )}
+            <img
+              src={QRCodeIcon}
+              alt="Kode QR"
+              style={{ width: 200, height: 200, objectFit: "contain" }}
+            />
           </div>
 
           <div
@@ -157,7 +127,46 @@ export function MetodeGuru({
               gap: 16,
             }}
           >
-
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={handleManual}
+                style={{
+                  border: "1px solid #D1D5DB",
+                  background: "#FFFFFF",
+                  color: "#1F2937",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  width: '100%'
+                }}
+              >
+                Manual
+              </button>
+              <button
+                type="button"
+                onClick={() => setLiveMode(!liveMode)}
+                style={{
+                  border: "1px solid #D1D5DB",
+                  background: "#FFFFFF",
+                  color: "#1F2937",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8
+                }}
+              >
+                {liveMode ? "Mode: Live" : "Mode: Statics"}
+              </button>
+            </div>
 
             <button
               type="button"
@@ -248,20 +257,20 @@ export function MetodeGuru({
                   onChange={(e) => setDispTanggal(e.target.value)}
                   style={{ padding: '12px', borderRadius: '12px', border: '1px solid #D1D5DB', width: '100%', boxSizing: 'border-box' }}
                 />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <input
-                  type="time"
-                  value={dispMulai}
-                  onChange={(e) => setDispMulai(e.target.value)}
-                  style={{ padding: '12px', borderRadius: '12px', border: '1px solid #D1D5DB', width: '100%', boxSizing: 'border-box' }}
-                />
-                <input
-                  type="time"
-                  value={dispSelesai}
-                  onChange={(e) => setDispSelesai(e.target.value)}
-                  style={{ padding: '12px', borderRadius: '12px', border: '1px solid #D1D5DB', width: '100%', boxSizing: 'border-box' }}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <input
+                    type="time"
+                    value={dispMulai}
+                    onChange={(e) => setDispMulai(e.target.value)}
+                    style={{ padding: '12px', borderRadius: '12px', border: '1px solid #D1D5DB', width: '100%', boxSizing: 'border-box' }}
+                  />
+                  <input
+                    type="time"
+                    value={dispSelesai}
+                    onChange={(e) => setDispSelesai(e.target.value)}
+                    style={{ padding: '12px', borderRadius: '12px', border: '1px solid #D1D5DB', width: '100%', boxSizing: 'border-box' }}
+                  />
+                </div>
               </div>
               <textarea
                 value={dispKeterangan}
@@ -312,4 +321,3 @@ export function MetodeGuru({
     </>
   );
 }
-

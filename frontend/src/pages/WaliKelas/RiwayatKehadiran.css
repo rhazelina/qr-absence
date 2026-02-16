@@ -334,16 +334,16 @@
   border-color: rgba(237, 211, 41, 0.4);
 }
 
-.summary-alpha::before {
+.summary-alfa::before {
   background: #D90000;
 }
 
-.summary-alpha .summary-icon {
+.summary-alfa .summary-icon {
   color: #D90000;
   background: rgba(217, 0, 0, 0.1);
 }
 
-.summary-alpha:hover {
+.summary-alfa:hover {
   border-color: rgba(217, 0, 0, 0.3);
 }
 
@@ -479,7 +479,7 @@
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #1e293b;
+  color: black;
   font-weight: 700;
   font-size: 15px;
 }
@@ -609,7 +609,7 @@
   min-width: 80px;
 }
 
-.status-alpha {
+.status-alfa {
   background: #D90000;
   color: white;
 }

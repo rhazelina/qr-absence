@@ -1,22 +1,38 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/auth';
+import React, { useState, useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
 import './NavbarPengurus.css';
-import logo from '../../assets/logo.png';
+import defaultLogo from '../../assets/logo.png';
 
 function NavbarPengurus() {
-  const navigate = useNavigate();
+  const [logo, setLogo] = useState(defaultLogo);
+  const [namaSekolah, setNamaSekolah] = useState('SMKN 2 SINGOSARI');
 
-  const handleLogout = () => {
-    if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      authService.logout();
-      navigate('/login');
+  useEffect(() => {
+    // Load logo dari localStorage
+    const savedLogo = localStorage.getItem('logoSekolah');
+    if (savedLogo) {
+      setLogo(savedLogo);
     }
-  };
+
+    // Load nama sekolah dari localStorage
+    const savedProfile = localStorage.getItem('profileSekolah');
+    if (savedProfile) {
+      try {
+        const profileData = JSON.parse(savedProfile);
+        if (profileData.namaSekolah) {
+          setNamaSekolah(profileData.namaSekolah);
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
+    }
+  }, []);
+
   return (
     <nav className="navbar">
       <div className="nav-left">
         <img src={logo} alt="Logo SMK" className="logo" />
-        <span className="school-name">SMKN 2 SINGOSARI</span>
+        <span className="school-name">{namaSekolah}</span>
       </div>
 
       <div className="nav-right">
@@ -29,10 +45,6 @@ function NavbarPengurus() {
         <NavLink to="/pengurus-kelas/presensi" className={({ isActive }) => isActive ? 'active' : ''}>
           Presensi
         </NavLink>
-
-        <button onClick={handleLogout} className="btn-logoutt">
-          <span>Keluar</span>
-        </button>
       </div>
     </nav>
   );

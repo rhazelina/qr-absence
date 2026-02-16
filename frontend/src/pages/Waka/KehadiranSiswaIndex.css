@@ -5,12 +5,13 @@
   max-width: 1200px;
   
   /* FIX UTAMA */
-  padding-top: 1050px;                    /* Tinggi navbar 75px + margin 20px */
-  min-height: calc(100vh - 1000px);       /* Konsisten dengan padding-top */
+  padding-top: 1050px;                    
+  min-height: calc(100vh - 1000px);       
   
   box-sizing: border-box;
   padding-left: 20px;
   padding-right: 20px;
+  padding-top: 120px; 
   padding-bottom: 40px;
 }
 
@@ -29,7 +30,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding-top: 95px;                    /* SAMA dengan wadah-kehadiran */
+  padding-top: px;                    /* SAMA dengan wadah-kehadiran */
   box-sizing: border-box;
 }
 

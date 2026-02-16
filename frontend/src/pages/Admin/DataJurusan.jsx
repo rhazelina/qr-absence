@@ -1,89 +1,197 @@
 import React, { useState, useEffect } from 'react';
 import './DataJurusan.css';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
-import TambahJurusan from '../../components/Admin/TambahJurusan';
-import { majorService } from '../../services/major';
 
 function DataJurusan() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [jurusans, setJurusans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [saving, setSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [jurusans, setJurusans] = useState([]);
   const [editData, setEditData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchMajors = async () => {
+  const [formData, setFormData] = useState({
+    kodeJurusan: '',
+    namaJurusan: ''
+  });
+  const [errors, setErrors] = useState({});
+
+  // Load data dari localStorage saat komponen mount
+  useEffect(() => {
+    fetchJurusans();
+  }, []);
+
+  const fetchJurusans = () => {
     try {
       setLoading(true);
-      const data = await majorService.getMajors();
-      setJurusans(data);
+      const storedData = localStorage.getItem('dataJurusan');
+      if (storedData) {
+        setJurusans(JSON.parse(storedData));
+      } else {
+        // Data dummy awal (opsional)
+        const dummyData = [];
+        setJurusans(dummyData);
+        localStorage.setItem('dataJurusan', JSON.stringify(dummyData));
+      }
+      setLoading(false);
     } catch (err) {
-      console.error('Error fetching majors:', err);
-      setError('Gagal mengambil data jurusan.');
-    } finally {
+      console.error('Error loading jurusan:', err);
+      setError(err.message);
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMajors();
-  }, []);
+    if (isModalOpen) {
+      if (editData) {
+        setFormData(editData);
+      } else {
+        setFormData({
+          kodeJurusan: '',
+          namaJurusan: ''
+        });
+      }
+      setErrors({});
+    }
+  }, [editData, isModalOpen]);
 
-  // === TAMBAH BARU ===
-  const handleAddJurusan = async (formData) => {
-    try {
-      await majorService.createMajor({
-        name: formData.namaJurusan,
-        code: formData.kodeJurusan
+  const checkKodeExists = (kode) => {
+    if (editData && editData.kodeJurusan.toUpperCase() === kode.toUpperCase()) {
+      return false;
+    }
+    return jurusans.some(j => j.kodeJurusan.toUpperCase() === kode.toUpperCase());
+  };
+
+  const checkNamaExists = (nama) => {
+    if (editData && editData.namaJurusan.toLowerCase() === nama.toLowerCase()) {
+      return false;
+    }
+    return jurusans.some(j => j.namaJurusan.toLowerCase() === nama.toLowerCase());
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
       });
-      alert('Data jurusan berhasil ditambahkan!');
-      setIsModalOpen(false);
-      fetchMajors();
-    } catch (err) {
-      console.error('Error creating major:', err);
-      alert('Gagal menambahkan data jurusan.');
     }
   };
 
-  // === EDIT DATA ===
-  const handleEditJurusan = async (formData) => {
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.kodeJurusan.trim()) {
+      newErrors.kodeJurusan = 'Kode jurusan harus diisi';
+    } else if (formData.kodeJurusan.trim().length > 5) {
+      newErrors.kodeJurusan = 'Kode jurusan maksimal 5 karakter';
+    } else if (checkKodeExists(formData.kodeJurusan.trim())) {
+      newErrors.kodeJurusan = `Kode jurusan "${formData.kodeJurusan.toUpperCase()}" sudah terdaftar`;
+    }
+
+    if (!formData.namaJurusan.trim()) {
+      newErrors.namaJurusan = 'Nama jurusan harus diisi';
+    } else if (checkNamaExists(formData.namaJurusan.trim())) {
+      newErrors.namaJurusan = `Jurusan "${formData.namaJurusan}" sudah terdaftar`;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAddJurusan = () => {
+    if (!validate()) return;
+
     try {
-      await majorService.updateMajor(formData.id, {
-        name: formData.namaJurusan,
-        code: formData.kodeJurusan
-      });
-      alert('Data jurusan berhasil diperbarui!');
+      setSaving(true);
+      const newJurusan = {
+        id: Date.now(), // Generate ID sederhana
+        kodeJurusan: formData.kodeJurusan.trim().toUpperCase(),
+        namaJurusan: formData.namaJurusan.trim()
+      };
+
+      const updatedJurusans = [...jurusans, newJurusan];
+      setJurusans(updatedJurusans);
+      localStorage.setItem('dataJurusan', JSON.stringify(updatedJurusans));
+
+      setIsModalOpen(false);
+      setEditData(null);
+      alert('Data konsentrasi keahlian berhasil ditambahkan!');
+    } catch (error) {
+      console.error('Error adding jurusan:', error);
+      alert('Gagal menambahkan data. Silakan coba lagi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditJurusan = () => {
+    if (!validate()) return;
+
+    try {
+      setSaving(true);
+      const updatedJurusans = jurusans.map(j => 
+        j.id === formData.id 
+          ? {
+              ...j,
+              kodeJurusan: formData.kodeJurusan.trim().toUpperCase(),
+              namaJurusan: formData.namaJurusan.trim()
+            }
+          : j
+      );
+
+      setJurusans(updatedJurusans);
+      localStorage.setItem('dataJurusan', JSON.stringify(updatedJurusans));
+
       setEditData(null);
       setIsModalOpen(false);
-      fetchMajors();
-    } catch (err) {
-      console.error('Error updating major:', err);
-      alert('Gagal memperbarui data jurusan.');
+      alert('Data konsentrasi keahlian berhasil diperbarui!');
+    } catch (error) {
+      console.error('Error updating jurusan:', error);
+      alert('Gagal memperbarui data. Silakan coba lagi.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  // === HAPUS ===
-  const handleDeleteJurusan = async (id) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus data jurusan ini?')) {
-      try {
-        await majorService.deleteMajor(id);
-        alert('Data jurusan berhasil dihapus!');
-        fetchMajors();
-      } catch (err) {
-        console.error('Error deleting major:', err);
-        alert('Gagal menghapus data jurusan.');
-      }
+  const handleDeleteJurusan = (id) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus data konsentrasi keahlian ini?')) return;
+
+    try {
+      const updatedJurusans = jurusans.filter(j => j.id !== id);
+      setJurusans(updatedJurusans);
+      localStorage.setItem('dataJurusan', JSON.stringify(updatedJurusans));
+      alert('Data konsentrasi keahlian berhasil dihapus!');
+    } catch (error) {
+      console.error('Error deleting jurusan:', error);
+      alert('Gagal menghapus data. Silakan coba lagi.');
     }
   };
 
-  // === FILTER ===
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editData) {
+      handleEditJurusan();
+    } else {
+      handleAddJurusan();
+    }
+  };
+
   const filteredJurusans = jurusans.filter(jurusan =>
-    (jurusan.name || jurusan.namaJurusan || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (jurusan.code || jurusan.kodeJurusan || '').toLowerCase().includes(searchTerm.toLowerCase())
+    jurusan.namaJurusan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    jurusan.kodeJurusan.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Icon Edit SVG
+  const handleResetSearch = () => {
+    setSearchTerm('');
+  };
+
   const EditIcon = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -101,7 +209,6 @@ function DataJurusan() {
     </svg>
   );
 
-  // Icon Delete SVG
   const DeleteIcon = () => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -121,23 +228,85 @@ function DataJurusan() {
     </svg>
   );
 
-  return (
-    <div className="data-container">
-      <NavbarAdmin />
-      <h1 className="page-title">Data Konsentrasi Keahlian</h1>
+  if (loading) {
+    return (
+      <div className="jurusan-container">
+        <NavbarAdmin />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '50vh',
+          fontSize: '18px',
+          color: '#6b7280'
+        }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
-      <div className="table-wrapper">
-        <div className="filter-box">
-          <input
-            type="text"
-            placeholder="Cari Jurusan..."
-            className="search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <div className="select-group">
+  if (error) {
+    return (
+      <div className="jurusan-container">
+        <NavbarAdmin />
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '50vh',
+          gap: '16px'
+        }}>
+          <div style={{ fontSize: '18px', color: '#ef4444' }}>Error: {error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '10px 20px',
+              background: '#1e3a8a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}
+          >
+            Muat Ulang
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="jurusan-container">
+      <NavbarAdmin />
+      <h1 className="jurusan-page-title">Data Konsentrasi Keahlian</h1>
+
+      <div className="jurusan-table-wrapper">
+        <div className="jurusan-filter-box">
+          <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
+            <input
+              type="text"
+              placeholder="Cari berdasarkan kode atau nama jurusan..."
+              className="jurusan-search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                onClick={handleResetSearch}
+                className="jurusan-clear-btn"
+                title="Hapus pencarian"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <div className="jurusan-select-group">
             <button
-              className="btn-tambah"
+              className="jurusan-btn-tambah"
               onClick={() => {
                 setEditData(null);
                 setIsModalOpen(true);
@@ -148,75 +317,180 @@ function DataJurusan() {
           </div>
         </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
-        ) : error ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>{error}</div>
-        ) : (
-          <table className="tabel-siswa">
-            <thead>
+        {searchTerm && (
+          <div className="jurusan-search-info">
+            <strong>Hasil Pencarian:</strong> {filteredJurusans.length} dari {jurusans.length} data
+            <span> | Kata kunci: "{searchTerm}"</span>
+          </div>
+        )}
+
+        <table className="jurusan-table">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Kode Konsentrasi Keahlian</th>
+              <th>Nama Konsentrasi Keahlian</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredJurusans.length === 0 ? (
               <tr>
-                <th>No</th>
-                <th>Kode Konsentrasi Keahlian</th>
-                <th>Nama Konsentrasi Keahlian</th>
-                <th>Aksi</th>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                  {searchTerm
+                    ? 'Tidak ada data yang sesuai dengan pencarian'
+                    : 'Belum ada data konsentrasi keahlian'}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filteredJurusans.length === 0 ? (
-                <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                    {searchTerm
-                      ? 'Tidak ada data yang sesuai pencarian.'
-                      : 'Belum ada data jurusan. Klik "Tambahkan" untuk menambah data.'}
+            ) : (
+              filteredJurusans.map((jurusan, index) => (
+                <tr key={jurusan.id}>
+                  <td style={{ fontWeight: '700' }}>{index + 1}</td>
+                  <td><strong>{jurusan.kodeJurusan}</strong></td>
+                  <td>{jurusan.namaJurusan}</td>
+                  <td className="jurusan-aksi-cell">
+                    <button
+                      className="jurusan-aksi jurusan-edit"
+                      onClick={() => {
+                        setEditData(jurusan);
+                        setIsModalOpen(true);
+                      }}
+                      title="Edit"
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      className="jurusan-aksi jurusan-hapus"
+                      onClick={() => handleDeleteJurusan(jurusan.id)}
+                      title="Hapus"
+                    >
+                      <DeleteIcon />
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                filteredJurusans.map((jurusan, index) => (
-                  <tr key={jurusan.id}>
-                    <td style={{ fontWeight: '700' }}>{index + 1}</td>
-                    <td>{jurusan.code || jurusan.kodeJurusan}</td>
-                    <td>{jurusan.name || jurusan.namaJurusan}</td>
-                    <td className="aksi-cell">
-                      <button
-                        className="aksi edit"
-                        onClick={() => {
-                          setEditData({
-                            id: jurusan.id,
-                            namaJurusan: jurusan.name || jurusan.namaJurusan,
-                            kodeJurusan: jurusan.code || jurusan.kodeJurusan
-                          });
-                          setIsModalOpen(true);
-                        }}
-                        title="Edit"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button
-                        className="aksi hapus"
-                        onClick={() => handleDeleteJurusan(jurusan.id)}
-                        title="Hapus"
-                      >
-                        <DeleteIcon />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        )}
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      <TambahJurusan
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditData(null);
-        }}
-        onSubmit={editData ? handleEditJurusan : handleAddJurusan}
-        editData={editData}
-      />
+      {isModalOpen && (
+        <div className="jurusan-modal-overlay" onClick={() => {
+          if (!saving) {
+            setIsModalOpen(false);
+            setEditData(null);
+          }
+        }}>
+          <div className="jurusan-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="jurusan-modal-header">
+              <h2>{editData ? 'Edit Data Konsentrasi Keahlian' : 'Tambah Data Konsentrasi Keahlian'}</h2>
+              <button 
+                className="jurusan-modal-close" 
+                onClick={() => {
+                  if (!saving) {
+                    setIsModalOpen(false);
+                    setEditData(null);
+                  }
+                }}
+                disabled={saving}
+              >×</button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="jurusan-form-group">
+                <label>Kode Konsentrasi Keahlian <span className="jurusan-required">*</span></label>
+                <input
+                  type="text"
+                  name="kodeJurusan"
+                  value={formData.kodeJurusan}
+                  onChange={handleChange}
+                  placeholder="Contoh: RPL"
+                  className={errors.kodeJurusan ? 'jurusan-error' : ''}
+                  maxLength="5"
+                  style={{ textTransform: 'uppercase' }}
+                  disabled={saving}
+                />
+                {errors.kodeJurusan && <span className="jurusan-error-message">{errors.kodeJurusan}</span>}
+                {!errors.kodeJurusan && (
+                  <small className="jurusan-helper-text">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ marginRight: '5px', verticalAlign: 'middle' }}
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Maksimal 5 karakter, akan otomatis diubah ke huruf besar
+                  </small>
+                )}
+              </div>
+
+              <div className="jurusan-form-group">
+                <label>Nama Konsentrasi Keahlian <span className="jurusan-required">*</span></label>
+                <input
+                  type="text"
+                  name="namaJurusan"
+                  value={formData.namaJurusan}
+                  onChange={handleChange}
+                  placeholder="Contoh: Rekayasa Perangkat Lunak"
+                  className={errors.namaJurusan ? 'jurusan-error' : ''}
+                  disabled={saving}
+                />
+                {errors.namaJurusan && <span className="jurusan-error-message">{errors.namaJurusan}</span>}
+                {!errors.namaJurusan && (
+                  <small className="jurusan-helper-text">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ marginRight: '5px', verticalAlign: 'middle' }}
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Nama lengkap konsentrasi keahlian
+                  </small>
+                )}
+              </div>
+
+              <div className="jurusan-modal-actions">
+                <button 
+                  type="button" 
+                  className="jurusan-btn-cancel" 
+                  onClick={() => {
+                    if (!saving) {
+                      setIsModalOpen(false);
+                      setEditData(null);
+                    }
+                  }}
+                  disabled={saving}
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  className="jurusan-btn-submit"
+                  disabled={saving}
+                >
+                  {saving ? 'Menyimpan...' : (editData ? 'Perbarui' : 'Simpan')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

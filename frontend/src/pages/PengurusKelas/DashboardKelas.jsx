@@ -1,99 +1,22 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, BookOpen, ArrowLeft, LogOut, TrendingUp, PieChart, User, Camera } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, BookOpen, ArrowLeft, LogOut, TrendingUp, PieChart, User } from 'lucide-react';
 import './DashboardKelas.css';
 import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
-import { authService } from '../../services/auth';
-import attendanceService from '../../services/attendance';
-import { authHelpers } from '../../utils/authHelpers';
-import jadwalImage from '../../assets/jadwal.png';
 
-// Sample Data
-const sampleData = {
-  profile: {
-    name: '123',
-    kelas: 'XII RPL 2',
-    id: '001234',
-    gender: 'laki-laki' // 'laki-laki' atau 'perempuan'
-  },
-  scheduleImage: jadwalImage,
-  // Statistik Hari Ini - Kehadiran siswa hari ini (dari 30 siswa)
-  dailyStats: {
-    hadir: 20,
-    izin: 2,
-    sakit: 1,
-    alpha: 1,
-    terlambat: 4,
-    pulang: 2
-  },
-  // Tren Bulanan - Data untuk semua status
-  monthlyTrend: [
-    { 
-      month: 'Jan', 
-      hadir: 520, 
-      sakit: 45, 
-      izin: 38, 
-      alpha: 25, 
-      terlambat: 52, 
-      pulang: 40,
-      total: 720 
-    },
-    { 
-      month: 'Feb', 
-      hadir: 580, 
-      sakit: 35, 
-      izin: 30, 
-      alpha: 20, 
-      terlambat: 40, 
-      pulang: 35,
-      total: 740 
-    },
-    { 
-      month: 'Mar', 
-      hadir: 640, 
-      sakit: 28, 
-      izin: 25, 
-      alpha: 15, 
-      terlambat: 35, 
-      pulang: 30,
-      total: 773 
-    },
-    { 
-      month: 'Apr', 
-      hadir: 590, 
-      sakit: 40, 
-      izin: 32, 
-      alpha: 22, 
-      terlambat: 45, 
-      pulang: 38,
-      total: 767 
-    },
-    { 
-      month: 'Mei', 
-      hadir: 670, 
-      sakit: 22, 
-      izin: 20, 
-      alpha: 12, 
-      terlambat: 28, 
-      pulang: 25,
-      total: 777 
-    },
-    { 
-      month: 'Jun', 
-      hadir: 610, 
-      sakit: 32, 
-      izin: 28, 
-      alpha: 18, 
-      terlambat: 38, 
-      pulang: 32,
-      total: 758 
-    }
-  ]
+// Constants
+const TOTAL_STUDENTS = 30;
+
+// Fungsi untuk mendapatkan total mata pelajaran hari ini dari data jadwal
+const getTodaySubjectCount = (scheduleData) => {
+  if (!scheduleData || !scheduleData.weeklySchedule) return 0;
+  
+  const today = new Date().getDay();
+  const todaySchedule = scheduleData.weeklySchedule[today];
+  return todaySchedule ? todaySchedule.length : 0;
 };
 
 // SVG Avatar Component untuk Profil - Basic Icon
 const ProfileIcon = ({ gender, size = 80 }) => {
-  // Icon basic yang sama untuk semua
   return (
     <svg 
       width={size} 
@@ -234,12 +157,33 @@ const MultiLineChart = ({ data }) => {
     pulang: { label: 'Pulang', color: '#243CB5' }
   };
 
-  // Find max value across all visible lines
+  // Jika tidak ada data, tampilkan pesan
+  if (!data || data.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 20px',
+        background: '#f9fafb',
+        borderRadius: '12px',
+        border: '2px dashed #d1d5db',
+        minHeight: '240px'
+      }}>
+        <TrendingUp size={48} color="#9ca3af" style={{ marginBottom: '16px' }} />
+        <p style={{ fontSize: '14px', color: '#6b7280', fontWeight: '600' }}>
+          Belum ada data tren bulanan
+        </p>
+      </div>
+    );
+  }
+
   const maxValue = Math.max(...data.flatMap(item => 
     Object.keys(statusConfig)
       .filter(key => visibleLines[key])
-      .map(key => item[key])
-  ));
+      .map(key => item[key] || 0)
+  ), 1);
 
   const yScale = (value) => {
     return padding.top + ((maxValue - value) / maxValue) * (chartHeight - padding.top - padding.bottom);
@@ -346,8 +290,8 @@ const MultiLineChart = ({ data }) => {
 
           const points = data.map((item, index) => ({
             x: xScale(index),
-            y: yScale(item[statusKey]),
-            value: item[statusKey],
+            y: yScale(item[statusKey] || 0),
+            value: item[statusKey] || 0,
             month: item.month,
             statusKey
           }));
@@ -481,8 +425,25 @@ const DonutChart = ({ data }) => {
   
   if (total === 0) {
     return (
-      <div className="no-data-chart">
-        <p>Belum ada data hari ini</p>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '180px',
+        height: '180px',
+        background: '#f9fafb',
+        borderRadius: '50%',
+        border: '2px dashed #d1d5db'
+      }}>
+        <PieChart size={48} color="#9ca3af" style={{ marginBottom: '8px' }} />
+        <p style={{ 
+          fontSize: '12px', 
+          color: '#6b7280', 
+          fontWeight: '600',
+          textAlign: 'center',
+          padding: '0 20px'
+        }}>Belum ada data</p>
       </div>
     );
   }
@@ -584,219 +545,58 @@ const DonutChart = ({ data }) => {
   );
 };
 
-// Profile Modal Component
-const ProfileModal = ({ isOpen, onClose, profile, onLogout, currentProfileImage, onUpdateProfileImage }) => {
-  const [profileImage, setProfileImage] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('File harus berupa gambar!');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran file maksimal 5MB!');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImage(reader.result);
-        setProfileImage(file);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveImage = async () => {
-    if (!profileImage) return;
-    setIsUploading(true);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onUpdateProfileImage(previewImage);
-      setPreviewImage(null);
-      setProfileImage(null);
-      alert('Foto profil berhasil diperbarui!');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Gagal mengupload foto. Silakan coba lagi.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setPreviewImage(null);
-    setProfileImage(null);
-  };
-
-  const handleDeleteProfileImage = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus foto profil?')) return;
-    setIsUploading(true);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      onUpdateProfileImage(null);
-      alert('Foto profil berhasil dihapus!');
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      alert('Gagal menghapus foto. Silakan coba lagi.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  return (
-    <div className="all-riwayat-modal-overlay" onClick={onClose}>
-      <div className="all-riwayat-modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="all-riwayat-header">
-          <button onClick={onClose} className="back-button">
-            <ArrowLeft size={32} />
-          </button>
-          <h2>Info Akun</h2>
-        </div>
-        
-        <div className="all-riwayat-card">
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            marginBottom: '32px', padding: '24px', background: '#f9fafb', borderRadius: '16px'
-          }}>
-            <div style={{ position: 'relative', marginBottom: '20px' }}>
-              <div style={{
-                width: '150px', height: '150px', borderRadius: '50%', background: '#e8e8e8',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden', border: '4px solid white', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-              }}>
-                {previewImage ? (
-                  <img src={previewImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : currentProfileImage ? (
-                  <img src={currentProfileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <ProfileIcon gender={profile.gender} size={80} />
-                )}
-              </div>
-              <label htmlFor="profile-upload" style={{
-                position: 'absolute', bottom: '5px', right: '5px', width: '40px', height: '40px',
-                borderRadius: '50%', background: '#1e3a8a', border: '3px solid white',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: isUploading ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
-                color: 'white', opacity: isUploading ? 0.5 : 1
-              }}>
-                <Camera size={20} />
-              </label>
-              <input id="profile-upload" type="file" accept="image/jpeg,image/png,image/jpg,image/webp"
-                onChange={handleImageChange} disabled={isUploading} style={{ display: 'none' }} />
-            </div>
-            
-            {previewImage && (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={handleSaveImage} disabled={isUploading} style={{
-                  padding: '10px 20px', background: isUploading ? '#9ca3af' : '#22c55e',
-                  color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600',
-                  cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
-                }}>
-                  {isUploading ? 'Menyimpan...' : 'Simpan Foto'}
-                </button>
-                <button onClick={handleRemoveImage} disabled={isUploading} style={{
-                  padding: '10px 20px', background: isUploading ? '#9ca3af' : '#ef4444',
-                  color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600',
-                  cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
-                }}>Batal</button>
-              </div>
-            )}
-            
-            {!previewImage && currentProfileImage && (
-              <button onClick={handleDeleteProfileImage} disabled={isUploading} style={{
-                padding: '10px 20px', background: 'transparent', color: '#ef4444',
-                border: '2px solid #ef4444', borderRadius: '8px', fontWeight: '600',
-                cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '14px', transition: 'all 0.2s'
-              }}>
-                {isUploading ? 'Menghapus...' : 'Hapus Foto'}
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Nama Lengkap</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.name}</div>
-            </div>
-
-            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Kelas</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.kelas}</div>
-            </div>
-
-            <div style={{ background: '#f9fafb', padding: '20px', borderRadius: '12px', border: '2px solid #e5e7eb' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', marginBottom: '6px' }}>Nomor Induk</div>
-              <div style={{ fontSize: '18px', fontWeight: '700', color: '#1f2937' }}>{profile.id}</div>
-            </div>
-          </div>
-
-          <button onClick={onLogout} disabled={isUploading} style={{
-            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '12px', padding: '16px 24px',
-            background: isUploading ? '#9ca3af' : 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-            border: 'none', borderRadius: '12px', color: 'white', fontSize: '16px', fontWeight: '700',
-            cursor: isUploading ? 'not-allowed' : 'pointer', transition: 'all 0.3s ease',
-            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
-          }}
-          onMouseOver={(e) => {
-            if (!isUploading) {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }
-          }}
-          onMouseOut={(e) => {
-            if (!isUploading) {
-              e.currentTarget.style.background = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }
-          }}>
-            <LogOut size={20} />
-            <span>Keluar dari Akun</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Main Dashboard
 const DashboardKelas = () => {
-  const navigate = useNavigate();
+  // State management
   const [showSubjects, setShowSubjects] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [profileImage, setProfileImage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
+  
+  // Data state dengan default values
+  const [profileData, setProfileData] = useState({
+    name: '',
+    kelas: '',
+    id: '',
+    gender: 'perempuan'
+  });
+  
+  const [scheduleImage, setScheduleImage] = useState(null);
+  const [scheduleData, setScheduleData] = useState(null);
+  
+  const [dailyStats, setDailyStats] = useState({
+    hadir: 0,
+    izin: 0,
+    sakit: 0,
+    alpha: 0,
+    terlambat: 0,
+    pulang: 0
+  });
+  
+  const [monthlyTrend, setMonthlyTrend] = useState([]);
+  
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch data from API
   useEffect(() => {
-    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
-    
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       try {
-        setLoading(true);
-        const data = await attendanceService.getClassDashboard();
-        setDashboardData(data);
-      } catch (err) {
-        console.error("Error fetching class dashboard data:", err);
-        setError("Gagal mengambil data dashboard kelas.");
+        setIsLoading(true);
+        
+        // TODO: Replace with actual API endpoints
+        
+      } catch (error) {
+        console.error('Error fetching data:', error);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchData();
+  }, []);
+
+  // Update clock
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDateTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -812,47 +612,35 @@ const DashboardKelas = () => {
 
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      authService.logout();
-      navigate('/login');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      localStorage.removeItem('userRole');
+      window.location.href = '/';
     }
   };
 
-  const handleUpdateProfileImage = (newImageUrl) => {
-    setProfileImage(newImageUrl);
-  };
-
-  if (loading) {
-    return <div className="loading-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '20px', fontWeight: 'bold' }}>Memuat data dashboard kelas...</div>;
-  }
-
-  if (error) {
-    return <div className="error-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '20px', fontWeight: 'bold', color: '#ef4444' }}>{error}</div>;
-  }
-
-  const profile = dashboardData?.profile || {};
-  const dailyStats = dashboardData?.dailyStats || {};
-  const monthlyTrend = dashboardData?.monthlyTrend || [];
+  const totalSubjects = getTodaySubjectCount(scheduleData);
 
   return (
     <>
       <NavbarPengurus />
       <div className="dashboard">
         <div className="profile-section">
-          <div className="profile-contenty" onClick={() => setShowProfile(true)} style={{ cursor: 'pointer' }}>
+          <div className="profile-contenty">
             <div className="profile-avatar-wrapper">
               <div className="profile-avatar">
                 {profileImage ? (
                   <img src={profileImage} alt="Profile" className="avatar-image" />
                 ) : (
                   <div className="avatar-icon">
-                    <ProfileIcon gender={profile.gender} size={80} />
+                    <ProfileIcon gender={profileData.gender} size={80} />
                   </div>
                 )}
               </div>
             </div>
-            <h1 className="profile-name">{profile.name}</h1>
-            <h3 className="profile-kelas">{profile.kelas}</h3>
-            <p className="profile-id">{profile.id}</p>
+            <h1 className="profile-name">{profileData.name || 'Nama Pengguna'}</h1>
+            <h3 className="profile-kelas">{profileData.kelas || 'Kelas'}</h3>
+            <p className="profile-id">{profileData.id || 'ID'}</p>
           </div>
 
           <button className="btn-logout" onClick={handleLogout}>
@@ -896,8 +684,13 @@ const DashboardKelas = () => {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
                   <div>
-                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Kelas</div>
-                    <div style={{ fontSize: '40px', fontWeight: 'bold' }}>{profile.kelas}</div>
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Total Mata Pelajaran</div>
+                    <div style={{ fontSize: '40px', fontWeight: 'bold' }}>{totalSubjects}</div>
+                    {totalSubjects === 0 && (
+                      <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '8px' }}>
+                        {isLoading ? 'Memuat data...' : 'Libur - Tidak ada jadwal'}
+                      </div>
+                    )}
                   </div>
                   <BookOpen size={64} style={{ opacity: 0.8 }} />
                 </div>
@@ -983,10 +776,6 @@ const DashboardKelas = () => {
 
         <SubjectsModal isOpen={showSubjects} onClose={() => setShowSubjects(false)} 
           scheduleImage={scheduleImage} />
-        
-        <ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} 
-          profile={profile} currentProfileImage={profileImage}
-          onUpdateProfileImage={handleUpdateProfileImage} onLogout={handleLogout} />
       </div>
     </>
   );

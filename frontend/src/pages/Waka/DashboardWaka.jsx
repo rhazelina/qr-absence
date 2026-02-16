@@ -12,28 +12,26 @@ import {
 import "./DashboardWaka.css";
 import { useNavigate } from "react-router-dom";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
-import { authService } from '../../services/auth';
-import { wakaService } from '../../services/waka';
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 export default function DashboardWaka() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
-
-  const [loading, setLoading] = useState(true);
-  const [semesters, setSemesters] = useState([]);
-  const [selectedSemester, setSelectedSemester] = useState("");
-  const [statistik, setStatistik] = useState({
-    hadir: 0,
-    izin: 0,
-    sakit: 0,
-    alpha: 0,
-    pulang: 0,
+  const [selectedSemester, setSelectedSemester] = useState("ganjil");
+  const [statistikData, setStatistikData] = useState({
+    ganjil: { hadir: 0, izin: 0, sakit: 0, alfa: 0, pulang: 0 },
+    genap: { hadir: 0, izin: 0, sakit: 0, alfa: 0, pulang: 0 }
   });
   const [chartData, setChartData] = useState({
-    labels: [],
-    datasets: []
+    ganjil: {
+      labels: ["Jul", "Agu", "Sep", "Okt", "Nov", "Des"],
+      datasets: []
+    },
+    genap: {
+      labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
+      datasets: []
+    }
   });
 
   useEffect(() => {
@@ -41,80 +39,15 @@ export default function DashboardWaka() {
     return () => clearInterval(t);
   }, []);
 
-  // Fetch Semesters on mount
+  // TODO: Fetch data dari API
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const semesterData = await wakaService.getSemesters();
-        const list = semesterData.data || [];
-        setSemesters(list);
-        
-        // Find active semester
-        const active = list.find(s => s.active);
-        if (active) {
-          setSelectedSemester(active.id);
-        } else if (list.length > 0) {
-          setSelectedSemester(list[0].id);
-        }
-      } catch (error) {
-        console.error("Error fetching semesters:", error);
-      }
-    };
-    fetchInitialData();
+    // fetchStatistikData();
+    // fetchChartData();
   }, []);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!selectedSemester && semesters.length > 0) return;
-
-      setLoading(true);
-      try {
-        const data = await wakaService.getDashboardSummary({ 
-          semester_id: selectedSemester 
-        });
-        setStatistik(data.statistik);
-
-        const labels = data.trend.map(item => item.month);
-        
-        setChartData({
-          labels: labels,
-          datasets: [
-            {
-              label: "Hadir",
-              data: data.trend.map(item => item.present),
-              backgroundColor: "#1FA83D",
-            },
-            {
-              label: "Izin",
-              data: data.trend.map(item => item.izin),
-              backgroundColor: "#d8bf1a",
-            },
-            {
-              label: "Sakit",
-              data: data.trend.map(item => item.sick),
-              backgroundColor: "#9A0898",
-            },
-            {
-              label: "Alpha",
-              data: data.trend.map(item => item.absent),
-              backgroundColor: "#D90000",
-            },
-            {
-              label: "Pulang",
-              data: data.trend.map(item => item.return),
-              backgroundColor: "#FF5F1A",
-            },
-          ],
-        });
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [selectedSemester]);
+  // Pilih data berdasarkan semester yang dipilih
+  const statistik = statistikData[selectedSemester];
+  const data = chartData[selectedSemester];
 
   const tanggal = now.toLocaleDateString("id-ID", {
     weekday: "long",
@@ -124,24 +57,20 @@ export default function DashboardWaka() {
   });
 
   const handleLogout = () => {
-    // Konfirmasi logout
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
     
     if (confirmLogout) {
-      // Redirect ke halaman login
-      authService.logout();
-      navigate('/login');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      sessionStorage.clear();
       
-      // Optional: tampilkan pesan
+      navigate('/');
+      
       alert('Anda telah berhasil logout');
     }
   };
 
   const jam = now.toLocaleTimeString("id-ID");
-
-  if (loading) {
-    return <div className="loading-state">Loading...</div>;
-  }
 
   return (
     <div className="dashboard-page">
@@ -152,7 +81,7 @@ export default function DashboardWaka() {
           <div className="dashboard-profile">
             <div className="dashboard-avatar">
               <FaUser />
-              </div>
+            </div>
             <p>
               WAKA
               <br />
@@ -175,20 +104,6 @@ export default function DashboardWaka() {
             <div className="dashboard-datebox">
               <div className="dashboard-date">{tanggal}</div>
               <div className="dashboard-clock">{jam}</div>
-              <div className="dashboard-semester">
-                <select 
-                  value={selectedSemester} 
-                  onChange={(e) => setSelectedSemester(e.target.value)}
-                  className="semester-select"
-                >
-                  <option value="">Pilih Semester</option>
-                  {semesters.map(s => (
-                    <option key={s.id} value={s.id}>
-                      Semester {s.name} {s.school_year?.name} {s.active ? '(Aktif)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {/* MINI STATS */}
@@ -196,15 +111,28 @@ export default function DashboardWaka() {
               <Mini title="Hadir" value={statistik.hadir} cls="hadir" />
               <Mini title="Izin" value={statistik.izin} cls="izin" />
               <Mini title="Sakit" value={statistik.sakit} cls="sakit" />
-              <Mini title="Alpha" value={statistik.alpha} cls="alpha" />
+              <Mini title="Alfa" value={statistik.alfa} cls="alfa" />
               <Mini title="Pulang" value={statistik.pulang} cls="pulang" />
             </div>
           </div>
 
           {/* CHART */}
           <div className="dashboard-chart">
+            {/* Dropdown Semester di pojok kanan atas chart */}
+            <div className="chart-header">
+              <select 
+                value={selectedSemester} 
+                onChange={(e) => setSelectedSemester(e.target.value)}
+                className="semester-dropdown-chart"
+              >
+                <option value="">Pilih Semester</option>
+                <option value="ganjil">Semester Ganjil (Jul-Des)</option>
+                <option value="genap">Semester Genap (Jan-Jun)</option>
+              </select>
+            </div>
+            
             <Bar
-              data={chartData}
+              data={data}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,

@@ -1,15 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { authHelpers } from '../../utils/authHelpers';
+import React, { useState, useMemo } from 'react';
 import './RiwayatKehadiran.css';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import attendanceService from '../../services/attendance';
 
 const RiwayatKehadiran = () => {
-  // ✅ NEW: Fungsi untuk mendapatkan tanggal hari ini dalam format YYYY-MM-DD
   const getTodayDate = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -18,115 +15,28 @@ const RiwayatKehadiran = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const getFirstDayOfMonth = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}-01`;
-  }
+  const todayDate = getTodayDate();
 
-  const [startDate, setStartDate] = useState(getFirstDayOfMonth());
-  const [endDate, setEndDate] = useState(getTodayDate());
+  const [startDate, setStartDate] = useState(todayDate);
+  const [endDate, setEndDate] = useState(todayDate);
   const [isPeriodeOpen, setIsPeriodeOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  
+
   const [selectedMapel, setSelectedMapel] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [classInfo, setClassInfo] = useState({ nama: '' });
+
+  const className = '';
+
   const [attendanceData, setAttendanceData] = useState([]);
-
-  const todayDate = getTodayDate(); // ✅ NEW: Tanggal hari ini untuk validasi
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-        setLoading(true);
-        const role = authHelpers.getRole();
-        let homeroom, students, attendances;
-
-        if (role === 'student' || role === 'class_officer') {
-            homeroom = await attendanceService.getStudentClassDashboard();
-            students = await attendanceService.getMyClassStudents();
-            attendances = await attendanceService.getMyClassAttendance({ params: { from: startDate, to: endDate } });
-        } else {
-            homeroom = await attendanceService.getHomeroom();
-            // Parallel fetch for teacher
-            const [s, a] = await Promise.all([
-                attendanceService.getHomeroomStudents(),
-                attendanceService.getHomeroomAttendance({ params: { from: startDate, to: endDate } })
-            ]);
-            students = s;
-            attendances = a;
-        }
-        
-        setClassInfo({ nama: homeroom.name || `${homeroom.grade} ${homeroom.major?.code || ''} ${homeroom.label}` });
-
-        processData(students, attendances);
-    } catch (error) {
-        console.error("Error fetching history:", error);
-        // Fallback or alert
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  const processData = (students, attendances) => {
-    const processed = students.map((student, index) => {
-        const studentAttendances = attendances.filter(a => a.student_id === student.id);
-        
-        const details = studentAttendances.map(a => ({
-            tanggal: new Date(a.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-            jamPelajaran: a.schedule?.start_time ? `${a.schedule.start_time.slice(0,5)} - ${a.schedule.end_time.slice(0,5)}` : '-',
-            mataPelajaran: a.schedule?.subject_name || '-',
-            guru: a.schedule?.teacher?.user?.name || '-',
-            status: mapStatus(a.status),
-            keterangan: a.reason || (a.status === 'present' ? 'Hadir' : '-')
-        }));
-
-        const counts = {
-            hadir: details.filter(d => d.status === 'Hadir').length,
-            terlambat: details.filter(d => d.status === 'Terlambat').length,
-            sakit: details.filter(d => d.status === 'Sakit').length,
-            izin: details.filter(d => d.status === 'Izin').length,
-            alpha: details.filter(d => d.status === 'Alpha').length,
-            pulang: details.filter(d => d.status === 'Pulang').length,
-        };
-
-        return {
-            no: index + 1,
-            nisn: student.nis,
-            nama: student.user.name,
-            ...counts,
-            details: details
-        };
-    });
-    setAttendanceData(processed);
-  };
-
-  const mapStatus = (status) => {
-      const map = {
-          'present': 'Hadir',
-          'late': 'Terlambat',
-          'sick': 'Sakit',
-          'permission': 'Izin',
-          'absent': 'Alpha',
-          'leave_early': 'Pulang'
-      };
-      return map[status] || status;
-  };
 
   const daftarMapel = useMemo(() => {
     const mapelSet = new Set();
     attendanceData.forEach(student => {
       student.details?.forEach(detail => {
-        if (detail.mataPelajaran !== '-') {
+        if (detail.mataPelajaran) {
           mapelSet.add(detail.mataPelajaran);
         }
       });
@@ -149,7 +59,7 @@ const RiwayatKehadiran = () => {
         terlambat: 0,
         sakit: 0,
         izin: 0,
-        alpha: 0,
+        alfa: 0,
         pulang: 0
       };
 
@@ -163,19 +73,23 @@ const RiwayatKehadiran = () => {
       return {
         ...student,
         details: filteredDetails,
-        ...recap
+        hadir: recap.hadir,
+        terlambat: recap.terlambat,
+        sakit: recap.sakit,
+        izin: recap.izin,
+        alfa: recap.alfa,
+        pulang: recap.pulang
       };
     });
   }, [attendanceData, selectedMapel]);
 
-  // ✅ NEW: Hitung total keseluruhan dari filtered data
   const totalSummary = useMemo(() => {
     return filteredAttendanceData.reduce((acc, student) => {
       acc.hadir += student.hadir;
       acc.terlambat += student.terlambat;
       acc.sakit += student.sakit;
       acc.izin += student.izin;
-      acc.alpha += student.alpha;
+      acc.alfa += student.alfa;
       acc.pulang += student.pulang;
       return acc;
     }, {
@@ -183,7 +97,7 @@ const RiwayatKehadiran = () => {
       terlambat: 0,
       sakit: 0,
       izin: 0,
-      alpha: 0,
+      alfa: 0,
       pulang: 0
     });
   }, [filteredAttendanceData]);
@@ -193,36 +107,27 @@ const RiwayatKehadiran = () => {
     return `${new Date(start).toLocaleDateString('id-ID', opt)} - ${new Date(end).toLocaleDateString('id-ID', opt)}`;
   };
 
-  // ✅ MODIFIED: Validasi tanggal tidak boleh melebihi hari ini
   const handleStartDateChange = (e) => {
     const val = e.target.value;
-    
-    // Validasi tidak boleh melebihi hari ini
+
     if (val > todayDate) {
       alert('Tanggal tidak boleh melebihi hari ini');
       return;
     }
-    
+
     setStartDate(val);
     if (endDate < val) setEndDate(val);
   };
 
-  // ✅ MODIFIED: Validasi tanggal tidak boleh melebihi hari ini
   const handleEndDateChange = (e) => {
     const val = e.target.value;
-    
-    // Validasi tidak boleh melebihi hari ini
+
     if (val > todayDate) {
       alert('Tanggal tidak boleh melebihi hari ini');
       return;
     }
-    
-    setEndDate(val);
-  };
 
-  const applyPeriodFilter = () => {
-      setIsPeriodeOpen(false);
-      fetchData();
+    setEndDate(val);
   };
 
   const handleEditChange = (field, value) => {
@@ -275,7 +180,7 @@ const RiwayatKehadiran = () => {
 
     ws.mergeCells('A2:I2');
     const classCell = ws.getCell('A2');
-    classCell.value = `Kelas: ${classInfo.nama}`;
+    classCell.value = `Kelas: ${className}`;
     classCell.font = { bold: true, size: 12 };
     classCell.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.getRow(2).height = 25;
@@ -301,7 +206,6 @@ const RiwayatKehadiran = () => {
     ws.addRow([]);
     currentRow++;
 
-    // ✅ NEW: Tambahkan ringkasan total di Excel
     ws.mergeCells(`A${currentRow}:I${currentRow}`);
     const summaryTitleCell = ws.getCell(`A${currentRow}`);
     summaryTitleCell.value = 'RINGKASAN TOTAL';
@@ -321,7 +225,7 @@ const RiwayatKehadiran = () => {
       totalSummary.terlambat,
       totalSummary.sakit,
       totalSummary.izin,
-      totalSummary.alpha,
+      totalSummary.alfa,
       totalSummary.pulang
     ]);
     summaryRow.font = { bold: true };
@@ -345,11 +249,11 @@ const RiwayatKehadiran = () => {
     ws.addRow([]);
     currentRow++;
 
-    const headerRow = ws.addRow(['No', 'NISN', 'Nama', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpha', 'Pulang']);
+    const headerRow = ws.addRow(['No', 'NISN', 'Nama', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alfa', 'Pulang']);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 25;
-    
+
     headerRow.eachCell((cell) => {
       cell.fill = {
         type: 'pattern',
@@ -365,13 +269,13 @@ const RiwayatKehadiran = () => {
     });
 
     filteredAttendanceData.forEach((r, index) => {
-      const dataRow = ws.addRow([r.no, r.nisn, r.nama, r.hadir, r.terlambat, r.sakit, r.izin, r.alpha, r.pulang]);
+      const dataRow = ws.addRow([r.no, r.nisn, r.nama, r.hadir, r.terlambat, r.sakit, r.izin, r.alfa, r.pulang]);
       dataRow.height = 20;
-      
+
       dataRow.eachCell((cell, colNumber) => {
-        cell.alignment = { 
+        cell.alignment = {
           horizontal: colNumber === 3 ? 'left' : 'center',
-          vertical: 'middle' 
+          vertical: 'middle'
         };
         cell.border = {
           top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
@@ -379,7 +283,7 @@ const RiwayatKehadiran = () => {
           bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
           right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
         };
-        
+
         if (index % 2 === 0) {
           cell.fill = {
             type: 'pattern',
@@ -401,9 +305,9 @@ const RiwayatKehadiran = () => {
     ws.getColumn(9).width = 10;
 
     const buf = await wb.xlsx.writeBuffer();
-    const fileName = selectedMapel 
-      ? `Riwayat_Kehadiran_${classInfo.nama}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.xlsx`
-      : `Riwayat_Kehadiran_${classInfo.nama}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = selectedMapel
+      ? `Riwayat_Kehadiran_${className}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.xlsx`
+      : `Riwayat_Kehadiran_${className}_${new Date().toISOString().split('T')[0]}.xlsx`;
     saveAs(new Blob([buf]), fileName);
     setIsExportOpen(false);
   };
@@ -414,20 +318,20 @@ const RiwayatKehadiran = () => {
 
       doc.setFillColor(10, 31, 62);
       doc.rect(0, 0, 297, 35, 'F');
-      
+
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(18);
       doc.setFont(undefined, 'bold');
       doc.text('RIWAYAT KEHADIRAN SISWA', 148.5, 15, { align: 'center' });
-      
+
       doc.setFontSize(12);
-      doc.text(`Kelas: ${classInfo.nama}`, 148.5, 23, { align: 'center' });
-      
+      doc.text(`Kelas: ${className}`, 148.5, 23, { align: 'center' });
+
       doc.setFontSize(10);
       doc.setFont(undefined, 'normal');
       let yPos = 30;
       doc.text(`Periode: ${formatDateDisplay(startDate, endDate)}`, 148.5, yPos, { align: 'center' });
-      
+
       if (selectedMapel) {
         yPos += 5;
         doc.setFontSize(9);
@@ -435,7 +339,6 @@ const RiwayatKehadiran = () => {
         doc.text(`Mata Pelajaran: ${selectedMapel}`, 148.5, yPos, { align: 'center' });
       }
 
-      // ✅ NEW: Tambahkan ringkasan total di PDF
       yPos += 10;
       doc.setFillColor(0, 102, 204);
       doc.rect(14, yPos, 269, 8, 'F');
@@ -451,13 +354,13 @@ const RiwayatKehadiran = () => {
         totalSummary.terlambat,
         totalSummary.sakit,
         totalSummary.izin,
-        totalSummary.alpha,
+        totalSummary.alfa,
         totalSummary.pulang
       ]];
 
       autoTable(doc, {
         startY: yPos,
-        head: [['', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpha', 'Pulang']],
+        head: [['', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alfa', 'Pulang']],
         body: summaryData,
         theme: 'grid',
         headStyles: {
@@ -494,13 +397,13 @@ const RiwayatKehadiran = () => {
         r.terlambat,
         r.sakit,
         r.izin,
-        r.alpha,
+        r.alfa,
         r.pulang
       ]);
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 5,
-        head: [['No', 'NISN', 'Nama', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpha', 'Pulang']],
+        head: [['No', 'NISN', 'Nama', 'Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alfa', 'Pulang']],
         body: tableData,
         theme: 'striped',
         headStyles: {
@@ -551,19 +454,18 @@ const RiwayatKehadiran = () => {
       }
 
       const fileName = selectedMapel
-        ? `Riwayat_Kehadiran_${classInfo.nama}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.pdf`
-        : `Riwayat_Kehadiran_${classInfo.nama}_${new Date().toISOString().split('T')[0]}.pdf`;
+        ? `Riwayat_Kehadiran_${className}_${selectedMapel}_${new Date().toISOString().split('T')[0]}.pdf`
+        : `Riwayat_Kehadiran_${className}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
       setIsExportOpen(false);
     } catch (error) {
-      console.error('Error exporting PDF:', error);
       alert('Gagal mengekspor PDF. Silakan coba lagi.');
     }
   };
 
   return (
     <div className="kehadiran-siswa-pagee">
-        <NavbarWakel />
+      <NavbarWakel />
       <div className="page-title-header">
         <h1>Riwayat Kehadiran</h1>
       </div>
@@ -585,32 +487,32 @@ const RiwayatKehadiran = () => {
                   <div className="date-range-inputs">
                     <div>
                       <label>Dari</label>
-                      <input 
-                        type="date" 
-                        value={startDate} 
+                      <input
+                        type="date"
+                        value={startDate}
                         max={todayDate}
-                        onChange={handleStartDateChange} 
+                        onChange={handleStartDateChange}
                       />
                     </div>
                     <div>
                       <label>Sampai</label>
-                      <input 
-                        type="date" 
-                        value={endDate} 
-                        min={startDate} 
+                      <input
+                        type="date"
+                        value={endDate}
+                        min={startDate}
                         max={todayDate}
-                        onChange={handleEndDateChange} 
+                        onChange={handleEndDateChange}
                       />
                     </div>
                   </div>
-                  <button className="apply-date-btn" onClick={applyPeriodFilter}>Terapkan</button>
+                  <button className="apply-date-btn" onClick={() => setIsPeriodeOpen(false)}>Terapkan</button>
                 </div>
               )}
             </div>
 
             <div className="mapel-selector">
-              <select 
-                value={selectedMapel} 
+              <select
+                value={selectedMapel}
                 onChange={(e) => setSelectedMapel(e.target.value)}
                 className="mapel-select-box"
               >
@@ -622,7 +524,7 @@ const RiwayatKehadiran = () => {
             </div>
 
             <div className="class-display-box">
-              <b>{loading ? 'Memuat...' : classInfo.nama}</b>
+              <b>{className}</b>
             </div>
           </div>
 
@@ -658,7 +560,6 @@ const RiwayatKehadiran = () => {
           </div>
         </div>
 
-        {/* ✅ NEW: Ringkasan Total Cards */}
         <div className="summary-cards-container">
           <div className="summary-card summary-hadir">
             <div className="summary-icon">✓</div>
@@ -692,11 +593,11 @@ const RiwayatKehadiran = () => {
             </div>
           </div>
 
-          <div className="summary-card summary-alpha">
+          <div className="summary-card summary-alfa">
             <div className="summary-icon">✖</div>
             <div className="summary-content">
-              <div className="summary-label">Total Alpha</div>
-              <div className="summary-value">{totalSummary.alpha}</div>
+              <div className="summary-label">Total Alfa</div>
+              <div className="summary-value">{totalSummary.alfa}</div>
             </div>
           </div>
 
@@ -710,9 +611,6 @@ const RiwayatKehadiran = () => {
         </div>
 
         <div className="student-data-table">
-          {loading ? (
-             <div style={{textAlign: 'center', padding: '2rem'}}>Memuat data riwayat...</div>
-          ) : (
           <table className="data-table">
             <thead>
               <tr>
@@ -723,7 +621,7 @@ const RiwayatKehadiran = () => {
                 <th>Terlambat</th>
                 <th>Sakit</th>
                 <th>Izin</th>
-                <th>Alpha</th>
+                <th>Alfa</th>
                 <th>Pulang</th>
                 <th>Aksi</th>
               </tr>
@@ -738,7 +636,7 @@ const RiwayatKehadiran = () => {
                   <td>{row.terlambat}</td>
                   <td>{row.sakit}</td>
                   <td>{row.izin}</td>
-                  <td>{row.alpha}</td>
+                  <td>{row.alfa}</td>
                   <td>{row.pulang}</td>
                   <td>
                     <button className="view-btn" onClick={() => openDetailModal(row)}>
@@ -747,14 +645,12 @@ const RiwayatKehadiran = () => {
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
                     </button>
-                    {/* Hide edit button since we don't support history editing yet */}
-                    {/* <button className="edit-btn" onClick={() => openEditModal(row)}>Ubah</button> */}
+                    <button className="edit-btn" onClick={() => openEditModal(row)}>Ubah</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          )}
         </div>
       </div>
 
@@ -764,20 +660,67 @@ const RiwayatKehadiran = () => {
             <div className="modal-header">
               <h2>Ubah Rekap</h2>
             </div>
-            
+
             <div className="modal-body">
               <div className="form-group">
                 <label>Hadir</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   min="0"
-                  value={editRow?.hadir || 0} 
+                  value={editRow?.hadir || 0}
                   onChange={e => handleEditChange('hadir', e.target.value)}
                 />
               </div>
 
-              {/* ... other fields ... */}
-              {/* Simplified for now since we hid the button */}
+              <div className="form-group">
+                <label>Terlambat</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editRow?.terlambat || 0}
+                  onChange={e => handleEditChange('terlambat', e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Sakit</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editRow?.sakit || 0}
+                  onChange={e => handleEditChange('sakit', e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Alfa</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editRow?.alfa || 0}
+                  onChange={e => handleEditChange('alfa', e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Izin</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editRow?.izin || 0}
+                  onChange={e => handleEditChange('izin', e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Pulang</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editRow?.pulang || 0}
+                  onChange={e => handleEditChange('pulang', e.target.value)}
+                />
+              </div>
 
               <div className="modal-footer">
                 <button className="cancel-btn" onClick={cancelEdit}>Batal</button>
@@ -794,7 +737,7 @@ const RiwayatKehadiran = () => {
             <div className="modal-header">
               <h2>Detail Kehadiran - {selectedStudent.nama}</h2>
             </div>
-            
+
             <div className="modal-body">
               <div className="detail-table-wrapper">
                 <table className="detail-table">
@@ -813,14 +756,14 @@ const RiwayatKehadiran = () => {
                     {selectedStudent.details && selectedStudent.details.length > 0 ? (
                       selectedStudent.details.map((detail, idx) => (
                         <tr key={idx}>
-                          <td>{idx + 1}</td>
+                          <td>{idx + 1}.</td>
                           <td>{detail.tanggal}</td>
                           <td>{detail.jamPelajaran}</td>
                           <td>{detail.mataPelajaran}</td>
                           <td>{detail.guru}</td>
                           <td>{detail.keterangan || '-'}</td>
                           <td>
-                            <span className={`status-badge ${detail.status.toLowerCase()}`}>
+                            <span className={`status-badge status-${detail.status.toLowerCase()}`}>
                               {detail.status}
                             </span>
                           </td>
@@ -828,15 +771,14 @@ const RiwayatKehadiran = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="7" style={{textAlign: 'center'}}>Tidak ada data detail untuk {selectedMapel || 'periode ini'}</td>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                          Tidak ada data untuk mata pelajaran yang dipilih
+                        </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
-            </div>
-            <div className="modal-footer">
-              <button className="close-btn" onClick={closeDetailModal}>Tutup</button>
             </div>
           </div>
         </div>

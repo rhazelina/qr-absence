@@ -2,23 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './PresensiSiswa.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
-import attendanceService, { bulkManualAttendance } from '../../services/attendance';
 
 function PresensiSiswa() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state || {};
 
-  const hasScheduleData = state.scheduleId && state.kelas;
-  const scheduleId = state.scheduleId;
+  const hasScheduleData = state.mataPelajaran && state.kelas;
 
+  const jadwalId = state.jadwalId || null;
   const mataPelajaran = state.mataPelajaran || '';
   const jamKe = state.jamKe || '';
   const kelas = state.kelas || '';
   const waktu = state.waktu || '';
   const tanggal = state.tanggal || '';
+  const isEdit = state.isEdit || false;
 
-  const [mode, setMode] = useState('input');
+  // Determine initial mode based on whether this is edit or new entry
+  const [mode, setMode] = useState(isEdit ? 'view' : 'input');
   const [showKeteranganModal, setShowKeteranganModal] = useState(false);
   const [showDokumenModal, setShowDokumenModal] = useState(false);
   const [currentSiswaIndex, setCurrentSiswaIndex] = useState(null);
@@ -26,15 +27,10 @@ function PresensiSiswa() {
   const [keteranganForm, setKeteranganForm] = useState({
     alasan: '',
     jam: '',
-    jamKe: '', // Untuk pulang
-    file: null
+    jamKe: '',
+    file: null,
+    fileName: ''
   });
-
-  const [siswaList, setSiswaList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   // Daftar jam pelajaran (8 jam per hari)
   const daftarJamKe = [
@@ -48,206 +44,201 @@ function PresensiSiswa() {
     { value: '8', label: 'Jam Ke-8 (13:15 - 14:00)' },
   ];
 
+  // ✅ Initialize siswa list - data akan dimuat dari dataManager
+  const [siswaList, setSiswaList] = useState([]);
+
   useEffect(() => {
-    if (hasScheduleData) {
-      fetchSiswa();
-    } else {
-      setLoading(false);
-    }
-  }, [scheduleId]);
-
-  const fetchSiswa = async () => {
-    try {
-      setLoading(true);
-      const data = await attendanceService.getScheduleDetail(scheduleId);
+    if (kelas && jadwalId && tanggal) {
+      // ✅ Load data siswa dari data manager
+      const data = generateSiswaList(kelas, jadwalId, tanggal);
+      setSiswaList(data);
       
-      // Map API data to component state
-      const mappedSiswa = data.students.map((student, index) => {
-        let status = 'hadir'; // Default to hadir
-        let keterangan = null;
-        let dokumenUrl = null;
-
-        if (student.attendance) {
-           status = student.attendance.status;
-           if (student.attendance.reason) {
-             keterangan = { alasan: student.attendance.reason };
-           }
-           if (student.attendance.attachments && student.attendance.attachments.length > 0) {
-             dokumenUrl = student.attendance.attachments[0].url; // Assuming backend returns signed URL or path
-           }
-        }
-        
-        return {
-          id: student.id, // student_id
-          no: index + 1,
-          nisn: student.nisn || student.nis || '-',
-          nama: student.name,
-          status: status,
-          keterangan: keterangan,
-          dokumen: null, // File object for upload
-          dokumenUrl: dokumenUrl // Existing document URL
-        };
-      });
-
-      setSiswaList(mappedSiswa);
-    } catch (err) {
-      console.error("Error fetching students:", err);
-      setError("Gagal mengambil data siswa.");
-    } finally {
-      setLoading(false);
+      // DEBUG: Verify data yang dimuat
+      console.log('╔════════════════════════════════════════╗');
+      console.log('║     DATA SISWA YANG DIMUAT             ║');
+      console.log('╚════════════════════════════════════════╝');
+      console.log('Kelas:', kelas);
+      console.log('Jumlah siswa:', data.length);
+      console.log('Jadwal ID:', jadwalId);
+      console.log('Tanggal:', tanggal);
+      console.log('Is Edit Mode:', isEdit);
+      console.log('─────────────────────────────────────────');
+      if (data.length > 0) {
+        console.log('Sample siswa pertama:', data[0]);
+        console.log('Sample siswa terakhir:', data[data.length - 1]);
+      }
+      console.log('═════════════════════════════════════════');
     }
+  }, [kelas, jadwalId, tanggal, isEdit]);
+
+  const getFileExtension = (filename) => {
+    return filename.split('.').pop().toUpperCase();
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      izin: '#fac629',
+      sakit: '#9c27b0',
+      pulang: '#123cd3',
+      terlambat: '#FF5F1A',
+    };
+    return colors[status.toLowerCase()] || '#64748b';
+  };
+
+  const getSuratTitle = (jenisSurat) => {
+    const map = {
+      'Surat Dokter': 'Surat Keterangan Sakit',
+      'Surat Izin Orang Tua': 'Surat Izin Orang Tua / Wali',
+      'Surat Keterangan Pulang': 'Surat Keterangan Pulang Cepat',
+      'Surat Izin Telat': 'Surat Keterangan Keterlambatan',
+    };
+    return map[jenisSurat] || 'Surat Keterangan';
   };
 
   const handleStatusChange = (index, newStatus) => {
-    const requiresModal = ['terlambat', 'pulang', 'sakit', 'izin'].includes(newStatus);
-
-    if (requiresModal) {
+    if (newStatus === 'terlambat' || newStatus === 'pulang') {
       setCurrentSiswaIndex(index);
       setKeteranganTipe(newStatus);
       setShowKeteranganModal(true);
-      setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null });
+      setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null, fileName: '' });
     } else {
       const updated = [...siswaList];
       updated[index].status = newStatus;
       
-      // Auto-text logic from revision
-      if (newStatus === 'hadir' || newStatus === 'present') {
-        updated[index].keterangan = { auto: true, alasan: 'Hadir tepat waktu' };
-      } else if (newStatus === 'alpha' || newStatus === 'absent') {
-        updated[index].keterangan = { auto: true, alasan: 'Tanpa keterangan' };
-      } else {
+      if (newStatus === 'hadir') {
+        updated[index].keterangan = { auto: true, text: 'Hadir tepat waktu' };
+      } 
+      else if (newStatus === 'alfa') {
+        updated[index].keterangan = { auto: true, text: 'Tidak hadir tanpa keterangan' };
+      } 
+      else {
         updated[index].keterangan = null;
       }
       
-      updated[index].dokumen = null;
       setSiswaList(updated);
     }
   };
 
   const handleSimpanKeterangan = () => {
-    // Validasi
     if (keteranganTipe === 'terlambat') {
-      if (!keteranganForm.jam) {
-        alert('Mohon lengkapi jam masuk!');
+      if (!keteranganForm.alasan || !keteranganForm.jam) {
+        alert('Mohon lengkapi alasan dan jam masuk!');
         return;
       }
     } else if (keteranganTipe === 'pulang') {
-      if (!keteranganForm.jamKe) {
-        alert('Mohon lengkapi jam ke-!');
+      if (!keteranganForm.alasan || !keteranganForm.jamKe) {
+        alert('Mohon lengkapi alasan dan jam ke-!');
         return;
       }
-    } else if (keteranganTipe === 'sakit' || keteranganTipe === 'izin') {
-        if (!keteranganForm.alasan) {
-            alert('Mohon lengkapi alasan!');
-            return;
-        }
     }
 
     const updated = [...siswaList];
     updated[currentSiswaIndex].status = keteranganTipe;
-    updated[currentSiswaIndex].dokumen = keteranganForm.file;
     
-    // Simpan data sesuai tipe
-    // reason starts with explicit reason from form
-    let reason = keteranganForm.alasan; 
-
     if (keteranganTipe === 'terlambat') {
-        // For display in frontend
-        updated[currentSiswaIndex].keterangan = {
-            alasan: reason,
-            jam: keteranganForm.jam
+      updated[currentSiswaIndex].keterangan = {
+        alasan: keteranganForm.alasan,
+        jam: keteranganForm.jam,
+        text: `Datang terlambat pada ${keteranganForm.jam}`
+      };
+      
+      if (keteranganForm.file) {
+        updated[currentSiswaIndex].dokumen = {
+          jenis: 'Surat Izin Telat',
+          tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          file: keteranganForm.fileName,
+          fileUrl: URL.createObjectURL(keteranganForm.file),
+          keterangan: keteranganForm.alasan
         };
+      }
     } else if (keteranganTipe === 'pulang') {
-        const jamLabel = daftarJamKe.find(j => j.value === keteranganForm.jamKe)?.label || '';
-         updated[currentSiswaIndex].keterangan = {
-            alasan: reason,
-            jamKe: keteranganForm.jamKe,
-            jamKeLabel: jamLabel
+      updated[currentSiswaIndex].keterangan = {
+        alasan: keteranganForm.alasan,
+        jamKe: keteranganForm.jamKe,
+        jamKeLabel: daftarJamKe.find(j => j.value === keteranganForm.jamKe)?.label || ''
+      };
+      
+      if (keteranganForm.file) {
+        updated[currentSiswaIndex].dokumen = {
+          jenis: 'Surat Keterangan Pulang',
+          tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          file: keteranganForm.fileName,
+          fileUrl: URL.createObjectURL(keteranganForm.file),
+          keterangan: keteranganForm.alasan
         };
-    } else {
-         updated[currentSiswaIndex].keterangan = {
-            alasan: reason
-        };
+      }
     }
     
     setSiswaList(updated);
     
     setShowKeteranganModal(false);
     setCurrentSiswaIndex(null);
-    setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null });
+    setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null, fileName: '' });
   };
 
   const handleBatalKeterangan = () => {
     setShowKeteranganModal(false);
     setCurrentSiswaIndex(null);
-    setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null });
+    setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null, fileName: '' });
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setKeteranganForm({ ...keteranganForm, file: e.target.files[0] });
+  const handleSimpan = () => {
+    // Validasi: pastikan semua siswa sudah memiliki status
+    const siswaBelumPresensi = siswaList.filter(s => !s.status || s.status === '');
+    
+    if (siswaBelumPresensi.length > 0) {
+      alert(`⚠️ Masih ada ${siswaBelumPresensi.length} siswa yang belum dipresensi!\n\nSilakan lengkapi presensi untuk semua siswa.`);
+      return;
     }
-  };
 
-  const handleSimpan = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menyimpan presensi ini?')) return;
-
-    setSaving(true);
-    try {
-      const payload = {
-        schedule_id: scheduleId,
-        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-        items: siswaList.map(siswa => {
-            let reason = siswa.keterangan ? siswa.keterangan.alasan : null;
-            // Append explicit details to reason string for consistency
-            if (siswa.keterangan && siswa.keterangan.jam) {
-                reason = `${reason} (Jam: ${siswa.keterangan.jam})`;
-            }
-            if (siswa.keterangan && siswa.keterangan.jamKeLabel) {
-                 reason = `${reason} (${siswa.keterangan.jamKeLabel})`;
-            }
-
-            return {
-                student_id: siswa.id,
-                status: siswa.status,
-                reason: reason
-            };
-        })
+    // Save to localStorage using data manager
+    const saved = saveAbsensi(
+      jadwalId, 
+      tanggal, 
+      kelas, 
+      mataPelajaran, 
+      jamKe, 
+      siswaList
+    );
+    
+    if (saved) {
+      // Hitung statistik untuk ditampilkan
+      const stats = {
+        hadir: siswaList.filter(s => s.status === 'hadir').length,
+        sakit: siswaList.filter(s => s.status === 'sakit').length,
+        izin: siswaList.filter(s => s.status === 'izin').length,
+        alfa: siswaList.filter(s => s.status === 'alfa').length,
+        terlambat: siswaList.filter(s => s.status === 'terlambat').length,
+        pulang: siswaList.filter(s => s.status === 'pulang').length,
       };
-      
-      const response = await bulkManualAttendance(payload);
-      
-      // Now Upload Documents
-      const attendanceData = response.data; // Array of saved attendance objects
-      if (attendanceData && Array.isArray(attendanceData)) {
-         const attendanceMap = attendanceData.reduce((acc, curr) => ({ ...acc, [curr.student_id]: curr.id }), {});
-         
-         const studentsWithFiles = siswaList.filter(s => s.dokumen);
-         if (studentsWithFiles.length > 0) {
-             setUploading(true);
-             for (const student of studentsWithFiles) {
-                 const attendanceId = attendanceMap[student.id];
-                 if (attendanceId) {
-                     try {
-                        await attendanceService.uploadDocument(attendanceId, student.dokumen);
-                     } catch (uploadErr) {
-                         console.error(`Failed to upload document for student ${student.id}`, uploadErr);
-                     }
-                 }
-             }
-             setUploading(false);
-         }
-      }
 
-      alert('Absensi berhasil disimpan!');
+      alert(
+        `✅ PRESENSI BERHASIL DISIMPAN!\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `Kelas: ${kelas}\n` +
+        `Mata Pelajaran: ${mataPelajaran}\n` +
+        `Tanggal: ${tanggal}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📊 RINGKASAN KEHADIRAN:\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `✓ Hadir         : ${stats.hadir} siswa\n` +
+        `🏥 Sakit         : ${stats.sakit} siswa\n` +
+        `📄 Izin          : ${stats.izin} siswa\n` +
+        `❌ Alfa          : ${stats.alfa} siswa\n` +
+        `⏰ Terlambat     : ${stats.terlambat} siswa\n` +
+        `🏃 Pulang Cepat  : ${stats.pulang} siswa\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `Total: ${siswaList.length} siswa`
+      );
+      
       setMode('view');
-      fetchSiswa(); // Refresh data to get URLs and latest status
-    } catch (err) {
-      console.error("Error saving attendance:", err);
-      alert('Gagal menyimpan absensi: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setSaving(false);
-      setUploading(false);
+      
+      // Auto-redirect ke dashboard setelah 2 detik
+      setTimeout(() => {
+        navigate('/guru/dashboard');
+      }, 2000);
+    } else {
+      alert('❌ Gagal menyimpan presensi!\n\nSilakan coba lagi atau hubungi administrator.');
     }
   };
 
@@ -259,14 +250,24 @@ function PresensiSiswa() {
     navigate('/guru/dashboard');
   };
 
-  const handleLihatDokumen = async (docUrl) => {
-    if (!docUrl) return;
-    try {
-        // If it's a proxy URL, we might need to handle auth, but browser should handle it if cookie based or token.
-        // If it returns a signed URL, open it.
-        window.open(docUrl, '_blank');
-    } catch (e) {
-        alert("Gagal membuka dokumen.");
+  const handleLihatDokumen = (siswa) => {
+    setCurrentSiswaIndex(siswaList.findIndex(s => s.nisn === siswa.nisn));
+    setShowDokumenModal(true);
+  };
+
+  const handleCloseDokumen = () => {
+    setShowDokumenModal(false);
+    setCurrentSiswaIndex(null);
+  };
+
+  const handleDownloadSurat = () => {
+    if (currentSiswaIndex !== null && siswaList[currentSiswaIndex]?.dokumen) {
+      const link = document.createElement('a');
+      link.href = siswaList[currentSiswaIndex]?.dokumen.fileUrl;
+      link.download = siswaList[currentSiswaIndex]?.dokumen.file;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -274,13 +275,38 @@ function PresensiSiswa() {
     const status = siswa.status;
     
     if (status === 'hadir') return <span className="status-badge hadir">Hadir</span>;
-    if (status === 'alpha' || status === 'absent') return <span className="status-badge alpha">Alpha</span>;
-    if (status === 'terlambat' || status === 'late') return <span className="status-badge terlambat">Terlambat</span>;
-    if (status === 'pulang' || status === 'return') return <span className="status-badge pulang">Pulang</span>;
-    if (status === 'sakit' || status === 'sick') return <span className="status-badge sakit">Sakit</span>;
-    if (status === 'izin' || status === 'excused') return <span className="status-badge izin">Izin</span>;
+    if (status === 'alfa') return <span className="status-badge alfa">Alfa</span>;
+    if (status === 'terlambat') return <span className="status-badge terlambat">Terlambat</span>;
+    if (status === 'pulang') return <span className="status-badge pulang">Pulang</span>;
+    if (status === 'sakit') return <span className="status-badge sakit">Sakit</span>;
+    if (status === 'izin') return <span className="status-badge izin">Izin</span>;
     
-    return <span className="status-badge">{status}</span>;
+    return null;
+  };
+
+  const getDokumenBadge = (siswa) => {
+    const status = siswa.status;
+    const hasDokumen = siswa.dokumen !== null;
+    
+    if (status !== 'sakit' && status !== 'izin' && status !== 'pulang' && status !== 'terlambat') {
+      return null;
+    }
+    
+    if (hasDokumen) {
+      return (
+        <button className="btn-lihat-dokumen" onClick={() => handleLihatDokumen(siswa)}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          Lihat Surat
+        </button>
+      );
+    } else {
+      return <span className="no-dokumen-label">Belum unggah</span>;
+    }
   };
 
   if (!hasScheduleData) {
@@ -308,10 +334,6 @@ function PresensiSiswa() {
     );
   }
 
-  if (loading) {
-     return <div className="loading-container">Memuat data siswa...</div>;
-  }
-
   return (
     <div className="presensi-container">
       <NavbarGuru />
@@ -324,7 +346,7 @@ function PresensiSiswa() {
           </div>
           <div className="class-info">
             <h2 className="class-title">{kelas}</h2>
-            <p className="class-subtitle">{jamKe ? `Jam Ke-${jamKe}` : waktu}</p>
+            <p className="class-subtitle">Jam Ke-{jamKe}</p>
           </div>
         </div>
 
@@ -334,7 +356,7 @@ function PresensiSiswa() {
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
             </svg>
-            {mataPelajaran}
+            {mataPelajaran} ({jamKe})
           </div>
 
           <div className="tanggal-pill">
@@ -348,8 +370,8 @@ function PresensiSiswa() {
           </div>
 
           {mode === 'input' && (
-            <button className="btn-simpan-presensi" onClick={handleSimpan} disabled={saving || uploading}>
-              {saving ? 'Menyimpan...' : (uploading ? 'Mengupload Dokumen...' : 'Simpan')}
+            <button className="btn-simpan-presensi" onClick={handleSimpan}>
+              Simpan
             </button>
           )}
         </div>
@@ -358,7 +380,7 @@ function PresensiSiswa() {
       {/* Mode Input Absensi */}
       {mode === 'input' && (
         <div className="presensi-table-wrapper">
-          <table className="presensi-table">
+          <table className="presensi-table2">
             <thead>
               <tr>
                 <th>No</th>
@@ -367,46 +389,53 @@ function PresensiSiswa() {
                 <th>Hadir</th>
                 <th>Sakit</th>
                 <th>Izin</th>
-                <th>Alpha</th>
+                <th>Alfa</th>
                 <th>Terlambat</th>
                 <th>Pulang</th>
-                <th>Ket</th>
               </tr>
             </thead>
             <tbody>
-              {siswaList.map((siswa, index) => (
-                <tr key={siswa.id}>
-                  <td>{siswa.no}.</td>
-                  <td>{siswa.nisn}</td>
-                  <td>{siswa.nama}</td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'hadir' || siswa.status === 'present'} onChange={() => handleStatusChange(index, 'hadir')} />
-                  </td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'sakit' || siswa.status === 'sick'} onChange={() => handleStatusChange(index, 'sakit')} />
-                  </td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'izin' || siswa.status === 'excused'} onChange={() => handleStatusChange(index, 'izin')} />
-                  </td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'alpha' || siswa.status === 'absent'} onChange={() => handleStatusChange(index, 'alpha')} />
-                  </td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'terlambat' || siswa.status === 'late'} onChange={() => handleStatusChange(index, 'terlambat')} />
-                  </td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'pulang' || siswa.status === 'return'} onChange={() => handleStatusChange(index, 'pulang')} />
-                  </td>
-                  <td>
-                    {siswa.dokumen && (
-                        <span title="Dokumen akan diupload" style={{color: 'green'}}>📄</span>
-                    )}
-                    {siswa.keterangan && (
-                        <span title={siswa.keterangan.alasan} style={{marginLeft: '5px'}}>📝</span>
-                    )}
+              {siswaList.length === 0 ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                    <div>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 10px', display: 'block', opacity: 0.3 }}>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      <strong>Tidak ada data siswa</strong>
+                      <p style={{ fontSize: '14px', marginTop: '5px' }}>Pastikan data siswa sudah tersedia di dataManager.js</p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                siswaList.map((siswa, index) => (
+                  <tr key={index}>
+                    <td>{siswa.no}.</td>
+                    <td>{siswa.nisn}</td>
+                    <td>{siswa.nama}</td>
+                    <td className="radio-cell">
+                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'hadir'} onChange={() => handleStatusChange(index, 'hadir')} />
+                    </td>
+                    <td className="radio-cell">
+                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'sakit'} onChange={() => handleStatusChange(index, 'sakit')} />
+                    </td>
+                    <td className="radio-cell">
+                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'izin'} onChange={() => handleStatusChange(index, 'izin')} />
+                    </td>
+                    <td className="radio-cell">
+                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'alfa'} onChange={() => handleStatusChange(index, 'alfa')} />
+                    </td>
+                    <td className="radio-cell">
+                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'terlambat'} onChange={() => handleStatusChange(index, 'terlambat')} />
+                    </td>
+                    <td className="radio-cell">
+                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'pulang'} onChange={() => handleStatusChange(index, 'pulang')} />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -430,31 +459,56 @@ function PresensiSiswa() {
               </thead>
               <tbody>
                 {siswaList.map((siswa, index) => (
-                  <tr key={siswa.id}>
+                  <tr key={index}>
                     <td>{siswa.no}.</td>
                     <td>{siswa.nisn}</td>
                     <td>{siswa.nama}</td>
                     <td>{mataPelajaran}</td>
-                    <td>{getStatusBadge(siswa)}</td>
                     <td>
-                      {(siswa.keterangan || siswa.dokumenUrl) ? (
-                        <div className="keterangan-detail">
-                             {siswa.keterangan && (
-                                <div className="keterangan-alasan">
-                                    {siswa.keterangan.alasan || JSON.stringify(siswa.keterangan)}
-                                </div>
-                             )}
-                             {siswa.dokumenUrl && (
-                                <button className="btn-lihat-dokumen" onClick={() => handleLihatDokumen(siswa.dokumenUrl)}>
-                                    Lihat Surat
-                                </button>
-                             )}
-                        </div>
-                      ) : (
-                        <span className="no-keterangan">-</span>
-                      )}
+                      {getStatusBadge(siswa)}
                     </td>
-                    <td className="aksi-cell">
+                    <td>
+                      <div className="keterangan-wrapper">
+                        {getDokumenBadge(siswa)}
+                        
+                        {siswa.keterangan ? (
+                          <div className="keterangan-detail">
+                            {siswa.keterangan.auto && (
+                              <div className="keterangan-auto">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                {siswa.keterangan.text}
+                              </div>
+                            )}
+                            
+                            {siswa.keterangan.text && !siswa.keterangan.auto && (
+                              <div className="keterangan-terlambat">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10"></circle>
+                                  <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                {siswa.keterangan.text}
+                              </div>
+                            )}
+                            
+                            {siswa.keterangan.jamKeLabel && (
+                              <div className="keterangan-jam">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                  <polyline points="15 3 21 3 21 9"></polyline>
+                                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
+                                {siswa.keterangan.jamKeLabel}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          !getDokumenBadge(siswa) && <span className="no-keterangan">-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
                       <button className="btn-edit" onClick={handleEdit}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -470,14 +524,13 @@ function PresensiSiswa() {
         </>
       )}
 
-      {/* MODAL KETERANGAN */}
+      {/* MODAL KETERANGAN TERLAMBAT/PULANG */}
       {showKeteranganModal && (
         <div className="modal-overlay" onClick={handleBatalKeterangan}>
           <div className="modal-keterangan" onClick={(e) => e.stopPropagation()}>
             <div className="modal-keterangan-header">
               <h2>
-                {['sakit', 'izin', 'sick', 'excused'].includes(keteranganTipe) ? 'Keterangan Sakit/Izin' : 
-                 (keteranganTipe === 'terlambat' ? 'Keterangan Terlambat' : 'Keterangan Pulang')}
+                {keteranganTipe === 'terlambat' ? 'Keterangan Terlambat' : 'Keterangan Pulang'}
               </h2>
               <button className="close-btn" onClick={handleBatalKeterangan}>×</button>
             </div>
@@ -488,64 +541,140 @@ function PresensiSiswa() {
                 <span className="siswa-nisn">{siswaList[currentSiswaIndex]?.nisn}</span>
               </div>
 
-              {/* Form Content based on Type */}
-              {keteranganTipe === 'terlambat' && (
-                <div className="form-group">
-                  <label>Jam Masuk</label>
-                  <div className="input-icon">
-                    <input
-                      type="time"
-                      value={keteranganForm.jam}
-                      onChange={(e) => setKeteranganForm({...keteranganForm, jam: e.target.value})}
-                      required
-                    />
+              {keteranganTipe === 'terlambat' ? (
+                <>
+                  <div className="form-group">
+                    <label>Jam Masuk</label>
+                    <div className="input-icon">
+                      <svg className="icon-clock" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                      </svg>
+                      <input
+                        type="time"
+                        value={keteranganForm.jam}
+                        onChange={(e) => setKeteranganForm({...keteranganForm, jam: e.target.value})}
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {keteranganTipe === 'pulang' && (
-                <div className="form-group">
-                  <label>Pulang di Jam Ke-</label>
-                  <select
-                    className="input-select"
-                    value={keteranganForm.jamKe}
-                    onChange={(e) => setKeteranganForm({...keteranganForm, jamKe: e.target.value})}
-                    required
-                  >
-                    <option value="">Pilih jam ke-...</option>
-                    {daftarJamKe.map((jam) => (
-                      <option key={jam.value} value={jam.value}>
-                        {jam.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  <div className="form-group">
+                    <label>Unggah Surat Keterlambatan (Opsional)</label>
+                    <div className="file-upload-wrapper">
+                      <input
+                        type="file"
+                        id="file-upload-terlambat"
+                        accept="image/jpg, image/png"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setKeteranganForm({
+                              ...keteranganForm,
+                              file: file,
+                              fileName: file.name
+                            });
+                          }
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="file-upload-terlambat" className="file-upload-label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        {keteranganForm.fileName || 'Unggah Dokumen'}
+                      </label>
+                      {keteranganForm.fileName && (
+                        <button
+                          type="button"
+                          className="btn-remove-file"
+                          onClick={() => setKeteranganForm({...keteranganForm, file: null, fileName: ''})}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <small style={{ color: '#666', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                      Format: JPG/JPEG, PNG (Maks. 5MB)
+                    </small>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label>Pulang di Jam Ke-</label>
+                    <select
+                      className="input-select"
+                      value={keteranganForm.jamKe}
+                      onChange={(e) => setKeteranganForm({...keteranganForm, jamKe: e.target.value})}
+                      required
+                    >
+                      <option value="">Pilih jam ke-...</option>
+                      {daftarJamKe.map((jam) => (
+                        <option key={jam.value} value={jam.value}>
+                          {jam.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Unggah Surat Perizinan Pulang</label>
+                    <div className="file-upload-wrapper">
+                      <input
+                        type="file"
+                        id="file-upload-pulang"
+                        accept="image/jpg, image/png"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setKeteranganForm({
+                              ...keteranganForm,
+                              file: file,
+                              fileName: file.name
+                            });
+                          }
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="file-upload-pulang" className="file-upload-label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        {keteranganForm.fileName || 'Unggah Dokumen'}
+                      </label>
+                      {keteranganForm.fileName && (
+                        <button
+                          type="button"
+                          className="btn-remove-file"
+                          onClick={() => setKeteranganForm({...keteranganForm, file: null, fileName: ''})}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <small style={{ color: '#666', fontSize: '12px', marginTop: '5px', display: 'block' }}>
+                      Format: JPG/JPEG, PNG (Maks. 5MB)
+                    </small>
+                  </div>
+                </>
               )}
 
               <div className="form-group">
                 <label>Alasan</label>
                 <textarea
-                  placeholder="Masukkan alasan..."
+                  placeholder={`Masukkan alasan ${keteranganTipe === 'terlambat' ? 'terlambat' : 'pulang cepat'}...`}
                   className="input-textarea"
-                  rows="3"
+                  rows="4"
                   value={keteranganForm.alasan}
                   onChange={(e) => setKeteranganForm({...keteranganForm, alasan: e.target.value})}
-                  required={['sakit', 'izin', 'terlambat', 'pulang'].includes(keteranganTipe)}
+                  required
                 ></textarea>
               </div>
-
-              {['sakit', 'izin', 'sick', 'excused'].includes(keteranganTipe) && (
-                  <div className="form-group">
-                    <label>Upload Bukti / Surat (Opsional)</label>
-                    <input 
-                        type="file" 
-                        accept="image/*,application/pdf"
-                        onChange={handleFileChange}
-                        className="input-file"
-                    />
-                    <small>Format: JPG, PNG, PDF. Maks 5MB.</small>
-                  </div>
-              )}
 
               <div className="modal-buttons">
                 <button className="btn-batal-keterangan" onClick={handleBatalKeterangan}>
@@ -555,6 +684,79 @@ function PresensiSiswa() {
                   Simpan
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL LIHAT DOKUMEN */}
+      {showDokumenModal && currentSiswaIndex !== null && siswaList[currentSiswaIndex]?.dokumen && (
+        <div className="preview-modal-overlay" onClick={handleCloseDokumen}>
+          <div className="preview-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="preview-modal-header">
+              <div>
+                <h3>{getSuratTitle(siswaList[currentSiswaIndex]?.dokumen.jenis)}</h3>
+                <p className="file-name">{siswaList[currentSiswaIndex]?.dokumen.file}</p>
+              </div>
+              <button className="close-preview" onClick={handleCloseDokumen} title="Tutup">✕</button>
+            </div>
+
+            <div className="preview-info-card">
+              <div className="preview-info-row">
+                <div className="preview-info-item">
+                  <span className="preview-info-label">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    Nama Siswa
+                  </span>
+                  <span className="preview-info-value">{siswaList[currentSiswaIndex]?.nama}</span>
+                </div>
+                <div className="preview-info-item">
+                  <span className="preview-info-label">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    NISN
+                  </span>
+                  <span className="preview-info-value">{siswaList[currentSiswaIndex]?.nisn}</span>
+                </div>
+                <div className="preview-info-item">
+                  <span className="preview-info-label">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    Jenis Surat
+                  </span>
+                  <span className="preview-info-value">
+                    <span 
+                      className="preview-status-badge"
+                      style={{ backgroundColor: getStatusColor(siswaList[currentSiswaIndex]?.status) }}
+                    >
+                      {siswaList[currentSiswaIndex]?.status.charAt(0).toUpperCase() + siswaList[currentSiswaIndex]?.status.slice(1)}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              {siswaList[currentSiswaIndex]?.dokumen.keterangan && (
+                <div className="preview-info-keterangan">
+                  <span className="preview-info-label">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6l-2 2V4h16v10z"/></svg>
+                    Keterangan
+                  </span>
+                  <span className="preview-info-value preview-keterangan-text">
+                    {siswaList[currentSiswaIndex]?.dokumen.keterangan}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="preview-modal-body">
+              <img 
+                src={siswaList[currentSiswaIndex]?.dokumen.fileUrl} 
+                alt="Surat.jpg" 
+                className="image-preview" 
+              />
+            </div>
+
+            <div className="preview-modal-footer">
+              <button className="btn-download" onClick={handleDownloadSurat}>
+                📥 Unduh Surat
+              </button>
             </div>
           </div>
         </div>

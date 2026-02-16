@@ -17,7 +17,6 @@ interface SiswaFormProps {
     kelasId: string;
   };
   isEdit?: boolean;
-  isLoading?: boolean;
   jurusanList?: { id: string; nama: string }[];
   kelasList?: { id: string; nama: string }[];
 }
@@ -28,9 +27,16 @@ export function SiswaForm({
   onSubmit,
   initialData,
   isEdit = false,
-  isLoading = false,
-  jurusanList = [],
-  kelasList = [],
+  jurusanList = [
+    { id: '1', nama: 'Mekatronika' },
+    { id: '2', nama: 'Rekayasa Perangkat Lunak' },
+    { id: '3', nama: 'Teknik Komputer Jaringan' },
+  ],
+  kelasList = [
+    { id: '1', nama: 'XII Mekatronika 1' },
+    { id: '2', nama: 'XII Mekatronika 2' },
+    { id: '3', nama: 'XI RPL 1' },
+  ],
 }: SiswaFormProps) {
   const [namaSiswa, setNamaSiswa] = useState('');
   const [nisn, setNisn] = useState('');
@@ -42,6 +48,7 @@ export function SiswaForm({
     jurusanId?: string;
     kelasId?: string;
   }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form ketika modal dibuka/ditutup
   useEffect(() => {
@@ -62,6 +69,7 @@ export function SiswaForm({
         setKelasId('');
       }
       setErrors({});
+      setIsSubmitting(false);
     }
   }, [isOpen, initialData, isEdit]);
 
@@ -91,6 +99,7 @@ export function SiswaForm({
       setKelasId('');
     }
     setErrors({});
+    setIsSubmitting(false);
   };
 
   const handleClose = () => {
@@ -130,12 +139,21 @@ export function SiswaForm({
   const handleSubmit = () => {
     if (!validate()) return;
 
-    onSubmit({
-      namaSiswa: namaSiswa.trim(),
-      nisn: nisn.trim(),
-      jurusanId,
-      kelasId,
-    });
+    setIsSubmitting(true);
+    setTimeout(() => {
+      onSubmit({
+        namaSiswa: namaSiswa.trim(),
+        nisn: nisn.trim(),
+        jurusanId,
+        kelasId,
+      });
+      // Jangan reset form di sini karena modal akan ditutup
+      setIsSubmitting(false);
+      // Reset form hanya jika bukan mode ubah (agar data tetap untuk preview)
+      if (!isEdit) {
+        handleReset();
+      }
+    }, 400);
   };
 
   const handleNisnChange = (value: string) => {
@@ -180,12 +198,9 @@ export function SiswaForm({
       title={isEdit ? 'Ubah Data Siswa' : 'Tambah Siswa'}
       onSubmit={handleSubmit}
       submitLabel={isEdit ? 'Simpan Perubahan' : 'Tambahkan'}
-      isSubmitting={isLoading}
-      onReset={handleReset}
-      resetLabel="Reset"
-      contentStyle={{
-        minHeight: '400px',
-      }}
+      isSubmitting={isSubmitting}
+      onReset={isEdit ? handleReset : undefined}
+      resetLabel={isEdit ? 'Reset' : undefined}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         {/* Nama Siswa */}
@@ -203,7 +218,7 @@ export function SiswaForm({
               if (errors.namaSiswa) setErrors({ ...errors, namaSiswa: undefined });
             }}
             style={inputStyle(!!errors.namaSiswa)}
-            disabled={isLoading}
+            disabled={isSubmitting}
           />
           {errors.namaSiswa && <p style={errorStyle}>{errors.namaSiswa}</p>}
         </div>
@@ -221,7 +236,7 @@ export function SiswaForm({
             onChange={(e) => handleNisnChange(e.target.value)}
             maxLength={10}
             style={inputStyle(!!errors.nisn)}
-            disabled={isLoading}
+            disabled={isSubmitting}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
             {errors.nisn ? (
@@ -246,7 +261,7 @@ export function SiswaForm({
               if (errors.jurusanId) setErrors({ ...errors, jurusanId: undefined });
             }}
             style={inputStyle(!!errors.jurusanId)}
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
             <option value="">Pilih Konsentrasi Keahlian</option>
             {jurusanList.map((jurusan) => (
@@ -271,7 +286,7 @@ export function SiswaForm({
               if (errors.kelasId) setErrors({ ...errors, kelasId: undefined });
             }}
             style={inputStyle(!!errors.kelasId)}
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
             <option value="">Pilih Kelas</option>
             {kelasList.map((kelas) => (

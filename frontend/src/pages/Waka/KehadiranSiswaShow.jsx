@@ -4,77 +4,79 @@ import './KehadiranSiswaShow.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaArrowLeft, FaChevronDown, FaClipboardCheck, FaDoorOpen, FaEdit, FaSave, FaSpinner, FaTimes, FaUser, FaEye, } from 'react-icons/fa';
 import { FaChartBar } from 'react-icons/fa6';
-import { wakaService } from '../../services/waka';
 
 function KehadiranSiswaShow() {
+
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailSiswa, setDetailSiswa] = useState(null);
+
+  const handleDetailClick = (siswa) => {
+    setDetailSiswa(siswa);
+    setShowDetailModal(true);
+  };
+
   const { id } = useParams();
-  const [kelas, setKelas] = useState({ nama_kelas: 'Loading...', wali_kelas: 'Loading...' });
+  console.log(id);
+
+  const [kelas, setKelas] = useState(null);
   const [siswaList, setSiswaList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailSiswa, setDetailSiswa] = useState(null);
   const [selectedSiswa, setSelectedSiswa] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Jumlah status - diinisialisasi dengan 0, akan dihitung dari data siswa
   const [statusCounts, setStatusCounts] = useState({
-    hadir: 0, izin: 0, sakit: 0, alpha: 0, pulang: 0, terlambat: 0
+    hadir: 0,
+    izin: 0,
+    sakit: 0,
+    alfa: 0,
+    pulang: 0,
+    terlambat: 0
   });
 
-  const hitungStatusCounts = (list) => {
-    const counts = { hadir: 0, izin: 0, sakit: 0, alpha: 0, pulang: 0, terlambat: 0 };
-    list.forEach(item => {
-      const s = item.status.toLowerCase();
-      if (counts[s] !== undefined) counts[s]++;
+
+  // Fungsi untuk menghitung jumlah status dari data siswa
+  const hitungStatusCounts = (dataSiswa) => {
+    const counts = {
+      hadir: 0,
+      izin: 0,
+      sakit: 0,
+      alfa: 0,
+      pulang: 0,
+      terlambat: 0
+    };
+
+
+    dataSiswa.forEach(siswa => {
+      const status = siswa.status.toLowerCase();
+      if (status === 'hadir') counts.hadir++;
+      else if (status === 'izin') counts.izin++;
+      else if (status === 'sakit') counts.sakit++;
+      else if (status === 'alfa') counts.alfa++;
+      else if (status === 'pulang') counts.pulang++;
+      else if (status === 'terlambat') counts.terlambat++;
     });
+
     return counts;
   };
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-        const data = await wakaService.getClassAttendanceDate(id, selectedDate);
-        
-        // Data class
-        setKelas({
-            nama_kelas: data.class.name || `${data.class.grade} ${data.class.major?.name || ''} ${data.class.label || ''}`,
-            wali_kelas: data.class.homeroom_teacher?.user?.name || '-'
-        });
-
-        // Flatten data: Schedules -> Attendances
-        let allList = [];
-        if (data.items) {
-             data.items.forEach(scheduleItem => {
-                const subjectName = scheduleItem.schedule.subject?.name || scheduleItem.schedule.title || 'Mapel Lain';
-                scheduleItem.attendances.forEach(att => {
-                    allList.push({
-                        id: att.id,
-                        nisn: att.student?.nisn || '-',
-                        nama: att.student?.user?.name || 'Siswa',
-                        mata_pelajaran: subjectName,
-                        status: att.status.charAt(0).toUpperCase() + att.status.slice(1),
-                        student_id: att.student_id,
-                        original: { ...att, schedule_id: scheduleItem.schedule.id }
-                    });
-                });
-             });
-        }
-        setSiswaList(allList);
-        setStatusCounts(hitungStatusCounts(allList));
-
-    } catch (error) {
-        console.error("Failed to fetch class attendance:", error);
-        // Fallback or empty state
-        setSiswaList([]);
-    } finally {
-        setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
-  }, [id, selectedDate]);
+    // TODO: Ganti dengan API call untuk fetch data kelas dan siswa
+    // Contoh:
+    // fetchKelasDanSiswa(id).then(data => {
+    //   setKelas(data.kelas);
+    //   setSiswaList(data.siswa);
+    //   const counts = hitungStatusCounts(data.siswa);
+    //   setStatusCounts(counts);
+    //   setLoading(false);
+    // }).catch(error => {
+    //   console.error('Error fetching data:', error);
+    //   setLoading(false);
+    // });
+    
+    setLoading(false);
+  }, [id]);
 
   const handleEditClick = (siswa) => {
     setSelectedSiswa(siswa);
@@ -82,31 +84,38 @@ function KehadiranSiswaShow() {
     setShowEditModal(true);
   };
 
-  const handleDetailClick = (siswa) => {
-    setDetailSiswa(siswa);
-    setShowDetailModal(true);
-  };
+  const handleStatusUpdate = () => {
+    // TODO: Ganti dengan API call untuk update status
+    // Contoh:
+    // updateStatusKehadiran(selectedSiswa.id, selectedStatus)
+    //   .then(response => {
+    //     const updatedList = siswaList.map(siswa =>
+    //       siswa.id === selectedSiswa.id
+    //         ? { ...siswa, status: selectedStatus }
+    //         : siswa
+    //     );
+    //     setSiswaList(updatedList);
+    //     const counts = hitungStatusCounts(updatedList);
+    //     setStatusCounts(counts);
+    //     setShowEditModal(false);
+    //   })
+    //   .catch(error => {
+    //     console.error('Error updating status:', error);
+    //   });
 
-  const handleStatusUpdate = async () => {
-    if (!selectedSiswa || !selectedStatus) return;
+    const updatedList = siswaList.map(siswa =>
+      siswa.id === selectedSiswa.id
+        ? { ...siswa, status: selectedStatus }
+        : siswa
+    );
 
-    try {
-        const payload = {
-            attendee_type: 'student',
-            student_id: selectedSiswa.student_id,
-            schedule_id: selectedSiswa.original.schedule_id, // Ensure this exists in flatten logic
-            status: selectedStatus.toLowerCase(),
-            date: selectedDate,
-            reason: 'Diubah oleh Waka Kurikulum' // Or add a reason field in modal
-        };
-        await wakaService.updateAttendance(payload);
-        
-        setShowEditModal(false);
-        fetchData(); // Refresh data
-    } catch (error) {
-        console.error("Failed to update status:", error);
-        alert("Gagal mengubah status kehadiran");
-    }
+    setSiswaList(updatedList);
+
+    // Hitung ulang status counts setelah update
+    const counts = hitungStatusCounts(updatedList);
+    setStatusCounts(counts);
+
+    setShowEditModal(false);
   };
 
   if (loading) {
@@ -137,9 +146,9 @@ function KehadiranSiswaShow() {
                   <FaDoorOpen />
                 </div>
                 <div>
-                  <h2>{kelas.nama_kelas}</h2>
+                  <h2>{kelas?.nama_kelas}</h2>
                   <p className="wali-kelas-text">
-                    Wali Kelas: {kelas.wali_kelas}
+                    Wali Kelas: {kelas?.wali_kelas}
                   </p>
                 </div>
               </div>
@@ -160,7 +169,7 @@ function KehadiranSiswaShow() {
 
                 {/* Tombol Lihat Rekap */}
                 <Link
-                  to={`/waka/kehadiran-siswa/${id}/rekap`}
+                  to="/waka/kehadiran-siswa/rekap"
                   className="tombol-rekap-inline"
                 >
                   <FaChartBar />
@@ -202,10 +211,10 @@ function KehadiranSiswaShow() {
               </div>
 
 
-              <div className="kartu-stat stat-alpha">
+              <div className="kartu-stat stat-alfa">
                 <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.alpha}</div>
-                  <div className="label-stat">Alpha</div>
+                  <div className="jumlah-stat">{statusCounts.alfa}</div>
+                  <div className="label-stat">Alfa</div>
                 </div>
               </div>
 
@@ -233,41 +242,48 @@ function KehadiranSiswaShow() {
                   </tr>
                 </thead>
                 <tbody>
-                  {siswaList.map((siswa, index) => (
-                    <tr key={siswa.id} className="baris-tabel">
-                      <td className="td-tengah">
-                        <span className="badge-nomor">{index + 1}</span>
-                      </td>
-                      <td className="td-nisn">{siswa.nisn}</td>
-                      <td className="td-nama">{siswa.nama}</td>
-                      <td className="td-mapel">{siswa.mata_pelajaran}</td>
-                      <td className="td-status">
-                        <span className={`badge-status status-${siswa.status.toLowerCase()}`}>
-                          {siswa.status}
-                        </span>
-                      </td>
-                      <td className="td-tengah">
-                        <div className="wrapper-aksi">
-                          <button
-                            className="tombol-edit-status"
-                            onClick={() => handleEditClick(siswa)}
-                            title="Edit Status"
-                          >
-                            <FaEdit />
-                          </button>
+                  {siswaList.length > 0 ? (
+                    siswaList.map((siswa, index) => (
+                      <tr key={siswa.id} className="baris-tabel">
+                        <td className="td-tengah">
+                          <span className="badge-nomor">{index + 1}</span>
+                        </td>
+                        <td className="td-nisn">{siswa.nisn}</td>
+                        <td className="td-nama">{siswa.nama}</td>
+                        <td className="td-mapel">{siswa.mata_pelajaran}</td>
+                        <td className="td-status">
+                          <span className={`badge-status status-${siswa.status.toLowerCase()}`}>
+                            {siswa.status}
+                          </span>
+                        </td>
+                        <td className="td-tengah">
+                          <div className="wrapper-aksi">
+                            <button
+                              className="tombol-edit-status"
+                              onClick={() => handleEditClick(siswa)}
+                              title="Edit Status"
+                            >
+                              <FaEdit />
+                            </button>
 
-                          <button
-                            className="tombol-detail-status"
-                            onClick={() => handleDetailClick(siswa)}
-                            title="Detail Kehadiran"
-                          >
-                            <FaEye />
-                          </button>
-                        </div>
+                            <button
+                              className="tombol-detail-status"
+                              onClick={() => handleDetailClick(siswa)}
+                              title="Detail Kehadiran"
+                            >
+                              <FaEye />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="td-tengah">
+                        Tidak ada data siswa
                       </td>
-
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -322,7 +338,7 @@ function KehadiranSiswaShow() {
                     <option value="Hadir">Hadir</option>
                     <option value="Izin">Izin</option>
                     <option value="Sakit">Sakit</option>
-                    <option value="Alpha">Alpha</option>
+                    <option value="Alfa">Alfa</option>
                     <option value="Pulang">Pulang</option>
                     <option value="Terlambat">Terlambat</option>
                   </select>
@@ -366,12 +382,12 @@ function KehadiranSiswaShow() {
             <div className="modal-detail-body">
               <div className="detail-row">
                 <span>Tanggal:</span>
-                <strong>{selectedDate}</strong>
+                <strong>{detailSiswa.tanggal || '-'}</strong>
               </div>
 
               <div className="detail-row">
                 <span>Jam Pelajaran:</span>
-                <strong>-</strong>
+                <strong>{detailSiswa.jam_pelajaran || '-'}</strong>
               </div>
 
               <div className="detail-row">
@@ -393,33 +409,8 @@ function KehadiranSiswaShow() {
 
               <div className="detail-row">
                 <span>Keterangan:</span>
-
-                {detailSiswa.status === 'Hadir' && (
-                  <strong className="teks-hadir">
-                    Siswa hadir dan mengikuti pembelajaran
-                  </strong>
-                )}
-
-                {detailSiswa.status === 'Alpha' && (
-                  <strong className="teks-alpha">
-                    Tidak hadir tanpa keterangan
-                  </strong>
-                )}
-
-                {['Izin', 'Sakit', 'Pulang'].includes(detailSiswa.status) && (
-                  <strong>
-                    {detailSiswa.original?.reason || 'Tidak ada keterangan'}
-                  </strong>
-                )}
+                <strong>{detailSiswa.keterangan || '-'}</strong>
               </div>
-
-              {detailSiswa.status === 'Terlambat' && (
-                <strong className="teks-terlambat">
-                  Siswa hadir namun datang terlambat
-                </strong>
-              )}
-
-
 
               <div className="detail-foto">
                 <p>Bukti Kehadiran</p>
@@ -429,9 +420,13 @@ function KehadiranSiswaShow() {
                     <FaClipboardCheck />
                     <span>Hadir & tercatat di sistem</span>
                   </div>
+                ) : detailSiswa.bukti_foto ? (
+                  <div className="wrapper-foto">
+                    <img src={detailSiswa.bukti_foto} alt="Bukti kehadiran" />
+                  </div>
                 ) : (
                   <div className="wrapper-foto">
-                    <div className="foto-kosong"></div>
+                    <div className="foto-kosong">Tidak ada bukti</div>
                   </div>
                 )}
               </div>

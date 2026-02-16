@@ -1,6 +1,6 @@
 // src/Pages/WakaStaff/LihatGuru.tsx
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import Jadwal from "../../assets/Icon/jadwal.jpeg";
+import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { User } from "lucide-react";
 
 interface Props {
@@ -77,7 +77,7 @@ export default function LihatGuru({
 
         <div style={{ background: "#FFFFFF", borderRadius: 14, padding: 16 }}>
           <img
-            src={jadwalImage || Jadwal}
+            src={jadwalImage || DummyJadwal}
             alt="Jadwal Guru"
             style={{
               width: "100%",

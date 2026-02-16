@@ -2,10 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { Table } from "../../component/Shared/Table";
 
-import LoadingState from "../../component/Shared/LoadingState";
-import ErrorState from "../../component/Shared/ErrorState";
-import { isCancellation } from "../../utils/errorHelpers";
-
 interface KelasRow {
   id: string;
   tingkat: "10" | "11" | "12";
@@ -18,8 +14,8 @@ interface KehadiranSiswaProps {
   user: { name: string; role: string };
   onLogout: () => void;
   currentPage: string;
-  onMenuClick: (page: string) => void;
-  onNavigateToDetail?: (kelasId: string, kelasInfo: { namaKelas: string; waliKelas: string }) => void;
+  onMenuClick: (page: string, payload?: any) => void;
+  onNavigateToDetail?: (kelasId: string, kelasData: KelasRow) => void;
 }
 
 const JURUSAN_LIST = [
@@ -45,51 +41,29 @@ export default function KehadiranSiswa({
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [selectedJurusan, setSelectedJurusan] = useState("");
   const [selectedKelas, setSelectedKelas] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [kelasData, setKelasData] = useState<KelasRow[]>([]);
+
+  // Dummy data (disesuaikan dengan gambar)
+  const [kelasData] = useState<KelasRow[]>([
+    {
+      id: "1",
+      tingkat: "12",
+      namaKelas: "12 RPL 1",
+      namaJurusan: "Rekayasa Perangkat Lunak",
+      waliKelas: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd",
+    },
+    {
+      id: "2",
+      tingkat: "12",
+      namaKelas: "12 RPL 2",
+      namaJurusan: "Rekayasa Perangkat Lunak",
+      waliKelas: "TRIANA ARDIANI, S.Pd",
+    },
+  ]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { dashboardService } = await import("../../services/dashboard");
-
-        const [classes] = await Promise.all([
-          dashboardService.getClasses({ signal: controller.signal }),
-          dashboardService.getWakaDashboardSummary({ signal: controller.signal })
-        ]);
-
-        const mappedData: KelasRow[] = (classes as any).map((c: any) => {
-          return {
-            id: c.id.toString(),
-            tingkat: (c.grade || "10") as any,
-            namaKelas: c.name || `${c.grade} ${c.label}`,
-            namaJurusan: c.major?.name || "-",
-            waliKelas: c.homeroom_teacher?.user?.name || "-",
-          };
-        });
-
-        setKelasData(mappedData);
-      } catch (error: any) {
-        if (!isCancellation(error)) {
-          console.error("Failed to fetch classes", error);
-          setError("Gagal memuat data kelas. Silakan coba lagi.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => controller.abort();
   }, []);
 
   // Filter data sesuai jurusan & kelas
@@ -107,8 +81,8 @@ export default function KehadiranSiswa({
   // Kolom tabel (tetap)
   const columns = useMemo(
     () => [
-      { key: "namaKelas", label: "Nama kelas" },
-      { key: "namaJurusan", label: "Nama Konsentrasi Keahlian" },
+      { key: "namaKelas", label: "Kelas" },
+      { key: "namaJurusan", label: "Konsentrasi Keahlian" },
       { key: "waliKelas", label: "Wali Kelas" },
     ],
     []
@@ -116,7 +90,7 @@ export default function KehadiranSiswa({
 
   const handleViewDetail = (row: KelasRow) => {
     if (onNavigateToDetail) {
-      onNavigateToDetail(row.id, { namaKelas: row.namaKelas, waliKelas: row.waliKelas });
+      onNavigateToDetail(row.id, row);
     }
   };
 
@@ -191,19 +165,13 @@ export default function KehadiranSiswa({
         </div>
 
         {/* Tabel */}
-        {loading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} onRetry={() => window.location.reload()} />
-        ) : (
-          <Table
-            columns={columns}
-            data={filteredData}
-            onView={handleViewDetail}
-            keyField="id"
-            emptyMessage="Belum ada data kelas."
-          />
-        )}
+        <Table
+          columns={columns}
+          data={filteredData}
+          onView={handleViewDetail}
+          keyField="id"
+          emptyMessage="Belum ada data kelas."
+        />
       </div>
     </StaffLayout>
   );
