@@ -204,7 +204,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
 
     Route::middleware('role:student')->group(function (): void {
         Route::get('/me/attendance', [\App\Http\Controllers\AttendanceController::class, 'me']);
-        Route::get('/me/attendance/summary', [AttendanceController::class, 'summaryMe']);
+        Route::get('/me/attendance/summary', [\App\Http\Controllers\AttendanceController::class, 'summary']);
         Route::get('/student/profile', [AuthController::class, 'me']); // Alias for mobile legacy
         Route::post('/me/devices', [DeviceController::class, 'store']);
         Route::post('/devices', [DeviceController::class, 'store']); // Consistent alias
