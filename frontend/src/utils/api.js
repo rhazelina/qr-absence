@@ -23,7 +23,7 @@ const apiService = {
         window.location.href = '/';
         throw new Error('Sesi telah berakhir, silakan login kembali');
       }
-      
+
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `API Error: ${response.status}`);
     }
@@ -84,6 +84,11 @@ const apiService = {
     return this.get('/me/homeroom/students');
   },
 
+  getHomeroomAttendance(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/me/homeroom/attendance${query}`);
+  },
+
   getMyClassDashboard() {
     return this.get('/me/class/dashboard');
   },
@@ -106,9 +111,9 @@ const apiService = {
   getSemesters() {
     return this.get('/semesters');
   },
-  
+
   getTeachers() {
-      return this.get('/teachers');
+    return this.get('/teachers');
   },
 
   // Waka Methods
@@ -124,8 +129,8 @@ const apiService = {
 
   // Waka/Admin Methods
   getStudentAttendance(studentId, params) { // For detail view
-      const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-      return this.get(`/students/${studentId}/attendance${query}`);
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/students/${studentId}/attendance${query}`);
   },
 
   getTeacherAttendanceHistory(teacherId, params) {

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Data.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 import InputSuratModal from '../../components/WaliKelas/InputDispensasiModal';
+import apiService from '../../utils/api';
 
 const Data = () => {
   const navigate = useNavigate();
@@ -14,9 +15,9 @@ const Data = () => {
   const [selectedMapel, setSelectedMapel] = useState('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 
-  const [previewModal, setPreviewModal] = useState({ 
-    open: false, 
-    file: null, 
+  const [previewModal, setPreviewModal] = useState({
+    open: false,
+    file: null,
     type: null,
     studentName: '',
     fileName: '',
@@ -26,13 +27,76 @@ const Data = () => {
     isTerlambat: false
   });
 
-  const kelasInfo = {
-    nama: 'XII Rekayasa Perangkat Lunak 2',
-  };
+  const [kelasInfo, setKelasInfo] = useState({
+    nama: 'Memuat...',
+  });
 
-  const daftarMapel = [];
-
+  const [daftarMapel, setDaftarMapel] = useState([]);
   const [studentList, setStudentList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Data
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // 1. Get Homeroom Class Info (Indirectly via students or specific endpoint if needed)
+      // For now we get class info from the first student or separate endpoint if available.
+      // Actually teacher profile has homeroom class.
+      // Let's assume we can get class name from student list or another call.
+      // apiService.getHomeroomStudents() returns student list.
+      const students = await apiService.getHomeroomStudents();
+
+      // 2. Get Today's Attendance
+      const today = new Date().toISOString().split('T')[0];
+      const attendance = await apiService.getHomeroomAttendance({
+        from: today,
+        to: today
+      });
+
+      // 3. Map Data
+      const attendanceMap = {};
+      attendance.forEach(record => {
+        attendanceMap[record.student_id] = record;
+      });
+
+      const mappedStudents = students.map(student => {
+        const record = attendanceMap[student.id];
+        return {
+          id: student.id,
+          nisn: student.nis || student.nisn || '-',
+          nama: student.user.name,
+          status: record ? record.status : 'Belum Absen', // Default status
+          keterangan: record ? (record.remarks || '-') : '-',
+          suratFile: null, // TODO: Fetch document if exists
+          suratFileName: null,
+          jamMasuk: record && record.checked_in_at ? record.checked_in_at.substring(11, 16) : null,
+          wasTerlambat: record ? record.status === 'late' : false, // Check if logic needs adjustment
+          mapel: '-', // Mapel context might be missing in daily view unless filtered by schedule
+        };
+      });
+
+      setStudentList(mappedStudents);
+
+      if (students.length > 0 && students[0].class_room) {
+        setKelasInfo({ nama: students[0].class_room.name });
+      } else {
+        // Fallback or fetch profile?
+        const profile = await apiService.getProfile();
+        if (profile && profile.teacher && profile.teacher.homeroom_class) {
+          setKelasInfo({ nama: profile.teacher.homeroom_class.name });
+        }
+      }
+
+    } catch (error) {
+      console.error("Failed to fetch data", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // ✅ MODIFIED: Hapus filter berdasarkan tanggal
   const getFilteredStudents = () => {
@@ -48,25 +112,60 @@ const Data = () => {
   const filteredStudents = getFilteredStudents();
 
   const stats = {
-    Hadir: filteredStudents.filter((s) => s.status === 'Hadir').length,
-    Izin: filteredStudents.filter((s) => s.status === 'Izin').length,
-    Sakit: filteredStudents.filter((s) => s.status === 'Sakit').length,
-    Alfa: filteredStudents.filter((s) => s.status === 'Alfa').length,
-    Pulang: filteredStudents.filter((s) => s.status === 'Pulang').length,
-    Terlambat: filteredStudents.filter((s) => s.status === 'Terlambat' || s.wasTerlambat).length,
+    Hadir: filteredStudents.filter((s) => ['present', 'late', 'Hadir'].includes(s.status)).length,
+    Izin: filteredStudents.filter((s) => ['izin', 'excused', 'Izin'].includes(s.status)).length,
+    Sakit: filteredStudents.filter((s) => ['sick', 'Sakit'].includes(s.status)).length,
+    Alfa: filteredStudents.filter((s) => ['absent', 'Alfa', 'Belum Absen'].includes(s.status)).length, // Treat Belum Absen as alpha for stats? Or separate?
+    Pulang: filteredStudents.filter((s) => ['return', 'Pulang'].includes(s.status)).length,
+    Terlambat: filteredStudents.filter((s) => ['late', 'Terlambat'].includes(s.status) || s.wasTerlambat).length,
   };
 
-  const handleStatusChange = (index, value) => {
+  // Helper to map backend status to frontend display
+  const getDisplayStatus = (status) => {
+    const map = {
+      'present': 'Hadir',
+      'late': 'Terlambat',
+      'sick': 'Sakit',
+      'medicine': 'Sakit', // In case
+      'excused': 'Izin',
+      'izin': 'Izin',
+      'absent': 'Alfa',
+      'return': 'Pulang',
+      'Belum Absen': 'Belum Absen'
+    };
+    return map[status] || status;
+  };
+
+  const handleStatusChange = async (index, value) => {
+    // Optimistic update
     const updated = [...studentList];
-    const actualIndex = studentList.findIndex(s => s.nisn === filteredStudents[index].nisn);
+    const student = filteredStudents[index];
+    const actualIndex = studentList.findIndex(s => s.id === student.id);
+
+    const oldStatus = updated[actualIndex].status;
     updated[actualIndex].status = value;
-    
+
     if (value !== 'Terlambat') {
       updated[actualIndex].jamMasuk = null;
     }
-    
+
     setStudentList(updated);
     setEditingIndex(null);
+
+    // Call API to update status
+    try {
+      // Need to find attendance ID or create new manual attendance?
+      // If we list students, we might not have attendance ID if they are 'Belum Absen'.
+      // So we might need to hit 'manual' attendance endpoint or 'update' endpoint.
+      // For simplicity now, we assume we just update state or use an API if available.
+      // apiService.updateAttendanceStatus(...)
+      console.log("Status updated locally. API implementation required for persistence.");
+    } catch (e) {
+      console.error("Failed to update status", e);
+      // Revert
+      updated[actualIndex].status = oldStatus;
+      setStudentList(updated);
+    }
   };
 
   const handleViewSurat = (student) => {
@@ -79,7 +178,7 @@ const Data = () => {
       studentName: student.nama,
       fileName: student.suratFileName,
       nisn: student.nisn,
-      status: student.status,
+      status: getDisplayStatus(student.status),
       keterangan: student.keterangan || (student.wasTerlambat ? `Terlambat - Masuk jam ${student.jamMasuk}` : ''),
       isTerlambat: student.wasTerlambat
     });
@@ -95,9 +194,9 @@ const Data = () => {
   };
 
   const closePreview = () => {
-    setPreviewModal({ 
-      open: false, 
-      file: null, 
+    setPreviewModal({
+      open: false,
+      file: null,
       type: null,
       studentName: '',
       fileName: '',
@@ -119,67 +218,66 @@ const Data = () => {
   };
 
   const getStatusColor = (status) => {
+    const rawStatus = status; // Assuming status passed here is display status or raw?
+    // Let's map display status to color
     const colors = {
-      Izin: '#ffc107',
-      Sakit: '#9c27b0',
-      Pulang: '#ff6a1a',
-      Terlambat: '#ff9800',
+      'Hadir': '#4caf50',
+      'present': '#4caf50',
+      'Izin': '#ffc107',
+      'excused': '#ffc107',
+      'izin': '#ffc107',
+      'Sakit': '#9c27b0',
+      'sick': '#9c27b0',
+      'Pulang': '#ff6a1a',
+      'return': '#ff6a1a',
+      'Terlambat': '#ff9800',
+      'late': '#ff9800',
+      'Alfa': '#f44336',
+      'absent': '#f44336',
+      'Belum Absen': '#64748b'
     };
     return colors[status] || '#64748b';
   };
 
   const handleSuratUploaded = (suratData) => {
     console.log('Surat diterima:', suratData);
-    
+
     const updatedList = studentList.map(student => {
-      if (student.nama === suratData.namaSiswa) {
-        const suratFile = suratData.uploadFile ? URL.createObjectURL(suratData.uploadFile) : student.suratFile;
-        const suratFileName = suratData.uploadFile ? suratData.uploadFile.name : student.suratFileName;
-        
-        if (student.status === 'Terlambat' && suratData.jenisSurat === 'Izin') {
-          return {
-            ...student,
-            status: 'Hadir',
-            wasTerlambat: true,
-            keterangan: `Terlambat - Masuk jam ${student.jamMasuk}`,
-            suratFile: suratFile,
-            suratFileName: suratFileName
-          };
-        }
-        
-        return {
-          ...student,
-          status: suratData.jenisSurat,
-          keterangan: suratData.keterangan,
-          suratFile: suratFile,
-          suratFileName: suratFileName
-        };
-      }
+      // Logic to update student list after upload
+      // In real app, we should refetch data or update optimistically
       return student;
     });
-    
-    setStudentList(updatedList);
+
+    fetchData(); // Refetch to be safe
+    // setStudentList(updatedList);
   };
 
   const needsSurat = (student) => {
-    const statusButuhSurat = ['Izin', 'Sakit', 'Pulang'].includes(student.status);
-    const terlambatDenganSurat = student.status === 'Hadir' && student.wasTerlambat && student.suratFile;
+    const s = getDisplayStatus(student.status);
+    const statusButuhSurat = ['Izin', 'Sakit', 'Pulang'].includes(s);
+    const terlambatDenganSurat = s === 'Hadir' && student.wasTerlambat && student.suratFile;
     return statusButuhSurat || terlambatDenganSurat;
   };
 
   const needsUploadWarning = (student) => {
-    return ['Izin', 'Sakit', 'Pulang'].includes(student.status) && !student.suratFile;
+    const s = getDisplayStatus(student.status);
+    return ['Izin', 'Sakit', 'Pulang'].includes(s) && !student.suratFile;
   };
 
   const getKeteranganText = (student) => {
     if (student.wasTerlambat && student.jamMasuk) {
       return `Terlambat - Masuk jam ${student.jamMasuk}`;
     }
-    if (student.status === 'Terlambat' && student.jamMasuk) {
+    const displayStatus = getDisplayStatus(student.status);
+    if (displayStatus === 'Terlambat' && student.jamMasuk) {
       return `Masuk jam ${student.jamMasuk}`;
     }
     return student.keterangan || '-';
   };
+
+  if (loading) {
+    return <div className="loading-state">Memuat data...</div>;
+  }
 
   return (
     <div className="kehadiran-siswa-page">
@@ -201,20 +299,20 @@ const Data = () => {
             <div className="header-actions">
               {/* ✅ MODIFIED: Filter dengan tampilan statis untuk mapel */}
               <div className="filter-wrapper">
-                <button 
-                  className="btn-primary btn-filter" 
+                <button
+                  className="btn-primary btn-filter"
                   onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                 >
                   🔍 Filter {filterType !== 'all' && '●'}
                 </button>
-                
+
                 {showFilterDropdown && (
                   <div className="filter-dropdown">
                     <div className="filter-option">
                       <label>
-                        <input 
-                          type="radio" 
-                          name="filterType" 
+                        <input
+                          type="radio"
+                          name="filterType"
                           value="all"
                           checked={filterType === 'all'}
                           onChange={(e) => {
@@ -228,9 +326,9 @@ const Data = () => {
 
                     <div className="filter-option">
                       <label>
-                        <input 
-                          type="radio" 
-                          name="filterType" 
+                        <input
+                          type="radio"
+                          name="filterType"
                           value="mapel"
                           checked={filterType === 'mapel'}
                           onChange={(e) => setFilterType(e.target.value)}
@@ -238,11 +336,11 @@ const Data = () => {
                         Per Mata Pelajaran
                       </label>
                     </div>
-                    
+
                     {/* ✅ FIXED: Select selalu tampil, tidak bergantung pada filterType */}
                     <div className="filter-select-wrapper">
-                      <select 
-                        value={selectedMapel} 
+                      <select
+                        value={selectedMapel}
                         onChange={(e) => {
                           setSelectedMapel(e.target.value);
                           setFilterType('mapel');
@@ -256,7 +354,7 @@ const Data = () => {
                       </select>
                     </div>
 
-                    <button 
+                    <button
                       className="filter-apply-btn"
                       onClick={() => setShowFilterDropdown(false)}
                     >
@@ -307,38 +405,38 @@ const Data = () => {
             <tbody>
               {filteredStudents.length > 0 ? (
                 filteredStudents.map((s, i) => (
-                  <tr key={i}>
+                  <tr key={s.id || i}>
                     <td className="col-no">{i + 1}</td>
                     <td className="col-nisn">{s.nisn}</td>
                     <td className="col-nama">{s.nama}</td>
                     <td className="col-status">
                       {editingIndex === i ? (
                         <select
-                          value={s.status}
+                          value={getDisplayStatus(s.status)}
                           onChange={(e) => handleStatusChange(i, e.target.value)}
                           onBlur={() => setEditingIndex(null)}
                           autoFocus
                         >
-                          <option 
+                          <option
                             value="Hadir"
-                            disabled={s.status === 'Terlambat'}
-                            style={{color: s.status === 'Terlambat' ? '#999' : 'inherit'}}
+                            disabled={getDisplayStatus(s.status) === 'Terlambat'}
+                            style={{ color: getDisplayStatus(s.status) === 'Terlambat' ? '#999' : 'inherit' }}
                           >
-                            Hadir {s.status === 'Terlambat' ? '(upload surat dulu)' : ''}
+                            Hadir {getDisplayStatus(s.status) === 'Terlambat' ? '(upload surat dulu)' : ''}
                           </option>
                           <option value="Izin">Izin</option>
                           <option value="Sakit">Sakit</option>
                           <option value="Alfa">Alfa</option>
                           <option value="Pulang">Pulang</option>
-                          <option disabled style={{color: '#999'}}>
+                          <option disabled style={{ color: '#999' }}>
                             Terlambat (dari guru)
                           </option>
                         </select>
                       ) : (
                         <div className="status-cell">
-                          <span className={`status ${s.status.toLowerCase()}`}>
-                            {s.status}
-                            {s.wasTerlambat && s.status === 'Hadir' && (
+                          <span className={`status ${getDisplayStatus(s.status).toLowerCase().replace(' ', '-')}`} style={{ backgroundColor: getStatusColor(s.status), color: 'white', padding: '4px 8px', borderRadius: '4px' }}>
+                            {getDisplayStatus(s.status)}
+                            {s.wasTerlambat && getDisplayStatus(s.status) === 'Hadir' && (
                               <span className="terlambat-indicator" title="Terlambat">⏱</span>
                             )}
                           </span>
@@ -380,7 +478,7 @@ const Data = () => {
               ) : (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    Tidak ada data untuk filter yang dipilih
+                    {loading ? 'Memuat data...' : 'Tidak ada data untuk filter yang dipilih'}
                   </td>
                 </tr>
               )}
@@ -411,25 +509,25 @@ const Data = () => {
               <div className="preview-info-row">
                 <div className="preview-info-item">
                   <span className="preview-info-label">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
                     Nama Siswa
                   </span>
                   <span className="preview-info-value">{previewModal.studentName}</span>
                 </div>
                 <div className="preview-info-item">
                   <span className="preview-info-label">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" /></svg>
                     NISN
                   </span>
                   <span className="preview-info-value">{previewModal.nisn}</span>
                 </div>
                 <div className="preview-info-item">
                   <span className="preview-info-label">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" /></svg>
                     Jenis Surat
                   </span>
                   <span className="preview-info-value">
-                    <span 
+                    <span
                       className="preview-status-badge"
                       style={{ backgroundColor: previewModal.isTerlambat ? '#ff9800' : getStatusColor(previewModal.status) }}
                     >
@@ -441,7 +539,7 @@ const Data = () => {
               {previewModal.keterangan && (
                 <div className="preview-info-keterangan">
                   <span className="preview-info-label">
-                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6l-2 2V4h16v10z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H6l-2 2V4h16v10z" /></svg>
                     Keterangan
                   </span>
                   <span className="preview-info-value preview-keterangan-text">
@@ -453,7 +551,11 @@ const Data = () => {
 
             <div className="preview-modal-body">
               {/* ✅ REVISI: Semua preview sekarang adalah gambar */}
-              <img src={previewModal.file} alt="Preview Surat" className="image-preview" />
+              {previewModal.file ? (
+                <img src={previewModal.file} alt="Preview Surat" className="image-preview" />
+              ) : (
+                <div className="no-preview">File tidak tersedia</div>
+              )}
             </div>
 
             <div className="preview-modal-footer">
