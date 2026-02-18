@@ -96,7 +96,7 @@ export const attendanceService = {
   },
 
   getTeachersDailyAttendance: async (date: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/waka/attendance/teachers/daily?date=${date}`, {
+    const response = await fetch(`${API_BASE_URL}/attendance/teachers/daily?date=${date}`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -158,4 +158,30 @@ export const attendanceService = {
     });
     return handleResponse(response);
   },
+
+  manualAttendance: async (data: { schedule_id: string, student_id: string, status: string, date: string, notes?: string }): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/attendance/manual`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  },
+
+  updateAttendanceStatus: async (attendanceId: string, status: string, notes?: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/attendance/${attendanceId}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status, notes })
+    });
+    return handleResponse(response);
+  }
 };

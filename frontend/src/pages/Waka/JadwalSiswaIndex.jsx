@@ -8,6 +8,9 @@ import {
   FaTrash,
   FaPlus,
   FaSearch,
+  FaChevronDown,
+  FaBriefcase,
+  FaDoorOpen,
 } from "react-icons/fa";
 
 function JadwalSiswaIndex() {
@@ -116,51 +119,39 @@ function JadwalSiswaIndex() {
 
       <div className="jadwal-siswa-index-header">
         <h1 className="jadwal-siswa-index-title">
-          Manajemen Jadwal Kelas
+          Jadwal Pembelajaran Siswa
         </h1>
         <p className="jadwal-siswa-index-subtitle">
-          Kelola jadwal pelajaran per kelas dan semester
+          Kelola dan lihat jadwal pembelajaran per kelas dan semester
         </p>
       </div>
 
       {/* ACTION & FILTER */}
       <div className="filter-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="search-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
-              <FaSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+        <div className="filter-grid">
+          <div className="filter-group">
+            <label className="filter-label">
+              <FaSearch /> Cari Kelas
+            </label>
+            <div className="search-wrapper">
               <input
                 type="text"
-                placeholder="Cari Kelas..."
+                placeholder="Cari Nama Kelas..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  padding: '0.5rem 0.5rem 0.5rem 2.5rem',
-                  borderRadius: '0.375rem',
-                  border: '1px solid #d1d5db',
-                  width: '100%'
-                }}
+                className="filter-input"
               />
             </div>
           </div>
 
-          <button
-            onClick={handleCreate}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.375rem',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
-          >
-            <FaPlus /> Tambah Jadwal
-          </button>
+          <div className="filter-group" style={{ justifyContent: 'flex-end', display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              onClick={handleCreate}
+              className="jadwal-siswa-index-btn-add"
+            >
+              <FaPlus /> Tambah Jadwal
+            </button>
+          </div>
         </div>
       </div>
 
@@ -195,53 +186,45 @@ function JadwalSiswaIndex() {
                       <td>{index + 1}</td>
 
                       <td>
-                        <strong>{schedule.class?.name || 'N/A'}</strong>
+                        <span className="jadwal-siswa-index-badge-blue">
+                          {schedule.class?.name || 'N/A'}
+                        </span>
                       </td>
 
-                      <td>{schedule.academic_year?.year || '-'}</td>
+                      <td>{schedule.academic_year?.year || schedule.year || '-'}</td>
                       <td>
                         {schedule.semester == 1 ? 'Ganjil' : 'Genap'}
                       </td>
                       <td>
-                        <span style={{
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          backgroundColor: schedule.is_active ? '#d1fae5' : '#f3f4f6',
-                          color: schedule.is_active ? '#065f46' : '#374151'
-                        }}>
+                        <span className={`jadwal-siswa-index-badge-${schedule.is_active ? 'green' : 'gray'}`}>
                           {schedule.is_active ? 'Aktif' : 'Tidak Aktif'}
                         </span>
                       </td>
 
                       <td>
-                        <div className="jadwal-siswa-index-action" style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div className="jadwal-siswa-index-action">
                           <button
                             className="jadwal-siswa-index-btn-view"
                             onClick={(e) => handleView(e, schedule.id)}
                             title="Lihat Detail"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3b82f6' }}
                           >
-                            <FaEye size={18} />
+                            <FaEye />
                           </button>
 
                           <button
                             className="jadwal-siswa-index-btn-edit"
                             onClick={(e) => handleEdit(e, schedule.id)}
                             title="Edit Data"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b' }}
                           >
-                            <FaEdit size={18} />
+                            <FaEdit />
                           </button>
 
                           <button
                             className="jadwal-siswa-index-btn-delete"
                             onClick={(e) => handleDelete(e, schedule.id)}
                             title="Hapus Data"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
                           >
-                            <FaTrash size={18} />
+                            <FaTrash />
                           </button>
                         </div>
                       </td>

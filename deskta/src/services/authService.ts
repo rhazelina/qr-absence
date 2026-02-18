@@ -28,7 +28,7 @@ export const authService = {
   },
 
   login: async (credentials: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

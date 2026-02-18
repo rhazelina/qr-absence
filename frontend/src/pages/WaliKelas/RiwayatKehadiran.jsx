@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import apiService from '../../utils/api';
 
 const RiwayatKehadiran = () => {
   const getTodayDate = () => {
@@ -31,6 +32,46 @@ const RiwayatKehadiran = () => {
   const className = '';
 
   const [attendanceData, setAttendanceData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Fetch data
+  React.useEffect(() => {
+    fetchAttendance();
+  }, [startDate, endDate]);
+
+  const fetchAttendance = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getMyClassAttendance({
+        start_date: startDate,
+        end_date: endDate
+      });
+      
+      // Backend response mapping
+      // Assuming backend returns { data: [ { student: {...}, details: [...], summary: {...} } ] }
+      // We need to map it to the structure expected by the UI
+      
+      if (data && Array.isArray(data)) {
+         const mappedData = data.map((item, index) => ({
+           no: index + 1,
+           nisn: item.student.nisn || '-',
+           nama: item.student.user?.name || '-',
+           details: item.details || [], // Assuming backend provides detailed logs
+           hadir: item.summary?.present || 0,
+           terlambat: item.summary?.late || 0,
+           sakit: item.summary?.sick || 0,
+           izin: item.summary?.excused || 0,
+           alfa: item.summary?.absent || 0,
+           pulang: item.summary?.return || 0
+         }));
+         setAttendanceData(mappedData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch attendance history:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const daftarMapel = useMemo(() => {
     const mapelSet = new Set();

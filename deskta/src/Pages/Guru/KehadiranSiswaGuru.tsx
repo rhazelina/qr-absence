@@ -38,7 +38,7 @@ interface SiswaData {
   attendance_id?: string; // ID of the attendance record if exists
 }
 
-export default function KehadiranSiswaGuru({
+function KehadiranSiswaGuru({
   user,
   onLogout,
   currentPage,
@@ -50,6 +50,8 @@ export default function KehadiranSiswaGuru({
   const [loading, setLoading] = useState(false);
 
   const [editingSiswa, setEditingSiswa] = useState<SiswaData | null>(null);
+  const [selectedSiswa, setSelectedSiswa] = useState<SiswaData | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Initialize date
   useEffect(() => {
@@ -131,24 +133,15 @@ export default function KehadiranSiswaGuru({
     if (!backendStatus) return;
 
     try {
-      const token = localStorage.getItem('token');
-      // Use manual input endpoint
-      const response = await fetch(`http://localhost:8000/api/attendance/manual`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          schedule_id: schedule.id,
-          student_id: editingSiswa.id,
-          status: backendStatus,
-          date: new Date().toISOString().split('T')[0], // Today YYYY-MM-DD
-          notes: editingSiswa.keterangan
-        })
+      const response = await attendanceService.manualAttendance({
+        schedule_id: schedule.id,
+        student_id: editingSiswa.id,
+        status: backendStatus,
+        date: new Date().toISOString().split('T')[0], // Today YYYY-MM-DD
+        notes: editingSiswa.keterangan
       });
 
-      if (response.ok) {
+      if (response) {
         // Update local state
         setSiswaList(prevList =>
           prevList.map(s =>
@@ -157,23 +150,57 @@ export default function KehadiranSiswaGuru({
         );
         setEditingSiswa(null);
         alert("Status berhasil diperbarui");
-      } else {
-        console.error("Failed to update status");
-        alert("Gagal memperbarui status");
       }
-
     } catch (error) {
       console.error("Error saving status:", error);
+      alert("Gagal memperbarui status");
+    }
+  };
+
+  const handleStatusClick = (siswa: SiswaData) => {
+    setSelectedSiswa({ ...siswa });
+    setIsDetailModalOpen(true);
+  };
+
+  const handleSaveDetail = async () => {
+    if (!selectedSiswa || !schedule?.id) return;
+    
+    // In a real app, you might want to save the 'keterangan' or 'jamPelajaran' to the backend
+    // Since our manualAttendance API takes 'notes', we can use that for keterangan.
+    
+    setSiswaList(prevList =>
+      prevList.map(s =>
+        s.id === selectedSiswa.id ? selectedSiswa : s
+      )
+    );
+    setIsDetailModalOpen(false);
+    setSelectedSiswa(null);
+    alert("Detail berhasil disimpan (Lokal)");
+  };
+
+  const getStatusText = (status: string, waktuHadir?: string) => {
+    switch (status) {
+      case "alfa": return "Siswa tidak hadir tanpa keterangan";
+      case "izin": return "Siswa izin dengan keterangan";
+      case "sakit": return "Siswa sakit dengan surat dokter";
+      case "hadir":
+        if (!waktuHadir) return "Siswa hadir";
+        const [jam, menit] = waktuHadir.split(":").map(Number);
+        if (jam > 7 || (jam === 7 && menit > 0)) return `Siswa hadir tetapi terlambat pada ${waktuHadir}`;
+        return `Siswa hadir tepat waktu pada ${waktuHadir}`;
+      case "pulang": return "Siswa pulang lebih awal karena ada kepentingan";
+      default: return status;
     }
   };
 
   // Custom Status Renderer dengan icon mata untuk SEMUA STATUS
-  const StatusButton = ({ status }: { status: string; siswa: SiswaData }) => {
+  const StatusButton = ({ status, siswa }: { status: string; siswa: SiswaData }) => {
     const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#9CA3AF';
     const label = status === 'alfa' ? 'Alfa' : status.charAt(0).toUpperCase() + status.slice(1);
 
     return (
       <div
+        onClick={() => handleStatusClick(siswa)}
         style={{
           backgroundColor: color,
           color: 'white',
@@ -184,17 +211,51 @@ export default function KehadiranSiswaGuru({
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: '6px',
           minWidth: '100px',
           textAlign: 'center',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
           border: '1px solid rgba(255,255,255,0.2)',
-          cursor: 'default',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '0.9';
+          e.currentTarget.style.transform = 'translateY(-1px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '1';
+          e.currentTarget.style.transform = 'translateY(0)';
         }}
       >
+        <EyeIcon size={14} />
         <span>{label}</span>
       </div>
     );
   };
+
+  const EyeIcon = ({ size = 16 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 12C2 12 5 5 12 5C19 5 22 12 22 12C22 12 19 19 12 19C5 19 2 12 2 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+
+  const TimeIcon = ({ size = 16 }: { size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+
+  const DetailRow = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
+    <div style={{ display: 'grid', gridTemplateColumns: '160px 20px 1fr', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: '#374151' }}>{icon}{label}</div>
+      <div style={{ textAlign: 'center', fontWeight: 600 }}>:</div>
+      <div style={{ fontWeight: 500, color: '#1F2937' }}>{value}</div>
+    </div>
+  );
 
   // Icon X untuk tombol close modal
   const XIcon = ({ size = 24 }: { size?: number }) => (
@@ -387,6 +448,86 @@ export default function KehadiranSiswaGuru({
           </div>
         </div>
       )}
+      {/* Detail Status Modal - UNTUK SEMUA STATUS */}
+      {isDetailModalOpen && selectedSiswa && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF', borderRadius: '16px', width: '90%', maxWidth: '420px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden',
+            maxHeight: '90vh', display: 'flex', flexDirection: 'column'
+          }}>
+            {/* Header Modal */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+              padding: '16px 24px', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', color: '#FFFFFF'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <EyeIcon size={24} />
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>Detail Kehadiran</h3>
+              </div>
+              <button onClick={() => setIsDetailModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FFFFFF' }}>
+                <XIcon size={24} />
+              </button>
+            </div>
+
+            {/* Content */ }
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              <DetailRow label="Tanggal" value={selectedSiswa.tanggal || currentDate} icon={<TimeIcon size={18} />} />
+              <DetailRow label="Nama Siswa" value={selectedSiswa.nama} />
+              <DetailRow label="NISN" value={selectedSiswa.nisn} />
+              <DetailRow label="Mata Pelajaran" value={selectedSiswa.mapel} />
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
+                <div style={{ fontWeight: 600, color: '#374151' }}>Jam Pelajaran :</div>
+                <select 
+                  value={selectedSiswa.jamPelajaran || ""} 
+                  onChange={(e) => setSelectedSiswa({ ...selectedSiswa, jamPelajaran: e.target.value })}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14 }}
+                >
+                  <option value="">Pilih Jam</option>
+                  <option value="1-2">1 - 2</option>
+                  <option value="3-4">3 - 4</option>
+                  <option value="5-6">5 - 6</option>
+                  <option value="7-8">7 - 8</option>
+                </select>
+              </div>
+
+              {selectedSiswa.status === 'pulang' && (
+                <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
+                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: 8 }}>Upload Surat :</div>
+                  <input 
+                    type="file" 
+                    accept=".pdf,.jpg,.png" 
+                    onChange={(e) => setSelectedSiswa({ ...selectedSiswa, suratPulang: e.target.files?.[0] || null })}
+                    style={{ fontSize: 13, width: '100%' }}
+                  />
+                  {selectedSiswa.suratPulang && <div style={{ fontSize: 12, color: '#2563EB', marginTop: 4 }}>{selectedSiswa.suratPulang.name}</div>}
+                </div>
+              )}
+
+              <div style={{ marginTop: 20 }}>
+                <div style={{ padding: '12px 16px', borderRadius: 12, backgroundColor: STATUS_COLORS[selectedSiswa.status as keyof typeof STATUS_COLORS] + '15', border: `1px solid ${STATUS_COLORS[selectedSiswa.status as keyof typeof STATUS_COLORS]}30`, display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: STATUS_COLORS[selectedSiswa.status as keyof typeof STATUS_COLORS] }}></div>
+                  <div style={{ fontSize: 14, color: '#374151', fontWeight: 500 }}>{getStatusText(selectedSiswa.status, selectedSiswa.waktuHadir)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '20px 24px', backgroundColor: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 12 }}>
+              <button onClick={() => setIsDetailModalOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #D1D5DB', backgroundColor: 'white', fontWeight: '700', cursor: 'pointer' }}>Batal</button>
+              <button onClick={handleSaveDetail} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', backgroundColor: '#2563EB', color: 'white', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 6px rgba(37,99,235,0.2)' }}>Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
     </GuruLayout>
   );
 }
+
+export default KehadiranSiswaGuru;

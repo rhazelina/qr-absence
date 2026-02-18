@@ -28,27 +28,25 @@ class Classes extends Model
         return trim("{$this->grade_roman} {$this->label}");
     }
 
-    public function getGradeRomanAttribute(): string
-    {
-        $map = [
-            '10' => 'X',
-            '11' => 'XI',
-            '12' => 'XII',
-            'X' => 'X',
-            'XI' => 'XI',
-            'XII' => 'XII',
-        ];
+    // public function getGradeRomanAttribute(): string
+    // {
+    //     $map = [
+    //         '10' => 'X',
+    //         '11' => 'XI',
+    //         '12' => 'XII',
+    //         'X' => 'X',
+    //         'XI' => 'XI',
+    //         'XII' => 'XII',
+    //     ];
 
-        return $map[$this->grade] ?? $this->grade;
-    }
+    //     return $map[$this->grade] ?? $this->grade;
+    // }
 
-    // Siswa untuk 
+    // Siswa untuk
     public function students(): HasMany
     {
         return $this->hasMany(StudentProfile::class, 'class_id');
     }
-
-
 
     // Guru yang mengajar kelas
     public function homeroomTeacher(): HasOne

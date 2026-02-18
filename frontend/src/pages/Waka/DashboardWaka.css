@@ -9,15 +9,17 @@
 .dashboard-page {
   min-height: 100vh;
   background: linear-gradient(transparent);
+  padding-top: 86px;
 }
 
 /* LAYOUT */
 .dashboard-containerr {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - 86px);
   padding-left: 300px;
-  padding-right: 30px;
+  padding-right: 24px;
   padding-bottom: 30px;
+  padding-top: 12px;
 }
 
 /* SIDEBAR */
@@ -29,7 +31,7 @@
   padding: 2rem 1.5rem;
 
   position: fixed;
-  top: 70px;  
+  top: 86px;
   left: 0;
   bottom: 0;
 
@@ -96,10 +98,9 @@
 /* CONTENT */
 .dashboard-content {
   flex: 1;
-  padding: 0;
-  margin-left: 0px;  
-  margin-top: 0px;   
-  padding-right: 3rem;
+  padding: 0 0 1rem;
+  margin: 0;
+  min-width: 0;
 }
 
 /* TOP */
@@ -143,7 +144,7 @@
 /* MINI STAT */
 .dashboard-mini-wrapper {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
   gap: 1rem;
   flex: 1;
 }
@@ -211,16 +212,46 @@
   padding-bottom: 3rem;
   border-radius: 1rem;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  height: 600px;
+  min-height: 520px;
+  height: min(62vh, 560px);
   position: relative;
 }
 
 /* CHART HEADER - DROPDOWN SEMESTER - POSISI DIPERBAIKI */
 .chart-header {
   position: absolute;
-  top: 1rem; /* Kembali ke dalam chart tapi lebih tinggi */
-  right: 2rem; /* Lebih ke kiri dari sebelumnya */
+  top: 1rem;
+  right: 2rem;
   z-index: 10;
+}
+
+.dashboard-loading,
+.dashboard-error,
+.dashboard-empty {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.dashboard-loading {
+  top: 48%;
+  color: #0b2a4a;
+}
+
+.dashboard-error {
+  top: 5.5rem;
+  color: #c62828;
+  background: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.dashboard-empty {
+  bottom: 1.2rem;
+  color: #6b7280;
 }
 
 .semester-dropdown-chart {
@@ -262,34 +293,47 @@
   }
   
   .dashboard-chart {
-    height: 550px;
+    height: min(58vh, 520px);
   }
 }
 
 @media (max-width: 1200px) {
+  .dashboard-containerr {
+    padding-left: 24px;
+  }
+
+  .dashboard-sidebar {
+    display: none;
+  }
+
   .dashboard-mini-wrapper {
     grid-template-columns: repeat(3, 1fr);
   }
   
   .dashboard-chart {
-    height: 500px;
+    height: min(56vh, 500px);
   }
 }
 
 @media (max-width: 768px) {
+  .dashboard-page {
+    padding-top: 78px;
+  }
+
   .dashboard-containerr {
     padding-left: 0;
+    padding-right: 12px;
+    padding-left: 12px;
     flex-direction: column;
   }
-  
-  .dashboard-sidebar {
-    position: relative;
-    width: 100%;
-    top: 0;
-  }
-  
+
   .dashboard-top {
     flex-direction: column;
+  }
+
+  .dashboard-datebox {
+    width: 100%;
+    min-width: 0;
   }
   
   .dashboard-mini-wrapper {
@@ -302,6 +346,7 @@
   }
   
   .dashboard-chart {
-    height: 450px;
+    height: min(56vh, 460px);
+    min-height: 420px;
   }
 }

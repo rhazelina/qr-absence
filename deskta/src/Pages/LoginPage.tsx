@@ -40,6 +40,21 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
     phone: "",
   });
 
+  const normalizeRole = (rawRole?: string, userType?: string, isClassOfficer?: boolean) => {
+    const normalized = (rawRole || "").toLowerCase();
+    if (normalized === "walikelas") return "wakel";
+    if (["admin", "guru", "siswa", "pengurus_kelas", "waka", "wakel"].includes(normalized)) {
+      return normalized;
+    }
+
+    const type = (userType || "").toLowerCase();
+    if (type === "student") return isClassOfficer ? "pengurus_kelas" : "siswa";
+    if (type === "teacher") return "guru";
+    if (type === "admin") return "admin";
+
+    return role || "siswa";
+  };
+
   // ==================== LOAD SCHOOL DATA FROM STORAGE ====================
   useEffect(() => {
     const loadSchoolData = async () => {
@@ -98,7 +113,12 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         // Map the backend role to what the app expects if needed
         // The backend already returns 'role' which is UI-compatible
         const user = response.user;
-        onLogin(user.role, user.name, user.profile?.nis || user.profile?.nip || "", user.profile);
+        onLogin(
+          normalizeRole(user.role, user.user_type, user.is_class_officer),
+          user.name,
+          user.profile?.nis || user.profile?.nip || "",
+          user.profile
+        );
       } else {
         setError("Gagal masuk: Data tidak valid");
       }

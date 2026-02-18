@@ -3,55 +3,77 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import './Presensi.css';
 import NavbarGuru from '../../components/WaliKelas/NavbarWakel';
 
+import apiService from '../../utils/api';
+
 function Presensi() {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [sessionData, setSessionData] = useState(null);
   const [siswaList, setSiswaList] = useState([]);
+  const [jadwalId, setJadwalId] = useState(null);
 
   useEffect(() => {
-    if (location.state && location.state.daftarSiswa) {
-      setSessionData(location.state);
-
-      const formattedSiswa = location.state.daftarSiswa.map((siswa, index) => ({
-        no: index + 1,
-        nisn: siswa.nisn,
-        nama: siswa.nama,
-        status: 'Hadir',
-        keterangan: '',
-        jamMasuk: null,
-        suratFile: null,
-        suratFileName: null,
-        wasTerlambat: false,
-        dokumen: null
-      }));
-
-      setSiswaList(formattedSiswa);
-    } else {
-      const savedData = sessionStorage.getItem('presensiData');
-
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        setSessionData(parsedData);
-
-        if (parsedData.daftarSiswa) {
-          const formattedSiswa = parsedData.daftarSiswa.map((siswa, index) => ({
-            no: index + 1,
-            nisn: siswa.nisn,
-            nama: siswa.nama,
-            status: 'Hadir',
-            keterangan: '',
-            jamMasuk: null,
-            suratFile: null,
-            suratFileName: null,
-            wasTerlambat: false,
-            dokumen: null
-          }));
-          setSiswaList(formattedSiswa);
+    const loadSession = async () => {
+      let data = location.state;
+      
+      if (!data) {
+        const savedData = sessionStorage.getItem('presensiData');
+        if (savedData) {
+          data = JSON.parse(savedData);
         }
       }
-    }
+
+      if (data) {
+        setSessionData(data);
+        const jId = data.jadwalId || data.id; // Support both
+        setJadwalId(jId);
+
+        if (jId) {
+            try {
+                const response = await apiService.getTeacherScheduleStudents(jId);
+                if (response.eligible_students) {
+                     const mappedStudents = response.eligible_students.map((student, index) => ({
+                      no: index + 1,
+                      id: student.id,
+                      nisn: student.nisn || '-',
+                      nama: student.name,
+                      status: 'Hadir', // Default status for Wali Kelas input? Or should we check if already submitted?
+                      // If submitted, backend 'getTeacherScheduleStudents' might not return attendance status unless we call a different endpoint.
+                      // For now, default 'Hadir' as per previous logic.
+                      keterangan: '',
+                      jamMasuk: null,
+                      suratFile: null,
+                      suratFileName: null,
+                      wasTerlambat: false,
+                      dokumen: null
+                    }));
+                    setSiswaList(mappedStudents);
+                }
+            } catch (err) {
+                console.error("Failed to load students", err);
+                alert("Gagal memuat data siswa: " + err.message);
+            }
+        } else if (data.daftarSiswa) {
+            // Fallback to passed data if no ID (legacy support/testing)
+             const formattedSiswa = data.daftarSiswa.map((siswa, index) => ({
+                no: index + 1,
+                id: siswa.id, // Ensure ID is present
+                nisn: siswa.nisn,
+                nama: siswa.nama,
+                status: 'Hadir',
+                keterangan: '',
+                jamMasuk: null,
+                suratFile: null,
+                suratFileName: null,
+                wasTerlambat: false,
+                dokumen: null
+              }));
+              setSiswaList(formattedSiswa);
+        }
+      }
+    };
+    loadSession();
   }, [location.state]);
 
   const hasScheduleData = sessionData?.mataPelajaran && sessionData?.kelas;
@@ -174,7 +196,7 @@ function Presensi() {
     setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null, fileName: '' });
   };
 
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
     const stats = {
       Hadir: 0,
       Terlambat: 0,
@@ -191,39 +213,42 @@ function Presensi() {
       }
     });
 
-    const currentDate = new Date().toISOString().split('T')[0];
+    try {
+        const payload = {
+            schedule_id: jadwalId,
+            date: tanggal, // Assuming tanggal format YYYY-MM-DD
+            items: siswaList.map(s => ({
+                student_id: s.id,
+                status: s.status === 'Alfa' ? 'alpha' : s.status.toLowerCase(), // Map Alfa -> alpha, others lowercase (hadir->present? No backend maps 'hadir'->'present', 'sakit'->'sick'. Wait, UI uses TitleCase 'Hadir', 'Sakit'. Backend map uses lowercase 'hadir', 'sakit'. I need to lowercase them!)
+                // Backend Map: 'hadir', 'sakit', 'izin'.
+                // UI: 'Hadir', 'Sakit'.
+                // So s.status.toLowerCase() gives 'hadir', 'sakit'. Good.
+                // Exception: 'Alfa' -> 'alfa'. Backend map expects 'alpha'.
+                // So: s.status === 'Alfa' ? 'alpha' : s.status.toLowerCase()
+                reason: s.keterangan || null
+            }))
+        };
+        
+        // Wait, backend map uses 'alfa' or 'alpha'? 
+        // My previous check in PresensiSiswa said backend map 'alpha' -> 'absent'.
+        // And UI in PresensiSiswa used 'alfa'.
+        // Here in Presensi.jsx UI uses 'Alfa' (TitleCase).
+        // So lowercase is 'alfa'.
+        // So if I send 'alfa', backend needs to map 'alfa' -> 'absent'.
+        // Does backend map have 'alfa'?
+        // "alpha" => "absent".
+        // It does NOT have "alfa".
+        // So I must map 'Alfa' -> 'alpha'.
+        
+        await apiService.submitBulkAttendance(payload);
 
-    const presensiRecords = siswaList.map(siswa => ({
-      nisn: siswa.nisn,
-      nama: siswa.nama,
-      status: siswa.status,
-      keterangan: siswa.keterangan || '',
-      jamMasuk: siswa.jamMasuk || null,
-      suratFile: siswa.suratFile || null,
-      suratFileName: siswa.suratFileName || null,
-      wasTerlambat: siswa.wasTerlambat || false,
-      mapel: mataPelajaran,
-      tanggal: currentDate
-    }));
+         alert(`Absensi berhasil disimpan!\n\nHadir: ${stats.Hadir}\nTerlambat: ${stats.Terlambat}\nSakit: ${stats.Sakit}\nIzin: ${stats.Izin}\nAlfa: ${stats.Alfa}\nPulang: ${stats.Pulang}`);
 
-    localStorage.setItem('studentAttendanceData', JSON.stringify(presensiRecords));
-
-    const presensiMetadata = {
-      mataPelajaran,
-      kelas,
-      jamKe,
-      waktu,
-      tanggal,
-      timestamp: new Date().toISOString(),
-      stats,
-      totalSiswa: siswaList.length
-    };
-
-    localStorage.setItem('lastPresensiMetadata', JSON.stringify(presensiMetadata));
-
-    alert(`Absensi berhasil disimpan!\n\nHadir: ${stats.Hadir}\nTerlambat: ${stats.Terlambat}\nSakit: ${stats.Sakit}\nIzin: ${stats.Izin}\nAlfa: ${stats.Alfa}\nPulang: ${stats.Pulang}`);
-
-    setMode('view');
+        setMode('view');
+    } catch (error) {
+        console.error("Failed to submit attendance", error);
+        alert("Gagal menyimpan presensi: " + error.message);
+    }
   };
 
   const handleEdit = () => {

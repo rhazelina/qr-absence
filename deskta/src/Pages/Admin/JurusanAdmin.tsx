@@ -48,7 +48,7 @@ export default function KonsentrasiKeahlianAdmin({
     setIsLoading(true);
     try {
       const data = await masterService.getMajors();
-      setKonsentrasiKeahlianList(data);
+      setKonsentrasiKeahlianList(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
       console.error("Failed to fetch majors:", error);
     } finally {
@@ -226,6 +226,90 @@ export default function KonsentrasiKeahlianAdmin({
           minHeight: "70vh",
         }}
       >
+        {/* STATS CARDS */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: "24px",
+          marginBottom: "10px",
+        }}>
+          <div style={{
+            backgroundColor: "#FFFFFF",
+            borderRadius: "16px",
+            padding: "24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+          }}
+          >
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              backgroundColor: "#EEF2FF",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              <span style={{ fontSize: "28px" }}>🎓</span>
+            </div>
+            <div>
+              <div style={{ fontSize: "28px", fontWeight: "700", color: "#1F2937", lineHeight: "1.2" }}>
+                {konsentrasiKeahlianList.length}
+              </div>
+              <div style={{ fontSize: "14px", color: "#6B7280", fontWeight: "500" }}>Total Konsentrasi</div>
+            </div>
+          </div>
+
+          <div style={{
+             backgroundColor: "#FFFFFF",
+            borderRadius: "16px",
+            padding: "24px",
+            display: "flex",
+            alignItems: "center",
+            gap: "20px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+          }}
+          >
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              backgroundColor: "#FFF7ED",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              <span style={{ fontSize: "28px" }}>🏷️</span>
+            </div>
+             <div>
+              <div style={{ fontSize: "28px", fontWeight: "700", color: "#1F2937", lineHeight: "1.2" }}>
+                {new Set(konsentrasiKeahlianList.map(k => k.category)).size}
+              </div>
+              <div style={{ fontSize: "14px", color: "#6B7280", fontWeight: "500" }}>Total Bidang</div>
+            </div>
+          </div>
+        </div>
+
         {/* HEADER dengan search dan tombol tambah */}
         <div
           style={{

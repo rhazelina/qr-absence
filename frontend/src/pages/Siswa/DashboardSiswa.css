@@ -10,7 +10,8 @@
   background-repeat: no-repeat;
   background-attachment: fixed;
   position: relative;
-  padding-top: 400px; /* Kompensasi navbar fixed 75px */
+  padding-top: 0;
+  overflow-x: hidden;
 }
 
 /* Navbar styling to stay on top */
@@ -37,6 +38,7 @@
   padding-top: 100px; /* 75px navbar + 25px spacing */
   padding-right: 32px;
   padding-bottom: 32px;
+  box-sizing: border-box;
 }
 
 .siswa-dashboard-grid {
@@ -226,6 +228,12 @@
 .siswa-bagian-konten {
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+.siswa-grid-ringkasan {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
   gap: 24px;
 }
 
@@ -1205,14 +1213,13 @@
   .siswa-statistik-rekap {
     grid-template-columns: 1fr;
   }
+
+  .siswa-grid-ringkasan {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
-  .siswa-dashboard-konten {
-    padding: 20px;
-    padding-top: 100px; /* Maintain spacing on mobile */
-  }
-
   .siswa-grid-checkin,
   .siswa-grid-aksi {
     grid-template-columns: 1fr;
@@ -1235,12 +1242,13 @@
     width: 100%;
     height: auto;
     padding: 20px;
-    top: 75px;
+    top: 0;
+    margin-top: 75px;
   }
 
   .siswa-dashboard-konten {
     padding-left: 20px;
-    padding-top: 120px; /* Extra space for mobile after profile */
+    padding-top: 20px;
   }
 
   .siswa-nilai-stat {

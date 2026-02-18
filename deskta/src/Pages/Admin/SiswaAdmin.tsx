@@ -1,31 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../../component/Admin/AdminLayout';
+import { Button } from '../../component/Shared/Button';
+import { Select } from '../../component/Shared/Select';
 import { 
-  Users, 
-  Search,
-  Plus, 
   MoreVertical, 
-  Upload, 
-  X, 
-  Trash2,
-  Eye,
-  Edit
+  Trash2, 
+  Edit,
+  FileDown,
+  Upload,
+  FileText,
+  Download,
+  Search,
+  X
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { masterService, type Major, type ClassRoom } from '../../services/masterService';
-import * as XLSX from 'xlsx';
 import { studentService } from '../../services/studentService';
+import * as XLSX from 'xlsx';
 
-// Interface helpers
+// Import Assets
+import AWANKIRI from '../../assets/Icon/AWANKIRI.png';
+import AwanBawahkanan from '../../assets/Icon/AwanBawahkanan.png';
+
+// Interfaces
 interface Siswa {
   id: string;
   namaSiswa: string;
   nisn: string;
   nis: string;
   jurusan: string;
+  jurusanId?: string;
   kelas: string;
+  kelasId?: string;
   jenisKelamin: 'L' | 'P';
-  // Optional extras for detail/edit
   phone?: string;
   address?: string;
   email?: string;
@@ -49,26 +55,26 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   onMenuClick, 
   onNavigateToDetail 
 }) => {
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State
   const [students, setStudents] = useState<Siswa[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Master Data State
   const [majors, setMajors] = useState<Major[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
 
-  // Search
+  // Search & Filter
   const [searchValue, setSearchValue] = useState('');
+  const [selectedJurusan, setSelectedJurusan] = useState('');
+  const [selectedKelas, setSelectedKelas] = useState('');
 
   // Dropdown & Modal State
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // const [isEksporDropdownOpen, setIsEksporDropdownOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null); // For Edit
+  const [isEksporDropdownOpen, setIsEksporDropdownOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form State
   const currentYear = new Date().getFullYear();
@@ -82,7 +88,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     address: '',
     jenisKelamin: 'L',
     jurusanId: '',
-    kelas: '', // This will store class_id now
+    kelas: '',
     noTelp: '',
     tahunMulai: currentYear.toString(),
     tahunAkhir: (currentYear + 3).toString()
@@ -93,11 +99,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   // Pagination
   const [pageIndex, setPageIndex] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1); // Keep totalPages for API response
-
-
-  const paginate = (pageNumber: number) => setPageIndex(pageNumber);
-
+  const [totalPages, setTotalPages] = useState(1);
+  const [, setTotalStudentsCount] = useState(0);
 
   // Initial Data Fetch
   useEffect(() => {
@@ -107,7 +110,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   // Fetch students when search or page changes
   useEffect(() => {
     fetchStudents();
-  }, [searchValue, pageIndex]); // Changed currentPage to pageIndex
+  }, [searchValue, pageIndex]);
 
   const fetchMasterData = async () => {
     try {
@@ -119,32 +122,30 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       setClasses(classesRes.data || []);
     } catch (err) {
       console.error('Failed to fetch master data:', err);
-      // Not blocking UI, but dropdowns will be empty
     }
   };
 
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      // API call with params
-      // Note: studentService needs to handle pagination response structure if standard Laravel API
       const params = {
-        page: pageIndex, // Use pageIndex
-        per_page: itemsPerPage, // Use itemsPerPage
+        page: pageIndex,
+        per_page: itemsPerPage,
         search: searchValue
       };
       
       const response = await studentService.getStudents(params as any);
       
-      // Map API response to local Siswa interface
       const data = response.data || [];
       const mappedStudents: Siswa[] = data.map((s: any) => ({
         id: s.id.toString(),
         namaSiswa: s.name,
         nisn: s.nisn,
         nis: s.nis || '-',
-        jurusan: s.major || '-', // Use code
+        jurusan: s.major || '-',
+        jurusanId: s.major_id?.toString(),
         kelas: s.class_name || '-',
+        kelasId: s.class_id?.toString(),
         jenisKelamin: s.gender,
         phone: s.parent_phone,
         address: s.address,
@@ -154,21 +155,28 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
       setStudents(mappedStudents);
       
-      // Update pagination info if available in response
       if (response.meta) {
         setTotalPages(response.meta.last_page);
+        if (response.meta.total) {
+          setTotalStudentsCount(response.meta.total);
+        }
       }
       
-      setError(null);
     } catch (err) {
       console.error('Error fetching students:', err);
-      setError('Gagal memuat data siswa.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Form Validation
+  // Filtered Data for Display
+  const filteredData = students.filter((item) => {
+    const matchJurusan = selectedJurusan ? item.jurusan === selectedJurusan || item.jurusanId === selectedJurusan : true;
+    const matchKelas = selectedKelas ? item.kelas === selectedKelas || item.kelasId === selectedKelas : true;
+    return matchJurusan && matchKelas;
+  });
+
+  // Validation
   const validateField = (name: string, value: string) => {
     let error = '';
     if (name === 'namaSiswa' && !value.trim()) error = 'Nama Siswa wajib diisi';
@@ -176,6 +184,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     if (name === 'nisn' && value && !/^\d+$/.test(value)) error = 'NISN harus berupa angka';
     if (name === 'nis' && !value.trim()) error = 'NIS wajib diisi';
     if (name === 'username' && !value.trim()) error = 'Username wajib diisi';
+    // Password required only for new students
     if (name === 'password' && !editingId && !value.trim()) error = 'Password wajib diisi';
     if (name === 'address' && !value.trim()) error = 'Alamat wajib diisi';
     if (name === 'jurusanId' && !value) error = 'Jurusan wajib dipilih';
@@ -226,18 +235,17 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     if (onNavigateToDetail) {
       onNavigateToDetail(student.id);
     } else {
-      // Fallback to modal editing if onNavigateToDetail is not provided
       setEditingId(student.id);
       
-      const selectedClass = classes.find(c => c.name === student.kelas);
-      const selectedMajor = majors.find(m => m.code === student.jurusan);
+      const selectedClass = classes.find(c => c.name === student.kelas || c.id.toString() === student.kelasId);
+      const selectedMajor = majors.find(m => m.code === student.jurusan || m.id.toString() === student.jurusanId);
 
       setFormData({
         namaSiswa: student.namaSiswa,
         nisn: student.nisn,
         nis: student.nis,
         username: student.username || '',
-        password: '', // Don't show password
+        password: '',
         email: student.email || '',
         address: student.address || '',
         jenisKelamin: student.jenisKelamin,
@@ -285,7 +293,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       }
       
       handleCloseModal();
-      fetchStudents(); // Refresh list
+      fetchStudents();
+      alert(`Berhasil ${editingId ? 'memperbarui' : 'menambahkan'} data siswa.`);
     } catch (err: any) {
       console.error('Failed to save student:', err);
       alert('Gagal menyimpan data siswa: ' + (err.response?.data?.message || err.message));
@@ -298,6 +307,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         await studentService.deleteStudent(id);
         fetchStudents();
         setOpenActionId(null);
+        alert('Data siswa berhasil dihapus.');
       } catch (err) {
         console.error('Failed to delete student:', err);
         alert('Gagal menghapus siswa.');
@@ -306,19 +316,20 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   };
 
   const handleImport = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
+  };
+
+  const handleDownloadFormatExcel = () => {
+    const headers = ['Nama', 'NISN', 'NIS', 'Username', 'Password', 'Email', 'Alamat', 'Gender', 'ClassID', 'PengurusKelas', 'Telepon', 'Kontak'];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
-        alert('Format file tidak didukung. Gunakan Excel atau CSV.');
-        return;
-      }
-      
       const reader = new FileReader();
       reader.onload = async (evt) => {
         try {
@@ -364,157 +375,339 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     }
   };
 
-  const handleNavigateToDetail = (id: string) => {
-    navigate(`/admin/siswa/${id}`);
+  const handleExportPDF = () => {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Data Siswa Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { text-align: center; color: #1E3A8A; }
+          .date { text-align: center; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background-color: #2563EB; color: white; padding: 10px; text-align: left; }
+          td { padding: 10px; border-bottom: 1px solid #ddd; }
+          tr:nth-child(even) { background-color: #f5f7fa; }
+          .footer { margin-top: 20px; text-align: right; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>Laporan Data Siswa</h1>
+        <div class="date">Tanggal: ${new Date().toLocaleDateString('id-ID')}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Siswa</th>
+              <th>NISN</th>
+              <th>Konsentrasi Keahlian</th>
+              <th>Tingkatan Kelas</th>
+              <th>Jenis Kelamin</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredData.map((siswa, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${siswa.namaSiswa}</td>
+                <td>${siswa.nisn}</td>
+                <td>${siswa.jurusan}</td>
+                <td>${siswa.kelas}</td>
+                <td>${siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Total Siswa: ${filteredData.length}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const newWindow = window.open('', '', 'width=900,height=600');
+    if (newWindow) {
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+      setTimeout(() => {
+        newWindow.print();
+      }, 250);
+    }
   };
 
-  // UI Helpers
-  // Filter majors/classes for dropdowns
-  // Major options: use majors state
-  // Class options: filter classes based on selected major if possible, or show all
-  const availableClasses = formData.jurusanId 
-    ? classes.filter(c => c.major_id.toString() === formData.jurusanId)
-    : classes;
+  const handleOpenInExcel = () => {
+    const headers = ['Nama Siswa', 'NISN', 'Konsentrasi Keahlian', 'Tingkatan Kelas', 'Jenis Kelamin'];
+    const rows = filteredData.map((siswa) => [
+      siswa.namaSiswa,
+      siswa.nisn,
+      siswa.jurusan,
+      siswa.kelas,
+      siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'
+    ]);
 
-    if (loading) {
-      return (
-        <AdminLayout
-          pageTitle="Data Siswa"
-          currentPage={currentPage || "siswa"}
-          onMenuClick={onMenuClick || (() => {})}
-          user={user}
-          onLogout={onLogout || (() => {})}
-          hideBackground={false}
-        >
-          <div style={{ padding: '24px', color: 'white', textAlign: 'center' }}>Loading...</div>
-        </AdminLayout>
-      );
-    }
-  
-    return (
-      <AdminLayout
-        pageTitle="Data Siswa"
-        currentPage={currentPage || "siswa"}
-        onMenuClick={onMenuClick || (() => {})}
-        user={user}
-        onLogout={onLogout || (() => {})}
-        hideBackground={false}
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data Siswa");
+    XLSX.writeFile(wb, `Data_Siswa_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+  };
+
+  // UI Styles & Options
+  const buttonBaseStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontWeight: 600,
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    height: '36px',
+    border: 'none',
+  } as const;
+
+  // Options for Select
+  const jurusanOptions = majors.map(m => ({ label: m.name, value: m.id.toString() }));
+  const kelasOptions = classes.map(c => ({ label: c.name, value: c.id.toString() }));
+
+  return (
+    <AdminLayout
+      pageTitle="Data Siswa"
+      currentPage={currentPage || "siswa"}
+      onMenuClick={onMenuClick || (() => {})}
+      user={user}
+      onLogout={onLogout || (() => {})}
+      hideBackground
+    >
+      {/* BACKGROUND AWAN */}
+      <img 
+        src={AWANKIRI} 
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: 220,
+          zIndex: 0,
+          pointerEvents: "none",
+        }} 
+        alt="Background awan kiri" 
+      />
+      
+      <img 
+        src={AwanBawahkanan} 
+        style={{
+          position: "fixed",
+          bottom: 0,
+          right: 0,
+          width: 220,
+          zIndex: 0,
+          pointerEvents: "none",
+        }} 
+        alt="Background awan kanan bawah" 
+      />
+
+      {/* KONTEN UTAMA */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(6px)",
+          borderRadius: 16,
+          padding: '16px',
+          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          border: "1px solid rgba(255,255,255,0.6)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+          position: "relative",
+          zIndex: 1,
+          minHeight: "70vh",
+        }}
       >
-      <div style={{ padding: '24px' }}>
-        {/* Header Section */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
+        {/* ============ FILTER & ACTION BUTTONS ============ */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '200px 200px 1fr auto auto auto auto',
+            gap: '12px',
+            alignItems: 'flex-end',
+          }}
+        >
+          {/* Konsentrasi Keahlian */}
           <div>
-            <h1 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: '#111827',
-              marginBottom: '4px'
-            }}>
-              Data Siswa
-            </h1>
-            <p style={{
-              fontSize: '14px',
-              color: '#6B7280'
-            }}>
-              Kelola data siswa, kelas, dan jurusan
-            </p>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: '#FFFFFF',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-              border: '1px solid #E5E7EB'
-            }}>
-              <Users size={20} color="#2563EB" style={{ marginRight: '8px' }} />
-              <div>
-                <span style={{ fontSize: '12px', color: '#6B7280', display: 'block' }}>Total Siswa</span>
-                <span style={{ fontSize: '16px', fontWeight: '700', color: '#111827' }}>
-                  {students.length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters & Actions */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-          gap: '16px',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={handleOpenModal}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: '#2563EB',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1D4ED8')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#2563EB')}
-            >
-              <Plus size={18} />
-              Tambah Siswa
-            </button>
-            <button
-              onClick={handleImport}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                backgroundColor: '#FFFFFF',
-                color: '#374151',
-                border: '1px solid #D1D5DB',
-                borderRadius: '8px',
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              <Upload size={18} />
-              Import
-            </button>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }}
-              onChange={handleFileSelect} 
-              accept=".csv,.xlsx"
+            <Select
+              label="Konsentrasi Keahlian"
+              value={selectedJurusan}
+              onChange={setSelectedJurusan}
+              options={[{ label: 'Semua', value: '' }, ...jurusanOptions]}
+              placeholder="Semua"
             />
           </div>
 
-          <div style={{
-            position: 'relative',
-            width: '300px'
-          }}>
+          {/* Kelas */}
+          <div>
+            <Select
+              label="Tingkatan Kelas"
+              value={selectedKelas}
+              onChange={setSelectedKelas}
+              options={[{ label: 'Semua', value: '' }, ...kelasOptions]}
+              placeholder="Semua"
+            />
+          </div>
+
+          {/* Empty space */}
+          <div></div>
+
+          {/* Buttons */}
+          <Button
+            label="Tambahkan"
+            onClick={handleOpenModal}
+            variant="primary"
+          />
+          
+          <button
+            onClick={handleDownloadFormatExcel}
+            style={{
+              ...buttonBaseStyle,
+              backgroundColor: '#10B981',
+              color: '#FFFFFF',
+              border: '1px solid #10B981',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10B981';
+            }}
+          >
+            <Download size={14} color="#FFFFFF" />
+            Format Excel
+          </button>
+
+          <button
+            onClick={handleImport}
+            style={{
+              ...buttonBaseStyle,
+              backgroundColor: '#0B1221',
+              color: '#FFFFFF',
+              border: '1px solid #0B1221',
+            }}
+          >
+            <Upload size={14} color="#FFFFFF" />
+            Impor
+          </button>
+
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setIsEksporDropdownOpen(!isEksporDropdownOpen)}
+              style={{
+                ...buttonBaseStyle,
+                backgroundColor: '#0B1221',
+                color: '#FFFFFF',
+                border: '1px solid #0B1221',
+              }}
+            >
+              <FileDown size={14} color="#FFFFFF" />
+              Ekspor
+            </button>
+
+            {isEksporDropdownOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: 4,
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 8,
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                  overflow: 'hidden',
+                  zIndex: 20,
+                  minWidth: 120,
+                  border: '1px solid #E5E7EB',
+                }}
+              >
+                <button
+                  onClick={() => {
+                    setIsEksporDropdownOpen(false);
+                    handleExportPDF();
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    color: '#111827',
+                    textAlign: 'left',
+                  }}
+                >
+                  <FileText size={14} />
+                  PDF
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEksporDropdownOpen(false);
+                    handleOpenInExcel();
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: 'white',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    color: '#111827',
+                    textAlign: 'left',
+                    borderTop: '1px solid #F1F5F9',
+                  }}
+                >
+                  <Download size={14} />
+                  Excel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ============ SEARCH INPUT ============ */}
+        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '400px' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#252525',
+              display: 'block',
+              marginBottom: '4px',
+            }}
+          >
+            Cari siswa
+          </label>
+          <div
+            style={{
+              position: 'relative',
+              display: 'inline-flex',
+              alignItems: 'center',
+              width: '100%',
+            }}
+          >
+            <Search
+              size={16}
+              color="#9CA3AF"
+              style={{
+                position: 'absolute',
+                left: '10px',
+                pointerEvents: 'none',
+              }}
+            />
             <input
               type="text"
               placeholder="Cari nama atau NISN..."
@@ -522,223 +715,119 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
               onChange={(e) => setSearchValue(e.target.value)}
               style={{
                 width: '100%',
-                padding: '10px 16px 10px 40px',
-                borderRadius: '8px',
+                padding: '6px 10px 6px 32px',
                 border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '13px',
                 outline: 'none',
-                fontSize: '14px',
-                backgroundColor: '#FFFFFF'
-              }}
-            />
-            <Search 
-              size={18} 
-              color="#9CA3AF" 
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                pointerEvents: 'none'
+                transition: 'all 0.2s',
+                backgroundColor: '#D9D9D9',
+                height: '32px',
+                boxSizing: 'border-box',
               }}
             />
           </div>
         </div>
 
-        {/* Table Section */}
-        <div style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          overflow: 'hidden',
-          border: '1px solid #E5E7EB'
+        {/* ============ DATA TABLE ============ */}
+        <div style={{ 
+          borderRadius: 12, 
+          overflow: 'hidden', 
+          boxShadow: '0 0 0 1px #E5E7EB'
         }}>
           {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
-              Memuat data...
-            </div>
-          ) : error ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#EF4444' }}>
-              {error}
-            </div>
+             <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+               Memuat data...
+             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>No</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Nama Siswa</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>NISN</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Jurusan</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Kelas</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>L/P</th>
-                    <th style={{ padding: '12px 24px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>Aksi</th>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              backgroundColor: '#FFFFFF',
+            }}>
+              <thead>
+                <tr style={{
+                  backgroundColor: '#F3F4F6',
+                  borderBottom: '1px solid #E5E7EB',
+                }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>No</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Nama Siswa</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>NISN</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Konsentrasi Keahlian</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Tingkatan Kelas</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Jenis Kelamin</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredData.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+                      Tidak ada data siswa
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {students.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
-                        Tidak ada data siswa
+                ) : (
+                  filteredData.map((siswa, index) => (
+                    <tr key={siswa.id} style={{
+                      borderBottom: '1px solid #E5E7EB',
+                      backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+                    }}>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{(pageIndex - 1) * 10 + index + 1}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', borderRight: '1px solid #E5E7EB' }}>{siswa.namaSiswa}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.nisn}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>
+                        <span style={{ backgroundColor: '#EFF6FF', color: '#2563EB', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>
+                          {siswa.jurusan}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.kelas}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', borderRight: '1px solid #E5E7EB', textAlign: 'center' }}>{siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                          onClick={() => setOpenActionId(openActionId === siswa.id ? null : siswa.id)}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px' }}
+                        >
+                          <MoreVertical size={20} strokeWidth={1.5} />
+                        </button>
+                        </div>
+                    
+                        {openActionId === siswa.id && (
+                          <div style={{
+                            position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                            background: '#FFFFFF', borderRadius: 8, boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
+                            minWidth: 180, zIndex: 10, overflow: 'hidden', border: '1px solid #E2E8F0',
+                            textAlign: 'left'
+                          }}>
+                            <button onClick={() => handleEdit(siswa)} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#0F172A', fontSize: '14px' }}>
+                              <Edit size={16} /> Edit
+                            </button>
+                            <button onClick={() => handleDeleteSiswa(siswa.id)} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#DC2626', fontSize: '14px' }}>
+                              <Trash2 size={16} /> Hapus
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
-                  ) : (
-                    students.map((student, index) => (
-                      <tr 
-                        key={student.id} 
-                        style={{ 
-                          borderBottom: '1px solid #E5E7EB',
-                          transition: 'background-color 0.1s'
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <td style={{ padding: '16px 24px', fontSize: '14px', color: '#111827' }}>
-                          {(pageIndex - 1) * itemsPerPage + index + 1}
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                          {student.namaSiswa}
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '14px', color: '#6B7280' }}>
-                          {student.nisn}
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '14px', color: '#6B7280' }}>
-                          <span style={{
-                            backgroundColor: '#EFF6FF',
-                            color: '#2563EB',
-                            padding: '2px 8px',
-                            borderRadius: '9999px',
-                            fontSize: '12px',
-                            fontWeight: '500'
-                          }}>
-                            {student.jurusan}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '14px', color: '#6B7280' }}>
-                          {student.kelas}
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '14px', color: '#6B7280' }}>
-                          {student.jenisKelamin}
-                        </td>
-                        <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                          <div style={{ position: 'relative' }}>
-                            <button
-                              onClick={() => setOpenActionId(openActionId === student.id ? null : student.id)}
-                              style={{
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                padding: '4px',
-                                borderRadius: '4px',
-                                color: '#6B7280'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#F3F4F6';
-                                e.currentTarget.style.color = '#111827';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.color = '#6B7280';
-                              }}
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-
-                            {openActionId === student.id && (
-                              <div style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: '100%',
-                                marginTop: '4px',
-                                width: '160px',
-                                backgroundColor: '#FFFFFF',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                                border: '1px solid #E5E7EB',
-                                zIndex: 50,
-                                overflow: 'hidden'
-                              }}>
-                                <button
-                                  onClick={() => handleNavigateToDetail(student.id)}
-                                  style={{
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '8px 12px',
-                                    fontSize: '14px',
-                                    color: '#374151',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                >
-                                  <Eye size={14} /> Detail
-                                </button>
-                                <button
-                                  onClick={() => handleEdit(student)}
-                                  style={{
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '8px 12px',
-                                    fontSize: '14px',
-                                    color: '#374151',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                >
-                                  <Edit size={14} /> Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteSiswa(student.id)}
-                                  style={{
-                                    width: '100%',
-                                    textAlign: 'left',
-                                    padding: '8px 12px',
-                                    fontSize: '14px',
-                                    color: '#DC2626',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                  }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                                >
-                                  <Trash2 size={14} /> Hapus
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
           )}
           
-          {/* Pagination Controls could go here */}
-          <div style={{
+          {/* Pagination Controls */}
+           <div style={{
              padding: '12px 24px',
              borderTop: '1px solid #E5E7EB',
              display: 'flex',
              justifyContent: 'space-between',
-             alignItems: 'center'
+             alignItems: 'center',
+             backgroundColor: '#FFFFFF'
           }}>
              <button
-                onClick={() => paginate(pageIndex - 1)}
+                onClick={() => setPageIndex(prev => Math.max(1, prev - 1))}
                 disabled={pageIndex === 1}
                 style={{
                   padding: '8px 12px',
@@ -755,7 +844,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                Page {pageIndex} of {totalPages}
              </span>
              <button
-                onClick={() => paginate(pageIndex + 1)}
+                onClick={() => setPageIndex(prev => Math.min(totalPages, prev + 1))}
                 disabled={pageIndex >= totalPages}
                 style={{
                   padding: '8px 12px',
@@ -772,361 +861,103 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         </div>
       </div>
 
-      {/* Modal Tambah/Edit Siswa */}
+      <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept=".csv,.xlsx" />
+
+      {/* MODAL */}
       {isModalOpen && (
         <div style={{
-          position: 'fixed',
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50,
-          padding: '24px'
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          padding: '20px'
         }} onClick={handleCloseModal}>
           <div style={{
-             backgroundColor: '#FFFFFF',
-             borderRadius: '16px',
-             width: '100%',
-             maxWidth: '600px',
-             maxHeight: '90vh',
-             overflowY: 'auto',
-             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            backgroundColor: '#0B1221', borderRadius: '16px', padding: '24px',
+            maxWidth: '500px', width: '100%', maxHeight: '90vh', display: 'flex',
+            flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
           }} onClick={e => e.stopPropagation()}>
-            <div style={{
-              padding: '24px',
-              borderBottom: '1px solid #E5E7EB',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#FFFFFF' }}>
                 {editingId ? 'Edit Data Siswa' : 'Tambah Data Siswa'}
               </h2>
-              <button 
-                onClick={handleCloseModal}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280' }}
-              >
-                <X size={24} />
+              <button onClick={handleCloseModal} style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
+                <X size={18} color="#FFFFFF" />
               </button>
             </div>
+            
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '18px', overflowY: 'auto' }}>
+              <form onSubmit={handleSubmitForm}>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Nama Siswa *</label>
+                       <input type="text" value={formData.namaSiswa} onChange={e => { setFormData({...formData, namaSiswa: e.target.value}); validateField('namaSiswa', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                       {formErrors.namaSiswa && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.namaSiswa}</p>}
+                    </div>
+                    
+                    <div>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NISN *</label>
+                       <input type="text" value={formData.nisn} onChange={e => { setFormData({...formData, nisn: e.target.value}); validateField('nisn', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    </div>
 
-            <form onSubmit={handleSubmitForm} style={{ padding: '24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Nama Lengkap <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.namaSiswa}
-                    onChange={e => {
-                      setFormData({...formData, namaSiswa: e.target.value});
-                      validateField('namaSiswa', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.namaSiswa ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box' // Fix width issue
-                    }}
-                    placeholder="Masukkan nama lengkap"
-                  />
-                  {formErrors.namaSiswa && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.namaSiswa}</p>}
-                </div>
+                    <div>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NIS *</label>
+                       <input type="text" value={formData.nis} onChange={e => { setFormData({...formData, nis: e.target.value}); validateField('nis', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    NISN <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nisn}
-                    onChange={e => {
-                      setFormData({...formData, nisn: e.target.value});
-                      validateField('nisn', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.nisn ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder="Nomor Induk Siswa"
-                  />
-                  {formErrors.nisn && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.nisn}</p>}
-                </div>
+                    <div>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Jenis Kelamin *</label>
+                       <select value={formData.jenisKelamin} onChange={e => setFormData({...formData, jenisKelamin: e.target.value as 'L'|'P'})} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                          <option value="L">Laki-Laki</option>
+                          <option value="P">Perempuan</option>
+                       </select>
+                    </div>
+                    
+                    <div>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>No. Telepon</label>
+                       <input type="text" value={formData.noTelp} onChange={e => setFormData({...formData, noTelp: e.target.value})} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    NIS <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nis}
-                    onChange={e => {
-                      setFormData({...formData, nis: e.target.value});
-                      validateField('nis', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.nis ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder="Nomor Induk Siswa"
-                  />
-                  {formErrors.nis && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.nis}</p>}
-                </div>
+                    <div>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
+                       <select value={formData.jurusanId} onChange={e => { setFormData({...formData, jurusanId: e.target.value}); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                          <option value="">Pilih</option>
+                          {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                       </select>
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Username <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.username}
-                    onChange={e => {
-                      setFormData({...formData, username: e.target.value});
-                      validateField('username', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.username ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder="Username untuk login"
-                  />
-                  {formErrors.username && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.username}</p>}
-                </div>
+                    <div>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
+                       <select value={formData.kelas} onChange={e => { setFormData({...formData, kelas: e.target.value}); validateField('kelas', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                          <option value="">Pilih</option>
+                          {kelasOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                       </select>
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Password {!editingId && <span style={{ color: '#EF4444' }}>*</span>}
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={e => {
-                      setFormData({...formData, password: e.target.value});
-                      validateField('password', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.password ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder={editingId ? "Kosongkan jika tidak ingin mengubah" : "Minimal 6 karakter"}
-                  />
-                  {formErrors.password && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.password}</p>}
-                </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Username *</label>
+                       <input type="text" value={formData.username} onChange={e => { setFormData({...formData, username: e.target.value}); validateField('username', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Email (Opsional)
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder="email@sekolah.sch.id"
-                  />
-                </div>
+                    {!editingId && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Password *</label>
+                       <input type="password" value={formData.password} onChange={e => { setFormData({...formData, password: e.target.value}); validateField('password', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    </div>
+                    )}
 
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Alamat <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <textarea
-                    value={formData.address}
-                    onChange={e => {
-                      setFormData({...formData, address: e.target.value});
-                      validateField('address', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.address ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       minHeight: '80px',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder="Masukkan alamat lengkap"
-                  />
-                  {formErrors.address && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.address}</p>}
-                </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Alamat *</label>
+                       <textarea value={formData.address} onChange={e => { setFormData({...formData, address: e.target.value}); validateField('address', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px', minHeight: '60px' }} />
+                    </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Jenis Kelamin <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <select
-                    value={formData.jenisKelamin}
-                    onChange={e => setFormData({...formData, jenisKelamin: e.target.value})}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       backgroundColor: 'white',
-                       boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="L">Laki-laki</option>
-                    <option value="P">Perempuan</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Jurusan <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <select
-                    value={formData.jurusanId}
-                    onChange={e => {
-                      setFormData({...formData, jurusanId: e.target.value, kelas: ''}); // Reset class when major changes
-                      validateField('jurusanId', e.target.value);
-                    }}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.jurusanId ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       backgroundColor: 'white',
-                       boxSizing: 'border-box'
-                    }}
-                  >
-                    <option value="">Pilih Jurusan</option>
-                    {majors.map(m => (
-                      <option key={m.id} value={m.id}>{m.name} ({m.code})</option>
-                    ))}
-                  </select>
-                  {formErrors.jurusanId && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.jurusanId}</p>}
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    Kelas <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <select
-                    value={formData.kelas}
-                    onChange={e => {
-                      setFormData({...formData, kelas: e.target.value});
-                      validateField('kelas', e.target.value);
-                    }}
-                    disabled={!formData.jurusanId}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: formErrors.kelas ? '1.5px solid #EF4444' : '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       backgroundColor: formData.jurusanId ? 'white' : '#F3F4F6',
-                       boxSizing: 'border-box',
-                       cursor: formData.jurusanId ? 'pointer' : 'not-allowed'
-                    }}
-                  >
-                    <option value="">Pilih Kelas</option>
-                    {availableClasses.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option> // Use c.name which includes grade usually
-                    ))}
-                  </select>
-                  {formErrors.kelas && <p style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px' }}>{formErrors.kelas}</p>}
-                </div>
-
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                    No. Telepon Orang Tua
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.noTelp}
-                    onChange={e => setFormData({...formData, noTelp: e.target.value})}
-                    style={{
-                       width: '100%',
-                       padding: '10px 14px',
-                       borderRadius: '8px',
-                       border: '1px solid #D1D5DB',
-                       fontSize: '14px',
-                       outline: 'none',
-                       boxSizing: 'border-box'
-                    }}
-                    placeholder="Contoh: 08123456789"
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: '32px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    border: '1px solid #D1D5DB',
-                    backgroundColor: 'white',
-                    color: '#374151',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: '#2563EB',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                  }}
-                >
-                  Simpan Data
-                </button>
-              </div>
-            </form>
+                 </div>
+                 
+                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={handleCloseModal} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#FFFFFF', cursor: 'pointer' }}>Batal</button>
+                    <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFFFFF', cursor: 'pointer' }}>Simpan</button>
+                 </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

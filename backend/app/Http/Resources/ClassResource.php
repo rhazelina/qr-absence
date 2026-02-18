@@ -24,7 +24,7 @@ class ClassResource extends JsonResource
             'major_name' => $this->major?->name,
             'homeroom_teacher_id' => $this->homeroom_teacher_id,
             'homeroom_teacher_name' => $this->homeroomTeacher?->user?->name ?? 'Belum ditentukan',
-            'schedule_image_url' => $this->schedule_image_path ? asset('storage/' . $this->schedule_image_path) : null,
+            'schedule_image_url' => asset('storage/'.($this->schedule_image_path ?? 'schedules/defaults/default_schedule.jpg')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\StudentProfile;
-use App\Models\StudentLeavePermission;
 use Illuminate\Support\Carbon;
 
 class AttendanceService
@@ -98,6 +97,10 @@ class AttendanceService
             'sick' => 'Sakit', // Map AbsenceRequest types
             'permit' => 'Izin',
             'dispensation' => 'Dispensasi',
+            'present' => 'Hadir',
+            'late' => 'Terlambat',
+            'absent' => 'Tidak Hadir',
+            'alpha' => 'Alfa',
             default => $type,
         };
     }

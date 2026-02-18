@@ -18,7 +18,7 @@ interface MenuItem {
 // Menu untuk Admin
 const MENU_ITEMS_ADMIN: MenuItem[] = [
   { id: "dashboard", label: "Beranda", icon: <Home size={20} /> },
-  { id: "jurusan", label: "Data Konsentrasi keahlian", icon: <BookOpen size={20} /> },
+  { id: "jurusan", label: "Data Konsentrasi Keahlian", icon: <BookOpen size={20} /> },
   { id: "kelas", label: "Data Kelas", icon: <Users size={20} /> },
   { id: "siswa", label: "Data Siswa", icon: <GraduationCap size={20} /> },
   { id: "guru", label: "Data Guru", icon: <GraduationCap size={20} /> },
@@ -86,7 +86,7 @@ export default function Sidebar({
   } else if (userRole === "pengurus_kelas") {
     MENU_ITEMS = MENU_ITEMS_PENGURUS_KELAS;
     roleLabel = "Pengurus Kelas";
-  } else if (userRole === "walikelas") {
+  } else if (userRole === "wakel" || userRole === "walikelas") {
     MENU_ITEMS = MENU_ITEMS_WALIKELAS;
     roleLabel = "Wali Kelas";
   }

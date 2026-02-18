@@ -1,12 +1,31 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import './KehadiranGuruIndex.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
-import { FaCalendar, FaClock, FaFileExport, FaFilePdf, FaFileExcel, FaEye, FaTrash } from 'react-icons/fa';
+import {
+  FaCalendarAlt,
+  FaClock,
+  FaFileExport,
+  FaFilePdf,
+  FaFileExcel,
+  FaEye,
+  FaTrash,
+  FaChevronRight,
+  FaUserTie,
+  FaCheckCircle,
+  FaInfoCircle,
+  FaHeartbeat,
+  FaRegTimesCircle,
+  FaSignOutAlt,
+  FaBriefcase,
+  FaHome,
+  FaSpinner
+} from 'react-icons/fa';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import apiService from '../../utils/api';
 
 function KehadiranGuruIndex() {
   const navigate = useNavigate();
@@ -20,17 +39,26 @@ function KehadiranGuruIndex() {
 
   const [deleteModal, setDeleteModal] = useState({ show: false, id: null, namaGuru: '' });
   const [showExport, setShowExport] = useState(false);
-  const [exportFrom, setExportFrom] = useState('');
-  const [exportTo, setExportTo] = useState('');
 
-  const statusConfig = {
-    present: { label: 'Hadir', bg: 'status-hadir', icon: 'fa-check-circle' },
-    late: { label: 'Terlambat', bg: 'status-terlambat', icon: 'fa-clock' },
-    excused: { label: 'Izin', bg: 'status-izin', icon: 'fa-info-circle' },
-    sick: { label: 'Sakit', bg: 'status-sakit', icon: 'fa-heartbeat' },
-    absent: { label: 'Alfa', bg: 'status-alfa', icon: 'fa-times-circle' },
-    return: { label: 'Pulang', bg: 'status-pulang', icon: 'fas fa-sign-out-alt' },
-    dinas: { label: 'Dinas', bg: 'status-dinas', icon: 'fa-briefcase' },
+  // Status mapping for the grid
+  const statusColors = {
+    present: 'jam-hadir',
+    late: 'jam-terlambat',
+    excused: 'jam-izin',
+    sick: 'jam-sakit',
+    absent: 'jam-alfa',
+    return: 'jam-pulang',
+    dinas: 'jam-dinas',
+  };
+
+  const statusLabels = {
+    present: 'Hadir',
+    late: 'Terlambat',
+    excused: 'Izin',
+    sick: 'Sakit',
+    absent: 'Alfa',
+    return: 'Pulang',
+    dinas: 'Dinas',
   };
 
   useEffect(() => {
@@ -42,26 +70,12 @@ function KehadiranGuruIndex() {
   const fetchKehadiranGuru = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/attendance/teachers/daily?date=${filterTanggal}&per_page=100`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Backend returns: { date: "...", items: { data: [...], ... } }
-        setKehadirans(result.items.data || []);
-        setPagination(result.items); // Store pagination meta if needed
-      } else {
-        console.error('Gagal memuat data kehadiran guru');
-        alert('Gagal memuat data kehadiran guru');
-      }
+      const result = await apiService.getDailyTeacherAttendance(filterTanggal, { per_page: 100 });
+      setKehadirans(result.items.data || []);
+      setPagination(result.items);
     } catch (error) {
       console.error('Error fetching kehadiran guru:', error);
-      alert('Terjadi kesalahan saat memuat data');
+      alert('Terjadi kesalahan saat memuat data: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -71,35 +85,43 @@ function KehadiranGuruIndex() {
     if (!id) return;
 
     try {
-      const token = localStorage.getItem('token');
-      // Using void endpoint to delete/cancel attendance
-      const response = await fetch(`http://localhost:8000/api/attendance/${id}/void`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
+      await apiService.voidAttendance(id);
+      setKehadirans(prev => prev.map(item => {
+        if (item.attendances) {
+          return {
+            ...item,
+            attendances: item.attendances.filter(a => a.id !== id),
+            status: item.attendances.length > 1 ? item.status : 'absent'
+          };
         }
-      });
-
-      if (response.ok) {
-        // Update local state to reflect removal (status becomes absent or null)
-        setKehadirans(prev => prev.map(item => {
-          if (item.attendance && item.attendance.id === id) {
-            return { ...item, attendance: null, status: 'absent' };
-          }
-          return item;
-        }));
-        alert('Data kehadiran berhasil dibatalkan');
-      } else {
-        const err = await response.json();
-        alert(err.message || 'Gagal membatalkan kehadiran');
-      }
+        return item;
+      }));
+      setDeleteModal({ show: false, id: null, namaGuru: '' });
+      alert('Data kehadiran berhasil dibatalkan');
     } catch (error) {
       console.error('Error deleting kehadiran:', error);
-      alert('Terjadi kesalahan saat menghapus data');
-    } finally {
-      setDeleteModal({ show: false, id: null, namaGuru: '' });
+      alert('Gagal membatalkan kehadiran: ' + error.message);
     }
+  };
+
+  // Helper to map attendances to 10 slots
+  const getAttendanceSlots = (attendances = []) => {
+    const slots = Array(10).fill(null);
+    
+    // Sort attendances by start_time if possible, or just use sequence
+    const sorted = [...attendances].sort((a, b) => {
+      const timeA = a.schedule?.start_time || '00:00';
+      const timeB = b.schedule?.start_time || '00:00';
+      return timeA.localeCompare(timeB);
+    });
+
+    sorted.forEach((att, idx) => {
+      if (idx < 10) {
+        slots[idx] = att.status;
+      }
+    });
+
+    return slots;
   };
 
   // --- FUNGSI EKSPOR PDF ---
@@ -110,14 +132,16 @@ function KehadiranGuruIndex() {
     doc.setFontSize(14);
     doc.text(title, 14, 15);
 
-    const headers = [["No", "Kode Guru", "Nama Guru", "Status", "Waktu Check-in"]];
-    const data = kehadirans.map((k, i) => [
-      i + 1,
-      k.teacher.kode_guru || '-',
-      k.teacher.user?.name || '-',
-      statusConfig[k.status]?.label || k.status,
-      k.attendance ? new Date(k.attendance.checked_in_at).toLocaleTimeString() : '-'
-    ]);
+    const headers = [["No", "Kode Guru", "Nama Guru", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]];
+    const data = kehadirans.map((k, i) => {
+      const slots = getAttendanceSlots(k.attendances);
+      return [
+        i + 1,
+        k.teacher.kode_guru || '-',
+        k.teacher.user?.name || '-',
+        ...slots.map(s => s ? statusLabels[s] || s : '-')
+      ];
+    });
 
     autoTable(doc, {
       head: headers,
@@ -125,7 +149,7 @@ function KehadiranGuruIndex() {
       startY: 22,
       theme: 'grid',
       styles: { fontSize: 8, halign: 'center' },
-      headStyles: { fillColor: [44, 62, 80] },
+      headStyles: { fillColor: [13, 40, 71] },
       columnStyles: { 2: { halign: 'left' } }
     });
 
@@ -135,13 +159,18 @@ function KehadiranGuruIndex() {
 
   // --- FUNGSI EKSPOR EXCEL ---
   const handleExportExcel = () => {
-    const dataExcel = kehadirans.map((k, i) => ({
-      No: i + 1,
-      'Kode Guru': k.teacher.kode_guru || '-',
-      'Nama Guru': k.teacher.user?.name || '-',
-      'Status': statusConfig[k.status]?.label || k.status,
-      'Waktu Check-in': k.attendance ? new Date(k.attendance.checked_in_at).toLocaleTimeString() : '-'
-    }));
+    const dataExcel = kehadirans.map((k, i) => {
+      const slots = getAttendanceSlots(k.attendances);
+      const row = {
+        No: i + 1,
+        'Kode Guru': k.teacher.kode_guru || '-',
+        'Nama Guru': k.teacher.user?.name || '-',
+      };
+      slots.forEach((s, idx) => {
+        row[`Jam ${idx + 1}`] = s ? statusLabels[s] || s : '-';
+      });
+      return row;
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(dataExcel);
     const workbook = XLSX.utils.book_new();
@@ -150,13 +179,25 @@ function KehadiranGuruIndex() {
     setShowExport(false);
   };
 
+  if (loading) {
+    return (
+      <div className="wadah-muat">
+        <div className="konten-muat">
+          <FaSpinner />
+          <span>Sinkronisasi data...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="kehadiran-guru-index-container">
       <NavbarWaka />
+      
       <div className="kehadiran-guru-index-header">
         <div>
           <h1>Kehadiran Guru</h1>
-          <p>Kelola dan monitor kehadiran harian guru</p>
+          <p>Monitor kehadiran mengajar guru harian</p>
         </div>
 
         <div className="kehadiran-guru-index-export-wrapper">
@@ -165,29 +206,32 @@ function KehadiranGuruIndex() {
             onClick={() => setShowExport(prev => !prev)}
           >
             <FaFileExport />
-            Ekspor
+            Ekspor Laporan
           </button>
 
           {showExport && (
             <div className="kehadiran-guru-index-export-menu">
-              <div className="export-divider"></div>
+              <div className="export-date-range">
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2">Pilih Format</p>
+              </div>
               <button className="export-item pdf" onClick={handleExportPDF}>
-                <FaFilePdf /> PDF
+                <FaFilePdf /> PDF Document
               </button>
               <button className="export-item excel" onClick={handleExportExcel}>
-                <FaFileExcel /> Excel
+                <FaFileExcel /> Excel Spreadsheet
               </button>
             </div>
           )}
         </div>
       </div>
 
+      {/* FILTER CARD */}
       <div className="kehadiran-guru-index-filter-wrapper">
         <div className="kehadiran-guru-index-filter-grid">
           <div className="kehadiran-guru-index-filter-item">
             <label className="kehadiran-guru-index-filter-label">
-              <FaCalendar className='kehadiran-guru-index-filter-icon' />
-              Tanggal
+              <FaCalendarAlt className='kehadiran-guru-index-filter-icon' />
+              Halaman Tanggal
             </label>
             <input
               type="date"
@@ -199,77 +243,93 @@ function KehadiranGuruIndex() {
         </div>
       </div>
 
+      {/* TABLE CARD */}
       <div className="kehadiran-guru-index-table-container">
         <div className="kehadiran-guru-index-table-header">
           <div className="kehadiran-guru-index-table-header-inner">
             <h3 className="kehadiran-guru-index-table-title">
-              Daftar Kehadiran ({kehadirans.length})
+              Daftar Kehadiran Guru ({kehadirans.length})
             </h3>
           </div>
         </div>
 
+        {/* LEGEND */}
         <div className="kehadiran-guru-legend">
-          {Object.entries(statusConfig).map(([key, config]) => (
-            <div className="legend-item" key={key}>
-              <span className={`legend-dot ${config.bg}`}></span>
-              <span className="legend-text">{config.label}</span>
-            </div>
-          ))}
+          <div className="legend-item"><span className="legend-dot legend-hadir"></span><span className="legend-text">Hadir</span></div>
+          <div className="legend-item"><span className="legend-dot legend-terlambat"></span><span className="legend-text">Terlambat</span></div>
+          <div className="legend-item"><span className="legend-dot legend-alfa"></span><span className="legend-text">Alfa</span></div>
+          <div className="legend-item"><span className="legend-dot legend-izin"></span><span className="legend-text">Izin</span></div>
+          <div className="legend-item"><span className="legend-dot legend-sakit"></span><span className="legend-text">Sakit</span></div>
+          <div className="legend-item"><span className="legend-dot legend-pulang"></span><span className="legend-text">Pulang</span></div>
+          <div className="legend-item"><span className="legend-dot legend-tidak-mengajar"></span><span className="legend-text">Tidak Mengajar</span></div>
         </div>
 
         <div className="kehadiran-guru-index-table-wrapper">
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              Memuat data...
-            </div>
-          ) : kehadirans.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              Tidak ada data kehadiran guru untuk tanggal {filterTanggal}
+          {kehadirans.length === 0 ? (
+            <div className="keadaan-kosong">
+              <div className="wadah-ikon-kosong">
+                <FaUserTie />
+              </div>
+              <div className="teks-kosong">
+                <p className="judul-kosong">Data Tidak Ditemukan</p>
+                <p className="keterangan-kosong">Belum ada rekaman kehadiran untuk tanggal {new Date(filterTanggal).toLocaleDateString('id-ID')}</p>
+              </div>
             </div>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>No</th>
-                  <th>Kode Guru</th>
-                  <th>Nama Guru</th>
-                  <th>Status</th>
-                  <th>Waktu</th>
-                  <th style={{ textAlign: 'center' }}>Aksi</th>
+                  <th rowSpan={2}>No</th>
+                  <th rowSpan={2}>Kode</th>
+                  <th rowSpan={2}>Nama Guru</th>
+                  <th colSpan={10} style={{ textAlign: 'center', fontWeight: '800' }}>Jam Pelajaran Ke-</th>
+                  <th rowSpan={2} style={{ textAlign: 'center' }}>Aksi</th>
+                </tr>
+                <tr>
+                  {[...Array(10)].map((_, i) => (
+                    <th key={i} style={{ textAlign: 'center' }}>{i + 1}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {kehadirans.map((k, i) => {
-                  const statusInfo = statusConfig[k.status] || { label: k.status, bg: 'status-belum' };
-
+                  const slots = getAttendanceSlots(k.attendances);
                   return (
                     <tr key={k.teacher.id}>
-                      <td>{i + 1}</td>
-                      <td><span className="kehadiran-guru-index-badge">{k.teacher.kode_guru || '-'}</span></td>
-                      <td>{k.teacher.user?.name}</td>
                       <td>
-                        <span className={`status-badge ${statusInfo.bg}`}>
-                          {statusInfo.label}
-                        </span>
+                        <span className="lencana-angka">{i + 1}</span>
                       </td>
                       <td>
-                        {k.attendance ? (
-                          <span className="time-badge">
-                            <FaClock style={{ marginRight: '4px' }} />
-                            {new Date(k.attendance.checked_in_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        ) : '-'}
+                        <span className="kehadiran-guru-index-badge">{k.teacher.kode_guru || '-'}</span>
                       </td>
+                      <td className="kehadiran-guru-index-col-nama">
+                        {k.teacher.user?.name}
+                      </td>
+                      {slots.map((status, idx) => (
+                        <td key={idx} style={{ textAlign: 'center' }}>
+                          <span className={`jam-box ${status ? statusColors[status] || 'jam-hadir' : 'jam-tidak-mengajar'}`}></span>
+                        </td>
+                      ))}
                       <td style={{ textAlign: 'center' }}>
-                        {k.attendance && (
-                          <button
-                            className="kehadiran-guru-delete-btn"
-                            onClick={() => setDeleteModal({ show: true, id: k.attendance.id, namaGuru: k.teacher.user?.name })}
-                            title="Batalkan Kehadiran"
-                          >
-                            <FaTrash />
-                          </button>
-                        )}
+                        <div className="flex items-center justify-center gap-2">
+                           {k.attendances && k.attendances.length > 0 && (
+                             <button
+                               className="kehadiran-guru-action-btn"
+                               style={{ backgroundColor: '#dc2626' }}
+                               onClick={() => setDeleteModal({ show: true, id: k.attendances[0].id, namaGuru: k.teacher.user?.name })}
+                               title="Batalkan Kehadiran Terbaru"
+                             >
+                               <FaTrash />
+                             </button>
+                           )}
+                           <button
+                             className="kehadiran-guru-action-btn"
+                             onClick={() => navigate(`/waka/kehadiran-guru/${k.teacher.id}`)}
+                             title="Lihat Detail Riwayat"
+                           >
+                             <FaEye />
+                           </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -280,23 +340,27 @@ function KehadiranGuruIndex() {
         </div>
       </div>
 
+      {/* DELETE MODAL */}
       {deleteModal.show && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Konfirmasi Pembatalan</h3>
-            <p>Apakah Anda yakin ingin membatalkan kehadiran untuk <strong>{deleteModal.namaGuru}</strong>?</p>
-            <div className="modal-actions">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl border border-gray-100 p-8">
+             <div className="bg-red-50 text-red-600 w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-100 border border-red-100">
+                <FaTrash size={32} />
+             </div>
+            <h3 className="text-2xl font-black text-center text-gray-900 mb-2">Konfirmasi Hapus</h3>
+            <p className="text-gray-500 text-center font-bold mb-8">Apakah Anda yakin ingin membatalkan kehadiran untuk <strong>{deleteModal.namaGuru}</strong>? Tindakan ini tidak dapat dibatalkan.</p>
+            <div className="flex gap-4">
               <button
-                className="btn-cancel"
+                className="flex-1 px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black hover:bg-gray-200 transition-all cursor-pointer"
                 onClick={() => setDeleteModal({ show: false, id: null, namaGuru: '' })}
               >
-                Batal
+                Kembali
               </button>
               <button
-                className="btn-delete"
+                className="flex-1 px-6 py-4 bg-red-600 text-white rounded-2xl font-black hover:bg-red-700 transition-all shadow-xl shadow-red-200 cursor-pointer"
                 onClick={() => handleDelete(deleteModal.id)}
               >
-                Ya, Batalkan
+                Ya, Hapus
               </button>
             </div>
           </div>

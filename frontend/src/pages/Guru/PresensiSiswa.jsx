@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './PresensiSiswa.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
+import apiService from '../../utils/api';
 
 function PresensiSiswa() {
   const location = useLocation();
@@ -49,27 +50,38 @@ function PresensiSiswa() {
 
   useEffect(() => {
     if (kelas && jadwalId && tanggal) {
-      // ✅ Load data siswa dari data manager
-      const data = generateSiswaList(kelas, jadwalId, tanggal);
-      setSiswaList(data);
-      
-      // DEBUG: Verify data yang dimuat
-      console.log('╔════════════════════════════════════════╗');
-      console.log('║     DATA SISWA YANG DIMUAT             ║');
-      console.log('╚════════════════════════════════════════╝');
-      console.log('Kelas:', kelas);
-      console.log('Jumlah siswa:', data.length);
-      console.log('Jadwal ID:', jadwalId);
-      console.log('Tanggal:', tanggal);
-      console.log('Is Edit Mode:', isEdit);
-      console.log('─────────────────────────────────────────');
-      if (data.length > 0) {
-        console.log('Sample siswa pertama:', data[0]);
-        console.log('Sample siswa terakhir:', data[data.length - 1]);
-      }
-      console.log('═════════════════════════════════════════');
+      fetchStudents();
     }
-  }, [kelas, jadwalId, tanggal, isEdit]);
+  }, [kelas, jadwalId, tanggal]);
+
+  const fetchStudents = async () => {
+    try {
+      const response = await apiService.getTeacherScheduleStudents(jadwalId);
+      
+      if (response.eligible_students) {
+        // Map eligible students to UI format
+        const mappedStudents = response.eligible_students.map((student, index) => ({
+          no: index + 1,
+          id: student.id,
+          nisn: student.nisn || '-',
+          nama: student.name, // API returns name in 'name' field
+          status: '', // Default empty status
+          keterangan: null,
+          dokumen: null
+        }));
+        
+        // If there are on_leave students, maybe we should show them as pre-filled?
+        // For now, let's just show eligible students as per requirement.
+        // We can append on_leave students if needed, but they are technically 'not present' for attendance marking purposes in this UI context usually.
+        // Let's stick to eligible students for now.
+        
+        setSiswaList(mappedStudents); 
+      }
+    } catch (error) {
+      console.error("Failed to fetch students:", error);
+      alert("Gagal memuat data siswa: " + error.message);
+    }
+  };
 
   const getFileExtension = (filename) => {
     return filename.split('.').pop().toUpperCase();
@@ -182,7 +194,7 @@ function PresensiSiswa() {
     setKeteranganForm({ alasan: '', jam: '', jamKe: '', file: null, fileName: '' });
   };
 
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
     // Validasi: pastikan semua siswa sudah memiliki status
     const siswaBelumPresensi = siswaList.filter(s => !s.status || s.status === '');
     
@@ -191,18 +203,20 @@ function PresensiSiswa() {
       return;
     }
 
-    // Save to localStorage using data manager
-    const saved = saveAbsensi(
-      jadwalId, 
-      tanggal, 
-      kelas, 
-      mataPelajaran, 
-      jamKe, 
-      siswaList
-    );
-    
-    if (saved) {
-      // Hitung statistik untuk ditampilkan
+    try {
+      const payload = {
+        schedule_id: jadwalId,
+        date: tanggal,
+        items: siswaList.map(s => ({
+          student_id: s.id,
+          status: s.status === 'alfa' ? 'alpha' : s.status,
+          reason: s.keterangan ? s.keterangan.text : null
+        }))
+      };
+
+      await apiService.submitBulkAttendance(payload);
+      
+      // Calculate stats for alert/summary (UI only)
       const stats = {
         hadir: siswaList.filter(s => s.status === 'hadir').length,
         sakit: siswaList.filter(s => s.status === 'sakit').length,
@@ -237,8 +251,10 @@ function PresensiSiswa() {
       setTimeout(() => {
         navigate('/guru/dashboard');
       }, 2000);
-    } else {
-      alert('❌ Gagal menyimpan presensi!\n\nSilakan coba lagi atau hubungi administrator.');
+
+    } catch (error) {
+      console.error("Failed to submit attendance:", error);
+      alert('❌ Gagal menyimpan presensi!\n\n' + (error.message || 'Silakan coba lagi atau hubungi administrator.'));
     }
   };
 
