@@ -684,9 +684,9 @@ const Dashboard = () => {
                 </div>
 
                 <div className="siswa-tampilan-rentang-waktu">
-                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.start_time}:00</div>
+                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.start_time}</div>
                   <div className="siswa-pemisah-rentang-waktu">—</div>
-                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.end_time}:00</div>
+                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.end_time}</div>
                 </div>
               </div>
 

@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Classes;
 use App\Models\Major;
 use App\Models\Schedule;
+use App\Models\Semester;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
@@ -65,11 +66,11 @@ class DashboardController extends Controller
         $query = Attendance::query();
 
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+            $query->whereDate('date', '>=', $request->from);
         }
 
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+            $query->whereDate('date', '<=', $request->to);
         }
 
         $summary = $query->selectRaw('status, count(*) as count')
