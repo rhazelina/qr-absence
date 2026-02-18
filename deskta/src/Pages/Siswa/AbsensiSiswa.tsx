@@ -15,9 +15,6 @@ interface AbsensiRecord {
   keterangan?: string; // Tambahan untuk izin/sakit/pulang
 }
 
-// Dummy data - nanti dari API
-// Dummy data removed - using backend data
-
 function CalendarIcon() {
   return (
     <svg
@@ -316,9 +313,9 @@ export default function AbsensiSiswa({
   // Status filter options 
   const statusOptions = [
     { label: "Semua Status", value: "semua" },
-    { label: "alfa", value: "alfa" },
-    { label: "Izin/Sakit", value: "izin/sakit" },
-    { label: "Pulang", value: "pulang" },
+    { label: "Alfa", value: "Alfa" },
+    { label: "Izin/Sakit", value: "Izin/Sakit" },
+    { label: "Pulang", value: "Pulang" },
   ];
 
   // Fungsi untuk mendapatkan teks status
@@ -342,11 +339,11 @@ export default function AbsensiSiswa({
   // Helper function untuk warna status
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "alfa": return "#D90000"; // REVISI: alfa > #D90000
-      case "izin": return "#ACA40D"; // REVISI: Izin > #ACA40D
-      case "sakit": return "#520C8F"; // REVISI: Sakit > #520C8F
-      case "hadir": return "#1FA83D"; // REVISI: Hadir > #1FA83D
-      case "pulang": return "#2F85EB"; // REVISI: Pulang > #2F85EB
+      case "Alfa": return "#D90000"; // REVISI: alfa > #D90000
+      case "Izin": return "#ACA40D"; // REVISI: Izin > #ACA40D
+      case "Sakit": return "#520C8F"; // REVISI: Sakit > #520C8F
+      case "Hadir": return "#1FA83D"; // REVISI: Hadir > #1FA83D
+      case "Pulang": return "#2F85EB"; // REVISI: Pulang > #2F85EB
       default: return "#6B7280";
     }
   };
@@ -354,11 +351,11 @@ export default function AbsensiSiswa({
   // Helper function untuk mendapatkan label status
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "alfa": return "alfa";
-      case "izin": return "Izin";
-      case "sakit": return "Sakit";
-      case "hadir": return "Hadir";
-      case "pulang": return "Pulang";
+      case "Alfa": return "Alfa";
+      case "Izin": return "Izin";
+      case "Sakit": return "Sakit";
+      case "Hadir": return "Hadir";
+      case "Pulang": return "Pulang";
       default: return status;
     }
   };
@@ -554,7 +551,7 @@ export default function AbsensiSiswa({
             }}
           >
             <TotalCard />
-            <SummaryCard label="alfa" value={summary.alfa} color="#D90000" /> {/* REVISI: alfa > #D90000 */}
+            <SummaryCard label="Alfa" value={summary.alfa} color="#D90000" /> {/* REVISI: alfa > #D90000 */}
             <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" /> {/* REVISI: Izin > #ACA40D */}
             <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" /> {/* REVISI: Sakit > #520C8F */}
             <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" /> {/* REVISI: Pulang > #2F85EB */}

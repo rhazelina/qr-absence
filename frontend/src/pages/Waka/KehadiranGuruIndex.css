@@ -41,19 +41,24 @@
   font-size: 0.9rem;
 }
 
-.btn-purple { background: linear-gradient(to right, #7c3aed, #6d28d9); }
-.btn-blue { background: linear-gradient(to right, #2563eb, #1d4ed8); }
+.btn-purple {
+  background: linear-gradient(to right, #7c3aed, #6d28d9);
+}
+
+.btn-blue {
+  background: linear-gradient(to right, #2563eb, #1d4ed8);
+}
 
 /* ================= FILTER WRAPPER ================= */
 .kehadiran-guru-index-filter-wrapper {
   background-color: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1),
-              0 4px 6px -2px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
   padding: 24px;
-  max-width: 450px;     
+  max-width: 450px;
   width: 100%;
-  margin-left: 0; 
+  margin-left: 0;
 }
 
 /* ================= GRID ================= */
@@ -123,14 +128,17 @@
   background: white;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1),
-              0 4px 6px -2px rgba(0,0,0,0.05);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .kehadiran-guru-index-table-title {
-  font-size: 1.125rem; /* text-lg */
-  font-weight: 700;   /* font-bold */
-  color: #ffffff;     /* gray-800 */
+  font-size: 1.125rem;
+  /* text-lg */
+  font-weight: 700;
+  /* font-bold */
+  color: #ffffff;
+  /* gray-800 */
 }
 
 /* TABLE */
@@ -148,7 +156,8 @@ thead {
   color: white;
 }
 
-th, td {
+th,
+td {
   padding: 16px;
   text-align: left;
 }
@@ -176,31 +185,53 @@ tbody tr:hover {
   font-weight: bold;
 }
 
-.status-hadir { background: #1FA83D; }
-.status-pulang { background: #FF5F1A; }
-.status-izin { background: #7f6904; }
-.status-sakit { background: #9A0898; }
-.status-alfa { background: #D90000; }
-.status-belum { background: #9ca3af; }
+.status-hadir {
+  background: #1FA83D;
+}
+
+.status-pulang {
+  background: #FF5F1A;
+}
+
+.status-izin {
+  background: #7f6904;
+}
+
+.status-sakit {
+  background: #9A0898;
+}
+
+.status-alfa {
+  background: #D90000;
+}
+
+.status-belum {
+  background: #9ca3af;
+}
 
 /* PER COLUMN */
 .kehadiran-guru-index-col-no {
   font-size: 0.8rem;
 }
+
 .kehadiran-guru-index-col-kode {
   font-size: 0.8rem;
 }
+
 .kehadiran-guru-index-col-nama {
   font-size: 0.8rem;
   font-weight: bold;
 }
+
 .kehadiran-guru-index-col-jadwal {
   font-size: 0.8rem;
   font-weight: 500;
 }
+
 .kehadiran-guru-index-col-status {
   font-size: 0.8rem;
 }
+
 /* BADGE */
 .kehadiran-guru-index-badge {
   background: #dbeafe;
@@ -243,16 +274,38 @@ tbody tr:hover {
   display: inline-block;
 }
 
-.jam-hadir { background: #22c55e; }
-.jam-alfa { background: #ef4444; }
-.jam-izin  { background: #d8bf1a; }
-.jam-sakit { background: #a855f7; }
+.jam-hadir {
+  background: #22c55e;
+}
+
+.jam-alfa {
+  background: #ef4444;
+}
+
+.jam-izin {
+  background: #d8bf1a;
+}
+
+.jam-sakit {
+  background: #a855f7;
+}
 
 /* STATUS WARNA */
-.status-hadir { background: #22c55e; }
-.status-alfa { background: #ef4444; }
-.status-izin  { background: #d8bf1a; }
-.status-sakit { background: #a855f7; }
+.status-hadir {
+  background: #22c55e;
+}
+
+.status-alfa {
+  background: #ef4444;
+}
+
+.status-izin {
+  background: #d8bf1a;
+}
+
+.status-sakit {
+  background: #a855f7;
+}
 
 /* ================= EXPORT BUTTON ================= */
 .kehadiran-guru-index-export-btn {
@@ -291,7 +344,8 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #374151; /* WARNA TEKS */
+  color: #374151;
+  /* WARNA TEKS */
   font-size: 0.85rem;
   font-weight: 500;
 }
@@ -304,11 +358,25 @@ tbody tr:hover {
 }
 
 /* WARNA */
-.legend-hadir  { background: #22c55e; }
-.legend-alfa  { background: #ef4444; }
-.legend-izin   { background: #facc15; }
-.legend-sakit  { background: #a855f7; }
-.legend-pulang { background: #ff7a00; }
+.legend-hadir {
+  background: #22c55e;
+}
+
+.legend-alfa {
+  background: #ef4444;
+}
+
+.legend-izin {
+  background: #facc15;
+}
+
+.legend-sakit {
+  background: #a855f7;
+}
+
+.legend-pulang {
+  background: #ff7a00;
+}
 
 /* ================= EXPORT DROPDOWN ================= */
 .kehadiran-guru-index-export-wrapper {
@@ -321,7 +389,7 @@ tbody tr:hover {
   right: 0;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   min-width: 160px;
   z-index: 50;
@@ -377,7 +445,7 @@ tbody tr:hover {
 }
 
 .jam-terlambat {
-  background-color: #f59e0b; 
+  background-color: #f59e0b;
   border: 1.5px solid #d97706;
 }
 
@@ -423,4 +491,3 @@ tbody tr:hover {
   background: #e5e7eb;
   margin: 6px 0;
 }
-

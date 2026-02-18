@@ -31,10 +31,9 @@ import {
   Tooltip,
   Legend,
   ArcElement,
-  Filler,
-  BarElement
+  Filler
 } from "chart.js";
-import { Line, Doughnut, Bar } from "react-chartjs-2";
+import { Line, Doughnut } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
@@ -45,8 +44,7 @@ ChartJS.register(
   Tooltip,
   Legend,
   ArcElement,
-  Filler,
-  BarElement
+  Filler
 );
 
 type SiswaPage = "dashboard" | "jadwal-anda" | "notifikasi" | "absensi";
@@ -92,7 +90,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     alpha: 0,
     pulang: 0,
   });
-  const [dailyStats, setDailyStats] = useState<any[]>([]);
+  // const [dailyStats, setDailyStats] = useState<any[]>([]);
   
   // Use data directly from user object (synced in App.tsx)
   const displayName = user.name;
@@ -168,7 +166,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
            
            // Normalize daily stats if needed, or just set as is
            // The backend DailyStats for bar chart: hadir, tidak_hadir, izin, sakit, pulang
-           setDailyStats(summaryResponse.data.daily_stats || []);
+           // setDailyStats(summaryResponse.data.daily_stats || []);
 
            if (summaryResponse.data.statistik) {
              const s = summaryResponse.data.statistik;
@@ -804,7 +802,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 </div>
 
                 {/* Weekly Bar Chart - NEW */}
-                <div style={{
+                {/* <div style={{
                   backgroundColor: "white",
                   borderRadius: "16px",
                   padding: "28px",
@@ -849,7 +847,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                     </h3>
                   </div>
                   <WeeklyBarChart data={dailyStats} />
-                </div>
+                </div> */}
               </div>
 
               {/* Quick Access to Attendance */}
@@ -1163,90 +1161,90 @@ function WeeklyDonutChart({
 }
 
 // Weekly Bar Chart Component
-function WeeklyBarChart({ data }: { data: any[] }) {
-  if (!data || data.length === 0) {
-    return (
-      <div style={{ height: "300px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF" }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "24px", marginBottom: "8px" }}>📊</div>
-          <div>Belum ada rincian mingguan</div>
-        </div>
-      </div>
-    );
-  }
+// function WeeklyBarChart({ data }: { data: any[] }) {
+//   if (!data || data.length === 0) {
+//     return (
+//       <div style={{ height: "300px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF" }}>
+//         <div style={{ textAlign: "center" }}>
+//           <div style={{ fontSize: "24px", marginBottom: "8px" }}>📊</div>
+//           <div>Belum ada rincian mingguan</div>
+//         </div>
+//       </div>
+//     );
+  // }
 
-  const chartData = {
-    labels: data.map(d => d.day),
-    datasets: [
-      {
-        label: "Hadir",
-        data: data.map(d => d.hadir),
-        backgroundColor: "#1FA83D",
-        borderRadius: 6,
-      },
-      {
-        label: "Izin",
-        data: data.map(d => d.izin),
-        backgroundColor: "#ACA40D",
-        borderRadius: 6,
-      },
-      {
-        label: "Sakit",
-        data: data.map(d => d.sakit),
-        backgroundColor: "#520C8F",
-        borderRadius: 6,
-      },
-      {
-        label: "Alfa",
-        data: data.map(d => d.tidak_hadir),
-        backgroundColor: "#D90000",
-        borderRadius: 6,
-      },
-      {
-        label: "Pulang",
-        data: data.map(d => d.pulang),
-        backgroundColor: "#2F85EB",
-        borderRadius: 6,
-      },
-    ],
-  };
+  // const chartData = {
+  //   labels: data.map(d => d.day),
+  //   datasets: [
+  //     {
+  //       label: "Hadir",
+  //       data: data.map(d => d.hadir),
+  //       backgroundColor: "#1FA83D",
+  //       borderRadius: 6,
+  //     },
+  //     {
+  //       label: "Izin",
+  //       data: data.map(d => d.izin),
+  //       backgroundColor: "#ACA40D",
+  //       borderRadius: 6,
+  //     },
+  //     {
+  //       label: "Sakit",
+  //       data: data.map(d => d.sakit),
+  //       backgroundColor: "#520C8F",
+  //       borderRadius: 6,
+  //     },
+  //     {
+  //       label: "Alfa",
+  //       data: data.map(d => d.tidak_hadir),
+  //       backgroundColor: "#D90000",
+  //       borderRadius: 6,
+  //     },
+  //     {
+  //       label: "Pulang",
+  //       data: data.map(d => d.pulang),
+  //       backgroundColor: "#2F85EB",
+  //       borderRadius: 6,
+  //     },
+  //   ],
+  // };
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom" as const,
-        labels: {
-          usePointStyle: true,
-          boxWidth: 8,
-          padding: 20,
-        },
-      },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-      },
-    },
-    scales: {
-      x: {
-        stacked: true,
-        grid: { display: false },
-      },
-      y: {
-        stacked: true,
-        beginAtZero: true,
-        ticks: { stepSize: 1 },
-      },
-    },
-  };
+//   const options = {
+//     responsive: true,
+//     maintainAspectRatio: false,
+//     plugins: {
+//       legend: {
+//         position: "bottom" as const,
+//         labels: {
+//           usePointStyle: true,
+//           boxWidth: 8,
+//           padding: 20,
+//         },
+//       },
+//       tooltip: {
+//         mode: 'index' as const,
+//         intersect: false,
+//       },
+//     },
+//     scales: {
+//       x: {
+//         stacked: true,
+//         grid: { display: false },
+//       },
+//       y: {
+//         stacked: true,
+//         beginAtZero: true,
+//         ticks: { stepSize: 1 },
+//       },
+//     },
+//   };
 
-  return (
-    <div style={{ height: "300px", width: "100%" }}>
-      <Bar data={chartData} options={options} />
-    </div>
-  );
-}
+//   return (
+//     <div style={{ height: "300px", width: "100%" }}>
+//       <Bar data={chartData} options={options} />
+//     </div>
+//   );
+// }
 
 // Modal Component untuk Siswa
 interface JadwalSiswaModalProps {

@@ -23,7 +23,7 @@ class StudentSeeder extends Seeder
         $class1 = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => 'XII RPL 1',
+                'label' => 'RPL 1',
 
             ],
             [
@@ -34,7 +34,7 @@ class StudentSeeder extends Seeder
         $class2 = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => 'XII RPL 2',
+                'label' => 'RPL 2',
             ],
             [
                 'major_id' => $major->id,
@@ -129,12 +129,14 @@ class StudentSeeder extends Seeder
 
             $classId = ($data['kelas'] === 'XII RPL 1') ? $class1->id : $class2->id;
 
+            $isFemale = preg_match('/(WIDYAWATI|AYU|PUSPITASARI|PRISSILVIA|AQILLA|FAILLA|RAFAELA|ANJANI|JANNAH|APRILIA|KARINA|AVIVA|AZZAHRA|HAPSARI|IGNACIA|IQLIMAHDA|IRDINA|ISABEL|NI\'MAH|LAURA|LELY|MAYA|NABILA|NADIA|NADJWA|NINDI|NISWATUL|NOVERITA|NOVITA|NURUL|RACHEL|RAENA|RHAMEYZHA|RHEISYA|RITA|SHISILIA|SUCI|TALITHA|SA\'IDHATUL|RAYHANUN|ALUNA|SINTA|Alya|Anissa|Aristia)/i', $data['nama']);
+
             StudentProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'nisn' => $data['nisn'],
-                    'nis' => $data['nisn'], // Assuming NIS is same as NISN for now if not provided
-                    'gender' => 'L', // Default to L, can be updated later manually or inferred if name lookup available
+                    'nis' => $data['nisn'],
+                    'gender' => $isFemale ? 'P' : 'L',
                     'address' => 'Alamat Siswa',
                     'class_id' => $classId,
                 ]

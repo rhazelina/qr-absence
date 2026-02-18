@@ -3,23 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './DashboardGuru.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
 import { isJadwalCompleted } from '../../utils/dataManager';
-
-// API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
-
-const apiService = {
-  getHeaders: () => ({
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
-  }),
-
-  async getDashboard() {
-    const response = await fetch(`${API_BASE_URL}/me/teacher/dashboard`, { headers: this.getHeaders() });
-    if (!response.ok) throw new Error('Failed to fetch dashboard');
-    return response.json();
-  }
-};
+import apiService from '../../utils/api';
 
 function DashboardGuru() {
   const navigate = useNavigate();
@@ -27,8 +11,7 @@ function DashboardGuru() {
   const [currentDate, setCurrentDate] = useState('');
   const [currentFormattedDate, setCurrentFormattedDate] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState(null);
-  const [qrVerified, setQrVerified] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const sidebarOpen = true;
 
   // Data State
   const [dashboardData, setDashboardData] = useState(null);
@@ -41,27 +24,47 @@ function DashboardGuru() {
 
   // Fetch Data
   useEffect(() => {
+    const getLocalUser = () => {
+      try {
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    };
+
     const fetchDashboard = async () => {
       try {
-        const data = await apiService.getDashboard();
-        setDashboardData(data);
+        const [dashboard, me] = await Promise.all([
+          apiService.get('/me/teacher/dashboard').catch(() => null),
+          apiService.getProfile().catch(() => null)
+        ]);
+
+        const localUser = getLocalUser();
+        const teacher = dashboard?.teacher || {};
+        const profileName = teacher.name || me?.name || localUser?.name || '-';
+        const profileNip = teacher.nip || teacher.code || me?.profile?.nip || '-';
+        const profilePhoto = teacher.photo_url || me?.profile?.photo_url || null;
+
+        setDashboardData(dashboard);
+        setProfile({
+          ...teacher,
+          name: profileName,
+          nip: profileNip,
+          photo_url: profilePhoto
+        });
 
         // Map schedule data
-        const schedules = (data.schedule_today || []).map(item => ({
+        const schedules = (dashboard?.schedule_today || []).map(item => ({
           id: item.id,
-          mataPelajaran: item.subject,
-          kelas: item.class_name,
+          mataPelajaran: item.subject || '-',
+          kelas: item.class_name || '-',
           jamKe: item.time_slot, // Assuming backend sends string or number
-          waktu: `${item.start_time} - ${item.end_time}`,
-          totalStudents: item.total_students,
+          waktu: `${item.start_time || '--:--'} - ${item.end_time || '--:--'}`,
+          totalStudents: item.total_students || 0,
           statistics: item.statistics
         }));
         setScheduleList(schedules);
-
-        if (data.teacher) {
-          setProfile(data.teacher);
-        }
-
       } catch (error) {
         console.error("Error fetching dashboard:", error);
       } finally {
@@ -80,7 +83,7 @@ function DashboardGuru() {
         // Use backend statistics to determine completion if available, 
         // fall back to local check or check if any presence exists
         const stats = jadwal.statistics;
-        const totalAttendance = (stats?.present || 0) + (stats?.late || 0) + (stats?.sick || 0) + (stats?.izin || 0) + (stats?.absent || 0);
+        const totalAttendance = (stats?.present || 0) + (stats?.late || 0) + (stats?.sick || 0) + (stats?.izin || 0) + (stats?.excused || 0) + (stats?.absent || 0);
 
         if (totalAttendance > 0 || isJadwalCompleted(jadwal.id, currentFormattedDate)) {
           completed.add(jadwal.id);
@@ -127,19 +130,12 @@ function DashboardGuru() {
     return () => clearInterval(interval);
   }, []);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   const handleIconClick = (jadwal) => {
     setSelectedSchedule(jadwal);
-    // Directly verify for now, skipping "Scan" simulation unless we have a real scan feature
-    setQrVerified(true);
   };
 
   const handleCloseModal = () => {
     setSelectedSchedule(null);
-    setQrVerified(false);
   };
 
   const handleAbsensiSelesai = () => {
@@ -203,7 +199,7 @@ function DashboardGuru() {
             )}
           </div>
           <h2 className="profile-name3">{profile.name || '-'}</h2>
-          <p className="profile-id">{profile.nip || '-'}</p>
+          <p className="profile-id">{profile.nip || profile.code || '-'}</p>
 
           <button className="btn-logout" onClick={handleLogout}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">

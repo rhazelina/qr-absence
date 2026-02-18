@@ -94,6 +94,8 @@ export default function GuruAdmin({
   });
   
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateWarningMessage, setDuplicateWarningMessage] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,69 +164,78 @@ export default function GuruAdmin({
     return () => clearTimeout(timeoutId);
   }, [pageIndex, searchValue]);
 
-  // ==================== DYNAMIC OPTIONS BERDASARKAN ROLE ====================
-  
-  const allKeteranganOptions = Array.from(new Set(guruList.map((g) => g.keterangan)))
-    .filter(Boolean)
-    .sort()
-    .map((m) => ({ value: m, label: m }));
+  // ==================== FORM VALIDATION WITH REAL-TIME ====================
+  const validateField = (field: string, value: string) => {
+    const newErrors = { ...formErrors };
 
-  const getFilteredKeteranganOptions = () => {
-    if (!selectedRole) return allKeteranganOptions;
-    
-    // If role is Guru, show subjects
-    if (selectedRole === 'Guru') {
-      return subjects.map(s => ({ value: s.name, label: s.name }));
+    if (field === 'namaGuru') {
+      if (!value.trim()) {
+        newErrors.namaGuru = 'Nama guru harus diisi';
+      } else if (value.trim().length < 3) {
+        newErrors.namaGuru = 'Nama guru minimal 3 karakter';
+      } else {
+        delete newErrors.namaGuru;
+      }
     }
-    // If role is Wali Kelas, show classes
-    if (selectedRole === 'Wali Kelas') {
-      return classes.map(c => ({ value: c.name, label: c.name }));
+
+    if (field === 'kodeGuru') {
+      if (!value.trim()) {
+        newErrors.kodeGuru = 'NIP/Kode guru harus diisi';
+      } else if (guruList.some(g => g.nip === value)) {
+        newErrors.kodeGuru = 'NIP/Kode guru sudah terdaftar';
+      } else {
+        delete newErrors.kodeGuru;
+      }
     }
-    
-    // Fallback based on current list
-    const filtered = guruList
-      .filter(g => g.role === selectedRole)
-      .map(g => g.keterangan)
-      .filter(Boolean);
-    
-    const unique = Array.from(new Set(filtered)).sort();
-    return unique.map(m => ({ value: m, label: m }));
+
+    if (field === 'noTelp') {
+      if (value && value.trim()) {
+        if (!/^08\d{9,11}$/.test(value)) {
+          newErrors.noTelp = 'Nomor telepon harus valid (08xxxxxxxxxx)';
+        } else {
+          delete newErrors.noTelp;
+        }
+      } else {
+        delete newErrors.noTelp;
+      }
+    }
+
+    if (field === 'email') {
+      if (value && value.trim()) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          newErrors.email = 'Email tidak valid';
+        } else {
+          delete newErrors.email;
+        }
+      } else {
+        delete newErrors.email;
+      }
+    }
+
+    setFormErrors(newErrors);
   };
 
-  const roleOptions = [
-    { label: 'Guru', value: 'Guru' },
-    { label: 'Wali Kelas', value: 'Wali Kelas' },
-    { label: 'Staff', value: 'Staff' },
-  ];
-
-  // ==================== OPTIONS UNTUK FORM MODAL ====================
-  
-  const mataPelajaranOptions = subjects.map(s => ({ label: s.name, value: s.name }));
-
-  const bagianStaffOptions = [
-    { label: 'Tata Usaha', value: 'Tata Usaha' },
-    { label: 'Administrasi', value: 'Administrasi' },
-    { label: 'Perpustakaan', value: 'Perpustakaan' },
-    { label: 'Laboratorium', value: 'Laboratorium' },
-    { label: 'Keuangan', value: 'Keuangan' },
-  ];
-  
-  const kelasOptions = classes.map(c => c.name);
-
-  // ==================== FORM VALIDATION ====================
   const validateForm = () => {
     const errors: {[key: string]: string} = {};
     
-    if (!formData.namaGuru.trim()) errors.namaGuru = 'Nama guru harus diisi';
-    if (!formData.kodeGuru.trim()) errors.kodeGuru = 'NIP harus diisi';
-    if (!formData.role) errors.role = 'Peran harus dipilih';
+    if (!formData.namaGuru.trim()) {
+      errors.namaGuru = 'Nama guru harus diisi';
+    }
+    
+    if (!formData.kodeGuru.trim()) {
+      errors.kodeGuru = 'NIP/Kode guru harus diisi';
+    }
+
+    if (!formData.role) {
+      errors.role = 'Peran harus dipilih';
+    }
     
     if (formData.role === 'Guru' && !formData.keterangan) {
       errors.keterangan = 'Mata pelajaran harus dipilih';
     }
     
     if (formData.role === 'Wali Kelas' && !formData.waliKelasDari) {
-      errors.waliKelasDari = 'Wali kelas dari harus dipilih';
+      errors.waliKelasDari = 'Kelas harus dipilih';
     }
     
     if (formData.role === 'Staff' && !formData.keterangan) {
@@ -235,23 +246,11 @@ export default function GuruAdmin({
     return Object.keys(errors).length === 0;
   };
 
-  // ==================== FILTERING DATA ====================
-  const filteredData = guruList.filter((item) => {
-    const matchRole = selectedRole ? item.role === selectedRole : true;
-    const matchKeterangan = selectedKeterangan ? item.keterangan === selectedKeterangan : true;
-    return matchRole && matchKeterangan;
-  });
-
   // ==================== EVENT HANDLERS ====================
-  
-  const handleNavigateToDetail = (guruId: string) => {
-    if (onNavigateToDetail) {
-      onNavigateToDetail(guruId);
-    } else {
-      // Store ID in localStorage or just navigate
-      localStorage.setItem('selectedGuruId', guruId);
-      onMenuClick('detail-guru');
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    validateField(name, value);
   };
 
   const handleTambahGuru = () => {
@@ -267,30 +266,47 @@ export default function GuruAdmin({
       password: ''
     });
     setFormErrors({});
+    setShowDuplicateWarning(false);
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setFormErrors({});
+    setShowDuplicateWarning(false);
   };
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!validateForm()) return;
 
+    // Check for Duplicate NIP (External warning)
+    if (guruList.some(g => g.nip === formData.kodeGuru)) {
+      setDuplicateWarningMessage(`NIP/Kode "${formData.kodeGuru}" sudah terdaftar.`);
+      setShowDuplicateWarning(true);
+      return;
+    }
+
+    // Check for Occupied Homeroom Class
+    if (formData.role === 'Wali Kelas') {
+      const existingX = guruList.find(g => g.role === 'Wali Kelas' && g.keterangan === formData.waliKelasDari);
+      if (existingX) {
+        setDuplicateWarningMessage(`Kelas "${formData.waliKelasDari}" sudah memiliki wali kelas (${existingX.name}).`);
+        setShowDuplicateWarning(true);
+        return;
+      }
+    }
+
     try {
-      // Build payload
       const payload: any = {
         name: formData.namaGuru,
-        username: formData.kodeGuru, // Use NIP as username default
         nip: formData.kodeGuru,
-        jabatan: formData.role,
+        role: formData.role,
         phone: formData.noTelp,
-        email: formData.email || undefined,
+        email: formData.email || `${formData.kodeGuru}@deskta.com`,
         password: formData.password || 'password123',
       };
-
+      
       if (formData.role === 'Guru') {
         payload.subject = formData.keterangan;
       } else if (formData.role === 'Wali Kelas') {
@@ -299,9 +315,7 @@ export default function GuruAdmin({
           payload.homeroom_class_id = selectedClass.id;
         }
       } else if (formData.role === 'Staff') {
-        // Or create a new field in API for 'bagian'? TeacherController uses 'subject' or 'bidang'
-        payload.bidang = formData.keterangan;
-        payload.waka_field = formData.keterangan; // Just to be safe if backend changes name
+        payload.waka_field = formData.keterangan;
       }
 
       await teacherService.createTeacher(payload);
@@ -311,6 +325,50 @@ export default function GuruAdmin({
     } catch (err: any) {
       console.error(err);
       alert('Gagal menambahkan guru: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const roleOptions = [
+    { label: 'Guru', value: 'Guru' },
+    { label: 'Wali Kelas', value: 'Wali Kelas' },
+    { label: 'Staff', value: 'Staff' },
+  ];
+
+  const mataPelajaranOptions = subjects.map(s => ({ label: s.name, value: s.name }));
+
+  const bagianStaffOptions = [
+    { label: 'Tata Usaha', value: 'Tata Usaha' },
+    { label: 'Administrasi', value: 'Administrasi' },
+    { label: 'Perpustakaan', value: 'Perpustakaan' },
+    { label: 'Laboratorium', value: 'Laboratorium' },
+    { label: 'Keuangan', value: 'Keuangan' },
+  ];
+  
+  const kelasOptions = classes.map(c => c.name);
+
+  const getFilteredKeteranganOptions = () => {
+    if (selectedRole === 'Guru') return mataPelajaranOptions;
+    if (selectedRole === 'Wali Kelas') return kelasOptions.map(c => ({ label: c, value: c }));
+    if (selectedRole === 'Staff') return bagianStaffOptions;
+    return [];
+  };
+
+  const filteredData = guruList.filter((item) => {
+    const matchRole = selectedRole ? item.role === selectedRole : true;
+    const matchKeterangan = selectedKeterangan ? (
+      item.role === 'Wali Kelas' ? item.keterangan === selectedKeterangan :
+      item.role === 'Staff' ? item.keterangan === selectedKeterangan :
+      item.subject === selectedKeterangan
+    ) : true;
+    return matchRole && matchKeterangan;
+  });
+
+  const handleNavigateToDetail = (guruId: string) => {
+    if (onNavigateToDetail) {
+      onNavigateToDetail(guruId);
+    } else {
+      localStorage.setItem('selectedGuruId', guruId);
+      onMenuClick('detail-guru');
     }
   };
 
@@ -586,23 +644,33 @@ export default function GuruAdmin({
               <h3 style={{ margin: 0 }}>Tambah Guru Baru</h3>
               <button onClick={handleCloseModal} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
             </div>
+
+            {showDuplicateWarning && (
+              <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#991B1B', fontWeight: '700', fontSize: '13px' }}>Peringatan</div>
+                  <p style={{ margin: 0, color: '#B91C1C', fontSize: '12px' }}>{duplicateWarningMessage}</p>
+                </div>
+                <button onClick={() => setShowDuplicateWarning(false)} style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer' }}><X size={14} /></button>
+              </div>
+            )}
             
             <form onSubmit={handleSubmitForm} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label>Nama Guru</label>
-                <input type="text" value={formData.namaGuru} onChange={e => setFormData({ ...formData, namaGuru: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="text" name="namaGuru" value={formData.namaGuru} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
                 {formErrors.namaGuru && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.namaGuru}</span>}
               </div>
               
               <div>
                 <label>NIP / Kode Guru</label>
-                <input type="text" value={formData.kodeGuru} onChange={e => setFormData({ ...formData, kodeGuru: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="text" name="kodeGuru" value={formData.kodeGuru} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
                 {formErrors.kodeGuru && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.kodeGuru}</span>}
               </div>
 
               <div>
                 <label>Peran</label>
-                <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                <select name="role" value={formData.role} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
                   <option value="">Pilih Peran</option>
                   {roleOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
@@ -612,7 +680,7 @@ export default function GuruAdmin({
               {formData.role === 'Guru' && (
                 <div>
                   <label>Mata Pelajaran</label>
-                  <select value={formData.keterangan} onChange={e => setFormData({ ...formData, keterangan: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <select name="keterangan" value={formData.keterangan} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
                      <option value="">Pilih Mapel</option>
                      {mataPelajaranOptions.map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                   </select>
@@ -622,7 +690,7 @@ export default function GuruAdmin({
               {formData.role === 'Wali Kelas' && (
                 <div>
                   <label>Wali Kelas Dari</label>
-                  <select value={formData.waliKelasDari} onChange={e => setFormData({ ...formData, waliKelasDari: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <select name="waliKelasDari" value={formData.waliKelasDari} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
                      <option value="">Pilih Kelas</option>
                      {kelasOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
@@ -633,7 +701,7 @@ export default function GuruAdmin({
                {formData.role === 'Staff' && (
                 <div>
                   <label>Bagian</label>
-                  <select value={formData.keterangan} onChange={e => setFormData({ ...formData, keterangan: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
+                  <select name="keterangan" value={formData.keterangan} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
                      <option value="">Pilih Bagian</option>
                      {bagianStaffOptions.map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                   </select>
@@ -642,17 +710,17 @@ export default function GuruAdmin({
 
               <div>
                 <label>Nomor Telepon</label>
-                <input type="text" value={formData.noTelp} onChange={e => setFormData({ ...formData, noTelp: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="text" name="noTelp" value={formData.noTelp} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
               </div>
 
               <div>
                 <label>Email (untuk Login)</label>
-                <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="email" name="email" value={formData.email} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
               </div>
 
               <div>
                 <label>Password (Default: password123)</label>
-                <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder="Kosongkan untuk default" style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input type="password" name="password" value={formData.password} onChange={handleInputChange} placeholder="Kosongkan untuk default" style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>

@@ -166,7 +166,7 @@ export default function WalikelasLayout({
           onLogout={onLogout}
           isOpen={sidebarOpen}
           onToggle={handleToggleSidebar}
-          userRole="walikelas"
+          userRole="wakel"
         />
       </div>
 

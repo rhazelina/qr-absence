@@ -15,7 +15,7 @@ body {
 
 .dashboard-container {
   min-height: 100vh;
-  padding-top: 300px;
+  padding-top: 95px;
   padding-left: 300px;
   padding-right: 30px;
   padding-bottom: 30px;
@@ -744,6 +744,16 @@ input:checked + .slider:before {
   display: inline-block;
 }
 
+.status-badge-yellow {
+  background: #f59e0b;
+  color: white;
+  padding: 6px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+}
+
 .status-description {
   font-size: 15px;
   text-align: left;
@@ -768,6 +778,93 @@ input:checked + .slider:before {
   background: #0a2948;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 31, 62, 0.4);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-container {
+    padding-top: 95px;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    top: auto;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  .profile-card {
+    height: auto;
+    padding: 28px 20px;
+  }
+
+  .main-content,
+  .main-content.full-width {
+    max-width: none;
+    margin-left: 0;
+  }
+
+  .header-section {
+    flex-direction: column;
+  }
+
+  .current-time-card {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding-top: 88px;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 20px;
+  }
+
+  .profile-avatar {
+    width: 120px;
+    height: 120px;
+  }
+
+  .profile-avatar svg {
+    width: 70px;
+    height: 70px;
+  }
+
+  .date-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .time-range {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .time-box {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+
+  .schedule-section {
+    padding: 22px 16px;
+  }
+
+  .schedule-title {
+    font-size: 22px;
+  }
+
+  .header-left h2 {
+    font-size: 20px;
+  }
+
+  .header-class {
+    font-size: 15px;
+  }
 }
 
 @media (max-width: 480px) {

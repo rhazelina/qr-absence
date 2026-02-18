@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/classes/{class}/schedules/bulk', [ScheduleController::class, 'bulkUpsert']);
         // Absence requests moved to shared group
         Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
+        Route::get('/waka/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']); // Backward-compatible alias
         Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
         Route::get('/waka/dashboard/summary', [DashboardController::class, 'wakaDashboard']);
         Route::get('/waka/classes/{class}/attendance-summary', [AttendanceController::class, 'wakaClassSummary']);

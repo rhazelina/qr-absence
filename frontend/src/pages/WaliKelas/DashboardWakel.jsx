@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardWakel.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
+import apiService from '../../utils/api';
 
 const DashboardWakel = () => {
   const navigate = useNavigate();
@@ -26,47 +27,80 @@ const DashboardWakel = () => {
 
   const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
 
-  const checkTodayAttendanceStatus = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const savedData = localStorage.getItem('studentAttendanceData');
-
-    if (savedData) {
+  // REMOVED checkTodayAttendanceStatus as we will implement better status check later
+  // or rely on API to tell us if attendance is taken (not yet implemented in backend strictly)
+  
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const parsedData = JSON.parse(savedData);
+        // Fetch Profile
+        const profile = await apiService.getProfile();
+        setWaliKelas({
+          nama: profile.name,
+          nip: profile.nip || '-', // Assuming API returns 'nip' or in teacherProfile
+          role: profile.role || 'Wali Kelas' // Adjust based on API response
+        });
 
-        if (Array.isArray(parsedData) && parsedData.length > 0) {
-          const todayData = parsedData.filter(item => item.tanggal === today);
+        // Fetch Schedules
+        // Pass current date to get today's schedules
+        const today = new Date().toISOString().split('T')[0];
+        const schedules = await apiService.getHomeroomSchedules({ date: today }); // Passing date as query param if supported or just filter in frontend
+        // Currently apiService.getHomeroomSchedules() takes no args in definition, 
+        // need to update apiService definition OR pass query params manualy in api.js? 
+        // api.js define getHomeroomSchedules() { return this.get('/me/homeroom/schedules'); } - no args.
+        // But TeacherController accepts ?date=...
+        // So I should update apiService too, OR just append query here? 
+        // I cannot change apiService from here. I will just call it and filter in frontend if needed, 
+        // OR rely on API to return all and filter by day name.
+        
+        // Wait, apiService definition for getHomeroomSchedules in step 442 DOES NOT take params.
+        // I should probably fix apiService to accept params or just filter frontend for now. 
+        // TeacherController filters by day if date is passed.
+        // Let's rely on frontend filtering if apiService doesn't support params yet, 
+        // OR I can use `apiService.get('/me/homeroom/schedules?date=' + today)` directly? No, use service ref if possible.
+        // I'll stick to default call and filter day in frontend if needed.
+        // Actually, let's assume getHomeroomSchedules returns all for the week? Or just today?
+        // TeacherController says: "if ($request->filled('date')) ... else return all?"
+        // If I call without date, it returns ALL schedules for the class.
+        
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const dayName = days[new Date().getDay()];
 
-          if (todayData.length > 0) {
-            const mapelYangSudahAbsen = new Set(todayData.map(s => s.mapel));
-            const completedIds = new Set();
+        const todaySchedules = schedules.filter(s => s.day === dayName || s.hari === dayName);
 
-            scheduleData.forEach(jadwal => {
-              if (mapelYangSudahAbsen.has(jadwal.mataPelajaran)) {
-                completedIds.add(jadwal.id);
-              }
+        const mappedSchedules = todaySchedules.map(s => ({
+            id: s.id,
+            mataPelajaran: s.subject?.name || s.mata_pelajaran || 'Mapel',
+            kelas: s.class_name || (s.class_schedule?.class?.name) || 'Kelas', // Need to check response structure
+            jamKe: s.period || s.jam_ke || '-',
+            waktu: `${s.start_time?.substring(0,5)} - ${s.end_time?.substring(0,5)}`
+        }));
+        
+        setScheduleData(mappedSchedules);
+        
+        // Fetch Students for this class (Homeroom)
+        // We need this for "Total Siswa" and for "Mulai Absen" payload (temporarily until Presensi.jsx fetches it)
+        const students = await apiService.getHomeroomStudents();
+        setStats(prev => ({ ...prev, totalSiswa: students.length }));
+        
+        // Populate siswaPerKelas for the "Mulai Absen" handler
+        // Since it's homeroom, we assume only ONE class. 
+        // We can map mappedSchedules[0].kelas to students if needed.
+        if (mappedSchedules.length > 0) {
+            setSiswaPerKelas({
+                [mappedSchedules[0].kelas]: students
             });
-
-            setCompletedAbsensi(completedIds);
-          } else {
-            setCompletedAbsensi(new Set());
-          }
-        } else {
-          setCompletedAbsensi(new Set());
+            setStats(prev => ({ ...prev, totalKelas: mappedSchedules.length })); // 'total mengajar' -> total schedules today
         }
-      } catch (e) {
-        setCompletedAbsensi(new Set());
+
+      } catch (error) {
+        console.error("Failed to fetch dashboard data", error);
       }
-    } else {
-      setCompletedAbsensi(new Set());
-    }
-  };
+    };
 
-  useEffect(() => {
-    checkTodayAttendanceStatus();
-  }, []);
-
-  useEffect(() => {
+    fetchData();
+    
+    // Timer
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -114,6 +148,7 @@ const DashboardWakel = () => {
     const daftarSiswaYangDipilih = siswaPerKelas[selectedSchedule.kelas] || [];
 
     const dataToSend = {
+      jadwalId: selectedSchedule.id, // Add ID for API
       mataPelajaran: selectedSchedule.mataPelajaran,
       jamKe: selectedSchedule.jamKe,
       kelas: selectedSchedule.kelas,

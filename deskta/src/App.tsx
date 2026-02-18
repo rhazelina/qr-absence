@@ -13,6 +13,7 @@ import WakaDashboard from "./Pages/WakaStaff/DashboardStaff";
 import DashboardSiswa from "./Pages/Siswa/DashboardSiswa";
 import DashboardPengurusKelas from "./Pages/PengurusKelas/DashboardPengurusKelas";
 import DashboardWalliKelas from "./Pages/WaliKelas/DashboardWalliKelas";
+import JadwalSiswaEdit from "./Pages/WakaStaff/JadwalSiswaEdit";
 import { SmoothScroll } from "./component/Shared/SmoothScroll";
 // import { SmoothScroll } from "./Shared/SmoothScroll";
 
@@ -29,6 +30,21 @@ export default function App() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const normalizeRole = useCallback((rawRole?: string, userType?: string, isClassOfficer?: boolean, fallbackRole?: string) => {
+    const role = (rawRole || "").toLowerCase();
+    if (role === "walikelas") return "wakel";
+    if (role === "wakel" || role === "waka" || role === "guru" || role === "admin" || role === "siswa" || role === "pengurus_kelas") {
+      return role;
+    }
+
+    const type = (userType || "").toLowerCase();
+    if (type === "student") return isClassOfficer ? "pengurus_kelas" : "siswa";
+    if (type === "teacher") return fallbackRole === "wakel" ? "wakel" : "guru";
+    if (type === "admin") return "admin";
+
+    return fallbackRole || "";
+  }, []);
+
   // Restore user dari localStorage & Sync Profile
   useEffect(() => {
     const storedUserLocal = localStorage.getItem("currentUser");
@@ -44,7 +60,7 @@ export default function App() {
       try {
         const profile = await authService.me();
         const updatedUser = {
-          role: profile.role || profile.user_type, // Prefer UI role
+          role: normalizeRole(profile.role, profile.user_type, profile.is_class_officer, initialUser?.role),
           name: profile.name,
           phone: profile.phone || "",
           profile: profile.profile,
@@ -91,7 +107,7 @@ export default function App() {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [normalizeRole]);
 
   const handleRoleSelect = useCallback((role: string) => {
     setSelectedRole(role);
@@ -99,13 +115,18 @@ export default function App() {
   }, []);
 
   const handleLogin = useCallback((role: string, name: string, phone: string, profile?: any) => {
-    const userData = { role, name, phone, profile };
+    const userData = {
+      role: normalizeRole(role, undefined, undefined, role),
+      name,
+      phone,
+      profile,
+    };
     setCurrentUser(userData);
     localStorage.setItem("currentUser", JSON.stringify(userData));
     sessionStorage.setItem("currentUser", JSON.stringify(userData));
-    localStorage.setItem("selectedRole", role);
+    localStorage.setItem("selectedRole", userData.role);
     setSelectedRole(null);
-  }, []);
+  }, [normalizeRole]);
 
   const handleLogout = useCallback(() => {
     setCurrentUser(null);
@@ -256,6 +277,24 @@ export default function App() {
           element={
             currentUser?.role === "waka" ? (
               <WakaDashboard user={currentUser} onLogout={handleLogout} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Dedicated Schedule Creation Route */}
+        <Route
+          path="/waka/jadwal-siswa/create"
+          element={
+            currentUser?.role === "waka" ? (
+              <div className="bg-[#F9FAFB] min-h-screen">
+                <JadwalSiswaEdit 
+                  user={currentUser} 
+                  onLogout={handleLogout} 
+                  onMenuClick={() => window.location.href = '/waka/dashboard'} 
+                />
+              </div>
             ) : (
               <Navigate to="/" replace />
             )

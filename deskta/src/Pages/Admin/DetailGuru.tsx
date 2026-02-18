@@ -41,8 +41,6 @@ const peranList = [
   { id: 'Staff', nama: 'Staff' },
 ];
 
-
-
 const staffBagianList = [
   { id: 'Tata Usaha', nama: 'Tata Usaha' },
   { id: 'Administrasi', nama: 'Administrasi' },
@@ -60,6 +58,7 @@ export default function DetailGuru({
   guruId,
   onUpdateGuru,
 }: DetailGuruProps) {
+  
   // ==================== STATE MANAGEMENT ====================
   const [guruData, setGuruData] = useState<Guru | null>(null);
   const [originalData, setOriginalData] = useState<Guru | null>(null);
@@ -67,6 +66,8 @@ export default function DetailGuru({
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateWarningMessage, setDuplicateWarningMessage] = useState('');
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
@@ -216,13 +217,25 @@ export default function DetailGuru({
     if (!guruData || !validateForm()) return;
     
     try {
+      // Check for Occupied Homeroom Class
+      if (guruData.role === 'Wali Kelas') {
+        const classesRes = await masterService.getClasses();
+        const classesData = classesRes.data || [];
+        const selectedClass = classesData.find((c: any) => c.name === guruData.waliKelasDari);
+        
+        if (selectedClass && selectedClass.homeroom_teacher && selectedClass.homeroom_teacher.id.toString() !== guruData.id) {
+          setDuplicateWarningMessage(`Kelas "${guruData.waliKelasDari}" sudah memiliki wali kelas (${selectedClass.homeroom_teacher.name}).`);
+          setShowDuplicateWarning(true);
+          return;
+        }
+      }
+
       const payload: any = {
         name: guruData.namaGuru,
         nip: guruData.kodeGuru,
-        jabatan: guruData.role,
+        role: guruData.role,
         phone: guruData.noTelp,
         email: guruData.email,
-        // password: guruData.password // Only send if changing password
       };
 
       if (guruData.role === 'Guru') {
@@ -319,28 +332,111 @@ export default function DetailGuru({
           <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
             
             {/* HEADER */}
-            <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', padding: isMobile ? '20px' : '28px 32px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '20px' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
-                 <div style={{ width: isMobile ? '60px' : '70px', height: isMobile ? '60px' : '70px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', border: '3px solid rgba(255,255,255,0.2)' }}>
-                   <UserIcon size={isMobile ? 28 : 32} />
+            <div style={{ 
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', 
+              padding: isMobile ? '20px' : '28px 32px', 
+              display: 'flex', 
+              flexDirection: isMobile ? 'column' : 'row', 
+              alignItems: isMobile ? 'flex-start' : 'center', 
+              gap: '20px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+               {/* Decorative Gradient Overlay */}
+               <div style={{ position: 'absolute', top: '-50%', right: '-10%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)', pointerEvents: 'none' }}></div>
+
+               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1, position: 'relative', zIndex: 1 }}>
+                 <div style={{ 
+                   width: isMobile ? '70px' : '85px', 
+                   height: isMobile ? '70px' : '85px', 
+                   borderRadius: '50%', 
+                   backgroundColor: '#3b82f6', 
+                   display: 'flex', 
+                   alignItems: 'center', 
+                   justifyContent: 'center', 
+                   color: 'white', 
+                   border: '4px solid rgba(255,255,255,0.15)',
+                   boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                   flexShrink: 0
+                 }}>
+                   <UserIcon size={isMobile ? 32 : 40} />
                  </div>
-                 <div>
-                   <h2 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: 'bold', color: 'white', marginBottom: '4px' }}>{guruData.namaGuru}</h2>
-                   <p style={{ margin: 0, fontSize: isMobile ? '13px' : '15px', color: '#cbd5e1', fontFamily: 'monospace' }}>Kode: {guruData.kodeGuru}</p>
+                 <div style={{ flex: 1 }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                     <h2 style={{ margin: 0, fontSize: isMobile ? '20px' : '26px', fontWeight: '800', color: 'white', letterSpacing: '-0.5px' }}>{guruData.namaGuru}</h2>
+                     <span style={{ padding: '4px 10px', backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#60A5FA', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{guruData.role}</span>
+                   </div>
+                   <p style={{ margin: 0, fontSize: isMobile ? '13px' : '15px', color: '#94A3B8', fontFamily: 'monospace', opacity: 0.9 }}>NIP/Kode: {guruData.kodeGuru}</p>
                  </div>
                </div>
                
-               <div style={{ display: 'flex', gap: '12px', width: isMobile ? '100%' : 'auto' }}>
+               <div style={{ display: 'flex', gap: '12px', width: isMobile ? '100%' : 'auto', position: 'relative', zIndex: 1 }}>
                  {!isEditMode ? (
-                   <button onClick={handleEnableEdit} style={{ backgroundColor: '#2563EB', border: 'none', color: 'white', padding: isMobile ? '10px 20px' : '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}>
+                   <button 
+                     onClick={handleEnableEdit} 
+                     style={{ 
+                       backgroundColor: '#3B82F6', 
+                       border: 'none', 
+                       color: 'white', 
+                       padding: isMobile ? '12px' : '12px 28px', 
+                       borderRadius: '12px', 
+                       fontSize: '14px', 
+                       fontWeight: '700', 
+                       cursor: 'pointer', 
+                       display: 'flex', 
+                       alignItems: 'center', 
+                       gap: '8px', 
+                       width: isMobile ? '100%' : 'auto', 
+                       justifyContent: 'center',
+                       boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                       transition: 'all 0.2s'
+                     }}
+                   >
                      <Edit2 size={16} /> Ubah Data
                    </button>
                  ) : (
                    <>
-                     <button onClick={handleCancelEdit} style={{ backgroundColor: '#6B7280', border: 'none', color: 'white', padding: isMobile ? '10px 16px' : '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', flex: isMobile ? 1 : 'auto', justifyContent: 'center' }}>
+                     <button 
+                       onClick={handleCancelEdit} 
+                       style={{ 
+                         backgroundColor: '#475569', 
+                         border: 'none', 
+                         color: 'white', 
+                         padding: isMobile ? '12px' : '12px 24px', 
+                         borderRadius: '12px', 
+                         fontSize: '14px', 
+                         fontWeight: '700', 
+                         cursor: 'pointer', 
+                         display: 'flex', 
+                         alignItems: 'center', 
+                         gap: '8px', 
+                         flex: isMobile ? 1 : 'auto', 
+                         justifyContent: 'center',
+                         transition: 'all 0.2s'
+                       }}
+                     >
                        <X size={16} /> Batal
                      </button>
-                     <button onClick={handleSaveChanges} style={{ backgroundColor: '#10B981', border: 'none', color: 'white', padding: isMobile ? '10px 16px' : '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', flex: isMobile ? 1 : 'auto', justifyContent: 'center' }}>
+                     <button 
+                       onClick={handleSaveChanges} 
+                       style={{ 
+                         backgroundColor: '#10B981', 
+                         border: 'none', 
+                         color: 'white', 
+                         padding: isMobile ? '12px' : '12px 24px', 
+                         borderRadius: '12px', 
+                         fontSize: '14px', 
+                         fontWeight: '700', 
+                         cursor: 'pointer', 
+                         display: 'flex', 
+                         alignItems: 'center', 
+                         gap: '8px', 
+                         flex: isMobile ? 1 : 'auto', 
+                         justifyContent: 'center',
+                         boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                         transition: 'all 0.2s'
+                       }}
+                     >
                        <Save size={16} /> Simpan
                      </button>
                    </>
@@ -349,8 +445,17 @@ export default function DetailGuru({
             </div>
 
             {/* FORM */}
-            <div style={{ padding: isMobile ? '20px' : '32px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: isMobile ? '16px' : '24px' }}>
+            <div style={{ padding: isMobile ? '24px' : '40px' }}>
+              {showDuplicateWarning && (
+                <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '12px', padding: '16px', marginBottom: '32px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                   <div style={{ backgroundColor: '#EF4444', borderRadius: '50%', width: '20px', height: '200px', display: 'none' }}></div>
+                   <div style={{ flex: 1 }}>
+                     <div style={{ color: '#991B1B', fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>Duplikasi Wali Kelas Terdeteksi</div>
+                     <p style={{ margin: 0, color: '#B91C1C', fontSize: '13px' }}>{duplicateWarningMessage}</p>
+                   </div>
+                   <button onClick={() => setShowDuplicateWarning(false)} style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+              )}
                 
                 {/* Nama */}
                 <div>
@@ -425,7 +530,6 @@ export default function DetailGuru({
             </div>
             
           </div>
-        </div>
       </div>
     </AdminLayout>
   );

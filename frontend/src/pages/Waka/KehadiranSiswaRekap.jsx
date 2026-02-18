@@ -1,697 +1,459 @@
-import "./KehadiranSiswaRekap.css";
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
+import "./KehadiranSiswaRekap.css";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
-import { FaSchool } from "react-icons/fa6";
-import { FaArrowLeft, FaCalendar, FaEdit, FaFileExport, FaUser, FaFilePdf, FaFileExcel, FaEye, FaSpinner } from "react-icons/fa";
+import apiService from "../../utils/api";
+import {
+  FaArrowLeft,
+  FaCalendarAlt,
+  FaChevronRight,
+  FaFileExport,
+  FaFilePdf,
+  FaFileExcel,
+  FaEye,
+  FaSpinner,
+  FaDoorOpen,
+  FaUserTie,
+  FaHistory,
+  FaCheckCircle,
+  FaClock,
+  FaInfoCircle,
+  FaHeartbeat,
+  FaRegTimesCircle,
+  FaSignOutAlt,
+  FaSearch,
+  FaTimes,
+  FaClipboardList
+} from "react-icons/fa";
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const statusConfig = {
+  present: { label: 'Hadir', bg: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500', icon: <FaCheckCircle />, color: "#1FA83D" },
+  late: { label: 'Terlambat', bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500', icon: <FaClock />, color: "#d8bf1a" },
+  excused: { label: 'Izin', bg: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500', icon: <FaInfoCircle />, color: "#2563eb" },
+  sick: { label: 'Sakit', bg: 'bg-purple-100 text-purple-700 border-purple-200', dot: 'bg-purple-500', icon: <FaHeartbeat />, color: "#9A0898" },
+  absent: { label: 'Alfa', bg: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500', icon: <FaRegTimesCircle />, color: "#D90000" },
+  return: { label: 'Pulang', bg: 'bg-orange-100 text-orange-700 border-orange-200', dot: 'bg-orange-500', icon: <FaSignOutAlt />, color: "#FF5F1A" }
+};
+
 export default function KehadiranSiswaRekap() {
-  const { id } = useParams();
-  const [showExport, setShowExport] = useState(false);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const classIdFromQuery = searchParams.get('class_id');
+  const { id: classIdFromParams } = useParams();
+  
+  const id = classIdFromParams || classIdFromQuery;
+  
   const [loading, setLoading] = useState(true);
-  const [kelasInfo, setKelasInfo] = useState(null);
-
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedDetail, setSelectedDetail] = useState(null);
-
-  // State untuk tanggal periode
-  const [tanggalMulai, setTanggalMulai] = useState('');
-  const [tanggalSampai, setTanggalSampai] = useState('');
-  const [data, setData] = useState([]);
-
-  // Fungsi untuk mendapatkan tanggal hari ini dalam format YYYY-MM-DD
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Fungsi untuk mendapatkan tanggal awal bulan
-  const getFirstDayOfMonth = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}-01`;
-  };
-
-  const handleSave = () => {
-    // TODO: Ganti dengan API call untuk update rekap kehadiran
-    // Contoh:
-    // updateRekapKehadiran(data[selectedIndex].id, form)
-    //   .then(response => {
-    //     const newData = [...data];
-    //     newData[selectedIndex] = {
-    //       ...newData[selectedIndex],
-    //       hadir: Number(form.hadir),
-    //       terlambat: Number(form.terlambat),
-    //       izin: Number(form.izin),
-    //       sakit: Number(form.sakit),
-    //       alfa: Number(form.alfa),
-    //       pulang: Number(form.pulang),
-    //     };
-    //     setData(newData);
-    //     setShowEditModal(false);
-    //   })
-    //   .catch(error => {
-    //     console.error('Error updating data:', error);
-    //   });
-
-    const newData = [...data];
-    newData[selectedIndex] = {
-      ...newData[selectedIndex],
-      hadir: Number(form.hadir),
-      terlambat: Number(form.terlambat),
-      izin: Number(form.izin),
-      sakit: Number(form.sakit),
-      alfa: Number(form.alfa),
-      pulang: Number(form.pulang),
-    };
-
-    setData(newData);
-    setShowEditModal(false);
-  };
-
-  const [form, setForm] = useState({
-    hadir: '',
-    terlambat: '',
-    izin: '',
-    sakit: '',
-    alfa: '',
-    pulang: '',
+  const [kelas, setKelas] = useState(null);
+  const [rekapData, setRekapData] = useState([]);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [selectedDateFrom, setSelectedDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split('T')[0];
   });
-
-  const [selectedIndex, setSelectedIndex] = useState(null);
+  const [selectedDateTo, setSelectedDateTo] = useState(new Date().toISOString().split('T')[0]);
+  
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [studentHistory, setStudentHistory] = useState([]);
 
   useEffect(() => {
-    // Set default tanggal (awal bulan sampai hari ini)
-    setTanggalMulai(getFirstDayOfMonth());
-    setTanggalSampai(getTodayDate());
-
-    // TODO: Ganti dengan API call untuk fetch data rekap kehadiran
-    // Contoh:
-    // fetchRekapKehadiran(id, tanggalMulai, tanggalSampai)
-    //   .then(response => {
-    //     setKelasInfo(response.kelas);
-    //     setData(response.rekap);
-    //     setLoading(false);
-    //   })
-    //   .catch(error => {
-    //     console.error('Error fetching data:', error);
-    //     setLoading(false);
-    //   });
-
-    setLoading(false);
+    if (id) {
+        fetchInitialData();
+    }
   }, [id]);
 
-  // Fungsi untuk format tanggal ke bahasa Indonesia
-  const formatTanggalIndonesia = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    const options = { day: 'numeric', month: 'long', year: 'numeric' };
-    return date.toLocaleDateString('id-ID', options);
-  };
-
-  // Format tanggal untuk display di export
-  const formatDateDisplay = (start, end) => {
-    const opt = { day: 'numeric', month: 'long', year: 'numeric' };
-    return `${new Date(start).toLocaleDateString('id-ID', opt)} - ${new Date(end).toLocaleDateString('id-ID', opt)}`;
-  };
-
-  // Handler untuk apply filter periode
-  const handleApplyPeriode = () => {
-    if (tanggalMulai && tanggalSampai) {
-      console.log('Filter periode dari:', tanggalMulai, 'sampai:', tanggalSampai);
-      // TODO: Ganti dengan API call untuk fetch data berdasarkan periode
-      // fetchRekapKehadiran(id, tanggalMulai, tanggalSampai)
-      //   .then(response => {
-      //     setData(response.rekap);
-      //   })
-      //   .catch(error => {
-      //     console.error('Error fetching data:', error);
-      //   });
-    }
-  };
-
-  // FUNGSI EXPORT EXCEL
-  const handleExportExcel = async () => {
+  const fetchInitialData = async () => {
+    setLoading(true);
     try {
-      const wb = new ExcelJS.Workbook();
-      const ws = wb.addWorksheet('Rekap Kehadiran');
-
-      // Title
-      ws.mergeCells('A1:J1');
-      const titleCell = ws.getCell('A1');
-      titleCell.value = `REKAP KEHADIRAN PESERTA DIDIK`;
-      titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
-      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      titleCell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF0a1f3e' }
-      };
-      ws.getRow(1).height = 30;
-
-      // Kelas
-      ws.mergeCells('A2:J2');
-      const classCell = ws.getCell('A2');
-      classCell.value = `Kelas: ${kelasInfo?.nama_kelas || '-'}`;
-      classCell.font = { bold: true, size: 12 };
-      classCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      ws.getRow(2).height = 25;
-
-      // Periode
-      ws.mergeCells('A3:J3');
-      const periodCell = ws.getCell('A3');
-      periodCell.value = `Periode: ${formatDateDisplay(tanggalMulai, tanggalSampai)}`;
-      periodCell.font = { size: 11 };
-      periodCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      ws.getRow(3).height = 20;
-
-      ws.addRow([]);
-
-      // Header Tabel
-      const headerRow = ws.addRow(['No', 'NIS/NISN', 'Nama Siswa', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alfa', 'Pulang']);
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      headerRow.height = 25;
-      
-      headerRow.eachCell((cell) => {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF0066cc' }
-        };
-        cell.border = {
-          top: { style: 'thin' },
-          left: { style: 'thin' },
-          bottom: { style: 'thin' },
-          right: { style: 'thin' }
-        };
-      });
-
-      // Data Tabel
-      data.forEach((siswa, index) => {
-        const dataRow = ws.addRow([
-          index + 1, 
-          siswa.nisn, 
-          siswa.nama, 
-          siswa.hadir || 0, 
-          siswa.terlambat || 0,
-          siswa.izin || 0, 
-          siswa.sakit || 0, 
-          siswa.alfa || 0, 
-          siswa.pulang || 0
-        ]);
-        dataRow.height = 20;
-        
-        dataRow.eachCell((cell, colNumber) => {
-          cell.alignment = { 
-            horizontal: colNumber === 3 ? 'left' : 'center',
-            vertical: 'middle' 
-          };
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-            left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-            bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
-            right: { style: 'thin', color: { argb: 'FFD3D3D3' } }
-          };
-          
-          if (index % 2 === 0) {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFF8F9FA' }
-            };
-          }
-        });
-      });
-
-      // Atur lebar kolom
-      ws.getColumn(1).width = 6;
-      ws.getColumn(2).width = 15;
-      ws.getColumn(3).width = 35;
-      ws.getColumn(4).width = 10;
-      ws.getColumn(5).width = 12;
-      ws.getColumn(6).width = 10;
-      ws.getColumn(7).width = 10;
-      ws.getColumn(8).width = 10;
-      ws.getColumn(9).width = 10;
-
-      // Export file
-      const buf = await wb.xlsx.writeBuffer();
-      const fileName = `Rekap_Kehadiran_${kelasInfo?.nama_kelas || 'Kelas'}_${new Date().toISOString().split('T')[0]}.xlsx`;
-      saveAs(new Blob([buf]), fileName);
-      setShowExport(false);
-    } catch (error) {
-      console.error('Error exporting Excel:', error);
-      alert('Gagal mengekspor Excel. Silakan coba lagi.');
-    }
-  };
-
-  // FUNGSI EXPORT PDF
-  const handleExportPDF = () => {
-    try {
-      const doc = new jsPDF('l', 'mm', 'a4');
-
-      // Header biru
-      doc.setFillColor(10, 31, 62);
-      doc.rect(0, 0, 297, 35, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(18);
-      doc.setFont(undefined, 'bold');
-      doc.text('REKAP KEHADIRAN PESERTA DIDIK', 148.5, 15, { align: 'center' });
-      
-      doc.setFontSize(12);
-      doc.text(`Kelas: ${kelasInfo?.nama_kelas || '-'}`, 148.5, 23, { align: 'center' });
-      
-      doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
-      doc.text(`Periode: ${formatDateDisplay(tanggalMulai, tanggalSampai)}`, 148.5, 30, { align: 'center' });
-
-      // Data tabel
-      const tableData = data.map((siswa, index) => [
-        index + 1,
-        siswa.nisn,
-        siswa.nama,
-        siswa.hadir || 0,
-        siswa.terlambat || 0,
-        siswa.izin || 0,
-        siswa.sakit || 0,
-        siswa.alfa || 0,
-        siswa.pulang || 0
+      const [classRes, rekapRes] = await Promise.all([
+        apiService.getClass(id),
+        apiService.getWakaClassAttendanceSummary(id, { from: selectedDateFrom, to: selectedDateTo })
       ]);
-
-      // Generate tabel
-      autoTable(doc, {
-        startY: 40,
-        head: [['No', 'NIS/NISN', 'Nama Siswa', 'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alfa', 'Pulang']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [0, 102, 204],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          halign: 'center',
-          fontSize: 10
-        },
-        bodyStyles: {
-          fontSize: 9,
-          halign: 'center'
-        },
-        columnStyles: {
-          0: { cellWidth: 10, halign: 'center' },
-          1: { cellWidth: 25, halign: 'center' },
-          2: { cellWidth: 80, halign: 'left' },
-          3: { cellWidth: 15, halign: 'center' },
-          4: { cellWidth: 18, halign: 'center' },
-          5: { cellWidth: 15, halign: 'center' },
-          6: { cellWidth: 15, halign: 'center' },
-          7: { cellWidth: 15, halign: 'center' },
-          8: { cellWidth: 15, halign: 'center' }
-        },
-        alternateRowStyles: {
-          fillColor: [248, 249, 250]
-        },
-        margin: { top: 40, left: 14, right: 14 }
-      });
-
-      // Footer dengan nomor halaman
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(128, 128, 128);
-        doc.text(
-          `Halaman ${i} dari ${pageCount}`,
-          148.5,
-          doc.internal.pageSize.height - 10,
-          { align: 'center' }
-        );
-        doc.text(
-          `Dicetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
-          148.5,
-          doc.internal.pageSize.height - 5,
-          { align: 'center' }
-        );
-      }
-
-      // Simpan PDF
-      const fileName = `Rekap_Kehadiran_${kelasInfo?.nama_kelas || 'Kelas'}_${new Date().toISOString().split('T')[0]}.pdf`;
-      doc.save(fileName);
-      setShowExport(false);
+      setKelas(classRes.data || classRes);
+      setRekapData(rekapRes.data || rekapRes);
     } catch (error) {
-      console.error('Error exporting PDF:', error);
-      alert('Gagal mengekspor PDF. Silakan coba lagi.');
+      console.error("Error fetching initial rekap data:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const generateDetailData = (siswa) => {
-    // TODO: Ganti dengan API call untuk fetch detail kehadiran siswa
-    // Untuk sementara return empty array
-    return [];
+  const handleApplyFilter = async () => {
+    setLoading(true);
+    try {
+        const rekapRes = await apiService.getWakaClassAttendanceSummary(id, { from: selectedDateFrom, to: selectedDateTo });
+        setRekapData(rekapRes.data || rekapRes);
+    } catch (error) {
+        console.error("Error applying filter:", error);
+    } finally {
+        setLoading(false);
+    }
   };
 
-  if (loading) {
+  const fetchStudentDetail = async (studentData) => {
+    setSelectedStudent(studentData.student);
+    setShowDetailModal(true);
+    setModalLoading(true);
+    try {
+        const historyRes = await apiService.getStudentAttendance(studentData.student.id, {
+            from: selectedDateFrom,
+            to: selectedDateTo,
+            per_page: -1
+        });
+        setStudentHistory(Array.isArray(historyRes) ? historyRes : (historyRes.data || []));
+    } catch (error) {
+        console.error("Error fetching student history:", error);
+    } finally {
+        setModalLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Rekap Kehadiran');
+
+    ws.columns = [
+      { header: 'No', key: 'no', width: 5 },
+      { header: 'NISN', key: 'nisn', width: 15 },
+      { header: 'Nama Siswa', key: 'nama', width: 30 },
+      { header: 'Hadir', key: 'present', width: 10 },
+      { header: 'Izin', key: 'excused', width: 10 },
+      { header: 'Sakit', key: 'sick', width: 10 },
+      { header: 'Alfa', key: 'absent', width: 10 },
+      { header: 'Terlambat', key: 'late', width: 10 },
+      { header: 'Pulang', key: 'return', width: 10 },
+    ];
+
+    rekapData.forEach((item, idx) => {
+      ws.addRow({
+        no: idx + 1,
+        nisn: item.student?.nisn || '-',
+        nama: item.student?.user?.name || '-',
+        present: item.totals?.present || 0,
+        excused: item.totals?.excused || 0,
+        sick: item.totals?.sick || 0,
+        absent: item.totals?.absent || 0,
+        late: item.totals?.late || 0,
+        return: item.totals?.return || 0,
+      });
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `Rekap_${kelas?.name}_${selectedDateFrom}_${selectedDateTo}.xlsx`);
+    setShowExportMenu(false);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    doc.text(`Rekap Kehadiran: ${kelas?.name}`, 14, 15);
+    doc.text(`Periode: ${selectedDateFrom} - ${selectedDateTo}`, 14, 22);
+
+    const tableData = rekapData.map((item, idx) => [
+      idx + 1,
+      item.student?.nisn || '-',
+      item.student?.user?.name || '-',
+      item.totals?.present || 0,
+      item.totals?.excused || 0,
+      item.totals?.sick || 0,
+      item.totals?.absent || 0,
+      item.totals?.late || 0,
+      item.totals?.return || 0,
+    ]);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [['No', 'NISN', 'Nama Siswa', 'H', 'I', 'S', 'A', 'T', 'P']],
+      body: tableData,
+    });
+
+    doc.save(`Rekap_${kelas?.name}.pdf`);
+    setShowExportMenu(false);
+  };
+
+  if (loading && !kelas) {
     return (
-      <div className="kontainer-loading">
-        <div className="teks-loading">
-          <FaSpinner className="spinner" /> Loading...
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 text-blue-600">
+        <FaSpinner className="animate-spin text-4xl" />
       </div>
     );
   }
 
   return (
-    <div className="kehadiran-siswa-rekap-page">
+    <div className="min-h-screen bg-gray-50 pb-12">
       <NavbarWaka />
-      <div className="kehadiran-siswa-rekap-header-card">
-        {/* TOP */}
-        <div className="kehadiran-siswa-rekap-header-top">
-          <div className="kehadiran-siswa-rekap-header-left">
-            <div className="kehadiran-siswa-rekap-icon">
-              <FaSchool />
-            </div>
-            <h2>Rekap Kehadiran Peserta Didik</h2>
-          </div>
 
-          {/* RIGHT */}
-          <div className="kehadiran-siswa-rekap-header-right">
-            {/* FILTER PERIODE */}
-            <div className="kehadiran-siswa-rekap-periode-wrapper">
-              <span className="kehadiran-siswa-rekap-periode-label">
-                Periode:
-              </span>
+      <div className="pt-24 px-4 max-w-7xl mx-auto">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap">
+            <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <FaChevronRight className="text-[10px]" />
+            <Link to="/waka/kehadiran-siswa" className="hover:text-blue-600 transition-colors">Kehadiran Siswa</Link>
+            <FaChevronRight className="text-[10px]" />
+            <span className="text-blue-600 font-bold">Rekap {kelas?.name}</span>
+        </div>
 
-              <div className="kehadiran-siswa-rekap-date-range">
-                <div className="kehadiran-siswa-rekap-date-input">
-                  <FaCalendar />
-                  <input
-                    type="date"
-                    value={tanggalMulai}
-                    onChange={(e) => setTanggalMulai(e.target.value)}
-                    max={tanggalSampai || getTodayDate()}
-                  />
-                </div>
-
-                <span> — </span>
-
-                <div className="kehadiran-siswa-rekap-date-input">
-                  <FaCalendar />
-                  <input
-                    type="date"
-                    value={tanggalSampai}
-                    onChange={(e) => setTanggalSampai(e.target.value)}
-                    min={tanggalMulai}
-                    max={getTodayDate()}
-                  />
-                </div>
-
-                <button
-                  className="kehadiran-siswa-rekap-apply-periode"
-                  onClick={handleApplyPeriode}
-                  disabled={!tanggalMulai || !tanggalSampai}
-                >
-                  Terapkan
-                </button>
+        {/* HEADER SECTION */}
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 mb-8">
+           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+              <div className="flex items-center gap-6">
+                 <div className="p-5 bg-blue-600 text-white rounded-3xl shadow-xl shadow-blue-200">
+                    <FaClipboardList className="text-4xl" />
+                 </div>
+                 <div>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Rekap Kehadiran</h1>
+                    <div className="flex flex-wrap items-center gap-4 mt-2">
+                       <span className="flex items-center gap-2 text-gray-500 font-bold">
+                          <FaDoorOpen className="text-blue-500" />
+                          {kelas?.name}
+                       </span>
+                       <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                       <span className="flex items-center gap-2 text-gray-500 font-bold">
+                          <FaUserTie className="text-blue-500" />
+                          {kelas?.homeroom_teacher?.user?.name || 'Wali Kelas Tidak Set'}
+                       </span>
+                    </div>
+                 </div>
               </div>
-            </div>
 
-            <div className="kehadiran-guru-index-export-wrapper">
-              <button
-                className="kehadiran-guru-index-export-btn"
-                onClick={() => setShowExport(prev => !prev)}
-              >
-                <FaFileExport />
-                Ekspor
-              </button>
+              <div className="flex flex-wrap items-center gap-4">
+                 <div className="flex items-center bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                    <div className="relative">
+                      <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
+                      <input 
+                        type="date"
+                        className="pl-11 pr-4 py-2 bg-transparent border-none focus:ring-0 font-bold text-gray-700 text-sm"
+                        value={selectedDateFrom}
+                        onChange={(e) => setSelectedDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <span className="px-2 text-gray-400 font-bold">-</span>
+                    <div className="relative">
+                      <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
+                      <input 
+                        type="date"
+                        className="pl-11 pr-4 py-2 bg-transparent border-none focus:ring-0 font-bold text-gray-700 text-sm"
+                        value={selectedDateTo}
+                        onChange={(e) => setSelectedDateTo(e.target.value)}
+                      />
+                    </div>
+                 </div>
+                 
+                 <button 
+                   onClick={handleApplyFilter}
+                   disabled={loading}
+                   className="px-6 py-3.5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center gap-2"
+                 >
+                    {loading ? <FaSpinner className="animate-spin" /> : <FaSearch />}
+                    <span>Filter</span>
+                 </button>
 
-              {showExport && (
-                <div className="kehadiran-guru-index-export-menu">
-                  <button
-                    onClick={handleExportPDF}
-                    className="export-item pdf"
-                  >
-                    <FaFilePdf /> PDF
-                  </button>
-
-                  <button
-                    onClick={handleExportExcel}
-                    className="export-item excel"
-                  >
-                    <FaFileExcel /> Excel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* INFO BAR */}
-        <div className="kehadiran-siswa-rekap-info">
-          <span className="info-badge">
-            <FaUser /> {kelasInfo?.nama_kelas || '-'}
-          </span>
-          <span className="info-badge">
-            <FaCalendar />
-            {tanggalMulai && tanggalSampai
-              ? `${formatTanggalIndonesia(tanggalMulai)} - ${formatTanggalIndonesia(tanggalSampai)}`
-              : 'Pilih Periode'
-            }
-          </span>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      <div className="kehadiran-siswa-rekap-table-wrapper">
-        <table className="kehadiran-siswa-rekap-table">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>NIS/NISN</th>
-              <th>Nama Siswa</th>
-              <th>Hadir</th>
-              <th>Terlambat</th>
-              <th>Izin</th>
-              <th>Sakit</th>
-              <th>Alfa</th>
-              <th>Pulang</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {data.length > 0 ? (
-              data.map((siswa, i) => (
-                <tr key={siswa.id || i}>
-                  <td>{i + 1}</td>
-                  <td>{siswa.nisn}</td>
-                  <td><b>{siswa.nama}</b></td>
-                  <td className="hadir">{siswa.hadir || 0}</td>
-                  <td className="terlambat">{siswa.terlambat || 0}</td>
-                  <td className="izin">{siswa.izin || 0}</td>
-                  <td className="sakit">{siswa.sakit || 0}</td>
-                  <td className="alfa">{siswa.alfa || 0}</td>
-                  <td className="pulang">{siswa.pulang || 0}</td>
-                  <td className="aksi-wrapper">
-                    <button
-                      className="kehadiran-siswa-rekap-detail"
-                      title="Detail Kehadiran"
-                      onClick={() => {
-                        setSelectedDetail({
-                          ...siswa,
-                          detail: generateDetailData(siswa),
-                        });
-                        setShowDetailModal(true);
-                      }}
+                 <div className="relative">
+                    <button 
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className="flex items-center gap-2 px-6 py-3.5 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 shadow-lg shadow-gray-900/10 transition-all"
                     >
-                      <FaEye />
+                       <FaFileExport />
+                       <span>Ekspor</span>
                     </button>
-
-                    <button
-                      className="kehadiran-siswa-rekap-edit"
-                      title="Edit Rekap"
-                      onClick={() => {
-                        setSelectedIndex(i);
-                        setForm({
-                          hadir: siswa.hadir || 0,
-                          terlambat: siswa.terlambat || 0,
-                          izin: siswa.izin || 0,
-                          sakit: siswa.sakit || 0,
-                          alfa: siswa.alfa || 0,
-                          pulang: siswa.pulang || 0,
-                        });
-                        setShowEditModal(true);
-                      }}
-                    >
-                      <FaEdit />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="10" style={{ textAlign: 'center', padding: '20px' }}>
-                  Tidak ada data rekap kehadiran
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <button
-        className="kehadiran-siswa-rekap-back"
-        onClick={() => window.history.back()}
-      >
-        <FaArrowLeft /> Kembali
-      </button>
-
-      {/* MODAL EDIT */}
-      {showEditModal && (
-        <div className="kehadiran-siswa-rekap-modal-overlay">
-          <div className="kehadiran-siswa-rekap-modal">
-            <h3 className="kehadiran-siswa-rekap-modal-title">
-              Edit Rekap Kehadiran
-            </h3>
-
-            <div className="kehadiran-siswa-rekap-modal-body">
-              <label>Hadir</label>
-              <input
-                type="number"
-                min="0"
-                value={form.hadir}
-                onChange={(e) =>
-                  setForm({ ...form, hadir: e.target.value })
-                }
-              />
-
-              <label>Terlambat</label>
-              <input
-                type="number"
-                min="0"
-                value={form.terlambat}
-                onChange={(e) =>
-                  setForm({ ...form, terlambat: e.target.value })
-                }
-              />
-
-              <label>Izin</label>
-              <input
-                type="number"
-                min="0"
-                value={form.izin}
-                onChange={(e) =>
-                  setForm({ ...form, izin: e.target.value })
-                }
-              />
-
-              <label>Sakit</label>
-              <input
-                type="number"
-                min="0"
-                value={form.sakit}
-                onChange={(e) =>
-                  setForm({ ...form, sakit: e.target.value })
-                }
-              />
-
-              <label>Alfa</label>
-              <input
-                type="number"
-                min="0"
-                value={form.alfa}
-                onChange={(e) =>
-                  setForm({ ...form, alfa: e.target.value })
-                }
-              />
-
-              <label>Pulang</label>
-              <input
-                type="number"
-                min="0"
-                value={form.pulang}
-                onChange={(e) =>
-                  setForm({ ...form, pulang: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="kehadiran-siswa-rekap-modal-actions">
-              <button
-                className="kehadiran-siswa-rekap-modal-cancel"
-                onClick={() => setShowEditModal(false)}
-              >
-                Batal
-              </button>
-
-              <button
-                type="button"
-                className="kehadiran-siswa-rekap-modal-save"
-                onClick={handleSave}
-              >
-                Simpan
-              </button>
-            </div>
-          </div>
+                    {showExportMenu && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                         <button 
+                           onClick={handleExportExcel}
+                           className="w-full px-5 py-3 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors font-bold text-gray-700"
+                         >
+                            <FaFileExcel className="text-green-600" /> Excel (.xlsx)
+                         </button>
+                         <button 
+                           onClick={handleExportPDF}
+                           className="w-full px-5 py-3 text-left flex items-center gap-3 hover:bg-gray-50 transition-colors font-bold text-gray-700"
+                         >
+                            <FaFilePdf className="text-red-600" /> PDF (.pdf)
+                         </button>
+                      </div>
+                    )}
+                 </div>
+              </div>
+           </div>
         </div>
-      )}
 
-      {/* MODAL DETAIL */}
-      {showDetailModal && selectedDetail && (
-        <div className="detail-kehadiran-overlay">
-          <div className="detail-kehadiran-modal">
-            <div className="detail-kehadiran-header">
-              <h3>Detail Kehadiran - {selectedDetail.nama}</h3>
-              <button onClick={() => setShowDetailModal(false)}>✕</button>
-            </div>
-
-            <table className="detail-kehadiran-table">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Tanggal</th>
-                  <th>Jam Pelajaran</th>
-                  <th>Mata Pelajaran</th>
-                  <th>Guru</th>
-                  <th>Keterangan</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedDetail.detail && selectedDetail.detail.length > 0 ? (
-                  selectedDetail.detail.map((item, index) => (
-                    <tr key={index}>
-                      <td>{item.no}</td>
-                      <td>{item.tanggal}</td>
-                      <td>{item.jam}</td>
-                      <td>{item.mapel}</td>
-                      <td>{item.guru}</td>
-                      <td>{item.keterangan}</td>
-                      <td>
-                        <span className={`badge ${item.badgeClass}`}>
-                          {item.status}
-                        </span>
-                      </td>
+        {/* TABLE CONTENT */}
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+           <div className="overflow-x-auto">
+              <table className="w-full">
+                 <thead>
+                    <tr className="bg-gray-50/50">
+                       <th className="px-6 py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Siswa</th>
+                       <th className="px-4 py-5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hadir</th>
+                       <th className="px-4 py-5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Izin</th>
+                       <th className="px-4 py-5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sakit</th>
+                       <th className="px-4 py-5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Alfa</th>
+                       <th className="px-4 py-5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Late</th>
+                       <th className="px-4 py-5 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pulang</th>
+                       <th className="px-6 py-5 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aksi</th>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>
-                      Tidak ada detail kehadiran
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                 </thead>
+                 <tbody className="divide-y divide-gray-50">
+                    {rekapData.length > 0 ? (
+                      rekapData.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50/30 transition-colors">
+                           <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                 <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200 uppercase">
+                                    {item.student?.user?.name?.charAt(0)}
+                                 </div>
+                                 <div>
+                                    <p className="font-bold text-gray-900">{item.student?.user?.name}</p>
+                                    <p className="text-[10px] text-gray-500 font-medium tracking-wider">NISN: {item.student?.nisn || '-'}</p>
+                                 </div>
+                              </div>
+                           </td>
+                           <td className="px-4 py-4 text-center text-blue-600 font-black">{item.totals?.present || 0}</td>
+                           <td className="px-4 py-4 text-center text-blue-500 font-black">{item.totals?.excused || 0}</td>
+                           <td className="px-4 py-4 text-center text-purple-600 font-black">{item.totals?.sick || 0}</td>
+                           <td className="px-4 py-4 text-center text-red-600 font-black">{item.totals?.absent || 0}</td>
+                           <td className="px-4 py-4 text-center text-yellow-600 font-black">{item.totals?.late || 0}</td>
+                           <td className="px-4 py-4 text-center text-orange-600 font-black">{item.totals?.return || 0}</td>
+                           <td className="px-6 py-4 text-right">
+                              <button 
+                                onClick={() => fetchStudentDetail(item)}
+                                className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
+                              >
+                                 <FaEye />
+                              </button>
+                           </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="py-20 text-center">
+                           <div className="w-20 h-20 bg-gray-50 text-gray-200 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                              <FaHistory />
+                           </div>
+                           <p className="text-gray-400 font-bold">Tidak ada data rekap untuk periode ini</p>
+                        </td>
+                      </tr>
+                    )}
+                 </tbody>
+              </table>
+           </div>
+        </div>
+
+        {/* BACK BUTTON */}
+        <div className="mt-12 flex justify-center">
+           <button 
+             onClick={() => window.history.back()}
+             className="flex items-center gap-3 px-8 py-4 bg-white border-2 border-gray-200 rounded-2xl font-bold text-gray-600 hover:border-gray-900 hover:text-gray-900 transition-all shadow-sm"
+           >
+              <FaArrowLeft />
+              <span>Kembali</span>
+           </button>
+        </div>
+      </div>
+
+      {/* DETAIL MODAL */}
+      {showDetailModal && selectedStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDetailModal(false)} />
+           <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="p-8 pb-4 flex items-center justify-between">
+                 <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200 text-2xl uppercase">
+                       {selectedStudent.user?.name?.charAt(0)}
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-gray-900">{selectedStudent.user?.name}</h3>
+                       <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">{kelas?.name}</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setShowDetailModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 transition-all">
+                    <FaTimes />
+                 </button>
+              </div>
+
+              <div className="p-8 overflow-y-auto">
+                 {modalLoading ? (
+                   <div className="py-20 text-center text-blue-600">
+                      <FaSpinner className="animate-spin text-3xl mx-auto mb-4" />
+                      <p className="font-bold">Memuat riwayat kehadiran...</p>
+                   </div>
+                 ) : (
+                   <div className="space-y-6">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                         {Object.entries(statusConfig).map(([key, config]) => {
+                            const count = studentHistory.filter(h => h.status.toLowerCase() === key).length;
+                            return (
+                               <div key={key} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
+                                  <div className="flex items-center gap-3 mb-1">
+                                     <div className={`w-2 h-2 rounded-full ${config.dot}`} />
+                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{config.label}</span>
+                                  </div>
+                                  <p className="text-2xl font-black text-gray-900">{count}</p>
+                               </div>
+                            );
+                         })}
+                      </div>
+
+                      <div className="bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden">
+                         <table className="w-full text-left">
+                            <thead>
+                               <tr className="bg-white/50">
+                                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tanggal</th>
+                                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mata Pelajaran</th>
+                                  <th className="px-6 py-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Keterangan</th>
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                               {studentHistory.length > 0 ? studentHistory.map((item, idx) => {
+                                 const config = statusConfig[item.status.toLowerCase()] || statusConfig.present;
+                                 return (
+                                   <tr key={idx} className="bg-white/30">
+                                      <td className="px-6 py-4">
+                                         <p className="font-bold text-gray-800 text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                         <p className="text-[10px] text-gray-500 font-bold uppercase">{item.schedule?.start_time.substring(0,5)} - {item.schedule?.end_time.substring(0,5)}</p>
+                                      </td>
+                                      <td className="px-6 py-4 font-bold text-gray-700 text-sm">
+                                         {item.schedule?.subject?.name}
+                                         <p className="text-[10px] text-gray-400 font-medium">Oleh: {item.schedule?.teacher?.user?.name}</p>
+                                      </td>
+                                      <td className="px-6 py-4 text-center">
+                                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${config.bg} text-[10px] font-bold uppercase tracking-wide`}>
+                                            {config.label}
+                                         </div>
+                                      </td>
+                                      <td className="px-6 py-4 italic text-gray-500 text-xs">
+                                         {item.notes || '-'}
+                                      </td>
+                                   </tr>
+                                 );
+                               }) : (
+                                 <tr>
+                                    <td colSpan="4" className="py-10 text-center text-gray-400 font-medium">Tidak ada riwayat untuk periode ini</td>
+                                 </tr>
+                               )}
+                            </tbody>
+                         </table>
+                      </div>
+                   </div>
+                 )}
+              </div>
+
+              <div className="p-8 border-t border-gray-100 bg-gray-50/50">
+                 <button 
+                   onClick={() => setShowDetailModal(false)}
+                   className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-blue-600 transition-all shadow-lg"
+                 >
+                    Tutup Detail
+                 </button>
+              </div>
+           </div>
         </div>
       )}
     </div>

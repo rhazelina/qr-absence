@@ -1,442 +1,376 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import './KehadiranSiswaShow.css';
-import NavbarWaka from '../../components/Waka/NavbarWaka';
-import { FaArrowLeft, FaChevronDown, FaClipboardCheck, FaDoorOpen, FaEdit, FaSave, FaSpinner, FaTimes, FaUser, FaEye, } from 'react-icons/fa';
-import { FaChartBar } from 'react-icons/fa6';
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import "./KehadiranSiswaShow.css";
+import NavbarWaka from "../../components/Waka/NavbarWaka";
+import apiService from "../../utils/api";
+import {
+  FaArrowLeft,
+  FaChevronDown,
+  FaClipboardCheck,
+  FaDoorOpen,
+  FaEdit,
+  FaSave,
+  FaSpinner,
+  FaTimes,
+  FaUser,
+  FaEye,
+  FaCalendarAlt,
+  FaChevronRight,
+  FaCheckCircle,
+  FaClock,
+  FaInfoCircle,
+  FaHeartbeat,
+  FaRegTimesCircle,
+  FaSignOutAlt,
+  FaBriefcase,
+  FaHistory,
+  FaChartBar,
+  FaUserTie,
+  FaMapMarkerAlt
+} from "react-icons/fa";
+
+const statusConfig = {
+  present: { label: 'Hadir', bg: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500', icon: <FaCheckCircle />, color: "#1FA83D" },
+  late: { label: 'Terlambat', bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500', icon: <FaClock />, color: "#d8bf1a" },
+  excused: { label: 'Izin', bg: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500', icon: <FaInfoCircle />, color: "#ECE10A" }, // Match CSS
+  sick: { label: 'Sakit', bg: 'bg-purple-100 text-purple-700 border-purple-200', dot: 'bg-purple-500', icon: <FaHeartbeat />, color: "#9A0898" },
+  absent: { label: 'Alfa', bg: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500', icon: <FaRegTimesCircle />, color: "#D90000" },
+  return: { label: 'Pulang', bg: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-500', icon: <FaSignOutAlt />, color: "#FF5F1A" }
+};
 
 function KehadiranSiswaShow() {
-
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [kelas, setKelas] = useState(null);
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [detailSiswa, setDetailSiswa] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [stats, setStats] = useState({
+    present: 0,
+    late: 0,
+    excused: 0,
+    sick: 0,
+    absent: 0,
+    return: 0
+  });
 
-  const handleDetailClick = (siswa) => {
-    setDetailSiswa(siswa);
+  useEffect(() => {
+    fetchData();
+  }, [id, selectedDate]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [classRes, attendanceRes] = await Promise.all([
+        apiService.getClass(id),
+        apiService.getClassAttendanceByDate(id, selectedDate)
+      ]);
+
+      setKelas(classRes.data || classRes);
+      const items = attendanceRes.items || [];
+      setAttendanceData(items);
+
+      // Calculate overall stats for the day
+      const dailyStats = {
+        present: 0,
+        late: 0,
+        excused: 0,
+        sick: 0,
+        absent: 0,
+        return: 0
+      };
+
+      // Since multiple schedules exist, we count unique students' latest/dominant status?
+      // For now, let's just aggregate all attendance records found in all items.
+      const seenAttendance = new Set();
+      items.forEach(item => {
+        item.attendances.forEach(att => {
+          if (!seenAttendance.has(att.id)) {
+            const status = att.status.toLowerCase();
+            if (dailyStats[status] !== undefined) {
+              dailyStats[status]++;
+            }
+            seenAttendance.add(att.id);
+          }
+        });
+      });
+
+      setStats(dailyStats);
+    } catch (error) {
+      console.error("Error fetching class attendance:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShowDetail = (att, schedule) => {
+    setSelectedItem({ att, schedule });
     setShowDetailModal(true);
   };
 
-  const { id } = useParams();
-  console.log(id);
-
-  const [kelas, setKelas] = useState(null);
-  const [siswaList, setSiswaList] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedSiswa, setSelectedSiswa] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState('');
-
-  // Jumlah status - diinisialisasi dengan 0, akan dihitung dari data siswa
-  const [statusCounts, setStatusCounts] = useState({
-    hadir: 0,
-    izin: 0,
-    sakit: 0,
-    alfa: 0,
-    pulang: 0,
-    terlambat: 0
-  });
-
-
-  // Fungsi untuk menghitung jumlah status dari data siswa
-  const hitungStatusCounts = (dataSiswa) => {
-    const counts = {
-      hadir: 0,
-      izin: 0,
-      sakit: 0,
-      alfa: 0,
-      pulang: 0,
-      terlambat: 0
-    };
-
-
-    dataSiswa.forEach(siswa => {
-      const status = siswa.status.toLowerCase();
-      if (status === 'hadir') counts.hadir++;
-      else if (status === 'izin') counts.izin++;
-      else if (status === 'sakit') counts.sakit++;
-      else if (status === 'alfa') counts.alfa++;
-      else if (status === 'pulang') counts.pulang++;
-      else if (status === 'terlambat') counts.terlambat++;
-    });
-
-    return counts;
-  };
-
-  useEffect(() => {
-    // TODO: Ganti dengan API call untuk fetch data kelas dan siswa
-    // Contoh:
-    // fetchKelasDanSiswa(id).then(data => {
-    //   setKelas(data.kelas);
-    //   setSiswaList(data.siswa);
-    //   const counts = hitungStatusCounts(data.siswa);
-    //   setStatusCounts(counts);
-    //   setLoading(false);
-    // }).catch(error => {
-    //   console.error('Error fetching data:', error);
-    //   setLoading(false);
-    // });
-    
-    setLoading(false);
-  }, [id]);
-
-  const handleEditClick = (siswa) => {
-    setSelectedSiswa(siswa);
-    setSelectedStatus(siswa.status);
-    setShowEditModal(true);
-  };
-
-  const handleStatusUpdate = () => {
-    // TODO: Ganti dengan API call untuk update status
-    // Contoh:
-    // updateStatusKehadiran(selectedSiswa.id, selectedStatus)
-    //   .then(response => {
-    //     const updatedList = siswaList.map(siswa =>
-    //       siswa.id === selectedSiswa.id
-    //         ? { ...siswa, status: selectedStatus }
-    //         : siswa
-    //     );
-    //     setSiswaList(updatedList);
-    //     const counts = hitungStatusCounts(updatedList);
-    //     setStatusCounts(counts);
-    //     setShowEditModal(false);
-    //   })
-    //   .catch(error => {
-    //     console.error('Error updating status:', error);
-    //   });
-
-    const updatedList = siswaList.map(siswa =>
-      siswa.id === selectedSiswa.id
-        ? { ...siswa, status: selectedStatus }
-        : siswa
-    );
-
-    setSiswaList(updatedList);
-
-    // Hitung ulang status counts setelah update
-    const counts = hitungStatusCounts(updatedList);
-    setStatusCounts(counts);
-
-    setShowEditModal(false);
-  };
-
-  if (loading) {
+  if (loading && !kelas) {
     return (
-      <div className="kontainer-loading">
-        <div className="teks-loading">
-          <FaSpinner /> Loading...
-        </div>
+      <div className="flex items-center justify-center min-vh-100 bg-gray-50 text-blue-600">
+        <FaSpinner className="animate-spin text-4xl" />
       </div>
     );
   }
 
   return (
-    <div className="tampilan-kehadiran-siswa">
+    <div className="min-h-screen bg-gray-50 pb-12">
       <NavbarWaka />
-      <div className="kontainer-tampilan">
-        {/* Header */}
-        <div className="header-halaman-tampilan">
+
+      <div className="pt-24 px-4 max-w-7xl mx-auto">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap pb-2">
+            <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <FaChevronRight className="text-[10px]" />
+            <Link to="/waka/kehadiran-siswa" className="hover:text-blue-600 transition-colors">Kehadiran Siswa</Link>
+            <FaChevronRight className="text-[10px]" />
+            <span className="text-blue-600 font-bold">{kelas?.name}</span>
         </div>
 
-        {/* Kartu Info Kelas & Statistik */}
-        <div className="kartu-utama">
-          {/* Header Kelas */}
-          <div className="header-kelas">
-            <div className="bagian-judul-kelas">
-              <div className="ikon-judul-kelas">
-                <div className="ikon-header-kelas">
-                  <FaDoorOpen />
-                </div>
-                <div>
-                  <h2>{kelas?.nama_kelas}</h2>
-                  <p className="wali-kelas-text">
-                    Wali Kelas: {kelas?.wali_kelas}
-                  </p>
-                </div>
+        {/* HEADER SECTION */}
+        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 mb-8">
+           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+              <div className="flex items-center gap-6">
+                 <div className="p-5 bg-blue-600 text-white rounded-3xl shadow-xl shadow-blue-200">
+                    <FaDoorOpen className="text-4xl" />
+                 </div>
+                 <div>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">{kelas?.name}</h1>
+                    <div className="flex flex-wrap items-center gap-4 mt-2">
+                       <span className="flex items-center gap-2 text-gray-500 font-bold">
+                          <FaUserTie className="text-blue-500" />
+                          {kelas?.homeroom_teacher?.user?.name || 'Wali Kelas Tidak Set'}
+                       </span>
+                       <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                       <span className="flex items-center gap-2 text-gray-500 font-bold">
+                          <FaMapMarkerAlt className="text-red-500" />
+                          {kelas?.room?.name || 'Ruangan -'}
+                       </span>
+                    </div>
+                 </div>
               </div>
 
-              <div className="wrapper-bagian-dropdown">
-                {/* Filter Mata Pelajaran */}
-                <div className="bagian-dropdown">
-                  <select className="dropdown-kelas">
-                    <option value="">Pilih Mata Pelajaran</option>
-                    <option>Matematika</option>
-                    <option>Bahasa Indonesia</option>
-                    <option>IPA</option>
-                    <option>IPS</option>
-                    <option>Bahasa Inggris</option>
-                  </select>
-                  <FaChevronDown className="ikon-dropdown" />
-                </div>
-
-                {/* Tombol Lihat Rekap */}
-                <Link
-                  to="/waka/kehadiran-siswa/rekap"
-                  className="tombol-rekap-inline"
-                >
-                  <FaChartBar />
-                  Lihat Rekap
-                </Link>
+              <div className="flex flex-wrap items-center gap-4">
+                 <div className="relative group">
+                    <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" />
+                    <input 
+                       type="date"
+                       className="pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-700 cursor-pointer"
+                       value={selectedDate}
+                       onChange={(e) => setSelectedDate(e.target.value)}
+                    />
+                 </div>
+                 <Link 
+                   to={`/waka/kehadiran-siswa/rekap?class_id=${id}`}
+                   className="flex items-center gap-2 px-6 py-3.5 bg-gray-900 text-white rounded-2xl font-bold hover:bg-blue-600 shadow-lg shadow-gray-900/10 hover:shadow-blue-600/20 transition-all"
+                 >
+                    <FaChartBar />
+                    <span>Rekap Bulanan</span>
+                 </Link>
               </div>
-            </div>
+           </div>
 
-            {/* Statistik Status */}
-            <div className="grid-statistik-status">
-              <div className="kartu-stat stat-hadir">
-                <div className="ikon-stat">
-                </div>
-                <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.hadir}</div>
-                  <div className="label-stat">Hadir</div>
-                </div>
-              </div>
-
-              <div className="kartu-stat stat-izin">
-                <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.izin}</div>
-                  <div className="label-stat">Izin</div>
-                </div>
-              </div>
-
-              <div className="kartu-stat stat-sakit">
-                <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.sakit}</div>
-                  <div className="label-stat">Sakit</div>
-                </div>
-              </div>
-
-              <div className="kartu-stat stat-terlambat">
-                <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.terlambat}</div>
-                  <div className="label-stat">Terlambat</div>
-                </div>
-              </div>
-
-
-              <div className="kartu-stat stat-alfa">
-                <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.alfa}</div>
-                  <div className="label-stat">Alfa</div>
-                </div>
-              </div>
-
-              <div className="kartu-stat stat-pulang">
-                <div className="info-stat">
-                  <div className="jumlah-stat">{statusCounts.pulang}</div>
-                  <div className="label-stat">Pulang</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabel */}
-          <div className="bagian-tabel">
-            <div className="wrapper-tabel-tampilan">
-              <table className="tabel-kehadiran">
-                <thead>
-                  <tr>
-                    <th className="th-nomor">No</th>
-                    <th className="th-nisn">NISN</th>
-                    <th className="th-nama">Nama Siswa</th>
-                    <th className="th-mapel">Mata Pelajaran</th>
-                    <th className="th-status">Status</th>
-                    <th className="th-aksi">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {siswaList.length > 0 ? (
-                    siswaList.map((siswa, index) => (
-                      <tr key={siswa.id} className="baris-tabel">
-                        <td className="td-tengah">
-                          <span className="badge-nomor">{index + 1}</span>
-                        </td>
-                        <td className="td-nisn">{siswa.nisn}</td>
-                        <td className="td-nama">{siswa.nama}</td>
-                        <td className="td-mapel">{siswa.mata_pelajaran}</td>
-                        <td className="td-status">
-                          <span className={`badge-status status-${siswa.status.toLowerCase()}`}>
-                            {siswa.status}
-                          </span>
-                        </td>
-                        <td className="td-tengah">
-                          <div className="wrapper-aksi">
-                            <button
-                              className="tombol-edit-status"
-                              onClick={() => handleEditClick(siswa)}
-                              title="Edit Status"
-                            >
-                              <FaEdit />
-                            </button>
-
-                            <button
-                              className="tombol-detail-status"
-                              onClick={() => handleDetailClick(siswa)}
-                              title="Detail Kehadiran"
-                            >
-                              <FaEye />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="td-tengah">
-                        Tidak ada data siswa
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+           {/* STATS STRIP */}
+           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-10">
+              {Object.entries(statusConfig).map(([key, config]) => (
+                 <div key={key} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
+                    <div className="flex items-center gap-3 mb-1">
+                       <div className={`w-2 h-2 rounded-full ${config.dot}`} />
+                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{config.label}</span>
+                    </div>
+                    <p className="text-2xl font-black text-gray-900">{stats[key] || 0}</p>
+                 </div>
+              ))}
+           </div>
         </div>
 
-        {/* Tombol Kembali */}
-        <div className="bagian-kembali">
-          <Link to="/waka/kehadiran-siswa" className="tombol-kembali-tampilan">
-            <FaArrowLeft />
-            <span>Kembali</span>
-          </Link>
+        {/* ATTENDANCE DATA */}
+        {attendanceData.length > 0 ? (
+          <div className="space-y-8">
+             {attendanceData.map((item, idx) => (
+                <div key={idx} className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                   <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                         <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-50">
+                            <FaClipboardCheck className="text-xl" />
+                         </div>
+                         <div>
+                            <h3 className="font-bold text-gray-900">{item.schedule?.subject?.name}</h3>
+                            <div className="flex items-center gap-3 text-xs text-gray-500 font-medium mt-1">
+                               <span className="flex items-center gap-1.5"><FaClock className="text-blue-400" /> {item.schedule?.start_time} - {item.schedule?.end_time}</span>
+                               <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                               <span className="flex items-center gap-1.5"><FaUserTie className="text-blue-400" /> {item.schedule?.teacher?.user?.name}</span>
+                            </div>
+                         </div>
+                      </div>
+                      <span className="px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                         {item.attendances.length} Siswa Tercatat
+                      </span>
+                   </div>
+
+                   <div className="overflow-x-auto">
+                      <table className="w-full">
+                         <thead>
+                            <tr className="bg-white">
+                               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Siswa</th>
+                               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Waktu</th>
+                               <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aksi</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-50">
+                            {item.attendances.map((att, attIdx) => {
+                               const config = statusConfig[att.status.toLowerCase()] || statusConfig.present;
+                               return (
+                                  <tr key={attIdx} className="hover:bg-gray-50/50 transition-colors">
+                                     <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                           <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200">
+                                              {att.student?.user?.name?.charAt(0)}
+                                           </div>
+                                           <div>
+                                              <p className="font-bold text-gray-900">{att.student?.user?.name}</p>
+                                              <p className="text-[10px] text-gray-500 font-medium">NISN: {att.student?.nisn || '-'}</p>
+                                           </div>
+                                        </div>
+                                     </td>
+                                     <td className="px-6 py-4">
+                                        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border ${config.bg} text-[11px] font-bold uppercase tracking-wide`}>
+                                           {config.icon}
+                                           {config.label}
+                                        </div>
+                                     </td>
+                                     <td className="px-6 py-4">
+                                        <span className="text-sm font-bold text-gray-700">{att.time || '-'}</span>
+                                     </td>
+                                     <td className="px-6 py-4 text-right">
+                                        <button 
+                                          onClick={() => handleShowDetail(att, item.schedule)}
+                                          className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
+                                        >
+                                           <FaEye />
+                                        </button>
+                                     </td>
+                                  </tr>
+                               );
+                            })}
+                         </tbody>
+                      </table>
+                   </div>
+                </div>
+             ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-[2rem] p-20 text-center border-2 border-dashed border-gray-200">
+             <div className="w-24 h-24 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                <FaHistory />
+             </div>
+             <h3 className="text-2xl font-black text-gray-800 mb-2">Belum Ada Data</h3>
+             <p className="text-gray-500 font-medium max-w-sm mx-auto">Tidak ada jadwal atau rekaman kehadiran yang ditemukan pada tanggal {selectedDate}</p>
+             <button 
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+             >
+                Kembali ke Hari Ini
+             </button>
+          </div>
+        )}
+
+        {/* BACK BUTTON */}
+        <div className="mt-12 flex justify-center">
+           <Link to="/waka/kehadiran-siswa" className="flex items-center gap-3 px-8 py-4 bg-white border-2 border-gray-200 rounded-2xl font-bold text-gray-600 hover:border-gray-900 hover:text-gray-900 transition-all shadow-sm">
+              <FaArrowLeft />
+              <span>Kembali ke Daftar Kelas</span>
+           </Link>
         </div>
       </div>
 
-      {/* Modal Edit Status */}
-      {showEditModal && (
-        <div className="overlay-modal">
-          <div className="konten-modal">
-            <div className="header-modal">
-              <h3>Edit Kehadiran</h3>
-              <button
-                className="tutup-modal"
-                onClick={() => setShowEditModal(false)}
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="body-modal">
-              <div className="info-siswa-modal">
-                <div className="avatar-siswa">
-                  <FaUser />
-                </div>
-                <div className="detail-siswa">
-                  <h4>{selectedSiswa?.nama}</h4>
-                  <p>NISN: {selectedSiswa?.nisn}</p>
-                </div>
+      {/* DETAIL MODAL */}
+      {showDetailModal && selectedItem && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDetailModal(false)} />
+           <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-modal-in">
+              <div className="p-8 pb-0 flex items-center justify-between">
+                 <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                    <FaClipboardCheck className="text-2xl" />
+                 </div>
+                 <button onClick={() => setShowDetailModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 transition-all">
+                    <FaTimes />
+                 </button>
               </div>
 
-              <div className="grup-form-modal">
-                <label className="label-form-modal">
-                  <FaClipboardCheck />
-                  Pilih Kehadiran
-                </label>
-                <div className="wrapper-select-modal">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="select-status-modal"
-                  >
-                    <option value="Hadir">Hadir</option>
-                    <option value="Izin">Izin</option>
-                    <option value="Sakit">Sakit</option>
-                    <option value="Alfa">Alfa</option>
-                    <option value="Pulang">Pulang</option>
-                    <option value="Terlambat">Terlambat</option>
-                  </select>
-                  <FaChevronDown className="ikon-select-modal" />
-                </div>
+              <div className="p-8">
+                 <div className="flex items-center gap-4 mb-8">
+                    <div className="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200 text-2xl">
+                       {selectedItem.att.student?.user?.name?.charAt(0)}
+                    </div>
+                    <div>
+                       <h3 className="text-xl font-black text-gray-900">{selectedItem.att.student?.user?.name}</h3>
+                       <p className="text-sm text-gray-500 font-bold">NISN: {selectedItem.att.student?.nisn}</p>
+                    </div>
+                 </div>
+
+                 <div className="space-y-4">
+                    <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
+                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">INFORMASI PELAJARAN</p>
+                       <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                             <span className="text-sm font-medium text-gray-500">Mata Pelajaran</span>
+                             <span className="text-sm font-bold text-gray-900">{selectedItem.schedule?.subject?.name}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                             <span className="text-sm font-medium text-gray-500">Guru</span>
+                             <span className="text-sm font-bold text-gray-900">{selectedItem.schedule?.teacher?.user?.name}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                             <span className="text-sm font-medium text-gray-500">Sesi</span>
+                             <span className="text-sm font-bold text-gray-900">{selectedItem.schedule?.start_time} - {selectedItem.schedule?.end_time}</span>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
+                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">STATUS KEHADIRAN</p>
+                       <div className="flex items-center gap-4">
+                          <div className={`px-4 py-2 rounded-full border font-bold text-xs uppercase tracking-wider ${statusConfig[selectedItem.att.status.toLowerCase()]?.bg}`}>
+                             {statusConfig[selectedItem.att.status.toLowerCase()]?.label}
+                          </div>
+                          <span className="text-sm font-bold text-gray-700">{selectedItem.att.time || '-'}</span>
+                       </div>
+                       {selectedItem.att.note && (
+                          <div className="mt-4 p-4 bg-white rounded-2xl border border-gray-200 italic text-sm text-gray-600">
+                             "{selectedItem.att.note}"
+                          </div>
+                       )}
+                    </div>
+
+                    {selectedItem.att.document_path && (
+                      <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">LAMPIRAN / BUKTI</p>
+                        <img 
+                          src={selectedItem.att.document_path} 
+                          alt="Bukti Kehadiran" 
+                          className="w-full rounded-2xl shadow-sm border border-gray-200"
+                        />
+                      </div>
+                    )}
+                 </div>
+
+                 <button 
+                   onClick={() => setShowDetailModal(false)}
+                   className="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-blue-600 transition-all shadow-lg"
+                 >
+                    Tutup Detail
+                 </button>
               </div>
-            </div>
-
-            <div className="footer-modal">
-              <button
-                className="tombol-modal-batal"
-                onClick={() => setShowEditModal(false)}
-              >
-                <FaTimes />
-                Batal
-              </button>
-              <button
-                className="tombol-modal-simpan"
-                onClick={handleStatusUpdate}
-              >
-                <FaSave />
-                Simpan
-              </button>
-            </div>
-          </div>
-        </div>
-
-
-      )}
-      {showDetailModal && detailSiswa && (
-        <div className="overlay-modal">
-          <div className="modal-detail">
-            <div className="modal-detail-header">
-              <FaClipboardCheck />
-              <h3>Detail Kehadiran</h3>
-              <button onClick={() => setShowDetailModal(false)}>
-                <FaTimes />
-              </button>
-            </div>
-
-            <div className="modal-detail-body">
-              <div className="detail-row">
-                <span>Tanggal:</span>
-                <strong>{detailSiswa.tanggal || '-'}</strong>
-              </div>
-
-              <div className="detail-row">
-                <span>Jam Pelajaran:</span>
-                <strong>{detailSiswa.jam_pelajaran || '-'}</strong>
-              </div>
-
-              <div className="detail-row">
-                <span>Mata Pelajaran:</span>
-                <strong>{detailSiswa.mata_pelajaran}</strong>
-              </div>
-
-              <div className="detail-row">
-                <span>Nama Siswa:</span>
-                <strong>{detailSiswa.nama}</strong>
-              </div>
-
-              <div className="detail-row">
-                <span>Status:</span>
-                <span className={`badge-status status-${detailSiswa.status.toLowerCase()}`}>
-                  {detailSiswa.status}
-                </span>
-              </div>
-
-              <div className="detail-row">
-                <span>Keterangan:</span>
-                <strong>{detailSiswa.keterangan || '-'}</strong>
-              </div>
-
-              <div className="detail-foto">
-                <p>Bukti Kehadiran</p>
-
-                {detailSiswa.status === 'Hadir' ? (
-                  <div className="bukti-hadir">
-                    <FaClipboardCheck />
-                    <span>Hadir & tercatat di sistem</span>
-                  </div>
-                ) : detailSiswa.bukti_foto ? (
-                  <div className="wrapper-foto">
-                    <img src={detailSiswa.bukti_foto} alt="Bukti kehadiran" />
-                  </div>
-                ) : (
-                  <div className="wrapper-foto">
-                    <div className="foto-kosong">Tidak ada bukti</div>
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </div>
+           </div>
         </div>
       )}
-
-
     </div>
   );
 }

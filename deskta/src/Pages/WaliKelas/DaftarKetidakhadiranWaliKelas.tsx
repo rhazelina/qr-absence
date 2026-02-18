@@ -26,7 +26,7 @@ interface DaftarKetidakhadiranWaliKelasProps {
 }
 
 export default function DaftarKetidakhadiranWaliKelas({
-  user = { name: "Wali Kelas", role: "walikelas" },
+  user = { name: "Wali Kelas", role: "wakel" },
   currentPage = "daftar-ketidakhadiran-walikelas",
   onMenuClick = () => {},
   onLogout = () => {},

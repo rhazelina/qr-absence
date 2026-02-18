@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './Jadwal.css';
+import apiService from '../../utils/api';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
 import { FaUser, FaIdCard, FaChalkboardTeacher, FaCalendarAlt, FaClock } from 'react-icons/fa';
 
@@ -15,27 +16,28 @@ const Jadwal = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = { 
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      };
-
+      // Use apiService for consistency and base URL handling
+      // Assuming apiService has methods or we can use apiService.get()
+      // If specific methods don't exist, we can add them or use the generic get
+      
+      // We'll use the generic get method if specific ones aren't available, 
+      // but typically we'd look for getProfile() and getTeacherSchedules()
+      
+      // Checking PresensiSiswa.jsx, it uses apiService.getTeacherScheduleStudents
+      // Checking DashboardSiswa.jsx, it uses apiService.getProfile()
+      
+      // Let's rely on apiService
       const [meRes, scheduleRes] = await Promise.all([
-        fetch('http://localhost:8000/api/me', { headers }),
-        fetch('http://localhost:8000/api/me/schedules', { headers })
+        apiService.getProfile(), // Fits /auth/me or similar
+        apiService.get('/me/schedules') // Generic get for schedules
       ]);
 
-      if (meRes.ok) {
-        const meData = await meRes.json();
-        // The /me endpoint usually returns the user object, which might have teacherProfile loaded or we need to access it
-        // Phase 2 implementation of AuthController::me returns user with relationships.
-        setProfile(meData.data || meData);
+      if (meRes) {
+        setProfile(meRes.data || meRes);
       }
 
-      if (scheduleRes.ok) {
-        const scheduleData = await scheduleRes.json();
-        setSchedules(scheduleData.items || []);
+      if (scheduleRes) {
+        setSchedules(scheduleRes.items || []);
       }
 
     } catch (error) {

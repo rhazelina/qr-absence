@@ -100,7 +100,7 @@ export default function JadwalSiswa({
                                 marginBottom: 4,
                             }}
                         >
-                            {profile?.student_profile?.class?.name || "Memuat Kelas..."}
+                            {profile?.profile?.class_name || profile?.student_profile?.class?.name || "Memuat Kelas..."}
                         </div>
                         <div
                             style={{
@@ -151,7 +151,7 @@ export default function JadwalSiswa({
                                                         {item.subject}
                                                     </div>
                                                     <div style={{ fontSize: 14, color: "#64748B" }}>
-                                                        Pengajar: {item.teacher}
+                                                        Pengajar: {item.teacher?.name || item.teacher || "-"}
                                                     </div>
                                                 </div>
                                                 <div style={{ textAlign: "right" }}>

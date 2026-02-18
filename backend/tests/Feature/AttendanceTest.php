@@ -17,7 +17,7 @@ it('allows waka to record manual attendance', function () {
 
     $student = User::factory()->student()->create();
     $student->refresh();
-    
+
     $classSchedule = ClassSchedule::factory()->create(['class_id' => $student->studentProfile->class_id]);
     $dailySchedule = DailySchedule::factory()->create(['class_schedule_id' => $classSchedule->id]);
     $schedule = ScheduleItem::factory()->create(['daily_schedule_id' => $dailySchedule->id]);
@@ -39,7 +39,7 @@ it('normalizes status from frontend in manual attendance', function () {
     $admin->refresh();
     $student = User::factory()->student()->create();
     $student->refresh();
-    
+
     $classSchedule = ClassSchedule::factory()->create(['class_id' => $student->studentProfile->class_id]);
     $dailySchedule = DailySchedule::factory()->create(['class_schedule_id' => $classSchedule->id]);
     $schedule = ScheduleItem::factory()->create([
@@ -178,4 +178,78 @@ it('allows student to access their own document', function () {
         ->getJson("/api/attendance/{$attendance->id}/document");
 
     $response->assertSuccessful();
+});
+
+it('allows homeroom teacher (wali kelas) to record bulk attendance for their class schedule', function () {
+    $classRoom = \App\Models\ClassRoom::factory()->create();
+
+    $waliKelas = User::factory()->teacher()->create();
+    // Assuming teacherProfile exists and related to user
+    if (! $waliKelas->teacherProfile) {
+        $waliKelas->teacherProfile()->create(['user_id' => $waliKelas->id]);
+        $waliKelas->refresh();
+    }
+    $waliKelas->teacherProfile->update(['homeroom_class_id' => $classRoom->id]);
+
+    $subjectTeacher = User::factory()->teacher()->create();
+    if (! $subjectTeacher->teacherProfile) {
+        $subjectTeacher->teacherProfile()->create(['user_id' => $subjectTeacher->id]);
+    }
+
+    $classSchedule = ClassSchedule::factory()->create(['class_id' => $classRoom->id]);
+    $dailySchedule = DailySchedule::factory()->create(['class_schedule_id' => $classSchedule->id]);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
+        'teacher_id' => $subjectTeacher->teacherProfile->id,
+    ]);
+
+    $student1 = User::factory()->student()->create();
+    // Assuming studentProfile exists
+    if (! $student1->studentProfile) {
+        $student1->studentProfile()->create(['user_id' => $student1->id]);
+        $student1->refresh();
+    }
+    $student1->studentProfile->update(['class_id' => $classRoom->id]);
+
+    $student2 = User::factory()->student()->create();
+    if (! $student2->studentProfile) {
+        $student2->studentProfile()->create(['user_id' => $student2->id]);
+        $student2->refresh();
+    }
+    $student2->studentProfile->update(['class_id' => $classRoom->id]);
+
+    // Create attendance items
+    $items = [
+        [
+            'student_id' => $student1->studentProfile->id,
+            'status' => 'hadir',
+            'reason' => null,
+        ],
+        [
+            'student_id' => $student2->studentProfile->id,
+            'status' => 'alfa',
+            'reason' => 'Bolos',
+        ],
+    ];
+
+    $response = $this->actingAs($waliKelas)
+        ->postJson('/api/attendance/bulk-manual', [
+            'schedule_id' => $schedule->id,
+            'date' => now()->toDateString(),
+            'items' => $items,
+        ]);
+
+    $response->assertSuccessful();
+
+    $this->assertDatabaseHas('attendances', [
+        'student_id' => $student1->studentProfile->id,
+        'schedule_id' => $schedule->id,
+        'status' => 'present',
+    ]);
+
+    $this->assertDatabaseHas('attendances', [
+        'student_id' => $student2->studentProfile->id,
+        'schedule_id' => $schedule->id,
+        'status' => 'absent',
+    ]);
 });

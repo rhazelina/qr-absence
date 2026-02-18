@@ -7,13 +7,65 @@ import apiService from '../../utils/api';
 
 // ==================== UTILITY FUNCTIONS ====================
 const getTodaySubjectCount = (scheduleData) => {
-  if (!scheduleData || !Array.isArray(scheduleData)) return 0;
-  return scheduleData.length || 0;
+  if (!scheduleData) return 0;
+
+  if (Array.isArray(scheduleData)) {
+    return scheduleData.length;
+  }
+
+  if (Array.isArray(scheduleData.schedules)) {
+    return scheduleData.schedules.length;
+  }
+
+  return 0;
+};
+
+const mapStatusToWeeklyStats = (summary = {}) => ({
+  hadir: summary.present || summary.hadir || 0,
+  terlambat: summary.late || summary.terlambat || 0,
+  pulang: summary.return || summary.pulang || 0,
+  izin: summary.excused || summary.izin || 0,
+  sakit: summary.sick || summary.sakit || 0,
+  alpha: summary.absent || summary.alpha || 0
+});
+
+const mapMonthlyTrendToLine = (trend = []) => {
+  if (!Array.isArray(trend)) return [];
+
+  const mapped = trend.map((item) => {
+    // Backend shape A: { month, percentage, present, total }
+    if (typeof item?.percentage === 'number') {
+      return {
+        month: item.month || '-',
+        percentage: Math.round(item.percentage),
+        hadir: item.present || item.hadir || 0,
+        total: item.total || 0
+      };
+    }
+
+    // Backend shape B: { month, hadir, izin, sakit, alpha, pulang, terlambat? }
+    const hadir = item?.hadir || item?.present || 0;
+    const terlambat = item?.terlambat || item?.late || 0;
+    const izin = item?.izin || item?.excused || 0;
+    const sakit = item?.sakit || item?.sick || 0;
+    const alpha = item?.alpha || item?.absent || 0;
+    const pulang = item?.pulang || item?.return || 0;
+    const total = hadir + terlambat + izin + sakit + alpha + pulang;
+
+    return {
+      month: item?.month || '-',
+      percentage: total > 0 ? Math.round(((hadir + terlambat) / total) * 100) : 0,
+      hadir: hadir + terlambat,
+      total
+    };
+  });
+
+  return mapped.slice(-6);
 };
 
 
 // ==================== COMPONENTS ====================
-const ProfileIcon = ({ gender, size = 80 }) => {
+const ProfileIcon = ({ size = 80 }) => {
   return (
     <svg
       width={size}
@@ -33,6 +85,9 @@ const SubjectsModal = ({ isOpen, onClose, scheduleData }) => {
   if (!isOpen) return null;
 
   const hasScheduleImage = scheduleData?.scheduleImageUrl;
+  const schedules = Array.isArray(scheduleData)
+    ? scheduleData
+    : (scheduleData?.schedules || []);
 
   return (
     <div className="siswa-overlay-modal-semua-riwayat" onClick={onClose}>
@@ -81,6 +136,43 @@ const SubjectsModal = ({ isOpen, onClose, scheduleData }) => {
                   }}
                 />
               </div>
+            </div>
+          ) : schedules.length > 0 ? (
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {schedules.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    display: 'grid',
+                    gridTemplateColumns: '140px 1fr',
+                    gap: '12px',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{
+                    background: '#eff6ff',
+                    color: '#1e40af',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    textAlign: 'center'
+                  }}>
+                    {item.start_time || '--:--'} - {item.end_time || '--:--'}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#111827', marginBottom: '4px' }}>
+                      {item.subject || '-'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Guru: {item.teacher || '-'}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div style={{
@@ -158,7 +250,8 @@ const LineChart = ({ data }) => {
   const range = maxValue - minValue || 10;
 
   const points = data.map((item, index) => {
-    const x = padding.left + (index / (data.length - 1)) * (chartWidth - padding.left - padding.right);
+    const denominator = Math.max(data.length - 1, 1);
+    const x = padding.left + (index / denominator) * (chartWidth - padding.left - padding.right);
     const y = padding.top + ((maxValue + 5 - item.percentage) / (range + 10)) * (chartHeight - padding.top - padding.bottom);
     return { x, y, ...item };
   });
@@ -451,6 +544,10 @@ const Dashboard = () => {
   const [profileImage, setProfileImage] = useState(null);
   const [showSubjects, setShowSubjects] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [schoolHours, setSchoolHours] = useState({
+    start_time: '07:00',
+    end_time: '15:00'
+  });
 
   // Fetch data dari API saat component mount
   useEffect(() => {
@@ -458,46 +555,47 @@ const Dashboard = () => {
       try {
         setIsLoading(true);
 
-        // Fetch dashboard summary (includes profile, summary, trend, and schedules)
-        const summaryResponse = await apiService.getStudentDashboard();
-        
-        const user = summaryResponse.user || {};
-        const profile = summaryResponse.student || {};
-        const summary = summaryResponse.attendance_summary || {};
-        const trend = summaryResponse.monthly_trend || [];
-        const schedules = summaryResponse.today_schedules || [];
+        const [summaryResponse, meResponse, attendanceSummaryResponse] = await Promise.all([
+          apiService.getStudentDashboard().catch(() => null),
+          apiService.getProfile().catch(() => null),
+          apiService.get('/me/attendance/summary').catch(() => null)
+        ]);
+
+        const summaryStudent = summaryResponse?.student || {};
+        const meProfile = meResponse?.profile || {};
 
         setProfileData({
-          name: user.name || '-',
-          kelas: profile.class_room?.label || '-',
-          id: profile.nis || '-',
-          gender: profile.gender || 'perempuan',
-          studentId: user.id
+          name: summaryStudent?.name || meResponse?.name || '-',
+          kelas: summaryStudent?.class_name || meProfile?.class_name || '-',
+          id: summaryStudent?.nis || meProfile?.nis || '-',
+          gender: summaryStudent?.gender || 'perempuan',
+          studentId: meResponse?.student_profile?.id || meResponse?.id || null
         });
-        setProfileImage(profile.photo_url);
+        setProfileImage(summaryStudent?.photo_url || meProfile?.photo_url || null);
 
-        // Map schedules
-        setScheduleData(schedules);
-
-        // Map Weekly Stats (from summary)
-        setWeeklyStats({
-          hadir: summary.present || 0,
-          terlambat: summary.late || 0,
-          pulang: summary.return || 0,
-          izin: summary.excused || 0,
-          sakit: summary.sick || 0,
-          alpha: summary.absent || 0
+        const schedules = summaryResponse?.today_schedules || summaryResponse?.schedule_today || [];
+        setScheduleData({
+          schedules,
+          scheduleImageUrl: summaryResponse?.schedule_image_url || null
         });
 
-        // Map Monthly Trend
-        const formattedTrend = trend.map(item => ({
-          month: item.month,
-          percentage: Math.round(item.percentage),
-          hadir: item.present,
-          total: item.total
-        }));
-        
-        setMonthlyTrend(formattedTrend);
+        setSchoolHours({
+          start_time: summaryResponse?.school_hours?.start_time || '07:00',
+          end_time: summaryResponse?.school_hours?.end_time || '15:00'
+        });
+
+        // Primary from dashboard summary, fallback to attendance summary endpoint.
+        const dashboardWeekly = mapStatusToWeeklyStats(summaryResponse?.attendance_summary || {});
+        const summaryWeekly = mapStatusToWeeklyStats(attendanceSummaryResponse?.data?.weekly_stats || {});
+        const combinedWeekly = Object.values(dashboardWeekly).some((v) => v > 0)
+          ? dashboardWeekly
+          : summaryWeekly;
+
+        setWeeklyStats(combinedWeekly);
+
+        const dashboardTrend = mapMonthlyTrendToLine(summaryResponse?.monthly_trend || []);
+        const summaryTrend = mapMonthlyTrendToLine(attendanceSummaryResponse?.data?.monthly_trend || []);
+        setMonthlyTrend(dashboardTrend.length > 0 ? dashboardTrend : summaryTrend);
 
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -550,7 +648,7 @@ const Dashboard = () => {
                   <img src={profileImage} alt="Profile" className="siswa-gambar-avatar" />
                 ) : (
                   <div className="siswa-ikon-avatar">
-                    <ProfileIcon gender={profileData.gender} size={80} />
+                    <ProfileIcon size={80} />
                   </div>
                 )}
               </div>
@@ -586,9 +684,9 @@ const Dashboard = () => {
                 </div>
 
                 <div className="siswa-tampilan-rentang-waktu">
-                  <div className="siswa-kotak-tampilan-waktu">07:00:00</div>
+                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.start_time}:00</div>
                   <div className="siswa-pemisah-rentang-waktu">—</div>
-                  <div className="siswa-kotak-tampilan-waktu">15:00:00</div>
+                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.end_time}:00</div>
                 </div>
               </div>
 
@@ -621,7 +719,7 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
+              <div className="siswa-grid-ringkasan">
                 <div className="siswa-kartu-kehadiran">
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px'

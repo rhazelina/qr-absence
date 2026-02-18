@@ -30,15 +30,16 @@ class TeacherScheduleDetailController extends Controller
             return response()->json(['message' => 'Teacher profile not found'], 404);
         }
 
-        // Validate teacher teaches this schedule
-        if ($schedule->teacher_id !== $teacher->id) {
+        // Validate teacher teaches this schedule OR is homeroom teacher
+        $class = $schedule->dailySchedule->classSchedule->class;
+        $isHomeroom = $teacher->homeroom_class_id === $class->id;
+
+        if ($schedule->teacher_id !== $teacher->id && ! $isHomeroom) {
             return response()->json(['message' => 'Unauthorized - You do not teach this schedule'], 403);
         }
 
         $today = now()->toDateString();
 
-        // Get class info
-        $class = $schedule->dailySchedule->classSchedule->class;
         if (! $class) {
             return response()->json(['message' => 'Class not found for this schedule'], 404);
         }
@@ -171,12 +172,14 @@ class TeacherScheduleDetailController extends Controller
         $user = $request->user();
         $teacher = $user->teacherProfile;
 
-        if (! $teacher || $schedule->teacher_id !== $teacher->id) {
+        $class = $schedule->dailySchedule->classSchedule->class;
+        $isHomeroom = $teacher->homeroom_class_id === $class->id;
+
+        if ((! $teacher || $schedule->teacher_id !== $teacher->id) && ! $isHomeroom) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $today = now()->toDateString();
-        $class = $schedule->dailySchedule->classSchedule->class;
 
         // Get all students
         $students = StudentProfile::where('class_id', $class->id)
@@ -404,15 +407,15 @@ class TeacherScheduleDetailController extends Controller
         }
 
         $class = $leavePermission->classRoom;
-        
+
         // This check is slightly wrong in old code, updated logic:
         // Check if teacher has ANY schedule for this class today?
         // Or if teacher is currently teaching this class?
         // Old logic: $class->schedules() -> relation to old Schedule modle.
         // New logic: Check via new structure.
-        
+
         $isTeachingClass = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
-            ->whereHas('dailySchedule.classSchedule', function($q) use ($class) {
+            ->whereHas('dailySchedule.classSchedule', function ($q) use ($class) {
                 $q->where('class_id', $class->id);
             })->exists();
 
@@ -449,12 +452,12 @@ class TeacherScheduleDetailController extends Controller
         }
 
         $class = $leavePermission->classRoom;
-        
+
         $isTeachingClass = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
-            ->whereHas('dailySchedule.classSchedule', function($q) use ($class) {
+            ->whereHas('dailySchedule.classSchedule', function ($q) use ($class) {
                 $q->where('class_id', $class->id);
             })->exists();
-            
+
         $isHomeroom = $teacher->homeroom_class_id === $class->id;
 
         if (! $isTeachingClass && ! $isHomeroom) {
@@ -491,7 +494,7 @@ class TeacherScheduleDetailController extends Controller
         }
 
         $isTeachingClass = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
-            ->whereHas('dailySchedule.classSchedule', function($q) use ($class) {
+            ->whereHas('dailySchedule.classSchedule', function ($q) use ($class) {
                 $q->where('class_id', $class->id);
             })->exists();
 
@@ -544,12 +547,12 @@ class TeacherScheduleDetailController extends Controller
     {
         $dayName = Carbon::parse($date)->format('l');
 
-        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function($q) use ($dayName, $student) {
-                $q->where('day', $dayName)
-                  ->whereHas('classSchedule', function($cq) use ($student) {
-                      $cq->where('class_id', $student->class_id);
-                  });
-            })
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($dayName, $student) {
+            $q->where('day', $dayName)
+                ->whereHas('classSchedule', function ($cq) use ($student) {
+                    $cq->where('class_id', $student->class_id);
+                });
+        })
             ->get();
 
         foreach ($schedules as $schedule) {
@@ -576,12 +579,12 @@ class TeacherScheduleDetailController extends Controller
     {
         $dayName = Carbon::parse($date)->format('l');
 
-        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function($q) use ($dayName, $student) {
-                $q->where('day', $dayName)
-                  ->whereHas('classSchedule', function($cq) use ($student) {
-                      $cq->where('class_id', $student->class_id);
-                  });
-            })
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($dayName, $student) {
+            $q->where('day', $dayName)
+                ->whereHas('classSchedule', function ($cq) use ($student) {
+                    $cq->where('class_id', $student->class_id);
+                });
+        })
             ->where('start_time', '>=', $fromTime)
             ->get();
 
@@ -615,12 +618,12 @@ class TeacherScheduleDetailController extends Controller
             ? Carbon::parse($leavePermission->end_time)->format('H:i')
             : '23:59';
 
-        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function($q) use ($dayName, $student) {
-                $q->where('day', $dayName)
-                  ->whereHas('classSchedule', function($cq) use ($student) {
-                      $cq->where('class_id', $student->class_id);
-                  });
-            })
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($dayName, $student) {
+            $q->where('day', $dayName)
+                ->whereHas('classSchedule', function ($cq) use ($student) {
+                    $cq->where('class_id', $student->class_id);
+                });
+        })
             ->where('start_time', '>=', $startTime)
             ->where('start_time', '<=', $endTime)
             ->get();

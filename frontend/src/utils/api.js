@@ -53,8 +53,35 @@ const apiService = {
     return this.get('/me/class/schedules');
   },
 
-  getMyClassAttendance() {
-    return this.get('/me/class/attendance');
+  getMyClassAttendance(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/me/class/attendance${query}`);
+  },
+
+  // Teacher Schedule & Attendance Methods
+  getTeacherSchedules() {
+    return this.get('/me/schedules');
+  },
+
+  getTeacherScheduleDetail(scheduleId) {
+    return this.get(`/me/schedules/${scheduleId}/detail`);
+  },
+
+  getTeacherScheduleStudents(scheduleId) {
+    return this.get(`/me/schedules/${scheduleId}/students`);
+  },
+
+  submitBulkAttendance(data) {
+    return this.post('/attendance/bulk-manual', data);
+  },
+
+  // Homeroom Teacher Methods
+  getHomeroomSchedules() {
+    return this.get('/me/homeroom/schedules');
+  },
+
+  getHomeroomStudents() {
+    return this.get('/me/homeroom/students');
   },
 
   getMyClassDashboard() {
@@ -73,6 +100,67 @@ const apiService = {
   getAttendanceHistory(params) {
     const query = new URLSearchParams(params).toString();
     return this.get(`/me/attendance?${query}`);
+  },
+
+  // Shared / Public Methods
+  getSemesters() {
+    return this.get('/semesters');
+  },
+  
+  getTeachers() {
+      return this.get('/teachers');
+  },
+
+  // Waka Methods
+  getWakaDashboardSummary(semesterId) {
+    const params = semesterId ? `?semester_id=${semesterId}` : '';
+    return this.get(`/waka/dashboard/summary${params}`);
+  },
+
+  getWakaClassAttendanceSummary(classId, params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/waka/classes/${classId}/attendance-summary${query}`);
+  },
+
+  // Waka/Admin Methods
+  getStudentAttendance(studentId, params) { // For detail view
+      const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+      return this.get(`/students/${studentId}/attendance${query}`);
+  },
+
+  getTeacherAttendanceHistory(teacherId, params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/teachers/${teacherId}/attendance-history${query}`);
+  },
+
+  getDailyTeacherAttendance(date, params) {
+    const query = new URLSearchParams({ date, ...params }).toString();
+    return this.get(`/attendance/teachers/daily?${query}`);
+  },
+
+  voidAttendance(id) {
+    return this.post(`/attendance/${id}/void`, {});
+  },
+
+  updateAttendanceStatus(attendanceId, data) {
+    return this.post(`/attendance/${attendanceId}/excuse`, data);
+  },
+
+  getClasses() {
+    return this.get('/classes');
+  },
+
+  getMajors() {
+    return this.get('/majors');
+  },
+
+  getClass(classId) {
+    return this.get(`/classes/${classId}`);
+  },
+
+  getClassAttendanceByDate(classId, date) {
+    const query = date ? `?date=${date}` : '';
+    return this.get(`/waka/classes/${classId}/attendance${query}`);
   }
 };
 

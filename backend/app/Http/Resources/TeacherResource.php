@@ -38,7 +38,10 @@ class TeacherResource extends JsonResource
                 ];
             }),
             'photo_url' => $this->user->photo_url ?? null,
-            'schedule_image_path' => $this->schedule_image_path,
+            'schedule_image_path' => $this->schedule_image_path ?? 'schedules/defaults/default_schedule.jpg',
+            'classes_count' => \App\Models\ClassSchedule::whereHas('dailySchedules.scheduleItems', function ($q) {
+                $q->where('teacher_id', $this->id);
+            })->distinct('class_id')->count('class_id'),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

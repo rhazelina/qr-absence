@@ -1,187 +1,295 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './JadwalGuruIndex.css';
-import NavbarWaka from '../../components/Waka/NavbarWaka';
 import {
+  FaSearch,
+  FaFilter,
+  FaRedo,
   FaEye,
   FaEdit,
+  FaChevronLeft,
+  FaChevronRight,
   FaIdCard,
   FaUser,
   FaEnvelope,
   FaPhone,
-  FaSearch,
-} from "react-icons/fa";
+  FaCheckCircle,
+  FaExclamationCircle
+} from 'react-icons/fa';
+import './JadwalGuruIndex.css';
+import apiService from '../../utils/api';
+import NavbarWaka from '../../components/Waka/NavbarWaka';
 
-function JadwalGuruIndex() {
+const JadwalGuruIndex = () => {
   const navigate = useNavigate();
   const [dataGuru, setDataGuru] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [searchKode, setSearchKode] = useState('');
+  const [searchNama, setSearchNama] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  const fetchTeachers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiService.getTeachers();
+
+      // Handle different response structures
+      const data = response.data || response;
+
+      setDataGuru(data);
+      setFilteredData(data);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTeachers();
   }, []);
 
-  const fetchTeachers = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/teachers', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const data = result.data || result;
-        setDataGuru(data);
-        setFilteredData(data);
-      } else {
-        console.error('Gagal memuat data guru');
-        // alert('Gagal memuat data guru');
-      }
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
-      // alert('Terjadi kesalahan saat memuat data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     let filtered = dataGuru;
 
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase();
+    if (searchKode) {
+      const lower = searchKode.toLowerCase();
       filtered = filtered.filter(guru =>
-        (guru.kode_guru?.toLowerCase() || '').includes(lower) ||
-        (guru.user?.name?.toLowerCase() || '').includes(lower) ||
+        (guru.code?.toLowerCase() || '').includes(lower) ||
         (guru.nip?.toLowerCase() || '').includes(lower)
       );
     }
 
-    setFilteredData(filtered);
-  }, [searchTerm, dataGuru]);
+    if (searchNama) {
+      const lower = searchNama.toLowerCase();
+      filtered = filtered.filter(guru =>
+        (guru.name?.toLowerCase() || '').includes(lower)
+      );
+    }
 
-  const handleView = (e, id) => {
-    e.preventDefault();
-    e.stopPropagation();
+    setFilteredData(filtered);
+    setCurrentPage(1);
+  }, [searchKode, searchNama, dataGuru]);
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const handleReset = () => {
+    setSearchKode('');
+    setSearchNama('');
+    fetchTeachers();
+  };
+
+  const handleView = (id) => {
     navigate(`/waka/jadwal-guru/${id}`);
   };
 
-  const handleEdit = (e, id) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Navigate to specialized schedule edit for teacher if needed, or just view
-    navigate(`/waka/jadwal-guru/${id}`);
+  const handleEdit = (id) => {
+    navigate(`/waka/jadwal-guru/${id}/edit`);
   };
 
   return (
     <>
       <NavbarWaka />
-
       <div className="jadwal-guru-index-root">
         <div className="jadwal-guru-index-header">
-          <h1 className="jadwal-guru-index-title">
-            Jadwal Pembelajaran Guru
-          </h1>
-          <p className="jadwal-guru-index-subtitle">
-            Lihat jadwal mengajar per guru
-          </p>
+          <h1 className="jadwal-guru-index-title">Jadwal Pembelajaran Guru</h1>
+          <p className="jadwal-guru-index-subtitle">Kelola dan lihat jadwal pembelajaran per guru</p>
         </div>
 
+        {/* FILTER CARD */}
         <div className="jadwal-guru-index-filter-card">
-          <div className="search-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
-              <FaSearch style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+          <div className="jadwal-guru-index-filter-grid">
+            {/* Search Kode */}
+            <div className="jadwal-guru-index-filter-group">
+              <label className="jadwal-guru-index-label">
+                <FaIdCard className="mr-2 inline" /> Cari Kode Guru
+              </label>
               <input
                 type="text"
-                placeholder="Cari Nama / Kode / NIP Guru..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  padding: '0.5rem 0.5rem 0.5rem 2.5rem',
-                  borderRadius: '0.375rem',
-                  border: '1px solid #d1d5db',
-                  width: '100%'
-                }}
+                placeholder="Contoh: GR001"
+                className="jadwal-guru-index-input"
+                value={searchKode}
+                onChange={(e) => setSearchKode(e.target.value)}
+              />
+            </div>
+
+            {/* Search Nama */}
+            <div className="jadwal-guru-index-filter-group">
+              <label className="jadwal-guru-index-label">
+                <FaUser className="mr-2 inline" /> Cari Nama Guru
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Budi Santoso"
+                className="jadwal-guru-index-input"
+                value={searchNama}
+                onChange={(e) => setSearchNama(e.target.value)}
               />
             </div>
           </div>
+
+          {(searchKode || searchNama) && (
+            <div className="jadwal-guru-index-reset-wrapper">
+              <button
+                onClick={handleReset}
+                className="jadwal-guru-index-reset-btn"
+              >
+                <FaRedo className="mr-2 inline" /> Reset Filter
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* TABLE CARD */}
         <div className="jadwal-guru-index-table-card">
-          <div className="jadwal-guru-index-table-header">
+          <div className="jadwal-guru-index-table-header flex justify-between items-center">
             <h3>Daftar Guru ({filteredData.length})</h3>
           </div>
 
           <div className="jadwal-guru-index-table-wrapper">
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                Memuat data...
-              </div>
-            ) : filteredData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
-                Tidak ada data guru yang ditemukan
-              </div>
-            ) : (
-              <table>
-                <thead>
+            <table>
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Kode Guru</th>
+                  <th>Nama Guru</th>
+                  <th>Mata Pelajaran</th>
+                  <th>Kontak</th>
+                  <th>Jumlah Kelas</th>
+                  <th>Status Jadwal</th>
+                  <th className="text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
                   <tr>
-                    <th>No</th>
-                    <th>Kode Guru</th>
-                    <th>Nama Guru</th>
-                    <th>NIP</th>
-                    <th>Kontak</th>
-                    <th>Aksi</th>
+                    <td colSpan="8" className="jadwal-guru-index-loading">
+                      <i className="fas fa-spinner fa-spin"></i>
+                      <p>Memuat data guru...</p>
+                    </td>
                   </tr>
-                </thead>
-
-                <tbody>
-                  {filteredData.map((guru, index) => (
+                ) : currentItems.length > 0 ? (
+                  currentItems.map((guru, index) => (
                     <tr key={guru.id}>
-                      <td>{index + 1}</td>
-
-                      <td>
+                      <td className="guru-no">{indexOfFirstItem + index + 1}</td>
+                      <td className="guru-kode">
                         <span className="jadwal-guru-index-badge-blue">
-                          {guru.kode_guru || '-'}
+                          {guru.code || guru.nip || '-'}
                         </span>
                       </td>
-
-                      <td>
-                        <div className="font-semibold">{guru.user?.name || guru.nama_guru}</div>
-                        <div className="text-xs text-gray-500">{guru.user?.email}</div>
+                      <td className="guru-nama">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+                            {guru.photo_url ? (
+                              <img src={guru.photo_url} alt={guru.name} className="w-full h-full object-cover"/>
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs text-center border-0 p-0 m-0">
+                                {guru.name?.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{guru.name}</p>
+                            <p className="text-xs text-gray-400">{guru.nip}</p>
+                          </div>
+                        </div>
                       </td>
-                      <td>{guru.nip || '-'}</td>
-
-                      <td>
-                        {guru.no_hp ? <div><FaPhone /> {guru.no_hp}</div> : '-'}
+                      <td className="guru-mapel">
+                        {guru.subject || guru.subject_name || <span className="text-gray-400">-</span>}
                       </td>
-
+                      <td className="guru-kontak">
+                        <div className="flex flex-col text-xs space-y-1">
+                          <div className="flex items-center gap-2">
+                             <FaEnvelope className="text-gray-400" />
+                             <span>{guru.email || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <FaPhone className="text-gray-400" />
+                             <span>{guru.phone || '-'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="guru-jumlah-kelas">
+                        {guru.classes_count || 0} Kelas
+                      </td>
+                      <td className="guru-status">
+                        {guru.schedule_image_path ? (
+                          <span className="jadwal-guru-index-badge-green flex items-center gap-1 justify-center whitespace-nowrap">
+                            <FaCheckCircle /> Jadwal Tersedia
+                          </span>
+                        ) : (
+                          <span className="jadwal-guru-index-badge-orange flex items-center gap-1 justify-center whitespace-nowrap">
+                            <FaExclamationCircle /> Belum Ada Jadwal
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <div className="jadwal-guru-index-action">
-                          <button
-                            onClick={(e) => handleView(e, guru.id)}
-                            className="jadwal-guru-index-btn-view"
-                            title="Lihat Jadwal"
+                          <button 
+                            className="jadwal-guru-index-btn-view" 
+                            title="Lihat Detail"
+                            onClick={() => handleView(guru.id)}
                           >
-                            <FaEye /> Lihat Jadwal
+                            <FaEye />
+                          </button>
+                          <button 
+                            className="jadwal-guru-index-btn-edit" 
+                            title="Edit Jadwal"
+                            onClick={() => handleEdit(guru.id)}
+                          >
+                            <FaEdit />
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="jadwal-guru-index-empty text-center py-8">
+                      <i className="far fa-folder-open text-3xl text-gray-300 block mb-2"></i>
+                      <p>Tidak ada data guru ditemukan</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center p-4 gap-2">
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2 rounded ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50'}`}
+              >
+                <FaChevronLeft />
+              </button>
+              <div className="px-4 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                Halaman {currentPage} dari {totalPages}
+              </div>
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-2 rounded ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50'}`}
+              >
+                <FaChevronRight />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
   );
-}
+};
 
 export default JadwalGuruIndex;

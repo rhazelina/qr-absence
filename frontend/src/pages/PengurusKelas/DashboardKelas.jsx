@@ -12,7 +12,7 @@ const getTodaySubjectCount = (scheduleData) => {
 
 
 // SVG Avatar Component untuk Profil - Basic Icon
-const ProfileIcon = ({ gender, size = 80 }) => {
+const ProfileIcon = ({ size = 80 }) => {
   return (
     <svg 
       width={size} 
@@ -29,7 +29,7 @@ const ProfileIcon = ({ gender, size = 80 }) => {
 };
 
 // Subjects Modal
-const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
+const SubjectsModal = ({ isOpen, onClose, scheduleImage = null, schedules = [] }) => {
   if (!isOpen) return null;
 
   return (
@@ -79,6 +79,43 @@ const SubjectsModal = ({ isOpen, onClose, scheduleImage = null }) => {
                   }}
                 />
               </div>
+            </div>
+          ) : schedules.length > 0 ? (
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {schedules.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '14px 16px',
+                    display: 'grid',
+                    gridTemplateColumns: '140px 1fr',
+                    gap: '12px',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{
+                    background: '#eff6ff',
+                    color: '#1e40af',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    textAlign: 'center'
+                  }}>
+                    {item.start_time || '--:--'} - {item.end_time || '--:--'}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#111827', marginBottom: '4px' }}>
+                      {item.subject || '-'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                      Guru: {item.teacher || '-'}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div style={{
@@ -543,6 +580,13 @@ const DonutChart = ({ data }) => {
 
 // Main Dashboard
 const DashboardKelas = () => {
+  const extractItems = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.items?.data)) return payload.items.data;
+    return [];
+  };
+
   // State management
   const [showSubjects, setShowSubjects] = useState(false);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -557,7 +601,11 @@ const DashboardKelas = () => {
   });
   
   const [scheduleImage, setScheduleImage] = useState(null);
-  const [scheduleData, setScheduleData] = useState(null);
+  const [scheduleData, setScheduleData] = useState([]);
+  const [schoolHours, setSchoolHours] = useState({
+    start: '07:00:00',
+    end: '15:00:00'
+  });
   
   const [dailyStats, setDailyStats] = useState({
     hadir: 0,
@@ -577,49 +625,65 @@ const DashboardKelas = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch dashboard data from real backend
-        const dashboardData = await apiService.getMyClassDashboard();
-        
-        const user = dashboardData.user || {};
-        const profile = dashboardData.student || {}; // Student profile for the pengurus
-        const classRoom = dashboardData.class_room || {};
-        const stats = dashboardData.stats || {};
-        const trend = dashboardData.monthly_trend || [];
-        const schedules = dashboardData.today_schedules || [];
+
+        const today = new Date().toISOString().split('T')[0];
+        const [dashboardData, meData, settingsData, schedulesData, classesData] = await Promise.all([
+          apiService.getMyClassDashboard().catch(() => null),
+          apiService.getProfile().catch(() => null),
+          apiService.get('/settings/public').catch(() => null),
+          apiService.get(`/me/class/schedules?date=${today}`).catch(() => []),
+          apiService.getClasses().catch(() => [])
+        ]);
+
+        const profile = dashboardData?.profile || {};
+        const classId = profile.class_id;
+        const classItems = extractItems(classesData);
+        const classData = classItems.find((item) => item.id === classId);
 
         setProfileData({
-          name: user.name || '-',
-          kelas: classRoom.label || '-',
-          id: profile.nis || '-',
+          name: profile.name || meData?.name || '-',
+          kelas: profile.kelas || meData?.profile?.class_name || '-',
+          id: profile.id || meData?.profile?.nis || '-',
           gender: profile.gender || 'perempuan'
         });
-        setProfileImage(profile.photo_url);
+        setProfileImage(meData?.profile?.photo_url || null);
+        setScheduleImage(classData?.schedule_image_url || null);
 
+        const stats = dashboardData?.dailyStats || {};
         setDailyStats({
-          hadir: stats.present || 0,
-          izin: stats.excused || 0,
-          sakit: stats.sick || 0,
-          alpha: stats.absent || 0,
-          terlambat: stats.late || 0,
-          pulang: stats.return || 0
+          hadir: stats.hadir || 0,
+          izin: stats.izin || 0,
+          sakit: stats.sakit || 0,
+          alpha: stats.alpha || 0,
+          terlambat: stats.terlambat || 0,
+          pulang: stats.pulang || 0
         });
 
-        setScheduleData(schedules);
-        
-        // Map Monthly Trend
-        const formattedTrend = trend.map(item => ({
-          month: item.month,
-          hadir: item.present || 0,
-          sakit: item.sick || 0,
-          izin: item.excused || 0,
-          alpha: item.absent || 0,
-          terlambat: item.late || 0,
-          pulang: item.return || 0
+        const schedules = extractItems(schedulesData).map((item) => ({
+          id: item.id,
+          subject: item.subject_name || item.subject || '-',
+          teacher: item.teacher?.user?.name || item.teacher?.name || '-',
+          start_time: item.start_time || '--:--',
+          end_time: item.end_time || '--:--'
         }));
-        
+        setScheduleData(schedules);
+
+        const trend = dashboardData?.monthlyTrend || [];
+        const formattedTrend = trend.map((item) => ({
+          month: item.month,
+          hadir: item.hadir || 0,
+          sakit: item.sakit || 0,
+          izin: item.izin || 0,
+          alpha: item.alpha || 0,
+          terlambat: item.terlambat || 0,
+          pulang: item.pulang || 0
+        }));
         setMonthlyTrend(formattedTrend);
-        
+
+        setSchoolHours({
+          start: `${settingsData?.school_start_time || '07:00'}:00`,
+          end: `${settingsData?.school_end_time || '15:00'}:00`
+        });
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -670,7 +734,7 @@ const DashboardKelas = () => {
                   <img src={profileImage} alt="Profile" className="avatar-image" />
                 ) : (
                   <div className="avatar-icon">
-                    <ProfileIcon gender={profileData.gender} size={80} />
+                    <ProfileIcon size={80} />
                   </div>
                 )}
               </div>
@@ -706,9 +770,9 @@ const DashboardKelas = () => {
                 </div>
                 
                 <div className="time-range-display">
-                  <div className="time-display-box">07:00:00</div>
+                  <div className="time-display-box">{schoolHours.start}</div>
                   <div className="time-range-separator">—</div>
-                  <div className="time-display-box">15:00:00</div>
+                  <div className="time-display-box">{schoolHours.end}</div>
                 </div>
               </div>
 
@@ -742,7 +806,7 @@ const DashboardKelas = () => {
               </div>
 
               {/* Chart Section - 2 Column Layout */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
+              <div className="dashboard-summary-grid">
                 <div className="kehadiran-card">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                     <div style={{
@@ -811,8 +875,12 @@ const DashboardKelas = () => {
           </div>
         </main>
 
-        <SubjectsModal isOpen={showSubjects} onClose={() => setShowSubjects(false)} 
-          scheduleImage={scheduleImage} />
+        <SubjectsModal
+          isOpen={showSubjects}
+          onClose={() => setShowSubjects(false)}
+          scheduleImage={scheduleImage}
+          schedules={scheduleData}
+        />
       </div>
     </>
   );

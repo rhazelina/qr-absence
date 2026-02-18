@@ -22,19 +22,35 @@ class ClassOfficerSeeder extends Seeder
         $class = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => 'RPL 1',
+                'label' => 'RPL 2',
             ],
             [
                 'major_id' => $major->id,
             ]
         );
 
-        // Buat user pengurus kelas (ketua kelas)
+        // Gunakan siswa existing berdasarkan NISN jika sudah ada,
+        // agar tidak membuat akun duplikat dengan identitas yang sama.
+        $existingProfile = StudentProfile::query()
+            ->where('nisn', '0079292238')
+            ->with('user')
+            ->first();
+
+        if ($existingProfile) {
+            $existingProfile->update([
+                'class_id' => $class->id,
+                'is_class_officer' => true,
+            ]);
+
+            return;
+        }
+
+        // Fallback: buat akun bila belum ada di data utama.
         $user = User::updateOrCreate(
-            ['username' => 'pengurus1'],
+            ['username' => '0079292238'],
             [
-                'name' => 'Abyl Gustian',
-                'email' => 'pengurus1@example.com',
+                'name' => 'MOCH. ABYL GUSTIAN',
+                'email' => '0079292238@student.example.com',
                 'password' => Hash::make('password123'),
                 'user_type' => 'student',
                 'active' => true,
@@ -45,11 +61,11 @@ class ClassOfficerSeeder extends Seeder
             ['user_id' => $user->id],
             [
                 'nisn' => '0079292238',
-                'nis' => '2024999',
+                'nis' => '0079292238',
                 'gender' => 'L',
-                'address' => 'Jl. Ular Sakti',
+                'address' => 'Alamat Siswa',
                 'class_id' => $class->id,
-                'is_class_officer' => true, // Tandai sebagai pengurus kelas
+                'is_class_officer' => true,
             ]
         );
     }

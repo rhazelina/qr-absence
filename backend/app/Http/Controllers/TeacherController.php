@@ -226,11 +226,17 @@ class TeacherController extends Controller
      */
     public function getScheduleImage(TeacherProfile $teacher)
     {
-        if (! $teacher->schedule_image_path || ! Storage::disk('public')->exists($teacher->schedule_image_path)) {
+        $path = $teacher->schedule_image_path ?? 'schedules/defaults/default_schedule.jpg';
+
+        if (! Storage::disk('public')->exists($path)) {
+            $path = 'schedules/defaults/default_schedule.jpg';
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        return response()->file(Storage::disk('public')->path($teacher->schedule_image_path));
+        return response()->file(Storage::disk('public')->path($path));
     }
 
     /**

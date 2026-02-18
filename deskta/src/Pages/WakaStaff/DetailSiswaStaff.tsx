@@ -2,7 +2,7 @@
 import StaffLayout from '../../component/WakaStaff/StaffLayout';
 import { Select } from '../../component/Shared/Select';
 import { Table } from '../../component/Shared/Table';
-import { Download, FileText, ArrowLeft, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
+import { Download, FileText, ArrowLeft, Calendar as CalendarIcon, AlertCircle, Eye, X, User, Clock, Shield, BookOpen } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { attendanceService, type ClassAttendanceResponse } from '../../services/attendanceService';
@@ -55,6 +55,62 @@ export default function DetailSiswaStaff({
     type: 'error' | 'success';
     message: string;
   } | null>(null);
+
+  // State for Detail Modal
+  const [selectedRow, setSelectedRow] = useState<any>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Status Style Helpers
+  const getStatusStyle = (status: string) => {
+    const baseStyle: React.CSSProperties = {
+      padding: "6px 16px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "700",
+      letterSpacing: "0.5px",
+      border: "none",
+      minWidth: "90px",
+      textAlign: "center",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "6px",
+      cursor: "pointer",
+      transition: "all 0.2s ease",
+      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      minHeight: "32px",
+    };
+
+    const s = status.toLowerCase();
+    if (s === 'present' || s === 'hadir') return { ...baseStyle, backgroundColor: "#1FA83D", color: "#FFF", boxShadow: "0 2px 4px rgba(31, 168, 61, 0.3)" };
+    if (s === 'permission' || s === 'izin') return { ...baseStyle, backgroundColor: "#ACA40D", color: "#FFF", boxShadow: "0 2px 4px rgba(172, 164, 13, 0.3)" };
+    if (s === 'sick' || s === 'sakit') return { ...baseStyle, backgroundColor: "#520C8F", color: "#FFF", boxShadow: "0 2px 4px rgba(82, 12, 143, 0.3)" };
+    if (s === 'alpha' || s === 'alpa' || s === 'tidak-hadir' || s === 'absent') return { ...baseStyle, backgroundColor: "#D90000", color: "#FFF", boxShadow: "0 2px 4px rgba(217, 0, 0, 0.3)" };
+    if (s === 'pulang') return { ...baseStyle, backgroundColor: "#2F85EB", color: "#FFF", boxShadow: "0 2px 4px rgba(47, 133, 235, 0.3)" };
+    
+    return { ...baseStyle, backgroundColor: "#6B7280", color: "#FFF" };
+  };
+
+  const getStatusLabel = (status: string) => {
+    const s = status.toLowerCase();
+    if (s === 'present' || s === 'hadir') return "Hadir";
+    if (s === 'permission' || s === 'izin') return "Izin";
+    if (s === 'sick' || s === 'sakit') return "Sakit";
+    if (s === 'alpha' || s === 'alpa' || s === 'tidak-hadir' || s === 'absent') return "Alfa";
+  if (s === 'pulang') return "Pulang";
+  return status;
+};
+
+// Internal components for clean UI
+const DetailRow = ({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) => (
+  <div style={{ padding: '12px 16px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      {icon && <div style={{ color: '#64748B' }}>{icon}</div>}
+      <span style={{ fontSize: '13px', fontWeight: '600', color: '#64748B' }}>{label}</span>
+    </div>
+    <span style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B' }}>{value}</span>
+  </div>
+);
 
   // Generate last 7 days for date filter
   useEffect(() => {
@@ -229,47 +285,21 @@ export default function DetailSiswaStaff({
     { 
       key: 'status', 
       label: 'Status',
-      render: (value: string) => {
-        let bg = '#F3F4F6';
-        let color = '#374151';
-        
-        switch(value.toLowerCase()) {
-          case 'present':
-          case 'hadir':
-            bg = '#D1FAE5';
-            color = '#059669';
-            break;
-          case 'sick':
-          case 'sakit':
-            bg = '#FEF3C7';
-            color = '#D97706';
-            break;
-          case 'permission':
-          case 'izin':
-            bg = '#DBEAFE';
-            color = '#2563EB';
-            break;
-          case 'alpha':
-          case 'alpa':
-            bg = '#FEE2E2';
-            color = '#DC2626';
-            break;
-        }
-        
-        return (
-          <span style={{
-            backgroundColor: bg,
-            color: color,
-            padding: '4px 12px',
-            borderRadius: '999px',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            textTransform: 'capitalize'
-          }}>
-            {value === 'present' ? 'Hadir' : value}
-          </span>
-        );
-      }
+      render: (value: string, row: any) => (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <div
+            onClick={() => {
+              setSelectedRow(row);
+              setIsDetailModalOpen(true);
+            }}
+            style={getStatusStyle(value)}
+            className="status-badge-hover"
+          >
+            <Eye size={14} />
+            <span>{getStatusLabel(value)}</span>
+          </div>
+        </div>
+      )
     },
     { key: 'waktu', label: 'Waktu Hadir' },
   ];
@@ -523,6 +553,117 @@ export default function DetailSiswaStaff({
           keyField="no"
           emptyMessage={loading ? "Memuat data presensi..." : "Tidak ada data presensi siswa."}
         />
+
+        {/* Detail Modal */}
+        {isDetailModalOpen && selectedRow && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)',
+            padding: '16px'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '24px',
+              width: '100%',
+              maxWidth: '450px',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              animation: 'modalFadeIn 0.3s ease-out'
+            }}>
+              {/* Header Modal with Gradient */}
+              <div style={{
+                background: 'linear-gradient(135deg, #062A4A 0%, #111827 100%)',
+                padding: '24px',
+                color: 'white',
+                position: 'relative'
+              }}>
+                <button 
+                  onClick={() => setIsDetailModalOpen(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '20px',
+                    right: '20px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'white'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+                <div style={{ marginBottom: '4px', opacity: 0.8, fontSize: '12px', letterSpacing: '1px' }}>DETAIL PRESENSI</div>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>{selectedRow.nama}</h3>
+                <p style={{ margin: '4px 0 0 0', opacity: 0.7, fontSize: '14px' }}>NISN: {selectedRow.nisn}</p>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: '24px' }}>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  <DetailRow label="Tanggal" value={new Date(selectedTanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} icon={<CalendarIcon size={16} />} />
+                  <DetailRow label="Mata Pelajaran" value={selectedMapel} icon={<BookOpen size={16} />} />
+                  <DetailRow label="Guru Pengampu" value={currentGuru} icon={<User size={16} />} />
+                  <DetailRow label="Status" value={getStatusLabel(selectedRow.status)} icon={<Shield size={16} />} />
+                  <DetailRow label="Waktu Absen" value={selectedRow.waktu || '-'} icon={<Clock size={16} />} />
+                </div>
+
+                <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', marginBottom: '8px', letterSpacing: '0.5px' }}>CATATAN / KETERANGAN</div>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#334155', lineHeight: '1.6' }}>
+                    {selectedRow.status.toLowerCase() === 'hadir' || selectedRow.status.toLowerCase() === 'present' 
+                      ? 'Siswa terkonfirmasi hadir di kelas tepat waktu.' 
+                      : selectedRow.status.toLowerCase() === 'pulang' 
+                        ? 'Siswa telah meninggalkan sekolah (izin pulang).'
+                        : 'Catatan tidak tersedia untuk status ini.'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setIsDetailModalOpen(false)}
+                  style={{
+                    width: '100%',
+                    marginTop: '24px',
+                    padding: '14px',
+                    backgroundColor: '#062A4A',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0B2948'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#062A4A'}
+                >
+                  Tutup Detail
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <style>{`
+          .status-badge-hover:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+          }
+          @keyframes modalFadeIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
       </div>
     </StaffLayout>
   );

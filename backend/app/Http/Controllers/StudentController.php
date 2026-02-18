@@ -206,7 +206,7 @@ class StudentController extends Controller
     public function attendanceHistory(Request $request, StudentProfile $student): JsonResponse
     {
         $query = $student->attendances()
-            ->with(['schedule.class', 'schedule.teacher.user']) // Added relations for detail view
+            ->with(['schedule.class', 'schedule.teacher.user', 'schedule.subject']) // Added relations for detail view
             ->latest('date');
 
         if ($request->filled('from')) {

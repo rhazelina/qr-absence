@@ -54,7 +54,7 @@ it('allows teacher to submit manual attendance', function () {
             'reason' => 'Manual input',
         ]);
 
-    $response->assertOk()
+    $response->assertSuccessful()
         ->assertJson([
             'message' => 'Kehadiran berhasil disimpan',
         ]);
@@ -109,7 +109,7 @@ it('maps pulang status to return in database', function () {
             'reason' => 'Pulang cepat',
         ]);
 
-    $response->assertOk();
+    $response->assertSuccessful();
 
     // 3. Verify Database has 'return' status
     $this->assertDatabaseHas('attendances', [

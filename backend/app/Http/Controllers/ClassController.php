@@ -130,11 +130,17 @@ class ClassController extends Controller
      */
     public function getScheduleImage(Classes $class)
     {
-        if (! $class->schedule_image_path || ! Storage::disk('public')->exists($class->schedule_image_path)) {
+        $path = $class->schedule_image_path ?? 'schedules/defaults/default_schedule.jpg';
+
+        if (! Storage::disk('public')->exists($path)) {
+            $path = 'schedules/defaults/default_schedule.jpg';
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        return response()->file(Storage::disk('public')->path($class->schedule_image_path));
+        return response()->file(Storage::disk('public')->path($path));
     }
 
     /**
@@ -177,21 +183,67 @@ class ClassController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->studentProfile || ! $user->studentProfile->class_id) {
+        if (! $user->studentProfile || ! $user->studentProfile->classRoom) {
             return response()->json(['message' => 'Class not found'], 404);
         }
 
-        $query = $user->studentProfile->classRoom->schedules();
+        $classRoom = $user->studentProfile->classRoom;
+        $activeSchedule = $classRoom->classSchedules()
+            ->where('is_active', true)
+            ->with([
+                'dailySchedules.scheduleItems.subject',
+                'dailySchedules.scheduleItems.teacher.user',
+            ])
+            ->latest('id')
+            ->first();
 
-        if ($request->filled('date')) {
-            // Assuming schedules have a day or date field, or we filter by day of week
-            // But typical generic schedule is by day of week.
-            // If date is provided, we map date to day of week.
-            $day = date('l', strtotime($request->date));
-            $query->where('day', $day);
+        if (! $activeSchedule) {
+            return response()->json([]);
         }
 
-        return response()->json($query->with(['teacher.user'])->get());
+        $targetDay = null;
+        if ($request->filled('date')) {
+            $targetDay = date('l', strtotime((string) $request->date));
+        }
+
+        $dailySchedules = $activeSchedule->dailySchedules;
+        if ($targetDay) {
+            $dailySchedules = $dailySchedules->where('day', $targetDay);
+        }
+
+        $items = $dailySchedules
+            ->flatMap(function ($dailySchedule) use ($classRoom) {
+                return $dailySchedule->scheduleItems->map(function ($item) use ($dailySchedule, $classRoom) {
+                    return [
+                        'id' => $item->id,
+                        'day' => $dailySchedule->day,
+                        'start_time' => $item->start_time,
+                        'end_time' => $item->end_time,
+                        'room' => $item->room,
+                        'keterangan' => $item->keterangan,
+                        'subject_name' => $item->subject?->name ?? $item->keterangan ?? '-',
+                        'subject' => $item->subject ? [
+                            'id' => $item->subject->id,
+                            'name' => $item->subject->name,
+                        ] : null,
+                        'teacher' => $item->teacher ? [
+                            'id' => $item->teacher->id,
+                            'user' => $item->teacher->user ? [
+                                'id' => $item->teacher->user->id,
+                                'name' => $item->teacher->user->name,
+                            ] : null,
+                        ] : null,
+                        'class' => [
+                            'id' => $classRoom->id,
+                            'name' => $classRoom->name,
+                        ],
+                    ];
+                });
+            })
+            ->sortBy('start_time')
+            ->values();
+
+        return response()->json($items);
     }
 
     /**

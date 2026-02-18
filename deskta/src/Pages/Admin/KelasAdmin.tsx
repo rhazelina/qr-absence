@@ -66,9 +66,9 @@ export default function KelasAdmin({
         masterService.getMajors(),
         teacherService.getTeachers()
       ]);
-      setKelasList(dataClasses);
-      setMajors(dataMajors);
-      setTeachers(dataTeachers);
+      setKelasList(Array.isArray(dataClasses) ? dataClasses : (dataClasses.data || []));
+      setMajors(Array.isArray(dataMajors) ? dataMajors : (dataMajors.data || []));
+      setTeachers(Array.isArray(dataTeachers) ? dataTeachers : (dataTeachers.data || []));
     } catch (error) {
       console.error("Failed to fetch initial data:", error);
     } finally {
