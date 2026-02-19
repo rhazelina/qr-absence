@@ -1,157 +1,95 @@
-import React, { useState, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import './DataSiswa.css';
-import TambahSiswa from '../../components/Admin/TambahSiswa';
-import NavbarAdmin from '../../components/Admin/NavbarAdmin';
-
-// API Configuration
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-// API Service
-const apiService = {
-  // Get all students
-  getStudents: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/students`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch students');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching students:', error);
-      return { data: [] };
-    }
-  },
-
-  // Add student
-  addStudent: async (studentData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/students`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(studentData)
-      });
-      if (!response.ok) throw new Error('Failed to add student');
-      return await response.json();
-    } catch (error) {
-      console.error('Error adding student:', error);
-      throw error;
-    }
-  },
-
-  // Update student
-  updateStudent: async (id, studentData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/students/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(studentData)
-      });
-      if (!response.ok) throw new Error('Failed to update student');
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating student:', error);
-      throw error;
-    }
-  },
-
-  // Delete student
-  deleteStudent: async (id) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/students/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to delete student');
-      return await response.json();
-    } catch (error) {
-      console.error('Error deleting student:', error);
-      throw error;
-    }
-  },
-
-  // Import students (bulk)
-  importStudents: async (studentsData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/students/import`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ students: studentsData })
-      });
-      if (!response.ok) throw new Error('Failed to import students');
-      return await response.json();
-    } catch (error) {
-      console.error('Error importing students:', error);
-      throw error;
-    }
-  }
-};
+import apiService from '../../utils/api';
+import Pagination from '../../components/Common/Pagination';
 
 function DataSiswa() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJurusan, setFilterJurusan] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
+  const [majors, setMajors] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [editData, setEditData] = useState(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+    from: 0,
+    to: 0
+  });
   
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
 
-  // Load students from API
+  // Load students, majors, and classes from API
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
   useEffect(() => {
     loadStudents();
-  }, []);
+  }, [pagination.currentPage, filterJurusan, filterKelas]);
+
+  // Handle search with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (pagination.currentPage !== 1) {
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+      } else {
+        loadStudents();
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  const loadInitialData = async () => {
+    try {
+      const [majorsRes, classesRes] = await Promise.all([
+        apiService.getMajors(),
+        apiService.getClasses()
+      ]);
+      setMajors(majorsRes.data || []);
+      setClasses(classesRes.data || []);
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+    }
+  };
 
   const loadStudents = async () => {
     setLoading(true);
-    const result = await apiService.getStudents();
-    if (result.data) {
-      setStudents(result.data);
+    try {
+      const params = {
+        page: pagination.currentPage,
+        search: searchTerm,
+        major_id: filterJurusan,
+        class_id: filterKelas,
+        per_page: 15
+      };
+
+      const result = await apiService.getStudents(params);
+      if (result.data) {
+        setStudents(result.data);
+        if (result.meta) {
+          setPagination(prev => ({
+            ...prev,
+            currentPage: result.meta.current_page,
+            lastPage: result.meta.last_page,
+            total: result.meta.total,
+            from: result.meta.from,
+            to: result.meta.to
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading students:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Filter & Search
-  const getFilteredStudents = () => {
-    return students.filter(student => {
-      const matchSearch = searchTerm === '' || 
-        student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.nisn?.includes(searchTerm);
-
-      const matchJurusan = filterJurusan === '' || student.major === filterJurusan;
-      const matchKelas = filterKelas === '' || student.grade === filterKelas;
-
-      return matchSearch && matchJurusan && matchKelas;
-    });
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
   };
-
-  const filteredStudents = getFilteredStudents();
 
   // Add or Update Student
   const handleAddOrUpdate = async (formData) => {
@@ -198,8 +136,8 @@ function DataSiswa() {
       id: student.id,
       namaSiswa: student.name,
       nisn: student.nisn,
-      jurusan: student.major,
-      kelas: student.grade
+      jurusan: student.classRoom?.major_id,
+      kelas: student.class_id
     });
     setIsModalOpen(true);
   };
@@ -242,7 +180,7 @@ function DataSiswa() {
 
   // Export to Excel
   const handleExportToExcel = () => {
-    const dataToExport = filteredStudents.length > 0 ? filteredStudents : students;
+    const dataToExport = students;
     
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
@@ -250,11 +188,11 @@ function DataSiswa() {
     }
 
     const exportData = dataToExport.map((student, index) => ({
-      'No': index + 1,
+      'No': pagination.from + index,
       'Nama Siswa': student.name,
       'NISN': student.nisn,
-      'Jurusan': student.major,
-      'Kelas': student.grade
+      'Jurusan': student.classRoom?.major?.name || '-',
+      'Kelas': student.classRoom?.name || '-'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -476,14 +414,9 @@ function DataSiswa() {
               onChange={(e) => setFilterJurusan(e.target.value)}
             >
               <option value="">Semua Jurusan</option>
-              <option value="RPL">RPL</option>
-              <option value="TKJ">TKJ</option>
-              <option value="DKV">DKV</option>
-              <option value="AV">AV</option>
-              <option value="MT">MT</option>
-              <option value="BC">BC</option>
-              <option value="AN">AN</option>
-              <option value="EI">EI</option>
+              {majors.map(major => (
+                <option key={major.id} value={major.id}>{major.name}</option>
+              ))}
             </select>
 
             <label>Kelas :</label>
@@ -492,9 +425,9 @@ function DataSiswa() {
               onChange={(e) => setFilterKelas(e.target.value)}
             >
               <option value="">Semua Kelas</option>
-              <option value="X">X</option>
-              <option value="XI">XI</option>
-              <option value="XII">XII</option>
+              {classes.map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
             </select>
 
             {(searchTerm || filterJurusan || filterKelas) && (
@@ -567,21 +500,23 @@ function DataSiswa() {
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.length > 0 ? (
-              filteredStudents.map((student, index) => (
+            {students.length > 0 ? (
+              students.map((student, index) => (
                 <tr key={student.id}>
-                  <td>{index + 1}</td>
+                  <td>{pagination.from + index}</td>
                   <td>{student.name}</td>
                   <td>{student.nisn}</td>
-                  <td>{student.major}</td>
-                  <td>{student.grade}</td>
+                  <td>{student.classRoom?.major?.name || '-'}</td>
+                  <td>{student.classRoom?.name || '-'}</td>
                   <td className="aksi-cell">
-                    <button className="aksi edit" onClick={() => handleEditClick(student)} title="Edit">
-                      <EditIcon />
-                    </button>
-                    <button className="aksi hapus" onClick={() => handleDeleteStudent(student.id)} title="Hapus">
-                      <DeleteIcon />
-                    </button>
+                    <div className="aksi-container">
+                      <button className="aksi edit" onClick={() => handleEditClick(student)} title="Edit">
+                        <EditIcon />
+                      </button>
+                      <button className="aksi hapus" onClick={() => handleDeleteStudent(student.id)} title="Hapus">
+                        <DeleteIcon />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -596,6 +531,15 @@ function DataSiswa() {
             )}
           </tbody>
         </table>
+
+        <Pagination 
+          currentPage={pagination.currentPage}
+          lastPage={pagination.lastPage}
+          onPageChange={handlePageChange}
+          total={pagination.total}
+          from={pagination.from}
+          to={pagination.to}
+        />
       </div>
 
       <TambahSiswa isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditData(null); }} onSubmit={handleAddOrUpdate} editData={editData} />

@@ -368,8 +368,7 @@ class AttendanceController extends Controller
 
         $now = Carbon::parse($data['date']);
 
-        // Map 'pulang' to 'return' for database enum
-        $status = $data['status'] === 'pulang' ? 'return' : $data['status'];
+        $status = Attendance::normalizeStatus($data['status']);
 
         $attributes = [
             'attendee_type' => 'student',
@@ -446,8 +445,8 @@ class AttendanceController extends Controller
                 // Student is on leave - create attendance with leave status
                 $status = match ($leavePermission->type) {
                     'sakit' => 'sick',
-                    'izin', 'izin_pulang', 'dispensasi' => 'izin',
-                    default => 'izin',
+                    'izin', 'izin_pulang', 'dispensasi' => 'excused',
+                    default => 'excused',
                 };
 
                 Attendance::create([
@@ -583,14 +582,7 @@ class AttendanceController extends Controller
 
     private function mapStatusToFrontend($status)
     {
-        switch ($status) {
-            case 'present': return 'hadir';
-            case 'sick': return 'sakit';
-            case 'izin': return 'izin'; // Changed from 'permission' to 'izin'
-            case 'absent': return 'alpha'; // Changed from 'alpha' to 'absent'
-            case 'return': return 'pulang'; // Changed from 'leave_early' to 'return'
-            default: return 'alpha';
-        }
+        return Attendance::mapStatusToFrontend($status);
     }
 
     /**
@@ -1252,7 +1244,10 @@ class AttendanceController extends Controller
             'source' => 'manual',
         ]);
 
-        return response()->json(new \App\Http\Resources\AttendanceResource($attendance->load(['student.user', 'teacher.user', 'schedule.dailySchedule.classSchedule.class'])), 201);
+        return response()->json([
+            'message' => 'Kehadiran berhasil disimpan',
+            'attendance' => new \App\Http\Resources\AttendanceResource($attendance->load(['student.user', 'teacher.user', 'schedule.dailySchedule.classSchedule.class'])),
+        ], 201);
     }
 
     public function teacherAttendanceHistory(Request $request, TeacherProfile $teacher): JsonResponse
@@ -1366,7 +1361,7 @@ class AttendanceController extends Controller
             }
 
             if ($request->filled('class_id')) {
-                $q->whereHas('schedule', function ($sq) use ($request) {
+                $q->whereHas('schedule.dailySchedule.classSchedule', function ($sq) use ($request) {
                     $sq->where('class_id', $request->integer('class_id'));
                 });
             }
@@ -1382,7 +1377,7 @@ class AttendanceController extends Controller
 
         // 2. Fetch detailed attendance records for these students only
         $attendanceQuery = Attendance::query()
-            ->with(['schedule.class', 'student.user'])
+            ->with(['schedule.dailySchedule.classSchedule.class', 'student.user'])
             ->whereIn('student_id', $studentIds)
             ->where('attendee_type', 'student');
 
@@ -1398,7 +1393,7 @@ class AttendanceController extends Controller
             $attendanceQuery->where('status', '!=', 'present');
         }
         if ($request->filled('class_id')) {
-            $attendanceQuery->whereHas('schedule', fn ($q) => $q->where('class_id', $request->integer('class_id')));
+            $attendanceQuery->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $request->integer('class_id')));
         }
 
         $attendances = $attendanceQuery->orderBy('date')->get()->groupBy('student_id');
@@ -1411,7 +1406,7 @@ class AttendanceController extends Controller
                 'total_absences' => $student->attendances_count, // Bonus info
             ];
         });
-
+        
         $students->setCollection($items);
 
         return response()->json($students);
@@ -1640,7 +1635,7 @@ class AttendanceController extends Controller
     public function bulkManual(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'schedule_id' => ['required', 'exists:schedules,id'],
+            'schedule_id' => ['required', 'exists:schedule_items,id'],
             'date' => ['required', 'date'],
             'items' => ['required', 'array'],
             'items.*.student_id' => ['required', 'exists:student_profiles,id'],
@@ -1648,7 +1643,7 @@ class AttendanceController extends Controller
             'items.*.reason' => ['nullable', 'string'],
         ]);
 
-        $schedule = Schedule::findOrFail($data['schedule_id']);
+        $schedule = \App\Models\ScheduleItem::findOrFail($data['schedule_id']);
         $this->authorizeSchedule($request, $schedule);
 
         $date = $data['date'];
@@ -1656,17 +1651,7 @@ class AttendanceController extends Controller
 
         DB::transaction(function () use ($data, $date, $schedule, &$results) {
             foreach ($data['items'] as $item) {
-                // Normalize status
-                $status = $item['status'];
-                $map = [
-                    'hadir' => 'present',
-                    'sakit' => 'sick',
-                    'izin' => 'excused',
-                    'terlambat' => 'late',
-                    'alpha' => 'absent',
-                    'pulang' => 'return',
-                ];
-                $status = $map[$status] ?? $status;
+                $status = Attendance::normalizeStatus($item['status']);
 
                 $attendance = Attendance::updateOrCreate(
                     [
@@ -1720,7 +1705,7 @@ class AttendanceController extends Controller
         ]);
 
         $attendance->update([
-            'status' => $data['status'],
+            'status' => Attendance::normalizeStatus($data['status']),
             'reason' => $data['reason'] ?? null,
             'source' => 'manual',
         ]);
@@ -1731,7 +1716,7 @@ class AttendanceController extends Controller
     public function export(Request $request): StreamedResponse
     {
         $request->validate([
-            'schedule_id' => ['nullable', 'exists:schedules,id'],
+            'schedule_id' => ['nullable', 'exists:schedule_items,id'],
             'class_id' => ['nullable', 'exists:classes,id'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -1740,7 +1725,7 @@ class AttendanceController extends Controller
         $query = Attendance::with(['student.user:id,name', 'teacher.user:id,name', 'schedule.class:id,name']);
 
         if ($request->filled('schedule_id')) {
-            $schedule = Schedule::findOrFail($request->integer('schedule_id'));
+            $schedule = ScheduleItem::findOrFail($request->integer('schedule_id'));
             if ($request->user()->user_type === 'teacher' && $schedule->teacher_id !== optional($request->user()->teacherProfile)->id) {
                 abort(403, 'Tidak boleh mengekspor jadwal ini');
             }
@@ -1802,7 +1787,7 @@ class AttendanceController extends Controller
             ->where('attendee_type', 'student');
 
         if ($request->filled('class_id')) {
-            $query->whereHas('schedule', fn ($q) => $q->where('class_id', $request->class_id));
+            $query->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $request->class_id));
         }
 
         if ($request->filled('date')) {

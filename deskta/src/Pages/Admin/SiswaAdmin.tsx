@@ -107,10 +107,12 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     fetchMasterData();
   }, []);
 
-  // Fetch students when search or page changes
+  // Fetch students when filters or page changes
   useEffect(() => {
+    const controller = new AbortController();
     fetchStudents();
-  }, [searchValue, pageIndex]);
+    return () => controller.abort();
+  }, [searchValue, pageIndex, selectedJurusan, selectedKelas]);
 
   const fetchMasterData = async () => {
     try {
@@ -131,7 +133,9 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       const params = {
         page: pageIndex,
         per_page: itemsPerPage,
-        search: searchValue
+        search: searchValue,
+        major_id: selectedJurusan || undefined,
+        class_id: selectedKelas || undefined
       };
       
       const response = await studentService.getStudents(params as any);
@@ -162,19 +166,16 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         }
       }
       
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message === 'canceled') return;
       console.error('Error fetching students:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filtered Data for Display
-  const filteredData = students.filter((item) => {
-    const matchJurusan = selectedJurusan ? item.jurusan === selectedJurusan || item.jurusanId === selectedJurusan : true;
-    const matchKelas = selectedKelas ? item.kelas === selectedKelas || item.kelasId === selectedKelas : true;
-    return matchJurusan && matchKelas;
-  });
+  // Remote filtering handles this now
+  const filteredData = students;
 
   // Validation
   const validateField = (name: string, value: string) => {
@@ -348,7 +349,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             name: row.Nama || row.name,
             username: row.Username || row.username,
             email: row.Email || row.email || null,
-            password: row.Password || row.password || 'password123',
+            password: row.Password || row.password || null, // Let backend handle default secure password (NISN)
             nisn: String(row.NISN || row.nisn),
             nis: String(row.NIS || row.nis),
             gender: row.Gender || row.gender || 'L',

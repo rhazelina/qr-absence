@@ -1,108 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import './DataKelas.css';
-import NavbarAdmin from '../../components/Admin/NavbarAdmin';
-
-// API Configuration
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-// API Service
-const apiService = {
-  // Get all classes
-  getClasses: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/classes`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch classes');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-      return { data: [] };
-    }
-  },
-
-  // Get available teachers (only with role 'Guru' or 'Wali Kelas')
-  getAvailableTeachers: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/available`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch teachers');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
-      return { data: [] };
-    }
-  },
-
-  // Add class
-  addClass: async (classData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/classes`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(classData)
-      });
-      if (!response.ok) throw new Error('Failed to add class');
-      return await response.json();
-    } catch (error) {
-      console.error('Error adding class:', error);
-      throw error;
-    }
-  },
-
-  // Update class
-  updateClass: async (id, classData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/classes/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(classData)
-      });
-      if (!response.ok) throw new Error('Failed to update class');
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating class:', error);
-      throw error;
-    }
-  },
-
-  // Delete class
-  deleteClass: async (id) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/classes/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to delete class');
-      return await response.json();
-    } catch (error) {
-      console.error('Error deleting class:', error);
-      throw error;
-    }
-  }
-};
+import apiService from '../../utils/api';
+import Pagination from '../../components/Common/Pagination';
 
 function DataKelas() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,6 +9,13 @@ function DataKelas() {
   const [editData, setEditData] = useState(null);
   const [searchKelas, setSearchKelas] = useState('');
   const [searchJurusan, setSearchJurusan] = useState('');
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+    from: 0,
+    to: 0
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -125,22 +29,41 @@ function DataKelas() {
   // Load classes from API
   useEffect(() => {
     loadClasses();
-  }, []);
-
-  // Load teachers when modal opens
-  useEffect(() => {
-    if (isModalOpen) {
-      loadTeachers();
-    }
-  }, [isModalOpen]);
+  }, [pagination.currentPage, searchKelas, searchJurusan]);
 
   const loadClasses = async () => {
     setLoading(true);
-    const result = await apiService.getClasses();
-    if (result.data) {
-      setKelas(result.data);
+    try {
+      const params = {
+        page: pagination.currentPage,
+        grade: searchKelas,
+        major: searchJurusan,
+        per_page: 15
+      };
+
+      const result = await apiService.getClasses(params);
+      if (result.data) {
+        setKelas(result.data);
+        if (result.meta) {
+          setPagination(prev => ({
+            ...prev,
+            currentPage: result.meta.current_page,
+            lastPage: result.meta.last_page,
+            total: result.meta.total,
+            from: result.meta.from,
+            to: result.meta.to
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading classes:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
   };
 
   const loadTeachers = async () => {
@@ -448,7 +371,7 @@ function DataKelas() {
             </tr>
           </thead>
           <tbody>
-            {filteredKelas.length === 0 ? (
+            {kelas.length === 0 ? (
               <tr>
                 <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                   {searchKelas || searchJurusan 
@@ -457,36 +380,47 @@ function DataKelas() {
                 </td>
               </tr>
             ) : (
-              filteredKelas.map((k, index) => (
+              kelas.map((k, index) => (
                 <tr key={k.id}>
-                  <td>{index + 1}</td>
+                  <td>{pagination.from + index}</td>
                   <td>{k.class_name}</td>
                   <td>{k.major}</td>
                   <td>{k.homeroom_teacher_name}</td>
                   <td className="kelas-aksi-cell">
-                    <button
-                      className="kelas-aksi kelas-edit"
-                      onClick={() => {
-                        setEditData(k);
-                        setIsModalOpen(true);
-                      }}
-                      title="Edit"
-                    >
-                      <EditIcon />
-                    </button>
-                    <button
-                      className="kelas-aksi kelas-hapus"
-                      onClick={() => handleDeleteKelas(k.id)}
-                      title="Hapus"
-                    >
-                      <DeleteIcon />
-                    </button>
+                    <div className="aksi-container">
+                      <button
+                        className="kelas-aksi kelas-edit"
+                        onClick={() => {
+                          setEditData(k);
+                          setIsModalOpen(true);
+                        }}
+                        title="Edit"
+                      >
+                        <EditIcon />
+                      </button>
+                      <button
+                        className="kelas-aksi kelas-hapus"
+                        onClick={() => handleDeleteKelas(k.id)}
+                        title="Hapus"
+                      >
+                        <DeleteIcon />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+
+        <Pagination 
+          currentPage={pagination.currentPage}
+          lastPage={pagination.lastPage}
+          onPageChange={handlePageChange}
+          total={pagination.total}
+          from={pagination.from}
+          to={pagination.to}
+        />
       </div>
 
       {/* Modal Form */}

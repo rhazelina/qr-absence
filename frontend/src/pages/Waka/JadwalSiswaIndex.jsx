@@ -7,11 +7,11 @@ import {
   FaEdit,
   FaTrash,
   FaPlus,
-  FaSearch,
   FaChevronDown,
   FaBriefcase,
   FaDoorOpen,
 } from "react-icons/fa";
+import apiService from '../../utils/api';
 
 function JadwalSiswaIndex() {
   const [schedules, setSchedules] = useState([]);
@@ -19,36 +19,64 @@ function JadwalSiswaIndex() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const [searchTerm, setSearchTerm] = useState('');
+  // Filters
+  const [filterKompetensi, setFilterKompetensi] = useState('');
+  const [filterKelas, setFilterKelas] = useState('');
+  
+  // Master Data for Filters
+  const [classes, setClasses] = useState([]);
+  const [majors, setMajors] = useState([]);
 
   useEffect(() => {
-    fetchClassSchedules();
+    fetchData();
   }, []);
 
-  const fetchClassSchedules = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      // Updated endpoint
-      const response = await fetch('http://localhost:8000/api/schedules', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
+      // Parallel fetch for schedules and classes
+      const [schedulesRes, classesRes] = await Promise.all([
+        apiService.get('/schedules'),
+        apiService.get('/classes') // Assuming this endpoint exists based on Edit component
+      ]);
+      
+      const schedulesData = schedulesRes.data || schedulesRes;
+      const classesData = classesRes.data || classesRes;
 
-      if (response.ok) {
-        const result = await response.json();
-        // Assuming API returns { data: [...] } or just [...]
-        const data = result.data || result;
-        setSchedules(data);
-        setFilteredData(data);
-      } else {
-        console.error('Gagal memuat data jadwal kelas');
-        // alert('Gagal memuat data jadwal kelas');
+      setSchedules(schedulesData);
+      setFilteredData(schedulesData);
+      setClasses(classesData);
+
+      // Extract unique majors from classes
+      // Assuming class object has 'major' or 'department' property, or we parse from name
+      const uniqueMajors = [...new Set(classesData.map(c => c.major_name || c.major || c.department || 'Umum'))].filter(Boolean);
+      // Or if major is an object
+      // const uniqueMajors = [...new Set(classesData.map(c => c.major?.name))].filter(Boolean);
+      
+      // If backend doesn't provide explicit major, we might need to rely on what's available
+      // For now, let's try to map from the class data we have.
+      // If classes have a 'major' relationship or field
+      const extractedMajors = [];
+      classesData.forEach(c => {
+          const majorName = c.major?.name || c.major_name || c.department;
+          if (majorName && !extractedMajors.find(m => m.value === majorName)) {
+              extractedMajors.push({ label: majorName, value: majorName });
+          }
+      });
+       // Fallback if no major field found, maybe parse from class name (e.g. "X RPL 1")
+      if (extractedMajors.length === 0) {
+           const parsedMajors = [...new Set(classesData.map(c => {
+               const name = c.name || '';
+               const parts = name.split(' ');
+               return parts.length > 1 ? parts[1] : null;
+           }))].filter(Boolean);
+           parsedMajors.forEach(m => extractedMajors.push({ label: m, value: m }));
       }
+
+      setMajors(extractedMajors);
+
     } catch (error) {
-      console.error('Error fetching class schedules:', error);
+      console.error('Error fetching data:', error);
       // alert('Terjadi kesalahan saat memuat data');
     } finally {
       setLoading(false);
@@ -58,17 +86,24 @@ function JadwalSiswaIndex() {
   useEffect(() => {
     let filtered = schedules;
 
-    if (searchTerm) {
-      const lowerTerm = searchTerm.toLowerCase();
+    if (filterKompetensi) {
+      filtered = filtered.filter((item) => {
+        // Safe navigation for nested properties
+        const majorName = item.class?.major?.name || item.class?.major_name || item.class?.department || '';
+        // Also check if we parsed it from name
+        const className = item.class?.name || '';
+        return majorName === filterKompetensi || className.includes(filterKompetensi);
+      });
+    }
+
+    if (filterKelas) {
       filtered = filtered.filter(
-        (item) =>
-          item.class?.name?.toLowerCase().includes(lowerTerm) ||
-          item.academic_year?.year?.includes(searchTerm)
+        (item) => item.class?.name === filterKelas
       );
     }
 
     setFilteredData(filtered);
-  }, [searchTerm, schedules]);
+  }, [filterKompetensi, filterKelas, schedules]);
 
   const handleCreate = () => {
     navigate('/waka/jadwal-siswa/create');
@@ -92,21 +127,11 @@ function JadwalSiswaIndex() {
     if (!window.confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/schedules/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        alert('Jadwal berhasil dihapus');
-        fetchClassSchedules();
-      } else {
-        alert('Gagal menghapus jadwal');
-      }
+      await apiService.delete(`/schedules/${id}`);
+      alert('Jadwal berhasil dihapus');
+      // Refresh data
+      const res = await apiService.get('/schedules');
+      setSchedules(res.data || res);
     } catch (error) {
       console.error('Error deleting schedule:', error);
       alert('Terjadi kesalahan saat menghapus data');
@@ -126,32 +151,63 @@ function JadwalSiswaIndex() {
         </p>
       </div>
 
-      {/* ACTION & FILTER */}
+      {/* FILTER & ACTION */}
       <div className="filter-card">
-        <div className="filter-grid">
+        <div className="filter-grid" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+          
+          {/* Kompetensi Keahlian */}
           <div className="filter-group">
             <label className="filter-label">
-              <FaSearch /> Cari Kelas
+              <FaBriefcase /> Konsentrasi Keahlian
             </label>
-            <div className="search-wrapper">
-              <input
-                type="text"
-                placeholder="Cari Nama Kelas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="filter-input"
-              />
+            <div className="select-wrapper">
+              <select
+                value={filterKompetensi}
+                onChange={(e) => setFilterKompetensi(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">Semua Konsentrasi</option>
+                {majors.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <FaChevronDown className="select-icon" />
             </div>
           </div>
 
-          <div className="filter-group" style={{ justifyContent: 'flex-end', display: 'flex', alignItems: 'flex-end' }}>
-            <button
+          {/* Kelas */}
+          <div className="filter-group">
+            <label className="filter-label">
+              <FaDoorOpen /> Kelas
+            </label>
+            <div className="select-wrapper">
+              <select
+                value={filterKelas}
+                onChange={(e) => setFilterKelas(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">Semua Kelas</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              <FaChevronDown className="select-icon" />
+            </div>
+          </div>
+
+          {/* Add Button */}
+          <div className="filter-group" style={{ justifyContent: 'flex-end' }}>
+             <button
               onClick={handleCreate}
               className="jadwal-siswa-index-btn-add"
+              title="Tambah Jadwal Baru"
             >
               <FaPlus /> Tambah Jadwal
             </button>
           </div>
+
         </div>
       </div>
 
@@ -171,10 +227,9 @@ function JadwalSiswaIndex() {
               <thead>
                 <tr>
                   <th>No</th>
+                  <th>Kompetensi Keahlian</th>
+                  <th>Wali Kelas</th>
                   <th>Kelas</th>
-                  <th>Tahun Ajaran</th>
-                  <th>Semester</th>
-                  <th>Status</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
@@ -187,18 +242,16 @@ function JadwalSiswaIndex() {
 
                       <td>
                         <span className="jadwal-siswa-index-badge-blue">
-                          {schedule.class?.name || 'N/A'}
+                          {schedule.class?.major_name || schedule.class?.major?.name || schedule.class?.department || (schedule.class?.name ? schedule.class.name.split(' ')[1] : '-') || '-'}
                         </span>
                       </td>
 
-                      <td>{schedule.academic_year?.year || schedule.year || '-'}</td>
                       <td>
-                        {schedule.semester == 1 ? 'Ganjil' : 'Genap'}
+                          {schedule.class?.homeroom_teacher?.user?.name || schedule.class?.homeroom_teacher?.name || '-'}
                       </td>
-                      <td>
-                        <span className={`jadwal-siswa-index-badge-${schedule.is_active ? 'green' : 'gray'}`}>
-                          {schedule.is_active ? 'Aktif' : 'Tidak Aktif'}
-                        </span>
+                      
+                      <td className="siswa-mapel">
+                          {schedule.class?.name || 'N/A'}
                       </td>
 
                       <td>
@@ -233,7 +286,7 @@ function JadwalSiswaIndex() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
                       Tidak ada data jadwal yang sesuai
                     </td>
                   </tr>

@@ -24,6 +24,16 @@ class StudentController extends Controller
             $query->where('nisn', $request->string('nisn'));
         }
 
+        if ($request->filled('class_id')) {
+            $query->where('class_id', $request->integer('class_id'));
+        }
+
+        if ($request->filled('major_id')) {
+            $query->whereHas('classRoom', function ($q) use ($request) {
+                $q->where('major_id', $request->integer('major_id'));
+            });
+        }
+
         if ($request->filled('search')) {
             $search = $request->string('search');
             $query->where(function ($q) use ($search) {
@@ -86,7 +96,7 @@ class StudentController extends Controller
                     'name' => $item['name'],
                     'username' => $item['username'],
                     'email' => $item['email'] ?? null,
-                    'password' => Hash::make($item['password'] ?? 'password123'),
+                    'password' => Hash::make($item['password'] ?? $item['nisn']), // Default to NISN instead of hardcoded string
                     'phone' => $item['phone'] ?? null,
                     'contact' => $item['contact'] ?? null,
                     'user_type' => 'student',

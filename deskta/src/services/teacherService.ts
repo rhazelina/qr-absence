@@ -2,20 +2,31 @@ import { API_BASE_URL, getHeaders, handleResponse } from './api';
 
 export interface Teacher {
   id: string;
-  kodeGuru: string; // Maps to 'nip' or 'kode_guru'
-  namaGuru: string; // Maps to user.name
-  keterangan: string; // Maps to 'subject', 'waliKelasDari', or 'jabatan'
-  role: string; // Maps to user.user_type (normalized) or 'jabatan'
-  noTelp?: string; // Maps to user.phone
-  waliKelasDari?: string; // Maps to homeroom_class.name
-  jenisKelamin?: string; // Not in backend explicitly yet, maybe in profile?
-  status?: string;
-  nip?: string;
-  username?: string;
-  email?: string;
-  password?: string;
+  name: string;
+  nip: string;
+  code?: string;
+  nama_guru?: string; // For compatibility
+  kode_guru?: string; // For compatibility
   subject?: string;
+  subject_name?: string;
+  role?: string;
+  waka_field?: string;
+  major_expertise?: string;
+  email?: string;
+  phone?: string;
+  contact?: string;
+  photo_url?: string;
+  schedule_image_path?: string;
+  schedule_image_url?: string;
+  classes_count?: number;
   homeroom_class_id?: number | null;
+  homeroom_class?: {
+    id: number;
+    name: string;
+    grade: string;
+    major: string;
+    major_name: string;
+  };
 }
 
 export const teacherService = {

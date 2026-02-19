@@ -1,135 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './DataGuru.css';
-import NavbarAdmin from '../../components/Admin/NavbarAdmin';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
-// API Configuration
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-// API Service
-const apiService = {
-  // Get all teachers
-  getTeachers: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch teachers');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
-      return { data: [] };
-    }
-  },
-
-  // Get available classes for homeroom teacher
-  getAvailableClasses: async (teacherId = null) => {
-    try {
-      const url = teacherId 
-        ? `${API_BASE_URL}/classes/available?teacher_id=${teacherId}`
-        : `${API_BASE_URL}/classes/available`;
-        
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch available classes');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching available classes:', error);
-      return { data: [] };
-    }
-  },
-
-  // Add teacher
-  addTeacher: async (teacherData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(teacherData)
-      });
-      if (!response.ok) throw new Error('Failed to add teacher');
-      return await response.json();
-    } catch (error) {
-      console.error('Error adding teacher:', error);
-      throw error;
-    }
-  },
-
-  // Update teacher
-  updateTeacher: async (id, teacherData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(teacherData)
-      });
-      if (!response.ok) throw new Error('Failed to update teacher');
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating teacher:', error);
-      throw error;
-    }
-  },
-
-  // Delete teacher
-  deleteTeacher: async (id) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to delete teacher');
-      return await response.json();
-    } catch (error) {
-      console.error('Error deleting teacher:', error);
-      throw error;
-    }
-  },
-
-  // Import teachers (bulk)
-  importTeachers: async (teachersData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/import`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ teachers: teachersData })
-      });
-      if (!response.ok) throw new Error('Failed to import teachers');
-      return await response.json();
-    } catch (error) {
-      console.error('Error importing teachers:', error);
-      throw error;
-    }
-  }
-};
+import apiService from '../../utils/api';
+import Pagination from '../../components/Common/Pagination';
 
 function DataGuru() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -196,18 +66,63 @@ function DataGuru() {
     jurusan: 'TKJ'
   });
 
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+    from: 0,
+    to: 0
+  });
+
   // Load teachers from API
   useEffect(() => {
     loadTeachers();
-  }, []);
+  }, [pagination.currentPage]);
+
+  // Handle search with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (pagination.currentPage !== 1) {
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+      } else {
+        loadTeachers();
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const loadTeachers = async () => {
     setLoading(true);
-    const result = await apiService.getTeachers();
-    if (result.data) {
-      setTeachers(result.data);
+    try {
+      const params = {
+        page: pagination.currentPage,
+        search: searchTerm,
+        per_page: 15
+      };
+
+      const result = await apiService.getTeachers(params);
+      if (result.data) {
+        setTeachers(result.data);
+        if (result.meta) {
+          setPagination(prev => ({
+            ...prev,
+            currentPage: result.meta.current_page,
+            lastPage: result.meta.last_page,
+            total: result.meta.total,
+            from: result.meta.from,
+            to: result.meta.to
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading teachers:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
   };
 
   // Load available classes when modal opens for homeroom teacher
@@ -219,24 +134,7 @@ function DataGuru() {
     }
   };
 
-  // Filter & Search
-  const getFilteredTeachers = () => {
-    return teachers.filter(teacher => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchSearch = searchTerm === '' || 
-        teacher.name?.toLowerCase().includes(searchLower) ||
-        teacher.code?.toLowerCase().includes(searchLower) ||
-        teacher.role?.toLowerCase().includes(searchLower) ||
-        (teacher.subject_name && teacher.subject_name.toLowerCase().includes(searchLower)) ||
-        (teacher.waka_field && teacher.waka_field.toLowerCase().includes(searchLower)) ||
-        (teacher.major_expertise && teacher.major_expertise.toLowerCase().includes(searchLower)) ||
-        (teacher.homeroom_class?.name && teacher.homeroom_class.name.toLowerCase().includes(searchLower));
-
-      return matchSearch;
-    });
-  };
-
-  const filteredTeachers = getFilteredTeachers();
+  const filteredTeachers = teachers;
 
   // Reset Filter
   const handleResetFilter = () => {
@@ -809,8 +707,8 @@ function DataGuru() {
             </tr>
           </thead>
           <tbody>
-            {filteredTeachers.length > 0 ? (
-              filteredTeachers.map((teacher, index) => {
+            {teachers.length > 0 ? (
+              teachers.map((teacher, index) => {
                 let detail = '';
                 if (teacher.role === 'Guru') {
                   detail = teacher.subject || '';
@@ -819,31 +717,33 @@ function DataGuru() {
                 } else if (teacher.role === 'Kapro') {
                   detail = teacher.major_expertise || '';
                 } else if (teacher.role === 'Wali Kelas') {
-                  detail = `${teacher.grade || ''} ${teacher.major || ''}`;
+                  detail = teacher.homeroom_class?.name || (teacher.grade && teacher.major ? `${teacher.grade} ${teacher.major}` : '');
                 }
 
                 return (
                   <tr key={teacher.id}>
-                    <td>{index + 1}</td>
+                    <td>{pagination.from + index}</td>
                     <td>{teacher.code}</td>
                     <td>{teacher.name}</td>
                     <td>{teacher.role}</td>
                     <td>{detail}</td>
                     <td className="guru-aksi-cell">
-                      <button 
-                        className="guru-aksi guru-edit" 
-                        onClick={() => handleEditTeacher(teacher)}
-                        title="Edit"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button 
-                        className="guru-aksi guru-hapus" 
-                        onClick={() => handleDeleteTeacher(teacher.id)}
-                        title="Hapus"
-                      >
-                        <DeleteIcon />
-                      </button>
+                      <div className="aksi-container">
+                        <button 
+                          className="guru-aksi guru-edit" 
+                          onClick={() => handleEditTeacher(teacher)}
+                          title="Edit"
+                        >
+                          <EditIcon />
+                        </button>
+                        <button 
+                          className="guru-aksi guru-hapus" 
+                          onClick={() => handleDeleteTeacher(teacher.id)}
+                          title="Hapus"
+                        >
+                          <DeleteIcon />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -851,14 +751,21 @@ function DataGuru() {
             ) : (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                  {searchTerm 
-                    ? 'Tidak ada data yang sesuai dengan pencarian' 
-                    : 'Tidak ada data guru'}
+                  {loading ? 'Memuat data...' : (searchTerm ? 'Tidak ada data yang sesuai dengan pencarian' : 'Tidak ada data guru')}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+
+        <Pagination 
+          currentPage={pagination.currentPage}
+          lastPage={pagination.lastPage}
+          onPageChange={handlePageChange}
+          total={pagination.total}
+          from={pagination.from}
+          to={pagination.to}
+        />
       </div>
 
       {/* MODAL */}

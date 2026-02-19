@@ -1,141 +1,202 @@
-.jadwal-siswa-edit-container {
-  max-width: 900px;
-  margin: auto;
-  padding-top: 250px;
+.jadwal-siswa-edit-page {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
-.jadwal-siswa-edit-header {
-  background: #fff;
-  padding: 1.5rem;
-  border-radius: 10px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+.jadwal-siswa-edit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
 }
 
-.jadwal-siswa-edit-title {
-  font-size: 28px;
-  font-weight: bold;
-  color: #1f2937;
-  margin-top: 0.5rem;
+.jadwal-siswa-edit-main {
+  min-width: 0;
 }
 
-.jadwal-siswa-edit-title i {
-  color: #1a4d6d;
-  margin-right: 8px;
+.jadwal-siswa-side {
+  min-width: 0;
 }
 
-.jadwal-siswa-edit-subtitle {
-  color: #6b7280;
-  margin-top: 0.8rem;
-  font-size: 0.87rem;
+@media (min-width: 1200px) {
+  .jadwal-siswa-edit-form {
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  }
+
+  .jadwal-siswa-side {
+    position: sticky;
+    top: 96px;
+    align-self: start;
+  }
 }
 
-.jadwal-siswa-edit-back {
-  background: #6b7280;
-  color: #fff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  text-decoration: none;
+.jadwal-siswa-info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
 }
 
-.jadwal-siswa-edit-card {
-  background: #fff;
-  padding: 32px;
-  border-radius: 10px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+@media (min-width: 900px) {
+  .jadwal-siswa-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.jadwal-siswa-edit-group {
-  margin-bottom: 20px;
-}
-
-.jadwal-siswa-edit-group label {
-  font-weight: bold;
+.jadwal-siswa-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.04em;
   margin-bottom: 6px;
-  display: block;
-  font-size: 0.96rem;
-  color: rgb(55 65 81 / var(--tw-text-opacity, 1));
 }
 
-.jadwal-siswa-edit-group input {
+.jadwal-siswa-input {
   width: 100%;
-  padding: 12px;
-  border: 2px solid #d1d5db;
-  border-radius: 8px;
-  background-color: transparent;
-  color: black;
-  font-size: 0.9rem;
+  border: 1px solid #dbe4f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.jadwal-siswa-edit-upload {
-  border: 2px dashed #d1d5db;
-  padding: 24px;
-  text-align: left;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  color: black;
-  font-size: 0.9rem;
+.jadwal-siswa-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  outline: none;
 }
 
-.jadwal-siswa-edit-upload img {
-  max-height: 250px;
-  border-radius: 12px;
+.jadwal-siswa-active-card {
+  min-height: 72px;
+  grid-column: span 1;
 }
 
-.jadwal-siswa-edit-actions {
-  display: flex;
-  gap: 16px;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 20px;
+@media (min-width: 900px) {
+  .jadwal-siswa-active-card {
+    grid-column: 1 / -1;
+  }
 }
 
-.jadwal-siswa-edit-actions button {
-  flex: 1;
-  padding: 14px;
-  background: linear-gradient(to right, #0d2847, #1a4d6d);
-  color: white;
-  border-radius: 10px;
-  border: none;
-  font-weight: bold;
-}
-
-.jadwal-siswa-edit-cancel {
-  flex: 1;
-  background: #6b7280;
-  color: white;
-  text-align: center;
-  padding: 14px;
-  border-radius: 10px;
-  text-decoration: none;
-}
-
-.jadwal-siswa-edit-error {
-  background: #fee2e2;
-  border-left: 5px solid #ef4444;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.upload-label {
-  display: block;
+.jadwal-siswa-active-checkbox {
+  width: 20px;
+  height: 20px;
+  accent-color: #2563eb;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.image-wrapper {
-  width: 100%;
-  margin-top: 10px;
+.jadwal-siswa-structure-header {
+  align-items: flex-start;
 }
 
-.image-wrapper img {
+@media (min-width: 640px) {
+  .jadwal-siswa-structure-header {
+    align-items: center;
+  }
+}
+
+.jadwal-siswa-add-day-btn {
+  border: 0;
+  white-space: nowrap;
+  background: #2563eb;
+  color: #fff;
+}
+
+.jadwal-siswa-add-day-btn:hover {
+  background: #1d4ed8;
+}
+
+.jadwal-siswa-day-body {
+  overflow-x: hidden;
+}
+
+.jadwal-siswa-item-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: end;
+}
+
+@media (min-width: 1280px) {
+  .jadwal-siswa-item-grid {
+    grid-template-columns: minmax(240px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr) minmax(120px, 0.8fr) auto;
+    gap: 16px;
+  }
+}
+
+.jadwal-siswa-item-grid label {
   display: block;
-  max-width: 100%;
-  height: auto;
-  position: static;
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+  padding-left: 2px;
 }
 
-.page-offset {
-  margin-top: 90px; /* navbar 75px + aman */
+.jadwal-siswa-item-grid input,
+.jadwal-siswa-item-grid select {
+  width: 100%;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+.jadwal-siswa-item-time > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jadwal-siswa-item-delete {
+  align-self: end;
+}
+
+@media (max-width: 1279px) {
+  .jadwal-siswa-item-delete {
+    justify-content: flex-end;
+  }
+}
+
+.jadwal-siswa-upload-empty {
+  min-height: 280px;
+}
+
+.jadwal-siswa-file-input {
+  display: none;
+}
+
+.jadwal-siswa-submit-btn {
+  border: 0 !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.jadwal-siswa-submit-btn:hover:not(:disabled) {
+  background: #1d4ed8 !important;
+}
+
+.jadwal-siswa-submit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.jadwal-siswa-cancel-btn {
+  border: 0 !important;
+  background: transparent !important;
+  color: #6b7280 !important;
+}
+
+.jadwal-siswa-cancel-btn:hover {
+  color: #374151 !important;
 }

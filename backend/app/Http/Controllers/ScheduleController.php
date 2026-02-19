@@ -19,7 +19,10 @@ class ScheduleController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = ClassSchedule::query()->with(['class:id,grade,label']);
+        $query = ClassSchedule::query()->with([
+            'class.homeroomTeacher.user',
+            'class.major',
+        ]);
 
         if ($request->filled('class_id')) {
             $query->where('class_id', $request->class_id);
@@ -157,34 +160,6 @@ class ScheduleController extends Controller
     }
 
     /**
-     * Store a new Class Schedule
-     */
-    /**
-     * Normalize day name to English Title Case
-     */
-    private function normalizeDay(string $day): string
-    {
-        $map = [
-            'senin' => 'Monday',
-            'selasa' => 'Tuesday',
-            'rabu' => 'Wednesday',
-            'kamis' => 'Thursday',
-            'jumat' => 'Friday',
-            'sabtu' => 'Saturday',
-            'minggu' => 'Sunday',
-            'monday' => 'Monday',
-            'tuesday' => 'Tuesday',
-            'wednesday' => 'Wednesday',
-            'thursday' => 'Thursday',
-            'friday' => 'Friday',
-            'saturday' => 'Saturday',
-            'sunday' => 'Sunday',
-        ];
-
-        return $map[strtolower($day)] ?? 'Monday';
-    }
-
-    /**
      * Get Schedules by Teacher
      */
     public function byTeacher(Request $request, TeacherProfile $teacher): JsonResponse
@@ -235,7 +210,11 @@ class ScheduleController extends Controller
                     ];
                 });
 
-            return response()->json(['items' => $items]);
+            return response()->json([
+                'status' => $items->isEmpty() ? 'no_schedule' : 'success',
+                'message' => $items->isEmpty() ? 'Tidak ada jam mengajar hari ini' : 'Berhasil mengambil jadwal',
+                'items' => $items,
+            ]);
         }
 
         if ($user->user_type === 'student') {

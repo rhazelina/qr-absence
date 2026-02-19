@@ -172,12 +172,18 @@
 /* Action Buttons */
 .kelas-aksi-cell {
   text-align: center;
+}
+
+.aksi-container {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .kelas-aksi {
+  flex-shrink: 0;
   width: 38px;
   height: 38px;
   border: none;
@@ -194,7 +200,7 @@
 .kelas-aksi svg {
   width: 18px !important;
   height: 18px !important;
-  display: block !important;
+  display: block;
   pointer-events: none;
 }
 
@@ -253,6 +259,7 @@
     opacity: 0;
     transform: translateY(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -499,7 +506,7 @@
     height: 32px;
     font-size: 14px;
   }
-  
+
   .kelas-aksi svg {
     width: 16px !important;
     height: 16px !important;

@@ -50,11 +50,11 @@ export default function JadwalGuruStaff({
       
       const mappedData: GuruJadwal[] = teachers.map((t) => ({
         id: t.id,
-        kodeGuru: t.kodeGuru || "-",
-        namaGuru: t.namaGuru,
-        mataPelajaran: t.subject || t.keterangan || "-",
+        kodeGuru: t.kode_guru || t.code || t.nip || "-",
+        namaGuru: t.nama_guru || t.name || "-",
+        mataPelajaran: t.subject || t.subject_name || "-",
         role: t.role || "Guru",
-        scheduleImage: (t as any).schedule_image_path // Cast as any because interface might not have it yet
+        scheduleImage: t.schedule_image_url
       }));
 
       setGuruData(mappedData);

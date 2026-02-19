@@ -117,12 +117,21 @@ export default function DashboardWaka() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchDashboardData = async () => {
+      // Don't fetch if we don't have a semester ID yet but we do have a semesters list
+      // This prevents the initial fetch with an empty ID if semesters are still loading
+      if (semesters.length > 0 && !selectedSemesterId) {
+        return;
+      }
+
       setIsLoading(true);
       setErrorMessage("");
       try {
         const response = await apiService.getWakaDashboardSummary(
-          selectedSemesterId || undefined
+          selectedSemesterId || undefined,
+          { signal: controller.signal }
         );
         const statistikApi = response?.statistik || {};
 
@@ -140,15 +149,18 @@ export default function DashboardWaka() {
         const { fallbackLabels } = getSemesterMeta(selectedSemester);
         setChartData(buildChartData(response?.trend, fallbackLabels));
       } catch (error) {
+        if (error.name === 'AbortError') return;
         console.error("Error fetching dashboard summary:", error);
-        setErrorMessage("Gagal memuat ringkasan dashboard.");
+        setErrorMessage(error.message || "Gagal memuat ringkasan dashboard.");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [selectedSemesterId, semesters]);
+
+    return () => controller.abort();
+  }, [selectedSemesterId]); // Removed semesters from dependency array
 
   const tanggal = now.toLocaleDateString("id-ID", {
     weekday: "long",

@@ -28,19 +28,23 @@ class Classes extends Model
         return trim("{$this->grade_roman} {$this->label}");
     }
 
-    // public function getGradeRomanAttribute(): string
-    // {
-    //     $map = [
-    //         '10' => 'X',
-    //         '11' => 'XI',
-    //         '12' => 'XII',
-    //         'X' => 'X',
-    //         'XI' => 'XI',
-    //         'XII' => 'XII',
-    //     ];
+    public function getGradeRomanAttribute(): string
+    {
+        if (!$this->grade) {
+            return '';
+        }
 
-    //     return $map[$this->grade] ?? $this->grade;
-    // }
+        $map = [
+            '10' => 'X',
+            '11' => 'XI',
+            '12' => 'XII',
+            'X' => 'X',
+            'XI' => 'XI',
+            'XII' => 'XII',
+        ];
+
+        return $map[$this->grade] ?? $this->grade;
+    }
 
     // Siswa untuk
     public function students(): HasMany

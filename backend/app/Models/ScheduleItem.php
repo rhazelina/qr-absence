@@ -21,11 +21,21 @@ class ScheduleItem extends Model
         'keterangan',
     ];
 
-    protected $appends = ['subject_name'];
+    protected $appends = ['subject_name', 'day'];
 
     public function getSubjectNameAttribute(): string
     {
         return $this->subject ? $this->subject->name : ($this->keterangan ?? '-');
+    }
+
+    public function getDayAttribute(): string
+    {
+        return $this->dailySchedule?->day ?? '-';
+    }
+
+    public function getClassAttribute(): ?Classes
+    {
+        return $this->dailySchedule?->classSchedule?->class;
     }
 
     public function dailySchedule(): BelongsTo

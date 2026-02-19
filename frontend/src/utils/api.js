@@ -58,6 +58,15 @@ const apiService = {
     return this.get(`/me/class/attendance${query}`);
   },
 
+  getMyClassStudents() {
+    return this.get('/me/class/students');
+  },
+
+  getMyClassAttendanceHistory(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/me/class/attendance${query}`);
+  },
+
   // Teacher Schedule & Attendance Methods
   getTeacherSchedules() {
     return this.get('/me/schedules');
@@ -166,6 +175,55 @@ const apiService = {
   getClassAttendanceByDate(classId, date) {
     const query = date ? `?date=${date}` : '';
     return this.get(`/waka/classes/${classId}/attendance${query}`);
+  },
+
+  // Student Admin CRUD
+  getStudents(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/students${query}`);
+  },
+  getStudent(id) {
+    return this.get(`/students/${id}`);
+  },
+  addStudent(data) {
+    return this.post('/students', data);
+  },
+  updateStudent(id, data) {
+    return this.request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteStudent(id) {
+    return this.request(`/students/${id}`, { method: 'DELETE' });
+  },
+  importStudents(data) {
+    return this.post('/students/import', data);
+  },
+
+  // Teacher Admin CRUD
+  getTeacher(id) {
+    return this.get(`/teachers/${id}`);
+  },
+  addTeacher(data) {
+    return this.post('/teachers', data);
+  },
+  updateTeacher(id, data) {
+    return this.request(`/teachers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteTeacher(id) {
+    return this.request(`/teachers/${id}`, { method: 'DELETE' });
+  },
+  importTeachers(data) {
+    return this.post('/teachers/import', data);
+  },
+
+  // Class Admin CRUD
+  addClass(data) {
+    return this.post('/classes', data);
+  },
+  updateClass(id, data) {
+    return this.request(`/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteClass(id) {
+    return this.request(`/classes/${id}`, { method: 'DELETE' });
   }
 };
 

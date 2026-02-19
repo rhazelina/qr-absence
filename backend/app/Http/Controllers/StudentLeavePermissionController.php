@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Classes;
-use App\Models\Schedule;
+use App\Models\ScheduleItem as Schedule;
 use App\Models\StudentLeavePermission;
 use App\Models\StudentProfile;
 use Illuminate\Http\JsonResponse;
@@ -17,9 +17,7 @@ use Illuminate\Support\Carbon;
 class StudentLeavePermissionController extends Controller
 {
     // for security
-    public function __construct(protected \App\Services\AttendanceService $attendanceService)
-    {
-    }
+    public function __construct(protected \App\Services\AttendanceService $attendanceService) {}
 
     /**
      * List Leave Permissions
@@ -44,7 +42,9 @@ class StudentLeavePermissionController extends Controller
         // Filter by teacher's classes if not admin
         if ($user->user_type === 'teacher' && $teacher) {
             $classIds = Schedule::where('teacher_id', $teacher->id)
-                ->pluck('class_id')
+                ->with('dailySchedule.classSchedule')
+                ->get()
+                ->pluck('dailySchedule.classSchedule.class_id')
                 ->unique();
 
             // Include homeroom class
@@ -92,7 +92,7 @@ class StudentLeavePermissionController extends Controller
     {
         $data = $request->validate([
             'student_id' => ['required', 'exists:student_profiles,id'],
-            'schedule_id' => ['nullable', 'exists:schedules,id'],
+            'schedule_id' => ['nullable', 'exists:schedule_items,id'],
             'type' => ['required', 'in:izin_pulang,dispensasi,sakit,izin'],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i', 'after:start_time'],
@@ -111,7 +111,7 @@ class StudentLeavePermissionController extends Controller
 
         // Validate teacher has access to this student's class
         $hasAccess = Schedule::where('teacher_id', $teacher->id)
-            ->where('class_id', $student->class_id)
+            ->whereHas('dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $student->class_id))
             ->exists();
 
         $isHomeroom = $teacher->homeroom_class_id === $student->class_id;
@@ -294,7 +294,7 @@ class StudentLeavePermissionController extends Controller
 
         if ($user->user_type === 'teacher' && $teacher) {
             $hasAccess = Schedule::where('teacher_id', $teacher->id)
-                ->where('class_id', $class->id)
+                ->whereHas('dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $class->id))
                 ->exists();
             $isHomeroom = $teacher->homeroom_class_id === $class->id;
 
@@ -386,7 +386,7 @@ class StudentLeavePermissionController extends Controller
         }
 
         $hasAccess = Schedule::where('teacher_id', $teacher->id)
-            ->where('class_id', $permission->class_id)
+            ->whereHas('dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $permission->class_id))
             ->exists();
 
         $isHomeroom = $teacher->homeroom_class_id === $permission->class_id;
@@ -404,8 +404,8 @@ class StudentLeavePermissionController extends Controller
         $dayName = $permission->date->format('l');
         $startTime = Carbon::parse($permission->start_time)->format('H:i');
 
-        $scheduleIds = Schedule::where('class_id', $student->class_id)
-            ->where('day', $dayName)
+        $scheduleIds = Schedule::whereHas('dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $student->class_id))
+            ->whereHas('dailySchedule', fn ($q) => $q->where('day', $dayName))
             ->where('start_time', '>=', $startTime)
             ->pluck('id');
 
@@ -427,8 +427,8 @@ class StudentLeavePermissionController extends Controller
         $dayName = $permission->date->format('l');
         $startTime = Carbon::parse($permission->start_time)->format('H:i');
 
-        $scheduleIds = Schedule::where('class_id', $student->class_id)
-            ->where('day', $dayName)
+        $scheduleIds = Schedule::whereHas('dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $student->class_id))
+            ->whereHas('dailySchedule', fn ($q) => $q->where('day', $dayName))
             ->where('start_time', '>=', $startTime)
             ->pluck('id');
 

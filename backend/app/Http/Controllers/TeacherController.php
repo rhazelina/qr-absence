@@ -71,7 +71,7 @@ class TeacherController extends Controller
                     'name' => $item['name'],
                     'username' => $item['username'],
                     'email' => $item['email'] ?? null,
-                    'password' => Hash::make($item['password'] ?? 'password123'),
+                    'password' => Hash::make($item['password'] ?? $item['nip']),
                     'phone' => $item['phone'] ?? null,
                     'contact' => $item['contact'] ?? null,
                     'user_type' => 'teacher',
@@ -429,8 +429,13 @@ class TeacherController extends Controller
         }
 
         // Get all students from classes taught by this teacher
-        $schedules = \App\Models\Schedule::where('teacher_id', $teacher->id)->get();
-        $classIds = $schedules->pluck('class_id')->unique();
+        $schedules = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
+            ->with(['dailySchedule.classSchedule'])
+            ->get();
+            
+        $classIds = $schedules->map(fn($item) => $item->dailySchedule?->classSchedule?->class_id)
+            ->filter()
+            ->unique();
 
         $query = \App\Models\StudentProfile::whereIn('class_id', $classIds)
             ->with(['user', 'classRoom']);

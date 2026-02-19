@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\ClassSchedule;
+use App\Models\DailySchedule;
 use App\Models\Qrcode;
-use App\Models\Schedule;
+use App\Models\ScheduleItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -11,7 +13,15 @@ it('returns existing active qr code if generated again for same schedule (idempo
     // 1. Setup
     $teacher = User::factory()->teacher()->create();
     $teacher->refresh();
-    $schedule = Schedule::factory()->create(['teacher_id' => $teacher->teacherProfile->id]);
+    $classSchedule = ClassSchedule::factory()->create();
+    $dailySchedule = DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
+        'day' => now()->format('l'),
+    ]);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
+        'teacher_id' => $teacher->teacherProfile->id,
+    ]);
 
     // 2. First Generation
     $response1 = $this->actingAs($teacher)->postJson('/api/qrcodes/generate', [
@@ -48,7 +58,15 @@ it('generates new qr code if previous one is expired', function () {
     // 1. Setup
     $teacher = User::factory()->teacher()->create();
     $teacher->refresh();
-    $schedule = Schedule::factory()->create(['teacher_id' => $teacher->teacherProfile->id]);
+    $classSchedule = ClassSchedule::factory()->create();
+    $dailySchedule = DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
+        'day' => now()->format('l'),
+    ]);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
+        'teacher_id' => $teacher->teacherProfile->id,
+    ]);
 
     // 2. First Generation (Expired)
     $qr = Qrcode::factory()->create([

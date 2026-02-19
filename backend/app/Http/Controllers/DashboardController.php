@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Classes;
 use App\Models\Major;
-use App\Models\Schedule;
+use App\Models\ScheduleItem;
 use App\Models\Semester;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
@@ -99,9 +99,14 @@ class DashboardController extends Controller
         $dayName = now()->locale('id')->translatedFormat('l');
 
         // Get today's schedules for student's class
-        $schedules = Schedule::where('class_id', $student->class_id)
-            ->where('day', now()->format('l'))
-            ->with(['teacher.user'])
+        $schedules = ScheduleItem::whereHas('dailySchedule', function ($q) use ($student) {
+            $q->where('day', now()->format('l'))
+                ->whereHas('classSchedule', function ($q2) use ($student) {
+                    $q2->where('class_id', $student->class_id)
+                        ->where('is_active', true);
+                });
+        })
+            ->with(['teacher.user', 'subject'])
             ->orderBy('start_time')
             ->get();
 
@@ -119,7 +124,7 @@ class DashboardController extends Controller
 
             return [
                 'id' => $schedule->id,
-                'class_id' => $schedule->class_id,
+                'class_id' => $schedule->dailySchedule?->classSchedule?->class_id,
                 'time_slot' => $schedule->title ?? 'Jam Ke '.$schedule->id,
                 'subject' => $schedule->subject_name,
                 'teacher' => $schedule->teacher?->user?->name ?? 'N/A',
@@ -168,9 +173,14 @@ class DashboardController extends Controller
         $dayEnglish = now()->format('l');
 
         // Get today's teaching schedules
-        $schedules = Schedule::where('teacher_id', $teacher->id)
-            ->where('day', $dayEnglish)
-            ->with(['class'])
+        $schedules = ScheduleItem::where('teacher_id', $teacher->id)
+            ->whereHas('dailySchedule', function ($q) use ($dayEnglish) {
+                $q->where('day', $dayEnglish)
+                    ->whereHas('classSchedule', function ($q2) {
+                        $q2->where('is_active', true);
+                    });
+            })
+            ->with(['dailySchedule.classSchedule.class', 'subject'])
             ->orderBy('start_time')
             ->get();
 
@@ -183,7 +193,9 @@ class DashboardController extends Controller
             ->get();
 
         // Get students on leave today for classes this teacher teaches
-        $classIds = $schedules->pluck('class_id')->unique();
+        $classIds = $schedules->map(fn($item) => $item->dailySchedule?->classSchedule?->class_id)
+            ->filter()
+            ->unique();
         $studentsOnLeave = \App\Models\StudentLeavePermission::whereIn('class_id', $classIds)
             ->where('date', $today)
             ->where('status', 'active')
@@ -203,19 +215,20 @@ class DashboardController extends Controller
             ];
 
             // Count students on leave for this class
-            $classLeaves = $studentsOnLeave->where('class_id', $schedule->class_id);
+            $classId = $schedule->dailySchedule?->classSchedule?->class_id;
+            $classLeaves = $studentsOnLeave->where('class_id', $classId);
             $onLeaveCount = $classLeaves->filter(function ($leave) use ($schedule) {
                 return $leave->shouldHideFromAttendance($schedule);
             })->count();
 
             // Get total students in class
-            $totalStudents = \App\Models\StudentProfile::where('class_id', $schedule->class_id)->count();
+            $totalStudents = \App\Models\StudentProfile::where('class_id', $classId)->count();
 
             return [
                 'id' => $schedule->id,
-                'class_id' => $schedule->class_id,
+                'class_id' => $schedule->dailySchedule?->classSchedule?->class_id,
                 'subject' => $schedule->subject_name,
-                'class_name' => $schedule->class?->name ?? 'N/A',
+                'class_name' => $schedule->dailySchedule?->classSchedule?->class?->name ?? 'N/A',
                 'time_slot' => $schedule->title ?? 'Jam Ke '.$schedule->id,
                 'start_time' => substr($schedule->start_time, 0, 5),
                 'end_time' => substr($schedule->end_time, 0, 5),
@@ -284,9 +297,14 @@ class DashboardController extends Controller
         $homeroomClass = $teacher->homeroomClass;
 
         // Get today's schedules for homeroom class
-        $schedules = Schedule::where('class_id', $homeroomClass->id)
-            ->where('day', now()->format('l'))
-            ->with(['teacher.user'])
+        $schedules = ScheduleItem::whereHas('dailySchedule', function ($q) use ($homeroomClass) {
+            $q->where('day', now()->format('l'))
+                ->whereHas('classSchedule', function ($q2) use ($homeroomClass) {
+                    $q2->where('class_id', $homeroomClass->id)
+                        ->where('is_active', true);
+                });
+        })
+            ->with(['teacher.user', 'subject'])
             ->orderBy('start_time')
             ->get();
 
@@ -423,7 +441,7 @@ class DashboardController extends Controller
             // 3. Daily Stats (Weekly Breakdown for Bar Chart)
             $startOfWeek = now()->startOfWeek();
             $endOfWeek = now()->endOfWeek();
-            
+
             $dailyQuery = Attendance::whereBetween('date', [$startOfWeek->format('Y-m-d'), $endOfWeek->format('Y-m-d')])
                 ->selectRaw('DATE(date) as date_only, status, count(*) as count')
                 ->groupBy('date_only', 'status')
@@ -431,11 +449,12 @@ class DashboardController extends Controller
 
             $dailyData = [];
             $currentDay = $startOfWeek->copy();
-            
+
             while ($currentDay->lte($endOfWeek)) {
                 if ($currentDay->isWeekend()) {
-                     $currentDay->addDay();
-                     continue;
+                    $currentDay->addDay();
+
+                    continue;
                 }
 
                 $dayDate = $currentDay->format('Y-m-d');
@@ -449,8 +468,7 @@ class DashboardController extends Controller
                     'sakit' => $dayRecords->where('status', 'sick')->sum('count'),
                     'pulang' => $dayRecords->where('status', 'return')->sum('count'),
                 ];
-                
-                
+
                 $currentDay->addDay();
             }
 

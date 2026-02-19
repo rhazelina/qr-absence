@@ -89,7 +89,7 @@ export default function KelasAdmin({
   // Wali kelas yang TERSEDIA untuk mode EDIT
   const availableTeachersForEdit = useMemo(() => {
     if (!editingKelas) return availableTeachers;
-    const currentTeacher = teachers.find(t => t.namaGuru === editingKelas.homeroom_teacher_name);
+    const currentTeacher = teachers.find(t => t.name === editingKelas.homeroom_teacher_name);
     if (currentTeacher && !availableTeachers.find(t => Number(t.id) === Number(currentTeacher.id))) {
       return [...availableTeachers, currentTeacher];
     }
@@ -158,7 +158,7 @@ export default function KelasAdmin({
     });
 
     if (duplicateWaliKelas) {
-      const teacherName = teachers.find(t => t.id.toString() === inputTeacherId)?.namaGuru || "Guru";
+      const teacherName = teachers.find(t => t.id.toString() === inputTeacherId)?.name || "Guru";
       return {
         isValid: false,
         message: `Wali kelas "${teacherName}" sudah mengajar kelas lain!`
@@ -846,7 +846,7 @@ export default function KelasAdmin({
                 >
                   <option value="">Pilih Wali Kelas</option>
                   {(editingKelas ? availableTeachersForEdit : availableTeachers).map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.namaGuru}</option>
+                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
                   ))}
                 </select>
               </div>

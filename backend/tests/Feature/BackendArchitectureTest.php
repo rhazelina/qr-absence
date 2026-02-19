@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Attendance;
+use App\Models\ClassSchedule;
+use App\Models\DailySchedule;
 use App\Models\Qrcode;
-use App\Models\Schedule;
+use App\Models\ScheduleItem;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +20,12 @@ test('architecture: application logic rejects double scan', function () {
     // 1. Arrange
     $user = User::factory()->create(['user_type' => 'student']);
     $student = StudentProfile::factory()->create(['user_id' => $user->id]);
-    $schedule = Schedule::factory()->create();
+    $classSchedule = ClassSchedule::factory()->create(['class_id' => $student->class_id]);
+    $dailySchedule = DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
+        'day' => now()->format('l'),
+    ]);
+    $schedule = ScheduleItem::factory()->create(['daily_schedule_id' => $dailySchedule->id]);
     // Ensure QR matches the schedule
     $qr = Qrcode::create([
         'schedule_id' => $schedule->id,

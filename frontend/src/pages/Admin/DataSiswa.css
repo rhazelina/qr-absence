@@ -66,7 +66,8 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin-left: auto; /* Dorong ke kanan */
+  margin-left: auto;
+  /* Dorong ke kanan */
 }
 
 .select-group label {
@@ -258,12 +259,18 @@
 /* Action Buttons - DIPERBAIKI UNTUK SVG ICON */
 .aksi-cell {
   text-align: center;
+}
+
+.aksi-container {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .aksi {
+  flex-shrink: 0;
   width: 38px;
   height: 38px;
   border: none;
@@ -281,7 +288,7 @@
 .aksi svg {
   width: 18px !important;
   height: 18px !important;
-  display: block !important;
+  display: block;
   pointer-events: none;
 }
 
@@ -312,11 +319,11 @@
   .filter-box {
     gap: 12px;
   }
-  
+
   .search1 {
     min-width: 200px;
   }
-  
+
   .select-group {
     margin-left: 0;
   }
@@ -385,7 +392,7 @@
     height: 32px;
     font-size: 14px;
   }
-  
+
   .aksi svg {
     width: 16px !important;
     height: 16px !important;
