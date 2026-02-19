@@ -1,10 +1,9 @@
 .jadwal-guru-index-root {
-  padding-top: 75px; 
-  padding-left: 3rem;
-  padding-right: 3rem;
-  padding-bottom: 3rem;
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
   min-height: 100vh;
   box-sizing: border-box;
+  max-width: var(--web-content-max);
+  margin: 0 auto;
 }
 
 
@@ -16,7 +15,7 @@
 } 
 
 .jadwal-guru-index-title {
-   font-size: 1.8rem; 
+   font-size: clamp(1.5rem, 2vw, 1.9rem); 
    font-weight: bold; 
    color: white; 
    margin-bottom: 0.5rem; 
@@ -31,15 +30,15 @@
 .jadwal-guru-index-filter-card { 
     background: white; 
     border-radius: 1rem; 
-    padding: 1.5rem; 
+    padding: clamp(1rem, 1.8vw, 1.5rem); 
     margin-bottom: 1.8rem; 
     box-shadow: 0 10px 20px rgba(0,0,0,.1); 
 } 
 
 .jadwal-guru-index-filter-grid { 
   display: grid; 
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-  gap: 1.5rem; 
+  grid-template-columns: repeat(auto-fit, minmax(clamp(220px, 24vw, 280px), 1fr)); 
+  gap: clamp(0.9rem, 1.6vw, 1.5rem); 
 } 
 
 .jadwal-guru-index-label {
@@ -90,7 +89,7 @@
 
 /* TABLE HEADER */
 .jadwal-guru-index-table-header {
-  padding: 1.2rem 1.75rem;
+  padding: clamp(0.9rem, 1.4vw, 1.2rem) clamp(1rem, 2vw, 1.75rem);
   background: #001F3E;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -118,7 +117,7 @@ thead {
 }
 
 thead th {
-  padding: 1.2rem 1.5rem;
+  padding: clamp(0.85rem, 1.4vw, 1.2rem) clamp(0.9rem, 1.8vw, 1.5rem);
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -130,7 +129,7 @@ thead th {
 
 /* TABLE BODY */
 tbody td {
-  padding: 1.1rem 1.5rem;
+  padding: clamp(0.8rem, 1.3vw, 1.1rem) clamp(0.9rem, 1.8vw, 1.5rem);
   font-size: 0.875rem;
   color: #374151;
   vertical-align: middle;

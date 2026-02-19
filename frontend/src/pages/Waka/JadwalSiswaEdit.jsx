@@ -257,10 +257,10 @@ function JadwalSiswaEdit() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="jadwal-siswa-edit-root min-h-screen bg-gray-50 pb-20">
       <NavbarWaka />
 
-      <div className="pt-24 px-4 max-w-7xl mx-auto jadwal-siswa-edit-page">
+      <div className="jadwal-siswa-edit-container jadwal-siswa-edit-page">
         {/* BREADCRUMB */}
         <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap">
             <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors flex items-center gap-2">

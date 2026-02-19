@@ -2,21 +2,23 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\StudentProfile;
 use App\Models\Qrcode;
 use App\Models\ScheduleItem;
 use App\Models\Setting;
+use App\Models\StudentProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 class AttendanceScanTest extends TestCase
 {
     use RefreshDatabase;
 
     protected $student;
+
     protected $schedule;
+
     protected $qr;
 
     protected function setUp(): void
@@ -40,18 +42,19 @@ class AttendanceScanTest extends TestCase
             'expires_at' => now()->addMinutes(30),
             'is_active' => true,
         ]);
-        
-        // Clear settings for basic tests
+
+        // Clear settings and settings cache for each test
         Setting::where('key', 'school_lat')->delete();
         Setting::where('key', 'school_long')->delete();
         Setting::where('key', 'attendance_radius_meters')->delete();
+        \Illuminate\Support\Facades\Cache::forget('app.settings.all');
     }
 
     public function test_scan_success_basic()
     {
         $response = $this->actingAs($this->student)
             ->postJson('/api/attendance/scan', [
-                'token' => $this->qr->token
+                'token' => $this->qr->token,
             ]);
 
         $response->assertStatus(200)
@@ -60,7 +63,7 @@ class AttendanceScanTest extends TestCase
         $this->assertDatabaseHas('attendances', [
             'student_id' => $this->student->studentProfile->id,
             'schedule_id' => $this->schedule->id,
-            'status' => 'present' // default if on time
+            'status' => 'present', // default if on time
         ]);
     }
 
@@ -98,8 +101,8 @@ class AttendanceScanTest extends TestCase
         $response = $this->actingAs($this->student)
             ->postJson('/api/attendance/scan', [
                 'token' => $this->qr->token,
-                'lat' => -7.900833, 
-                'long' => 112.636667
+                'lat' => -7.900833,
+                'long' => 112.636667,
             ]);
 
         $response->assertStatus(200);
@@ -116,15 +119,15 @@ class AttendanceScanTest extends TestCase
         $response = $this->actingAs($this->student)
             ->postJson('/api/attendance/scan', [
                 'token' => $this->qr->token,
-                'lat' => -6.2088, 
-                'long' => 106.8456
+                'lat' => -6.2088,
+                'long' => 106.8456,
             ]);
 
-        $response->assertStatus(422)
-            ->assertJsonFragment(['message' => 'Anda berada di luar radius sekolah']);
+        $response->assertStatus(422);
+        $this->assertStringContainsString('Anda berada di luar radius sekolah', $response->json('message'));
     }
 
-        public function test_scan_geolocation_missing_params()
+    public function test_scan_geolocation_missing_params()
     {
         // Set geolocation settings
         Setting::create(['key' => 'school_lat', 'value' => '-7.900833']);

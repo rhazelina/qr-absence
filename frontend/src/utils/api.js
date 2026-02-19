@@ -4,10 +4,11 @@ const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 const apiService = {
   async request(endpoint, options = {}) {
     const token = localStorage.getItem('token');
+    const isFormDataBody = options.body instanceof FormData;
     const headers = {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(!isFormDataBody && { 'Content-Type': 'application/json' }),
       ...options.headers
     };
 
@@ -36,10 +37,11 @@ const apiService = {
   },
 
   post(endpoint, data, options = {}) {
+    const isFormData = data instanceof FormData;
     return this.request(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(data)
+      body: isFormData ? data : JSON.stringify(data)
     });
   },
 

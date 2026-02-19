@@ -133,7 +133,8 @@ class TeacherController extends Controller
      */
     public function show(TeacherProfile $teacher): JsonResponse
     {
-        return response()->json($teacher->load(['user', 'homeroomClass', 'schedules']));
+        return (new TeacherResource($teacher->load(['user', 'homeroomClass', 'scheduleItems'])))
+            ->response();
     }
 
     /**
@@ -308,12 +309,18 @@ class TeacherController extends Controller
             return response()->json(['message' => 'Homeroom not found'], 404);
         }
 
-        $class = $user->teacherProfile->homeroomClass;
-        $query = $class->schedules();
+        $classId = $user->teacherProfile->homeroom_class_id;
+
+        $query = \App\Models\ScheduleItem::whereHas('dailySchedule.classSchedule', function ($q) use ($classId) {
+            $q->where('class_id', $classId)
+                ->where('is_active', true);
+        });
 
         if ($request->filled('date')) {
             $day = date('l', strtotime($request->date));
-            $query->where('day', $day);
+            $query->whereHas('dailySchedule', function ($q) use ($day) {
+                $q->where('day', $day);
+            });
         }
 
         return response()->json($query->with(['subject', 'teacher.user'])->get());
@@ -396,10 +403,10 @@ class TeacherController extends Controller
         });
 
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+            $query->whereDate('date', '>=', $request->from);
         }
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+            $query->whereDate('date', '<=', $request->to);
         }
 
         $summary = $query->selectRaw('status, count(*) as count')
@@ -432,8 +439,8 @@ class TeacherController extends Controller
         $schedules = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
             ->with(['dailySchedule.classSchedule'])
             ->get();
-            
-        $classIds = $schedules->map(fn($item) => $item->dailySchedule?->classSchedule?->class_id)
+
+        $classIds = $schedules->map(fn ($item) => $item->dailySchedule?->classSchedule?->class_id)
             ->filter()
             ->unique();
 

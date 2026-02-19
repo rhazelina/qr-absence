@@ -1,5 +1,8 @@
+import React, { useState, useEffect } from 'react';
 import apiService from '../../utils/api';
 import Pagination from '../../components/Common/Pagination';
+import NavbarAdmin from '../../components/Admin/NavbarAdmin';
+import './DataKelas.css';
 
 function DataKelas() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -177,7 +180,7 @@ function DataKelas() {
 
       await apiService.addClass(classData);
       alert('Data kelas berhasil ditambahkan!\nJabatan guru telah diubah menjadi Wali Kelas.');
-      
+
       await loadClasses();
       setIsModalOpen(false);
       setEditData(null);
@@ -200,7 +203,7 @@ function DataKelas() {
 
       await apiService.updateClass(editData.id, classData);
       alert('Data kelas berhasil diperbarui!\nData guru juga telah diperbarui.');
-      
+
       await loadClasses();
       setEditData(null);
       setIsModalOpen(false);
@@ -241,15 +244,15 @@ function DataKelas() {
 
   // Icon Edit SVG
   const EditIcon = () => (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="16" 
-      height="16" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -259,15 +262,15 @@ function DataKelas() {
 
   // Icon Delete SVG
   const DeleteIcon = () => (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="16" 
-      height="16" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <polyline points="3 6 5 6 21 6"></polyline>
@@ -281,10 +284,10 @@ function DataKelas() {
     return (
       <div className="kelas-data-container">
         <NavbarAdmin />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           minHeight: '60vh',
           fontSize: '18px',
           color: '#6b7280'
@@ -325,8 +328,8 @@ function DataKelas() {
             </select>
 
             {(searchKelas || searchJurusan) && (
-              <button 
-                className="kelas-btn-reset-filter" 
+              <button
+                className="kelas-btn-reset-filter"
                 onClick={handleResetFilter}
                 title="Reset Filter"
               >
@@ -347,9 +350,9 @@ function DataKelas() {
         </div>
 
         {(searchKelas || searchJurusan) && (
-          <div style={{ 
-            padding: '10px 20px', 
-            backgroundColor: '#e3f2fd', 
+          <div style={{
+            padding: '10px 20px',
+            backgroundColor: '#e3f2fd',
             borderLeft: '4px solid #2196f3',
             marginBottom: '15px',
             borderRadius: '4px'
@@ -374,8 +377,8 @@ function DataKelas() {
             {kelas.length === 0 ? (
               <tr>
                 <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                  {searchKelas || searchJurusan 
-                    ? 'Tidak ada data yang sesuai dengan filter' 
+                  {searchKelas || searchJurusan
+                    ? 'Tidak ada data yang sesuai dengan filter'
                     : 'Tidak ada data kelas'}
                 </td>
               </tr>
@@ -413,7 +416,7 @@ function DataKelas() {
           </tbody>
         </table>
 
-        <Pagination 
+        <Pagination
           currentPage={pagination.currentPage}
           lastPage={pagination.lastPage}
           onPageChange={handlePageChange}
@@ -451,13 +454,13 @@ function DataKelas() {
                   alignItems: 'start',
                   gap: '10px'
                 }}>
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="#856404" 
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#856404"
                     strokeWidth="2"
                     style={{ marginTop: '2px', flexShrink: 0 }}
                   >
@@ -524,13 +527,13 @@ function DataKelas() {
                 {errors.namaKelas && <span className="kelas-error-message">{errors.namaKelas}</span>}
                 {!errors.namaKelas && (
                   <small className="kelas-helper-text">
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="14" 
-                      height="14" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
                       strokeWidth="2"
                       style={{ marginRight: '5px', verticalAlign: 'middle' }}
                     >
@@ -558,13 +561,13 @@ function DataKelas() {
                     availableTeachers.map((teacher) => {
                       const assignedClass = getTeacherAssignment(teacher.id);
                       const isDisabled = assignedClass !== null;
-                      
+
                       return (
-                        <option 
-                          key={teacher.id} 
+                        <option
+                          key={teacher.id}
                           value={teacher.id}
                           disabled={isDisabled}
-                          style={isDisabled ? { 
+                          style={isDisabled ? {
                             color: '#999',
                             fontStyle: 'italic'
                           } : {}}
@@ -577,15 +580,15 @@ function DataKelas() {
                   )}
                 </select>
                 {errors.waliKelas && <span className="kelas-error-message">{errors.waliKelas}</span>}
-                
+
                 <small className="kelas-helper-text">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    width="14" 
-                    height="14" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
                     strokeWidth="2"
                     style={{ marginRight: '5px', verticalAlign: 'middle' }}
                   >

@@ -228,6 +228,7 @@ class ClassController extends Controller
                         ] : null,
                         'teacher' => $item->teacher ? [
                             'id' => $item->teacher->id,
+                            'nip' => $item->teacher->nip,
                             'user' => $item->teacher->user ? [
                                 'id' => $item->teacher->user->id,
                                 'name' => $item->teacher->user->name,

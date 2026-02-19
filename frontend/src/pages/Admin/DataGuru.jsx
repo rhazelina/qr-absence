@@ -1,5 +1,11 @@
+import React, { useState, useEffect, useRef } from 'react';
 import apiService from '../../utils/api';
 import Pagination from '../../components/Common/Pagination';
+import NavbarAdmin from '../../components/Admin/NavbarAdmin';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import './DataGuru.css';
 
 function DataGuru() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -9,7 +15,7 @@ function DataGuru() {
   const [availableClasses, setAvailableClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingTeacher, setEditingTeacher] = useState(null);
-  
+
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
 
@@ -144,7 +150,7 @@ function DataGuru() {
   // Add or Update Teacher
   const handleAddTeacher = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.kodeGuru.trim()) {
       alert('Kode Guru harus diisi!');
       return;
@@ -190,10 +196,10 @@ function DataGuru() {
   // Edit Teacher
   const handleEditTeacher = async (teacher) => {
     setEditingTeacher(teacher);
-    
+
     let kelasValue = teacher.grade || 'X';
     let jurusanValue = teacher.major || 'TKJ';
-    
+
     setFormData({
       kodeGuru: teacher.code,
       namaGuru: teacher.name,
@@ -204,9 +210,9 @@ function DataGuru() {
       kelas: kelasValue,
       jurusan: jurusanValue
     });
-    
+
     setIsModalOpen(true);
-    
+
     // Load available classes if role is Wali Kelas
     if (teacher.role === 'Wali Kelas') {
       await loadAvailableClasses();
@@ -284,12 +290,12 @@ function DataGuru() {
   // Export to Excel
   const handleExportToExcel = () => {
     const dataToExport = filteredTeachers.length > 0 ? filteredTeachers : teachers;
-    
+
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
       return;
     }
-    
+
     const excelData = dataToExport.map((teacher, index) => {
       let data = {
         'No': index + 1,
@@ -334,17 +340,17 @@ function DataGuru() {
   // Export to PDF
   const handleExportToPDF = () => {
     const dataToExport = filteredTeachers.length > 0 ? filteredTeachers : teachers;
-    
+
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
       return;
     }
 
     const doc = new jsPDF();
-    
+
     doc.setFontSize(18);
     doc.text('Data Guru', 14, 22);
-    
+
     doc.setFontSize(10);
     doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, 30);
 
@@ -475,16 +481,16 @@ function DataGuru() {
           });
 
         const result = await apiService.importTeachers(importedTeachers);
-        
+
         if (result.data) {
           const { imported, duplicates } = result.data;
-          
+
           let message = `✅ Berhasil mengimpor ${imported} data guru.`;
-          
+
           if (duplicates && duplicates.length > 0) {
             message += `\n\n❌ ${duplicates.length} data ditolak karena Kode Guru sudah ada:\n${duplicates.join(', ')}`;
           }
-          
+
           alert(message);
           await loadTeachers();
         }
@@ -547,10 +553,10 @@ function DataGuru() {
     return (
       <div className="guru-data-container">
         <NavbarAdmin />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           minHeight: '60vh',
           fontSize: '18px',
           color: '#6b7280'
@@ -568,17 +574,17 @@ function DataGuru() {
 
       <div className="guru-table-wrapper">
         <div className="guru-filter-box">
-          <input 
-            type="text" 
-            placeholder="Cari Guru (Nama/Kode/Jabatan)..." 
-            className="guru-search" 
+          <input
+            type="text"
+            placeholder="Cari Guru (Nama/Kode/Jabatan)..."
+            className="guru-search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <div className="guru-select-group">
             {searchTerm && (
-              <button 
-                className="guru-btn-reset-filter" 
+              <button
+                className="guru-btn-reset-filter"
                 onClick={handleResetFilter}
                 title="Reset Filter"
               >
@@ -586,8 +592,8 @@ function DataGuru() {
               </button>
             )}
 
-            <button 
-              className="guru-btn-tambah" 
+            <button
+              className="guru-btn-tambah"
               onClick={() => {
                 setEditingTeacher(null);
                 setIsModalOpen(true);
@@ -595,16 +601,16 @@ function DataGuru() {
             >
               Tambahkan
             </button>
-            
+
             <div style={{ position: 'relative', display: 'inline-block' }}>
-              <button 
+              <button
                 ref={exportButtonRef}
-                className="guru-btn-export" 
+                className="guru-btn-export"
                 onClick={() => setShowExportMenu(!showExportMenu)}
               >
                 Ekspor ▼
               </button>
-              
+
               {showExportMenu && (
                 <div style={{
                   position: 'absolute',
@@ -666,15 +672,15 @@ function DataGuru() {
               onChange={handleImportFromExcel}
               style={{ display: 'none' }}
             />
-            <button 
-              className="guru-btn-import" 
+            <button
+              className="guru-btn-import"
               onClick={() => fileInputRef.current?.click()}
             >
               Impor
             </button>
 
-            <button 
-              className="guru-btn-download-template" 
+            <button
+              className="guru-btn-download-template"
               onClick={handleDownloadTemplate}
             >
               <DownloadIcon /> Format Excel
@@ -683,9 +689,9 @@ function DataGuru() {
         </div>
 
         {searchTerm && (
-          <div style={{ 
-            padding: '10px 20px', 
-            backgroundColor: '#e3f2fd', 
+          <div style={{
+            padding: '10px 20px',
+            backgroundColor: '#e3f2fd',
             borderLeft: '4px solid #2196f3',
             marginBottom: '15px',
             borderRadius: '4px'
@@ -729,15 +735,15 @@ function DataGuru() {
                     <td>{detail}</td>
                     <td className="guru-aksi-cell">
                       <div className="aksi-container">
-                        <button 
-                          className="guru-aksi guru-edit" 
+                        <button
+                          className="guru-aksi guru-edit"
                           onClick={() => handleEditTeacher(teacher)}
                           title="Edit"
                         >
                           <EditIcon />
                         </button>
-                        <button 
-                          className="guru-aksi guru-hapus" 
+                        <button
+                          className="guru-aksi guru-hapus"
                           onClick={() => handleDeleteTeacher(teacher.id)}
                           title="Hapus"
                         >
@@ -758,7 +764,7 @@ function DataGuru() {
           </tbody>
         </table>
 
-        <Pagination 
+        <Pagination
           currentPage={pagination.currentPage}
           lastPage={pagination.lastPage}
           onPageChange={handlePageChange}

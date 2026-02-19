@@ -1,7 +1,18 @@
+.jadwal-siswa-edit-root {
+  background: transparent;
+}
+
+.jadwal-siswa-edit-container {
+  width: min(100%, var(--web-content-max));
+  margin: 0 auto;
+  padding-top: var(--web-page-pad-top);
+  padding-left: var(--web-page-pad-x);
+  padding-right: var(--web-page-pad-x);
+  padding-bottom: clamp(28px, 4vw, 48px);
+}
+
 .jadwal-siswa-edit-page {
   width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
 }
 
 .jadwal-siswa-edit-form {

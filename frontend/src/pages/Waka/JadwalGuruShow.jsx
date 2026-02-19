@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import './JadwalGuruShow.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
+import apiService from '../../utils/api';
 import {
   FaArrowLeft,
   FaChalkboardTeacher,
@@ -21,6 +22,7 @@ function JadwalGuruShow() {
 
   const [jadwal, setJadwal] = useState(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,23 +32,10 @@ function JadwalGuruShow() {
   const fetchJadwalGuru = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/teachers/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const data = result.data || result;
-        setJadwal(data);
-      } else {
-        console.error('Gagal memuat data jadwal guru');
-        alert('Gagal memuat data jadwal guru');
-        navigate('/waka/jadwal-guru');
-      }
+      const result = await apiService.get(`/teachers/${id}`);
+      const data = result?.data || result;
+      setJadwal(data);
+      setImageLoadError(false);
     } catch (error) {
       console.error('Error fetching jadwal guru:', error);
       alert('Terjadi kesalahan saat memuat data');
@@ -85,10 +74,13 @@ function JadwalGuruShow() {
     );
   }
 
-  const imageUrl = jadwal.schedule_image_path
-    ? (jadwal.schedule_image_path.startsWith('http') 
-       ? jadwal.schedule_image_path 
-       : `http://localhost:8000/storage/${jadwal.schedule_image_path}`)
+  const imageUrl = !imageLoadError
+    ? (jadwal.schedule_image_url
+      || (jadwal.schedule_image_path
+        ? (jadwal.schedule_image_path.startsWith('http')
+          ? jadwal.schedule_image_path
+          : `${window.location.protocol}//${window.location.hostname}:8000/storage/${jadwal.schedule_image_path}`)
+        : null))
     : null;
 
   return (
@@ -174,6 +166,7 @@ function JadwalGuruShow() {
                 src={imageUrl}
                 alt={`Jadwal ${jadwal.name}`}
                 className="w-full h-auto object-contain max-h-[600px]"
+                onError={() => setImageLoadError(true)}
               />
             </div>
           ) : (

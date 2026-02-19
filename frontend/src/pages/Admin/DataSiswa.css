@@ -1,20 +1,20 @@
 /* DataSiswa.css */
 
 .data-container {
-  padding: 80px 40px 40px;
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
   min-height: 100vh;
   background-image: url(../../assets/bg.png);
   background-size: cover;
-  margin-top: 100px;
+  margin-top: 0;
   background-position: center;
 }
 
 /* Title Data Siswa - WARNA PUTIH seperti halaman lainnya */
 .page-title-siswa {
   color: white;
-  font-size: 48px;
+  font-size: clamp(2rem, 2.6vw, 3rem);
   font-weight: 700;
-  margin-bottom: 25px;
+  margin-bottom: clamp(18px, 3vw, 25px);
   text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
   text-align: center;
 }
@@ -22,9 +22,9 @@
 .table-wrapper {
   background: white;
   border-radius: 25px;
-  padding: 30px;
+  padding: clamp(16px, 2vw, 30px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-  max-width: 1300px;
+  max-width: var(--web-content-max);
   margin: 0 auto;
 }
 

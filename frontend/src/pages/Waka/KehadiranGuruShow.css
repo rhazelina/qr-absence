@@ -4,9 +4,9 @@
 }
 
 .kehadiran-guru-show-container {
-  max-width: 1200px;
+  max-width: var(--web-content-max);
   margin: 0 auto;
-  padding: 100px 20px 40px;
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
 }
 
 .wadah-muat {
@@ -82,8 +82,8 @@
   border-radius: 30px;
   background: #fff;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-  padding: 24px;
-  margin-bottom: 24px;
+  padding: clamp(14px, 1.8vw, 24px);
+  margin-bottom: clamp(14px, 1.8vw, 24px);
 }
 
 .info-header-wrapper {
@@ -94,8 +94,8 @@
 }
 
 .avatar-header {
-  width: 76px;
-  height: 76px;
+  width: clamp(58px, 4.5vw, 76px);
+  height: clamp(58px, 4.5vw, 76px);
   flex-shrink: 0;
   border-radius: 22px;
   overflow: hidden;
@@ -105,7 +105,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
+  font-size: clamp(20px, 2vw, 30px);
 }
 
 .info-header {
@@ -114,7 +114,7 @@
 
 .info-header h2 {
   color: #111827;
-  font-size: 30px;
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
   font-weight: 900;
   line-height: 1.1;
 }
@@ -170,7 +170,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 180px;
+  min-width: clamp(150px, 14vw, 180px);
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
@@ -230,7 +230,7 @@
 }
 
 .kehadiran-guru-show-table-header {
-  padding: 20px 24px;
+  padding: clamp(14px, 1.8vw, 20px) clamp(14px, 2vw, 24px);
   border-bottom: 1px solid #e5e7eb;
   background: #f8fafc;
 }
@@ -243,7 +243,7 @@
 
 .kehadiran-guru-show-table-title {
   color: #0f172a;
-  font-size: 19px;
+  font-size: clamp(1rem, 1.5vw, 1.2rem);
   font-weight: 900;
   display: inline-flex;
   align-items: center;
@@ -262,7 +262,7 @@
 .kehadiran-guru-show-table th,
 .kehadiran-guru-show-table td {
   border-bottom: 1px solid #f1f5f9;
-  padding: 14px 16px;
+  padding: clamp(10px, 1.2vw, 14px) clamp(12px, 1.4vw, 16px);
   text-align: left;
   vertical-align: middle;
 }

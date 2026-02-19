@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AttendanceStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -58,13 +59,13 @@ class Attendance extends Model
     public static function normalizeStatus(string $status): string
     {
         $map = [
-            'hadir' => 'present',
-            'sakit' => 'sick',
-            'izin' => 'excused',
-            'terlambat' => 'late',
-            'alpha' => 'absent',
-            'alfa' => 'absent',
-            'pulang' => 'return',
+            'hadir' => AttendanceStatus::PRESENT->value,
+            'sakit' => AttendanceStatus::SICK->value,
+            'izin' => AttendanceStatus::EXCUSED->value, // or PERMISSION depending on logic, but map had 'excused'
+            'terlambat' => AttendanceStatus::LATE->value,
+            'alpha' => AttendanceStatus::ABSENT->value,
+            'alfa' => AttendanceStatus::ABSENT->value,
+            'pulang' => AttendanceStatus::RETURN->value,
         ];
 
         return $map[strtolower($status)] ?? $status;
@@ -76,12 +77,13 @@ class Attendance extends Model
     public static function mapStatusToFrontend(string $status): string
     {
         $map = [
-            'present' => 'hadir',
-            'sick' => 'sakit',
-            'excused' => 'izin',
-            'late' => 'terlambat',
-            'absent' => 'alpha',
-            'return' => 'pulang',
+            AttendanceStatus::PRESENT->value => 'hadir',
+            AttendanceStatus::SICK->value => 'sakit',
+            AttendanceStatus::EXCUSED->value => 'izin',
+            AttendanceStatus::PERMISSION->value => 'izin', // Handle both if needed
+            AttendanceStatus::LATE->value => 'terlambat',
+            AttendanceStatus::ABSENT->value => 'alpha',
+            AttendanceStatus::RETURN->value => 'pulang',
         ];
 
         return $map[strtolower($status)] ?? 'alpha';

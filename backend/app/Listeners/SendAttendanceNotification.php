@@ -2,9 +2,11 @@
 
 namespace App\Listeners;
 
+use App\Enums\AttendanceStatus;
 use App\Events\AttendanceRecorded;
 use App\Jobs\SendWhatsAppNotification;
 use App\Services\WhatsAppTemplates;
+use App\Support\DashboardCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Cache;
@@ -27,7 +29,7 @@ class SendAttendanceNotification implements ShouldQueue
             $student = $attendance->student->load('user');
 
             if ($student->parent_phone) {
-                $statusLabel = $attendance->status === 'late' ? 'Hadir (Terlambat)' : 'Hadir';
+                $statusLabel = $attendance->status === AttendanceStatus::LATE->value ? 'Hadir (Terlambat)' : 'Hadir';
                 $time = $attendance->checked_in_at->format('H:i');
 
                 $message = WhatsAppTemplates::attendanceSuccess(
@@ -43,11 +45,12 @@ class SendAttendanceNotification implements ShouldQueue
 
     private function clearDashboardCache(AttendanceRecorded $event): void
     {
+        $today = now()->format('Y-m-d');
+
         // Clear caches that might be affected by new attendance
-        Cache::forget('dashboard.admin');
+        Cache::forget(DashboardCache::key('admin', null, $today));
 
         // Clear Waka Dashboard for today
-        $today = now()->format('d-m-Y');
-        Cache::forget("dashboard.waka.{$today}");
+        Cache::forget(DashboardCache::wakaKey($today));
     }
 }

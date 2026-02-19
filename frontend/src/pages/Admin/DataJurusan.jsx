@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './DataJurusan.css';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
+import apiService from '../../utils/api';
 
 function DataJurusan() {
   const [loading, setLoading] = useState(true);
@@ -17,10 +18,6 @@ function DataJurusan() {
   });
   const [errors, setErrors] = useState({});
 
-  // API Configuration
-  const baseURL = import.meta.env.VITE_API_URL;
-  const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
   useEffect(() => {
     fetchJurusans();
   }, []);
@@ -28,16 +25,9 @@ function DataJurusan() {
   const fetchJurusans = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/majors?per_page=-1`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch majors');
-      const result = await response.json();
-      // Resource returns data in 'data' field or directly if per_page=-1 depending on implementation
-      // Our MajorController index returns wrapped in Resource response which has .data
+      const result = await apiService.getMajors({ per_page: -1 });
+      // apiService returns data directly after response.json()
+      // MajorResource returns { data: [...] }
       setJurusans(result.data || result);
       setLoading(false);
     } catch (err) {
@@ -125,17 +115,7 @@ function DataJurusan() {
         category: 'Umum' // Default category
       };
 
-      const response = await fetch(`${API_BASE_URL}/majors`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) throw new Error('Failed to add major');
+      await apiService.post('/majors', payload);
 
       await fetchJurusans();
       setIsModalOpen(false);
@@ -160,17 +140,10 @@ function DataJurusan() {
         category: editData.category || 'Umum'
       };
 
-      const response = await fetch(`${API_BASE_URL}/majors/${formData.id}`, {
+      await apiService.request(`/majors/${formData.id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
         body: JSON.stringify(payload)
       });
-
-      if (!response.ok) throw new Error('Failed to update major');
 
       await fetchJurusans();
       setEditData(null);
@@ -188,15 +161,9 @@ function DataJurusan() {
     if (!window.confirm('Apakah Anda yakin ingin menghapus data konsentrasi keahlian ini?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/majors/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Accept': 'application/json'
-        }
+      await apiService.request(`/majors/${id}`, {
+        method: 'DELETE'
       });
-
-      if (!response.ok) throw new Error('Failed to delete major');
 
       await fetchJurusans();
       alert('Data konsentrasi keahlian berhasil dihapus!');
@@ -219,7 +186,7 @@ function DataJurusan() {
     const nama = jurusan.namaJurusan || jurusan.name || '';
     const kode = jurusan.kodeJurusan || jurusan.code || '';
     return nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           kode.toLowerCase().includes(searchTerm.toLowerCase());
+      kode.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const handleResetSearch = () => {
@@ -293,7 +260,7 @@ function DataJurusan() {
           gap: '16px'
         }}>
           <div style={{ fontSize: '18px', color: '#ef4444' }}>Error: {error}</div>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             style={{
               padding: '10px 20px',
@@ -418,8 +385,8 @@ function DataJurusan() {
           <div className="jurusan-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="jurusan-modal-header">
               <h2>{editData ? 'Edit Data Konsentrasi Keahlian' : 'Tambah Data Konsentrasi Keahlian'}</h2>
-              <button 
-                className="jurusan-modal-close" 
+              <button
+                className="jurusan-modal-close"
                 onClick={() => {
                   if (!saving) {
                     setIsModalOpen(false);
@@ -500,9 +467,9 @@ function DataJurusan() {
               </div>
 
               <div className="jurusan-modal-actions">
-                <button 
-                  type="button" 
-                  className="jurusan-btn-cancel" 
+                <button
+                  type="button"
+                  className="jurusan-btn-cancel"
                   onClick={() => {
                     if (!saving) {
                       setIsModalOpen(false);
@@ -513,8 +480,8 @@ function DataJurusan() {
                 >
                   Batal
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="jurusan-btn-submit"
                   disabled={saving}
                 >

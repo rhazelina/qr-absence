@@ -1,36 +1,35 @@
-/* Main Container */
-.animate-modal-in {
-  animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* Custom Scrollbar for breadcrumbs or long lists */
-.max-w-7xl::-webkit-scrollbar {
-  height: 4px;
-}
-
-.max-w-7xl::-webkit-scrollbar-track {
+.kehadiran-siswa-show-root {
   background: transparent;
 }
 
-.max-w-7xl::-webkit-scrollbar-thumb {
+.kehadiran-siswa-show-container {
+  width: min(100%, var(--web-content-max));
+  margin: 0 auto;
+  padding-top: var(--web-page-pad-top);
+  padding-left: var(--web-page-pad-x);
+  padding-right: var(--web-page-pad-x);
+  padding-bottom: clamp(28px, 4vw, 48px);
+}
+
+.kehadiran-siswa-show-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.kehadiran-siswa-show-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kehadiran-siswa-show-container::-webkit-scrollbar-thumb {
   background: #e2e8f0;
   border-radius: 10px;
 }
 
-/* Input Date custom styling */
-input[type="date"]::-webkit-calendar-picker-indicator {
+.kehadiran-siswa-subject-select,
+.kehadiran-siswa-date-input {
+  min-width: 220px;
+}
+
+.kehadiran-siswa-date-input::-webkit-calendar-picker-indicator {
   background: transparent;
   bottom: 0;
   color: transparent;
@@ -43,44 +42,32 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   width: auto;
 }
 
-/* Table transitions */
-tr {
-  transition: all 0.2s ease;
+.kehadiran-siswa-show-container table tr {
+  transition: background-color 0.2s ease;
 }
 
-/* Card hover subtle effect */
-.bg-white.rounded-\[2rem\] {
+.kehadiran-siswa-show-container .bg-white.rounded-\[2rem\] {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Responsive adjustments */
-@media (max-width: 640px) {
-  .tracking-tight {
-    letter-spacing: -0.01em;
+.animate-modal-in {
+  animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 
-/* Status specific colors for modal if needed */
-.status-izin-bg {
-  background-color: #ECE10A;
-}
-
-.status-sakit-bg {
-  background-color: #9A0898;
-}
-
-.status-alfa-bg {
-  background-color: #D90000;
-}
-
-.status-hadir-bg {
-  background-color: #1FA83D;
-}
-
-.status-pulang-bg {
-  background-color: #FF5F1A;
-}
-
-.status-terlambat-bg {
-  background-color: #d8bf1a;
+@media (max-width: 768px) {
+  .kehadiran-siswa-subject-select,
+  .kehadiran-siswa-date-input {
+    min-width: 190px;
+  }
 }

@@ -32,7 +32,15 @@ export default function DaftarMapel() {
           classService.getMyClassSchedules()
         ]);
         setClassInfo(cls);
-        setSchedules(sch);
+
+
+        // Filter hanya jadwal hari ini
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const todayName = days[new Date().getDay()];
+        const todaySchedules = (Array.isArray(sch) ? sch : []).filter(
+          (item: any) => item.day === todayName
+        );
+        setSchedules(todaySchedules);
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
@@ -57,7 +65,7 @@ export default function DaftarMapel() {
     }
   };
 
-  
+
   if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: "50px" }}>
@@ -167,7 +175,7 @@ export default function DaftarMapel() {
                   {m.subject?.name || "Mapel"}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", opacity: 0.8, marginTop: 4 }}>
-                {m.kelas?.name || "Kelas"}
+                  {m.kelas?.name || "Kelas"}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", opacity: 0.8, marginTop: 4 }}>
                   {m.teacher?.user?.name || "Guru"}
@@ -211,12 +219,12 @@ export default function DaftarMapel() {
       </div>
 
       {/* Modal QR - DENGAN BACKGROUND PUTIH */}
-      <Modal 
-        isOpen={isQrModalOpen} 
+      <Modal
+        isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         maxWidth="380px"
       >
-        <div style={{ 
+        <div style={{
           padding: "24px",
           background: "#FFFFFF",
           borderRadius: "16px",
@@ -224,25 +232,25 @@ export default function DaftarMapel() {
         }}>
           {/* Header */}
           <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <h3 style={{ 
-              fontSize: 20, 
-              fontWeight: 800, 
-              color: "#0F172A", 
+            <h3 style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: "#0F172A",
               marginBottom: 8
             }}>
               KODE QR UNTUK PRESENSI
             </h3>
-            
-            <div style={{ 
-              fontSize: 14, 
+
+            <div style={{
+              fontSize: 14,
               color: "#64748B",
               marginBottom: 4
             }}>
               {selectedMapel?.name}
             </div>
-            
-            <div style={{ 
-              fontSize: 13, 
+
+            <div style={{
+              fontSize: 13,
               color: "#64748B",
               fontWeight: 600
             }}>
@@ -254,7 +262,7 @@ export default function DaftarMapel() {
             </div>
           </div>
 
-          <div style={{ 
+          <div style={{
             padding: 20,
             marginBottom: 24,
             textAlign: "center",
@@ -263,15 +271,15 @@ export default function DaftarMapel() {
             border: "1px solid #E5E7EB"
           }}>
             {qrSvg && (
-              <img 
-                src={`data:image/svg+xml;base64,${qrSvg}`} 
-                alt="QR Code Presensi" 
-                style={{ 
-                  width: 250, 
-                  height: 250, 
-                  display: "block", 
+              <img
+                src={`data:image/svg+xml;base64,${qrSvg}`}
+                alt="QR Code Presensi"
+                style={{
+                  width: 250,
+                  height: 250,
+                  display: "block",
                   margin: "0 auto"
-                }} 
+                }}
               />
             )}
           </div>

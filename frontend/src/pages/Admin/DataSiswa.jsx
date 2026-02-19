@@ -1,5 +1,12 @@
+import React, { useState, useEffect, useRef } from 'react';
 import apiService from '../../utils/api';
 import Pagination from '../../components/Common/Pagination';
+import NavbarAdmin from '../../components/Admin/NavbarAdmin';
+import TambahSiswa from '../../components/Admin/TambahSiswa';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import './DataSiswa.css';
 
 function DataSiswa() {
   const [students, setStudents] = useState([]);
@@ -10,6 +17,8 @@ function DataSiswa() {
   const [majors, setMajors] = useState([]);
   const [classes, setClasses] = useState([]);
   const [editData, setEditData] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     lastPage: 1,
@@ -17,7 +26,9 @@ function DataSiswa() {
     from: 0,
     to: 0
   });
-  
+
+  const filteredStudents = students; // Assuming students array from backend is already filtered
+
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
 
@@ -181,7 +192,7 @@ function DataSiswa() {
   // Export to Excel
   const handleExportToExcel = () => {
     const dataToExport = students;
-    
+
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
       return;
@@ -216,17 +227,17 @@ function DataSiswa() {
   // Export to PDF
   const handleExportToPDF = () => {
     const dataToExport = filteredStudents.length > 0 ? filteredStudents : students;
-    
+
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
       return;
     }
 
     const doc = new jsPDF();
-    
+
     doc.setFontSize(18);
     doc.text('Data Siswa', 14, 22);
-    
+
     doc.setFontSize(10);
     doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, 30);
 
@@ -306,16 +317,16 @@ function DataSiswa() {
           });
 
         const result = await apiService.importStudents(importedStudents);
-        
+
         if (result.data) {
           const { imported, duplicates } = result.data;
-          
+
           let message = `✅ Berhasil mengimpor ${imported} data siswa.`;
-          
+
           if (duplicates && duplicates.length > 0) {
             message += `\n\n❌ ${duplicates.length} data ditolak karena NISN sudah ada:\n${duplicates.join(', ')}`;
           }
-          
+
           alert(message);
           await loadStudents();
         }
@@ -378,10 +389,10 @@ function DataSiswa() {
     return (
       <div className="data-container">
         <NavbarAdmin />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           minHeight: '60vh',
           fontSize: '18px',
           color: '#6b7280'
@@ -399,18 +410,18 @@ function DataSiswa() {
 
       <div className="table-wrapper">
         <div className="filter-box">
-          <input 
-            type="text" 
-            placeholder="Cari Siswa (Nama/NISN)..." 
-            className="search1" 
+          <input
+            type="text"
+            placeholder="Cari Siswa (Nama/NISN)..."
+            className="search1"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
           <div className="select-group">
             <label>Konsentrasi Keahlian :</label>
-            <select 
-              value={filterJurusan} 
+            <select
+              value={filterJurusan}
               onChange={(e) => setFilterJurusan(e.target.value)}
             >
               <option value="">Semua Jurusan</option>
@@ -420,8 +431,8 @@ function DataSiswa() {
             </select>
 
             <label>Kelas :</label>
-            <select 
-              value={filterKelas} 
+            <select
+              value={filterKelas}
               onChange={(e) => setFilterKelas(e.target.value)}
             >
               <option value="">Semua Kelas</option>
@@ -431,8 +442,8 @@ function DataSiswa() {
             </select>
 
             {(searchTerm || filterJurusan || filterKelas) && (
-              <button 
-                className="btn-reset-filter" 
+              <button
+                className="btn-reset-filter"
                 onClick={handleResetFilter}
                 title="Reset Filter"
               >
@@ -448,7 +459,7 @@ function DataSiswa() {
               <button ref={exportButtonRef} className="btn-export" onClick={() => setShowExportMenu(!showExportMenu)}>
                 Ekspor ▼
               </button>
-              
+
               {showExportMenu && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: 'white', border: '1px solid #ddd', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 1000, minWidth: '170px', marginTop: '5px' }}>
                   <button onClick={handleExportToExcel} style={{ width: '100%', padding: '10px 15px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'} onMouseOut={(e) => e.target.style.backgroundColor = 'white'}>
@@ -474,9 +485,9 @@ function DataSiswa() {
         </div>
 
         {(searchTerm || filterJurusan || filterKelas) && (
-          <div style={{ 
-            padding: '10px 20px', 
-            backgroundColor: '#e3f2fd', 
+          <div style={{
+            padding: '10px 20px',
+            backgroundColor: '#e3f2fd',
             borderLeft: '4px solid #2196f3',
             marginBottom: '15px',
             borderRadius: '4px'
@@ -523,8 +534,8 @@ function DataSiswa() {
             ) : (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                  {searchTerm || filterJurusan || filterKelas 
-                    ? 'Tidak ada data yang sesuai dengan filter' 
+                  {searchTerm || filterJurusan || filterKelas
+                    ? 'Tidak ada data yang sesuai dengan filter'
                     : 'Tidak ada data siswa'}
                 </td>
               </tr>
@@ -532,7 +543,7 @@ function DataSiswa() {
           </tbody>
         </table>
 
-        <Pagination 
+        <Pagination
           currentPage={pagination.currentPage}
           lastPage={pagination.lastPage}
           onPageChange={handlePageChange}

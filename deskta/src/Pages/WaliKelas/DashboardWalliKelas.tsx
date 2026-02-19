@@ -286,7 +286,7 @@ export default function DashboardWalliKelas({
   const [iconStates, setIconStates] = useState<Record<string, "qr" | "eye">>({});
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
-  
+
   // State untuk menyimpan data siswa yang dipilih
   const [siswaData, setSiswaData] = useState<{
     siswaName?: string;
@@ -318,7 +318,7 @@ export default function DashboardWalliKelas({
     window.addEventListener("resize", handleResize);
     updateTime();
     const timer = setInterval(updateTime, 1000);
-    
+
     fetchSchedules();
 
     return () => {
@@ -331,33 +331,33 @@ export default function DashboardWalliKelas({
     setLoadingSchedule(true);
     try {
       // must be fixed
-        const response = await scheduleService.getMyHomeroomSchedules();
-        if(response.items){
-            const mappedSchedules = response.items.map((item: any) => ({
-                id: String(item.id),
-                subject: item.subject,
-                className: item.class_name || item.class,
-                jurusan: item.major || '-',
-                jam: `${item.start_time} - ${item.end_time}`
-            }));
-            setSchedules(mappedSchedules);
-        }
+      const response = await scheduleService.getMyHomeroomSchedules();
+      if (response.items) {
+        const mappedSchedules = response.items.map((item: any) => ({
+          id: String(item.id),
+          subject: item.subject,
+          className: item.class_name || item.class,
+          jurusan: item.major || '-',
+          jam: `${item.start_time} - ${item.end_time}`
+        }));
+        setSchedules(mappedSchedules);
+      }
     } catch (error) {
-        console.error("Failed to fetch schedules:", error);
+      console.error("Failed to fetch schedules:", error);
     } finally {
-        setLoadingSchedule(false);
+      setLoadingSchedule(false);
     }
   };
 
   // === FLOW SAMA SEPERTI GURU DASHBOARD ===
   const handleMenuClick = (page: string, payload?: any) => {
     setCurrentPage(page as WalikelasPage);
-    
+
     // Jika page adalah daftar-ketidakhadiran-walikelas, simpan data siswa
     if (page === "daftar-ketidakhadiran-walikelas" && payload) {
       setSiswaData(payload);
     }
-    
+
     setActiveModal(null);
   };
 
@@ -551,7 +551,7 @@ export default function DashboardWalliKelas({
                     <span style={styles.statLabel}>Wali Kelas</span>
                   </div>
                   <div style={styles.statBadge(isMobile)}>
-                    12 RPL 2
+                    {(user as any).profile?.homeroom_class_name || "Belum ada kelas"}
                   </div>
                 </div>
 
@@ -563,7 +563,7 @@ export default function DashboardWalliKelas({
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between' }}>
                     <div style={styles.statBadge(isMobile)}>
-                      40
+                      {(user as any).profile?.total_students || 0}
                     </div>
                     <div
                       style={styles.eyeButton}
@@ -591,64 +591,64 @@ export default function DashboardWalliKelas({
                     <div>Memuat jadwal...</div>
                   ) : schedules.length > 0 ? (
                     schedules.map((item) => (
-                    <div
-                      key={item.id}
-                      style={styles.scheduleCard(isMobile)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.boxShadow = "0 8px 20px rgba(6, 37, 77, 0.4)";
-                        e.currentTarget.style.transform = "translateY(-3px)";
-                        e.currentTarget.style.backgroundColor = "#0A2E5C";
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(6, 37, 77, 0.3)";
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.backgroundColor = "#06254D";
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      }}
-                    >
-                      <div style={styles.scheduleIconWrapper(isMobile)}>
-                        <BookOpen size={isMobile ? 20 : 24} color="white" strokeWidth={2} />
-                      </div>
+                      <div
+                        key={item.id}
+                        style={styles.scheduleCard(isMobile)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = "0 8px 20px rgba(6, 37, 77, 0.4)";
+                          e.currentTarget.style.transform = "translateY(-3px)";
+                          e.currentTarget.style.backgroundColor = "#0A2E5C";
+                          e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(6, 37, 77, 0.3)";
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.backgroundColor = "#06254D";
+                          e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        }}
+                      >
+                        <div style={styles.scheduleIconWrapper(isMobile)}>
+                          <BookOpen size={isMobile ? 20 : 24} color="white" strokeWidth={2} />
+                        </div>
 
-                      <div style={styles.scheduleContent}>
-                        <div style={styles.scheduleSubject}>
-                          {item.subject}
+                        <div style={styles.scheduleContent}>
+                          <div style={styles.scheduleSubject}>
+                            {item.subject}
+                          </div>
+                          <div style={styles.scheduleDetail}>
+                            {item.className} • {item.jam}
+                          </div>
                         </div>
-                        <div style={styles.scheduleDetail}>
-                          {item.className} • {item.jam}
-                        </div>
-                      </div>
 
-                      {/* Action Icons (Hanya QR/Eye Toggle) - FLOW SAMA SEPERTI GURU */}
-                      <div style={styles.scheduleActions}>
-                        {/* Icon QR/Eye Toggle - FLOW SAMA SEPERTI GURU */}
-                        <div
-                          onClick={(e) => handleActionClick(e, item)}
-                          style={styles.actionButton}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.25)";
-                            e.currentTarget.style.transform = "scale(1.1)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
-                            e.currentTarget.style.transform = "scale(1)";
-                          }}
-                          title={
-                            (iconStates[item.id] || "qr") === "qr" 
-                              ? "Presensi Kelas" 
-                              : "Lihat Kehadiran Siswa"
-                          }
-                        >
-                          {(iconStates[item.id] || "qr") === "qr" ? (
-                            <QrCode size={20} color="white" />
-                          ) : (
-                            <Eye size={20} color="white" strokeWidth={2} />
-                          )}
+                        {/* Action Icons (Hanya QR/Eye Toggle) - FLOW SAMA SEPERTI GURU */}
+                        <div style={styles.scheduleActions}>
+                          {/* Icon QR/Eye Toggle - FLOW SAMA SEPERTI GURU */}
+                          <div
+                            onClick={(e) => handleActionClick(e, item)}
+                            style={styles.actionButton}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.25)";
+                              e.currentTarget.style.transform = "scale(1.1)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
+                              e.currentTarget.style.transform = "scale(1)";
+                            }}
+                            title={
+                              (iconStates[item.id] || "qr") === "qr"
+                                ? "Presensi Kelas"
+                                : "Lihat Kehadiran Siswa"
+                            }
+                          >
+                            {(iconStates[item.id] || "qr") === "qr" ? (
+                              <QrCode size={20} color="white" />
+                            ) : (
+                              <Eye size={20} color="white" strokeWidth={2} />
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                   ) : (
                     <div>Tidak ada jadwal hari ini</div>
                   )}
@@ -656,7 +656,7 @@ export default function DashboardWalliKelas({
               </div>
 
               {/* ========== MODALS (FLOW SAMA SEPERTI GURU) ========== */}
-              
+
               {/* Modal Jadwal */}
               <JadwalModal
                 isOpen={activeModal === "schedule"}

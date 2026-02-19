@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import { User, ArrowLeft, Eye, X } from "lucide-react";
+import { User, ArrowLeft, Eye, X, Loader2 } from "lucide-react";
 import { Modal } from "../../component/Shared/Modal";
+import { API_BASE_URL, handleResponse } from "../../services/api";
 
 type StatusKehadiran = "Izin" | "Sakit" | "Alfa" | "Pulang";
 
@@ -27,14 +28,25 @@ interface DaftarKetidakhadiranProps {
   siswaIdentitas?: string;
 }
 
+const mapBackendStatus = (status: string): StatusKehadiran | null => {
+  switch (status) {
+    case "excused":
+    case "izin": return "Izin";
+    case "sick": return "Sakit";
+    case "absent": return "Alfa";
+    case "return": return "Pulang";
+    default: return null;
+  }
+};
+
 export default function DaftarKetidakhadiran({
   user = { name: "Admin", role: "waka" },
   currentPage = "daftar-ketidakhadiran",
-  onMenuClick = () => {},
-  onLogout = () => {},
-  onBack = () => {},
-  siswaName = "Muhammad Wito Suherman",
-  siswaIdentitas = "1348576392",
+  onMenuClick = () => { },
+  onLogout = () => { },
+  onBack = () => { },
+  siswaName = "Siswa",
+  siswaIdentitas = "",
 }: DaftarKetidakhadiranProps) {
   const COLORS = {
     IZIN: "#ACA40D",
@@ -45,89 +57,58 @@ export default function DaftarKetidakhadiran({
 
   const [selectedRecord, setSelectedRecord] = useState<RowKehadiran | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [rows, setRows] = useState<RowKehadiran[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [rows] = useState<RowKehadiran[]>([
-    {
-      no: 1,
-      tanggal: "20-05-2025",
-      jam: "1-2",
-      mapel: "Matematika",
-      guru: "WIWIN WINANGSIH, S.Pd,M.Pd",
-      status: "Izin",
-      keterangan: "Izin tidak masuk karena ada keperluan keluarga",
-      buktiFoto: "surat-izin-keluarga.jpg",
-    },
-    {
-      no: 2,
-      tanggal: "20-05-2025",
-      jam: "3-4",
-      mapel: "Bahasa Indonesia",
-      guru: "Hj. TITIK MARIYATI, S.Pd",
-      status: "Sakit",
-      keterangan: "Sakit demam dan flu, istirahat di rumah",
-      buktiFoto: "surat-keterangan-sakit.jpg",
-    },
-    {
-      no: 3,
-      tanggal: "21-05-2025",
-      jam: "1-2",
-      mapel: "Matematika",
-      guru: "SOLIKAH,S.Pd",
-      status: "Pulang",
-      keterangan: "Pulang lebih awal karena ada keperluan mendadak",
-      waktuKeluar: "09:30",
-      buktiFoto: "surat-izin-pulang.jpg",
-    },
-    {
-      no: 4,
-      tanggal: "21-05-2025",
-      jam: "5-6",
-      mapel: "MPKK",
-      guru: "ALIFAH DIANTEBES AINDRA S.Pd",
-      status: "Izin",
-      keterangan: "Ijin tidak masuk karena ada keperluan keluarga di luar kota",
-      buktiFoto: "surat-izin-keluarga.jpg",
-    },
-    {
-      no: 5,
-      tanggal: "22-05-2025",
-      jam: "3-4",
-      mapel: "MPKK",
-      guru: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd",
-      status: "Sakit",
-      keterangan: "Demam tinggi dan dokter menyarankan istirahat total selama 3 hari",
-      buktiFoto: "surat-keterangan-dokter.jpg",
-    },
-    {
-      no: 6,
-      tanggal: "23-05-2025",
-      jam: "1-2",
-      mapel: "MPKK",
-      guru: "ALIFAH DIANTEBES AINDRA S.Pd",
-      status: "Alfa",
-      keterangan: "Siswa Alfa tanpa keterangan yang jelas",
-    },
-    {
-      no: 7,
-      tanggal: "23-05-2025",
-      jam: "7-8",
-      mapel: "Bahasa Inggris",
-      guru: "FAJAR NINGTYAS, S.Pd",
-      status: "Alfa",
-      keterangan: "Siswa Alfa tanpa pemberitahuan",
-    },
-    {
-      no: 8,
-      tanggal: "24-05-2025",
-      jam: "3-4",
-      mapel: "Bahasa Inggris",
-      guru: "FAJAR NINGTYAS, S.Pd",
-      status: "Pulang",
-      keterangan: "Pulang lebih awal karena sakit kepala dan mual",
-      waktuKeluar: "10:45",
-      buktiFoto: "surat-izin-pulang.jpg",
-    },
-  ]);
+  useEffect(() => {
+    const fetchAbsences = async () => {
+      if (!siswaIdentitas) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const response = await fetch(
+          `${API_BASE_URL}/students/${siswaIdentitas}/attendance?per_page=-1`,
+          {
+            headers: {
+              "Authorization": `Bearer ${localStorage.getItem("token")}`,
+              "Accept": "application/json",
+            }
+          }
+        );
+        const data = await handleResponse(response);
+        const items = Array.isArray(data) ? data : (data?.data || []);
+
+        const mapped: RowKehadiran[] = items
+          .map((item: any) => {
+            const status = mapBackendStatus(item.status);
+            if (!status) return null;
+            const date = new Date(item.date);
+            return {
+              no: 0,
+              tanggal: date.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-"),
+              jam: item.schedule?.start_time?.substring(0, 5) || "-",
+              mapel: item.schedule?.subject?.name || "-",
+              guru: item.schedule?.teacher?.user?.name || "-",
+              status,
+              keterangan: item.notes || item.reason || `${status} tanpa keterangan`,
+              buktiFoto: item.document_path || undefined,
+              waktuKeluar: status === "Pulang" ? item.check_out_time || undefined : undefined,
+            };
+          })
+          .filter(Boolean) as RowKehadiran[];
+
+        mapped.forEach((r, i) => { r.no = i + 1; });
+        setRows(mapped);
+      } catch (error) {
+        console.error("Failed to fetch absences:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAbsences();
+  }, [siswaIdentitas]);
 
   const stats = {
     izin: rows.filter((r) => r.status === "Izin").length,
@@ -361,35 +342,50 @@ export default function DaftarKetidakhadiran({
             marginBottom: "24px",
           }}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "2px solid #E5E7EB" }}>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>No</th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Tanggal</th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Jam Pelajaran</th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Mata Pelajaran</th>
-                    <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Guru</th>
-                    <th style={{ padding: "16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, idx) => (
-                    <tr key={row.no} style={{
-                      borderBottom: "1px solid #E5E7EB",
-                      backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB",
-                    }}>
-                      <td style={{ padding: "16px", color: "#6B7280" }}>{row.no}</td>
-                      <td style={{ padding: "16px", color: "#374151", fontWeight: 500 }}>{row.tanggal}</td>
-                      <td style={{ padding: "16px", color: "#6B7280" }}>{row.jam}</td>
-                      <td style={{ padding: "16px", color: "#374151" }}>{row.mapel}</td>
-                      <td style={{ padding: "16px", color: "#6B7280" }}>{row.guru}</td>
-                      <td style={{ padding: "16px", textAlign: "center" }}>
-                        <StatusButton status={row.status} row={row} />
-                      </td>
+              {isLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: "48px" }}>
+                  <Loader2 className="animate-spin" size={32} color="#2F85EB" />
+                </div>
+              ) : rows.length === 0 ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "48px 24px",
+                  color: "#6B7280",
+                  fontSize: "14px",
+                }}>
+                  Tidak ada data ketidakhadiran
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "2px solid #E5E7EB" }}>
+                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>No</th>
+                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Tanggal</th>
+                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Jam Pelajaran</th>
+                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Mata Pelajaran</th>
+                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Guru</th>
+                      <th style={{ padding: "16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, idx) => (
+                      <tr key={row.no} style={{
+                        borderBottom: "1px solid #E5E7EB",
+                        backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB",
+                      }}>
+                        <td style={{ padding: "16px", color: "#6B7280" }}>{row.no}</td>
+                        <td style={{ padding: "16px", color: "#374151", fontWeight: 500 }}>{row.tanggal}</td>
+                        <td style={{ padding: "16px", color: "#6B7280" }}>{row.jam}</td>
+                        <td style={{ padding: "16px", color: "#374151" }}>{row.mapel}</td>
+                        <td style={{ padding: "16px", color: "#6B7280" }}>{row.guru}</td>
+                        <td style={{ padding: "16px", textAlign: "center" }}>
+                          <StatusButton status={row.status} row={row} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
