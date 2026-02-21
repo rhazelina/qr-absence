@@ -9,11 +9,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC'));
+});
+
 it('returns existing active qr code if generated again for same schedule (idempotency)', function () {
     // 1. Setup
     $teacher = User::factory()->teacher()->create();
     $teacher->refresh();
-    $classSchedule = ClassSchedule::factory()->create();
+    $classSchedule = ClassSchedule::factory()->create([
+        'is_active' => true,
+    ]);
     $dailySchedule = DailySchedule::factory()->create([
         'class_schedule_id' => $classSchedule->id,
         'day' => now()->format('l'),
@@ -21,6 +27,8 @@ it('returns existing active qr code if generated again for same schedule (idempo
     $schedule = ScheduleItem::factory()->create([
         'daily_schedule_id' => $dailySchedule->id,
         'teacher_id' => $teacher->teacherProfile->id,
+        'start_time' => now()->subMinutes(30)->format('H:i:s'),
+        'end_time' => now()->addMinutes(30)->format('H:i:s'),
     ]);
 
     // 2. First Generation
@@ -30,7 +38,7 @@ it('returns existing active qr code if generated again for same schedule (idempo
         'expires_in_minutes' => 30,
     ]);
 
-    $response1->assertStatus(201);
+    $response1->dump()->assertStatus(201);
     $token1 = $response1->json('payload.token');
 
     // 3. Second Generation (Concurrent simulation)
@@ -58,7 +66,9 @@ it('generates new qr code if previous one is expired', function () {
     // 1. Setup
     $teacher = User::factory()->teacher()->create();
     $teacher->refresh();
-    $classSchedule = ClassSchedule::factory()->create();
+    $classSchedule = ClassSchedule::factory()->create([
+        'is_active' => true,
+    ]);
     $dailySchedule = DailySchedule::factory()->create([
         'class_schedule_id' => $classSchedule->id,
         'day' => now()->format('l'),
@@ -66,6 +76,8 @@ it('generates new qr code if previous one is expired', function () {
     $schedule = ScheduleItem::factory()->create([
         'daily_schedule_id' => $dailySchedule->id,
         'teacher_id' => $teacher->teacherProfile->id,
+        'start_time' => now()->subMinutes(30)->format('H:i:s'),
+        'end_time' => now()->addMinutes(30)->format('H:i:s'),
     ]);
 
     // 2. First Generation (Expired)

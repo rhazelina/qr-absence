@@ -20,6 +20,33 @@ class StudentController extends Controller
     {
         $query = StudentProfile::query()->with(['user', 'classRoom']);
 
+        $user = $request->user();
+        if ($user && $user->user_type === 'teacher') {
+            $teacher = $user->teacherProfile;
+            if ($teacher) {
+                $classIds = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
+                    ->whereHas('dailySchedule.classSchedule', function ($q) {
+                        $q->where('is_active', true);
+                    })
+                    ->get()
+                    ->map(fn($item) => $item->dailySchedule->classSchedule->class_id ?? null)
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                if ($teacher->homeroom_class_id) {
+                    $classIds[] = $teacher->homeroom_class_id;
+                }
+
+                $query->whereIn('class_id', array_unique($classIds));
+            }
+        } elseif ($user && $user->user_type === 'student') {
+            $student = $user->studentProfile;
+            if ($student) {
+                $query->where('class_id', $student->class_id);
+            }
+        }
+
         if ($request->filled('nisn')) {
             $query->where('nisn', $request->string('nisn'));
         }
@@ -46,13 +73,11 @@ class StudentController extends Controller
             });
         }
 
-        $perPage = $request->integer('per_page', 15);
+        $perPage = $request->integer('per_page', 10);
 
-        if ($perPage === -1) {
-            return response()->json(\App\Http\Resources\StudentResource::collection($query->latest()->get()));
-        }
-
-        return \App\Http\Resources\StudentResource::collection($query->latest()->paginate($perPage)->appends($request->all()))->response();
+        return \App\Http\Resources\StudentResource::collection(
+            $query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10)->appends($request->all())
+        )->response();
     }
 
     /**
@@ -203,9 +228,15 @@ class StudentController extends Controller
      */
     public function destroy(StudentProfile $student): JsonResponse
     {
-        $student->user()->delete();
-
-        return response()->json(['message' => 'Deleted']);
+        try {
+            $student->user()->delete();
+            return response()->json(['message' => 'Deleted']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     /**

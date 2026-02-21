@@ -8,6 +8,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'Asia/Jakarta'));
+});
+
 it('allows teacher to scan student QR', function () {
     // 1. Setup Data
     $class = Classes::factory()->create();
@@ -45,6 +49,7 @@ it('allows teacher to scan student QR', function () {
     $response = $this->actingAs($teacherUser)
         ->postJson('/api/attendance/scan-student', [
             'token' => '1234567890', // Token is NISN
+            'schedule_id' => $scheduleItem->id,
         ]);
 
     // 4. Assert

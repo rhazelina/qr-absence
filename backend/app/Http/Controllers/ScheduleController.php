@@ -36,7 +36,8 @@ class ScheduleController extends Controller
             $query->where('semester', $request->semester);
         }
 
-        return response()->json($query->latest()->paginate());
+        $perPage = $request->integer('per_page', 10);
+        return response()->json($query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10));
     }
 
     /**
@@ -154,9 +155,15 @@ class ScheduleController extends Controller
      */
     public function destroy(ClassSchedule $schedule): JsonResponse
     {
-        $schedule->delete();
-
-        return response()->json(['message' => 'Schedule deleted successfully']);
+        try {
+            $schedule->delete();
+            return response()->json(['message' => 'Schedule deleted successfully']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     /**

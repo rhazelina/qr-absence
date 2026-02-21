@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="3dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="12dp"
+    android:background="@drawable/rectangle_68">
+
+    <!-- No -->
+    <TextView
+        android:id="@+id/tvNo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.5"
+        android:text="1"
+        android:textColor="#090909"
+        android:textSize="12sp"
+        android:textAlignment="center" />
+
+    <!-- Nama -->
+    <TextView
+        android:id="@+id/tvNama"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.5"
+        android:layout_marginStart="4dp"
+        android:text="Guru1"
+        android:textColor="#090909"
+        android:textSize="12sp"
+        android:ellipsize="end"
+        android:maxLines="1" />
+
+    <!-- Kode -->
+    <TextView
+        android:id="@+id/tvKode"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:text="G001"
+        android:textColor="#090909"
+        android:textSize="12sp"
+        android:textAlignment="center" />
+
+    <!-- NIP (Sandi) -->
+    <TextView
+        android:id="@+id/tvNIP"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.5"
+        android:layout_marginStart="4dp"
+        android:text="198011152001011001"
+        android:textColor="#090909"
+        android:textSize="10sp"
+        android:textAlignment="center"
+        android:ellipsize="end"
+        android:maxLines="1" />
+
+    <!-- Mapel -->
+    <TextView
+        android:id="@+id/tvMapel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.5"
+        android:layout_marginStart="4dp"
+        android:text="Matematika"
+        android:textColor="#090909"
+        android:textSize="12sp"
+        android:ellipsize="end"
+        android:maxLines="1" />
+
+    <!-- Role -->
+    <TextView
+        android:id="@+id/tvKeterangan"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:text="Guru"
+        android:textColor="#090909"
+        android:textSize="12sp"
+        android:textAlignment="center" />
+
+    <!-- Aksi -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.2"
+        android:layout_marginStart="8dp"
+        android:gravity="center"
+        android:orientation="horizontal">  <!-- GANTI: vertical -> horizontal -->
+
+        <!-- Edit -->
+        <LinearLayout
+            android:id="@+id/btnEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="6dp"
+            android:layout_marginEnd="4dp">  <!-- TAMBAH: margin antar tombol -->
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:background="@android:color/transparent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/edit"
+                android:contentDescription="Edit" />
+
+        </LinearLayout>
+
+        <!-- Hapus -->
+        <LinearLayout
+            android:id="@+id/btnHapus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="1dp"
+            android:layout_marginStart="4dp">  <!-- TAMBAH: margin antar tombol -->
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:background="@android:color/transparent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/delete"
+                android:contentDescription="Hapus" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</LinearLayout>

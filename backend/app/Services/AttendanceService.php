@@ -24,6 +24,20 @@ class AttendanceService
     {
         $now = now();
 
+        // 1. Verify HMAC Signature format
+        $parts = explode('.', $data['token']);
+        if (count($parts) !== 2) {
+            throw new \Exception('Format token tidak valid atau tidak memiliki signature', 422);
+        }
+        
+        [$uuid, $signature] = $parts;
+        $expectedSignature = hash_hmac('sha256', $uuid, config('app.key'));
+        
+        if (!hash_equals($expectedSignature, $signature)) {
+            throw new \Exception('Signature token QR tidak valid (kemungkinan manipulasi)', 422);
+        }
+
+        // 2. Resolve QR Token
         $qr = Qrcode::with('schedule.dailySchedule.classSchedule.class')->where('token', $data['token'])->firstOrFail();
 
         if (! $qr->is_active || $qr->isExpired()) {
@@ -44,6 +58,16 @@ class AttendanceService
 
         if ($user->user_type === 'teacher' && ! $user->teacherProfile) {
             throw new \Exception('Profil guru tidak ditemukan', 422);
+        }
+
+        // 3. Check if Schedule is Open
+        $isClosed = \App\Models\Attendance::where('schedule_id', $qr->schedule_id)
+            ->whereDate('date', today())
+            ->where('source', 'system_close')
+            ->exists();
+
+        if ($isClosed) {
+            throw new \Exception('Sesi absensi untuk jadwal ini sudah ditutup', 422);
         }
 
         // Geolocation Validation

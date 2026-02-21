@@ -22,15 +22,9 @@ class TeacherController extends Controller
     {
         $query = TeacherProfile::query()->with(['user', 'homeroomClass']);
 
-        $perPage = $request->integer('per_page', 15);
+        $perPage = $request->integer('per_page', 10);
 
-        if ($perPage === -1) {
-            $teachers = $query->latest()->get();
-
-            return TeacherResource::collection($teachers)->response();
-        }
-
-        $teachers = $query->latest()->paginate($perPage);
+        $teachers = $query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10);
 
         return TeacherResource::collection($teachers)->response();
     }
@@ -178,9 +172,15 @@ class TeacherController extends Controller
      */
     public function destroy(TeacherProfile $teacher): JsonResponse
     {
-        $teacher->user()->delete();
-
-        return response()->json(['message' => 'Deleted']);
+        try {
+            $teacher->user()->delete();
+            return response()->json(['message' => 'Deleted']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     /**

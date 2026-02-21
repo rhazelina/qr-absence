@@ -159,6 +159,22 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
+  scanStudent: async (token: string, scheduleId: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/attendance/scan-student`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token: token,
+        schedule_id: scheduleId
+      })
+    });
+    return handleResponse(response);
+  },
+
   manualAttendance: async (data: { schedule_id: string, student_id: string, status: string, date: string, notes?: string }): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/attendance/manual`, {
       method: "POST",

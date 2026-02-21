@@ -70,7 +70,7 @@ function DataKelas() {
   };
 
   const loadTeachers = async () => {
-    const result = await apiService.getAvailableTeachers();
+    const result = await apiService.getTeachers({ per_page: 1000 });
     if (result.data) {
       setAvailableTeachers(result.data);
     }

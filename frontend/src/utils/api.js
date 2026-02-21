@@ -123,8 +123,9 @@ const apiService = {
     return this.get('/semesters');
   },
 
-  getTeachers() {
-    return this.get('/teachers');
+  getTeachers(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/teachers${query}`);
   },
 
   // Waka Methods
@@ -162,12 +163,14 @@ const apiService = {
     return this.post(`/attendance/${attendanceId}/excuse`, data);
   },
 
-  getClasses() {
-    return this.get('/classes');
+  getClasses(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
+    return this.get(`/classes${query}`);
   },
 
-  getMajors() {
-    return this.get('/majors');
+  getMajors(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
+    return this.get(`/majors${query}`);
   },
 
   getClass(classId) {

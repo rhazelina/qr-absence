@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'Asia/Jakarta'));
     // Setup basic data
     $this->schoolYear = SchoolYear::create([
         'name' => '2024/2025',
@@ -124,9 +125,10 @@ test('item 17: class officer cannot generate qr for future days', function () {
         'expires_in' => 5,
     ]);
 
-    $day = now()->englishDayOfWeek;
+    $today = now()->format('l');
+    $scheduleDay = $schedule->dailySchedule->day;
     $response->assertStatus(422)
-        ->assertJson(['message' => "Pengurus kelas hanya boleh membuat QR untuk jadwal hari ini ($day)"]);
+        ->assertJson(['message' => "QR hanya bisa dibuat pada hari jadwal (Hari ini $today, jadwal $scheduleDay)"]);
 });
 
 test('item 19: qr code show endpoint auto expires', function () {

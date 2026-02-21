@@ -24,6 +24,7 @@ class QrCodeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'Asia/Jakarta'));
 
         // Setup common data
         $this->teacher = User::factory()->create(['user_type' => 'teacher']);
@@ -54,8 +55,8 @@ class QrCodeTest extends TestCase
             'daily_schedule_id' => $dailySchedule->id,
             'teacher_id' => $this->teacher->teacherProfile->id,
             'subject_id' => $subject->id,
-            'start_time' => '07:00:00',
-            'end_time' => '08:00:00',
+            'start_time' => now()->subMinutes(30)->format('H:i:s'),
+            'end_time' => now()->addMinutes(30)->format('H:i:s'),
         ]);
     }
 

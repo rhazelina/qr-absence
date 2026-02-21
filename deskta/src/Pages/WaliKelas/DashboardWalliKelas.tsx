@@ -10,6 +10,7 @@ import JadwalPengurus from "./JadwalPengurus";
 import { RekapKehadiranSiswa } from "./RekapKehadiranSiswa";
 import DaftarKetidakhadiranWaliKelas from "./DaftarKetidakhadiranWaliKelas";
 import { scheduleService } from "../../services/scheduleService";
+import { attendanceService } from "../../services/attendanceService";
 
 // ==================== INTERFACES ====================
 interface DashboardWalliKelasProps {
@@ -402,6 +403,18 @@ export default function DashboardWalliKelas({
     setCurrentPage("input-manual");
   };
 
+  const handleScanSuccess = async (text: string) => {
+    if (!selectedSchedule) return;
+    try {
+      await attendanceService.scanStudent(text, selectedSchedule.id);
+      alert("Berhasil mencatat kehadiran siswa!");
+      setActiveModal(null);
+      setCurrentPage("input-manual");
+    } catch (error: any) {
+      alert(error.message || "Gagal mencatat kehadiran.");
+    }
+  };
+
   const handlePilihMetodeDariTidakBisaMengajar = () => {
     setActiveModal("metode");
   };
@@ -683,6 +696,7 @@ export default function DashboardWalliKelas({
                 onPilihQR={handlePilihQR}
                 onPilihManual={handlePilihManual}
                 onTidakBisaMengajar={handleTidakBisaMengajar}
+                onScanSuccess={handleScanSuccess}
               />
 
               {/* Modal Tidak Bisa Mengajar */}

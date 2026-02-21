@@ -19,15 +19,11 @@ class ClassController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $perPage = $request->integer('per_page', 15);
+        $perPage = $request->integer('per_page', 10);
 
-        $query = Classes::query()->with(['major', 'homeroomTeacher.user'])->latest();
+        $query = Classes::query()->with(['major', 'homeroomTeacher.user'])->orderBy('id', 'desc');
 
-        if ($perPage === -1) {
-            return \App\Http\Resources\ClassResource::collection($query->get())->response();
-        }
-
-        return \App\Http\Resources\ClassResource::collection($query->paginate($perPage))->response();
+        return \App\Http\Resources\ClassResource::collection($query->paginate($perPage > 0 ? $perPage : 10))->response();
     }
 
     /**
@@ -100,9 +96,15 @@ class ClassController extends Controller
      */
     public function destroy(Classes $class): JsonResponse
     {
-        $class->delete();
-
-        return response()->json(['message' => 'Deleted']);
+        try {
+            $class->delete();
+            return response()->json(['message' => 'Deleted']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     /**

@@ -721,48 +721,33 @@ class AttendanceController extends Controller
         }
 
         $perPage = $this->resolvePerPage($request);
-        if ($perPage) {
-            $studentIdsPage = (clone $query)
-                ->select('student_id')
-                ->distinct()
-                ->orderBy('student_id')
-                ->paginate($perPage);
+        $studentIdsPage = (clone $query)
+            ->select('student_id')
+            ->distinct()
+            ->orderBy('student_id')
+            ->paginate($perPage);
 
-            $studentIds = $studentIdsPage->getCollection()->pluck('student_id')->all();
+        $studentIds = $studentIdsPage->getCollection()->pluck('student_id')->all();
 
-            $items = $query
-                ->whereIn('student_id', $studentIds)
-                ->orderBy('date')
-                ->get()
-                ->groupBy('student_id');
+        $items = $query
+            ->whereIn('student_id', $studentIds)
+            ->orderBy('date')
+            ->get()
+            ->groupBy('student_id');
 
-            $response = collect($studentIds)->map(function ($studentId) use ($items): array {
-                $rows = $items->get($studentId, collect());
-                $student = optional($rows->first())->student;
-
-                return [
-                    'student' => $student ? $student->loadMissing('user') : null,
-                    'items' => $rows->values(),
-                ];
-            });
-
-            $studentIdsPage->setCollection($response);
-
-            return response()->json($studentIdsPage);
-        }
-
-        $items = $query->orderBy('date')->get()->groupBy('student_id');
-
-        $response = $items->map(function ($rows): array {
+        $response = collect($studentIds)->map(function ($studentId) use ($items): array {
+            $rows = $items->get($studentId, collect());
             $student = optional($rows->first())->student;
 
             return [
                 'student' => $student ? $student->loadMissing('user') : null,
                 'items' => $rows->values(),
             ];
-        })->values();
+        });
 
-        return response()->json($response);
+        $studentIdsPage->setCollection($response);
+
+        return response()->json($studentIdsPage);
     }
 
     public function teachersDailyAttendance(Request $request): JsonResponse
@@ -1196,9 +1181,15 @@ class AttendanceController extends Controller
     {
         $this->authorizeSchedule($request, $attendance->schedule);
 
-        $attendance->delete();
-
-        return response()->json(['message' => 'Scan dibatalkan']);
+        try {
+            $attendance->delete();
+            return response()->json(['message' => 'Scan dibatalkan']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     protected function signedUrl(string $path): string
@@ -1246,13 +1237,9 @@ class AttendanceController extends Controller
         }
 
         $perPage = $this->resolvePerPage($request);
-        $attendances = $perPage ? $query->paginate($perPage) : $query->get();
+        $attendances = $query->paginate($perPage);
 
-        if ($perPage) {
-            return \App\Http\Resources\AttendanceResource::collection($attendances)->response();
-        }
-
-        return response()->json(\App\Http\Resources\AttendanceResource::collection($attendances));
+        return \App\Http\Resources\AttendanceResource::collection($attendances)->response();
     }
 
     public function bulkManual(Request $request): JsonResponse
