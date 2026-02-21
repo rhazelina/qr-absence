@@ -25,16 +25,23 @@ class AttendanceScanTest extends TestCase
     {
         parent::setUp();
 
-        $this->student = User::factory()->create(['user_type' => 'student']);
-        StudentProfile::factory()->create(['user_id' => $this->student->id]);
-
         $this->schedule = ScheduleItem::factory()->create([
             'start_time' => now()->subMinutes(5)->format('H:i:s'),
             'end_time' => now()->addHour()->format('H:i:s'),
         ]);
 
+        $this->student = User::factory()->create(['user_type' => 'student']);
+        StudentProfile::factory()->create([
+            'user_id' => $this->student->id,
+            'class_id' => $this->schedule->dailySchedule->classSchedule->class_id,
+        ]);
+
+        $uuid = Str::uuid()->toString();
+        $signature = hash_hmac('sha256', $uuid, config('app.key'));
+        $signedToken = $uuid . '.' . $signature;
+
         $this->qr = Qrcode::create([
-            'token' => Str::random(32),
+            'token' => $signedToken,
             'type' => 'student',
             'schedule_id' => $this->schedule->id,
             'issued_by' => User::factory()->create(['user_type' => 'teacher'])->id,

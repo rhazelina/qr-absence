@@ -17,7 +17,8 @@ class NewScheduleSeeder extends Seeder
     public function run(): void
     {
         // Find a class to seed
-        $class = Classes::first();
+        // Find XII RPL 2
+        $class = Classes::where('grade', '12')->where('label', 'RPL 2')->first() ?? Classes::first();
         if (!$class) {
             $this->command->warn('No classes found. Skipping schedule seeding.');
             return;
@@ -31,7 +32,7 @@ class NewScheduleSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         $subjects = Subject::all();
         $teachers = TeacherProfile::all();
 

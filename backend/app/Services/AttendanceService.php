@@ -29,11 +29,11 @@ class AttendanceService
         if (count($parts) !== 2) {
             throw new \Exception('Format token tidak valid atau tidak memiliki signature', 422);
         }
-        
+
         [$uuid, $signature] = $parts;
         $expectedSignature = hash_hmac('sha256', $uuid, config('app.key'));
-        
-        if (!hash_equals($expectedSignature, $signature)) {
+
+        if (! hash_equals($expectedSignature, $signature)) {
             throw new \Exception('Signature token QR tidak valid (kemungkinan manipulasi)', 422);
         }
 
@@ -58,6 +58,29 @@ class AttendanceService
 
         if ($user->user_type === 'teacher' && ! $user->teacherProfile) {
             throw new \Exception('Profil guru tidak ditemukan', 422);
+        }
+
+        // Class ownership validation for students
+        if ($user->user_type === 'student') {
+            $classId = $qr->schedule->dailySchedule->classSchedule->class_id;
+            if ($classId !== $user->studentProfile->class_id) {
+                $className = $qr->schedule->dailySchedule->classSchedule->class->name ?? 'Unknown';
+                throw new \Exception("Anda ({$user->name}) bukan dari kelas jadwal ini ({$className})", 422);
+            }
+        }
+
+        // Schedule Day and Time Validation
+        $scheduleDay = $qr->schedule->dailySchedule->day;
+        $today = $now->format('l');
+
+        if (strcasecmp($scheduleDay, $today) !== 0) {
+            throw new \Exception("QR hanya valid pada hari {$scheduleDay}", 422);
+        }
+
+        $nowTime = $now->format('H:i:s');
+        $startTimeAllowed = (clone $now)->setTimeFromTimeString($qr->schedule->start_time)->subMinutes(15)->format('H:i:s');
+        if ($nowTime < $startTimeAllowed || $nowTime > $qr->schedule->end_time) {
+            throw new \Exception("Sesi presensi diluar jam aktif pelajaran ({$qr->schedule->start_time} - {$qr->schedule->end_time})", 422);
         }
 
         // 3. Check if Schedule is Open
@@ -260,6 +283,40 @@ class AttendanceService
                 'reason' => $data['reason'] ?? null,
             ]
         );
+    }
+
+    /**
+     * Create Full Day Attendance Records
+     * 
+     * Creates attendance records for all schedules today (for full day sick/izin)
+     */
+    public function createFullDayAttendance(StudentProfile $student, string $status, string $date, ?string $reason): void
+    {
+        $dayName = Carbon::parse($date)->format('l');
+
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($dayName, $student) {
+            $q->where('day', $dayName)
+                ->whereHas('classSchedule', function ($cq) use ($student) {
+                    $cq->where('class_id', $student->class_id);
+                });
+        })
+            ->get();
+
+        foreach ($schedules as $schedule) {
+            Attendance::updateOrCreate(
+                [
+                    'student_id' => $student->id,
+                    'schedule_id' => $schedule->id,
+                    'attendee_type' => 'student',
+                ],
+                [
+                    'date' => $date,
+                    'status' => $status,
+                    'reason' => $reason,
+                    'source' => 'manual',
+                ]
+            );
+        }
     }
 
     /**

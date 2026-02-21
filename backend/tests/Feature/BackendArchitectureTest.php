@@ -27,10 +27,14 @@ test('architecture: application logic rejects double scan', function () {
     ]);
     $schedule = ScheduleItem::factory()->create(['daily_schedule_id' => $dailySchedule->id]);
     // Ensure QR matches the schedule
+    $uuid = \Illuminate\Support\Str::uuid()->toString();
+    $signature = hash_hmac('sha256', $uuid, config('app.key'));
+    $signedToken = $uuid . '.' . $signature;
+
     $qr = Qrcode::create([
         'schedule_id' => $schedule->id,
         'params' => 'test',
-        'token' => 'test-token',
+        'token' => $signedToken,
         'is_active' => true,
         'expires_at' => now()->addHour(),
         'type' => 'student',
@@ -38,7 +42,7 @@ test('architecture: application logic rejects double scan', function () {
 
     // 2. Act: First Scan
     $response1 = $this->actingAs($user)->postJson('/api/attendance/scan', [
-        'token' => 'test-token',
+        'token' => $signedToken,
     ]);
 
     // 3. Assert: First scan successful
@@ -46,7 +50,7 @@ test('architecture: application logic rejects double scan', function () {
 
     // 4. Act: Second Scan (Simulate user trying again)
     $response2 = $this->actingAs($user)->postJson('/api/attendance/scan', [
-        'token' => 'test-token',
+        'token' => $signedToken,
     ]);
 
     // 5. Assert: Second scan rejected nicely (not 500 error)

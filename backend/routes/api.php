@@ -89,9 +89,11 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('majors', MajorController::class);
         Route::apiResource('classes', ClassController::class)->except(['index', 'show']); // show is public now
         Route::apiResource('teachers', TeacherController::class)->except(['index']); // index available publicly
-        Route::post('/teachers/import', [TeacherController::class, 'import']);
+        Route::post('/import/guru', [\App\Http\Controllers\ImportController::class, 'importGuru']);
         Route::apiResource('students', StudentController::class);
-        Route::post('/students/import', [StudentController::class, 'import']);
+        Route::post('/import/siswa', [\App\Http\Controllers\ImportController::class, 'importSiswa']);
+        Route::post('/import/kelas', [\App\Http\Controllers\ImportController::class, 'importKelas']);
+        Route::post('/import/jadwal', [\App\Http\Controllers\ImportController::class, 'importJadwal']);
         Route::get('/students/{student}/attendance', [StudentController::class, 'attendanceHistory']);
         Route::apiResource('schedules', ScheduleController::class)->except(['index', 'show']);
         Route::post('/classes/{class}/schedules/bulk', [ScheduleController::class, 'bulkUpsert']);
@@ -124,6 +126,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/qrcodes/{token}', [QrCodeController::class, 'show']);
         Route::post('/qrcodes/{token}/revoke', [QrCodeController::class, 'revoke']);
         Route::get('/me/schedules', [ScheduleController::class, 'me']);
+        Route::get('/me/schedules/today', [ScheduleController::class, 'today']);
     });
 
     Route::middleware('role:admin,teacher')->group(function (): void {

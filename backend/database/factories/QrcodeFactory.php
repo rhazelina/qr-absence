@@ -13,8 +13,10 @@ class QrcodeFactory extends Factory
 
     public function definition(): array
     {
+        $uuid = Str::uuid()->toString();
+        $signature = hash_hmac('sha256', $uuid, config('app.key'));
         return [
-            'token' => Str::uuid()->toString(),
+            'token' => $uuid . '.' . $signature,
             'type' => 'student',
             'schedule_id' => \App\Models\ScheduleItem::factory(),
             'issued_by' => User::factory(),

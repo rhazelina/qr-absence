@@ -26,7 +26,9 @@ const apiService = {
       }
 
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `API Error: ${response.status}`);
+      const error = new Error(errorData.message || `API Error: ${response.status}`);
+      error.data = errorData;
+      throw error;
     }
 
     return response.json();
@@ -200,7 +202,7 @@ const apiService = {
     return this.request(`/students/${id}`, { method: 'DELETE' });
   },
   importStudents(data) {
-    return this.post('/students/import', data);
+    return this.post('/import/siswa', data);
   },
 
   // Teacher Admin CRUD
@@ -217,7 +219,7 @@ const apiService = {
     return this.request(`/teachers/${id}`, { method: 'DELETE' });
   },
   importTeachers(data) {
-    return this.post('/teachers/import', data);
+    return this.post('/import/guru', data);
   },
 
   // Class Admin CRUD
@@ -229,6 +231,13 @@ const apiService = {
   },
   deleteClass(id) {
     return this.request(`/classes/${id}`, { method: 'DELETE' });
+  },
+  importClasses(data) {
+    return this.post('/import/kelas', data);
+  },
+
+  importSchedules(data) {
+    return this.post('/import/jadwal', data);
   }
 };
 

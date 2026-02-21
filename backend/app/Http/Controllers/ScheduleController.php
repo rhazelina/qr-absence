@@ -11,6 +11,7 @@ use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
 {
@@ -37,6 +38,7 @@ class ScheduleController extends Controller
         }
 
         $perPage = $request->integer('per_page', 10);
+
         return response()->json($query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10));
     }
 
@@ -84,12 +86,14 @@ class ScheduleController extends Controller
             ]);
 
             foreach ($data['days'] as $dayData) {
+                $dayName = $this->normalizeDay($dayData['day']);
                 $dailySchedule = $classSchedule->dailySchedules()->create([
-                    'day' => $this->normalizeDay($dayData['day']),
+                    'day' => $dayName,
                 ]);
 
                 if (isset($dayData['items'])) {
                     foreach ($dayData['items'] as $itemData) {
+                        $this->validateOverlap($itemData, $dayName, $classSchedule);
                         $dailySchedule->scheduleItems()->create($itemData);
                     }
                 }
@@ -132,12 +136,14 @@ class ScheduleController extends Controller
                 $schedule->dailySchedules()->delete();
 
                 foreach ($data['days'] as $dayData) {
+                    $dayName = $this->normalizeDay($dayData['day']);
                     $dailySchedule = $schedule->dailySchedules()->create([
-                        'day' => $this->normalizeDay($dayData['day']),
+                        'day' => $dayName,
                     ]);
 
                     if (isset($dayData['items'])) {
                         foreach ($dayData['items'] as $itemData) {
+                            $this->validateOverlap($itemData, $dayName, $schedule);
                             $dailySchedule->scheduleItems()->create($itemData);
                         }
                     }
@@ -157,6 +163,7 @@ class ScheduleController extends Controller
     {
         try {
             $schedule->delete();
+
             return response()->json(['message' => 'Schedule deleted successfully']);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
@@ -252,6 +259,80 @@ class ScheduleController extends Controller
     }
 
     /**
+     * Get Today's Schedules (Student/Teacher)
+     */
+    public function today(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $todayEnglish = now()->format('l');
+
+        if ($user->user_type === 'teacher') {
+            $teacher = $user->teacherProfile;
+            if (! $teacher) {
+                return response()->json(['message' => 'Profile not found'], 404);
+            }
+
+            $items = ScheduleItem::query()
+                ->where('teacher_id', $teacher->id)
+                ->with(['dailySchedule.classSchedule.class', 'subject'])
+                ->whereHas('dailySchedule', function ($q) use ($todayEnglish) {
+                    $q->where('day', $todayEnglish)
+                        ->whereHas('classSchedule', function ($q2) {
+                            $q2->where('is_active', true);
+                        });
+                })
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'day' => $item->dailySchedule->day,
+                        'start_time' => $item->start_time,
+                        'end_time' => $item->end_time,
+                        'class' => $item->dailySchedule->classSchedule->class->name,
+                        'subject' => $item->subject->name ?? 'N/A',
+                        'room' => $item->room,
+                        'teacher' => $item->teacher ? [
+                            'nip' => $item->teacher->nip,
+                            'name' => $item->teacher->user->name ?? 'Guru',
+                        ] : null,
+                    ];
+                });
+
+            return response()->json([
+                'status' => $items->isEmpty() ? 'no_schedule' : 'success',
+                'message' => $items->isEmpty() ? 'Tidak ada jam mengajar hari ini' : 'Berhasil mengambil jadwal hari ini',
+                'items' => $items,
+            ]);
+        }
+
+        if ($user->user_type === 'student') {
+            $student = $user->studentProfile;
+            if (! $student) {
+                return response()->json(['message' => 'Profile not found'], 404);
+            }
+
+            $items = ScheduleItem::query()
+                ->with(['dailySchedule.classSchedule.class', 'subject', 'teacher.user'])
+                ->whereHas('dailySchedule', function ($q) use ($todayEnglish, $student) {
+                    $q->where('day', $todayEnglish)
+                        ->whereHas('classSchedule', function ($q2) use ($student) {
+                            $q2->where('class_id', $student->class_id)
+                                ->where('is_active', true);
+                        });
+                })
+                ->get();
+
+            return response()->json([
+                'status' => $items->isEmpty() ? 'no_schedule' : 'success',
+                'message' => $items->isEmpty() ? 'Tidak ada kelas hari ini' : 'Berhasil mengambil jadwal hari ini',
+                'items' => $items,
+            ]);
+        }
+
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    /**
      * Bulk Upsert Schedules for a Class
      */
     public function bulkUpsert(Request $request, Classes $class): JsonResponse
@@ -291,12 +372,14 @@ class ScheduleController extends Controller
             $classSchedule->dailySchedules()->delete();
 
             foreach ($data['days'] as $dayData) {
+                $dayName = $this->normalizeDay($dayData['day']);
                 $dailySchedule = $classSchedule->dailySchedules()->create([
-                    'day' => $this->normalizeDay($dayData['day']),
+                    'day' => $dayName,
                 ]);
 
                 if (isset($dayData['items'])) {
                     foreach ($dayData['items'] as $itemData) {
+                        $this->validateOverlap($itemData, $dayName, $classSchedule);
                         $dailySchedule->scheduleItems()->create($itemData);
                     }
                 }
@@ -306,5 +389,55 @@ class ScheduleController extends Controller
         });
 
         return response()->json($schedule->load(['class', 'dailySchedules.scheduleItems.subject', 'dailySchedules.scheduleItems.teacher.user']));
+    }
+
+    private function validateOverlap(array $itemData, string $dayName, ClassSchedule $classSchedule)
+    {
+        $startTime = $itemData['start_time'];
+        $endTime = $itemData['end_time'];
+        
+        if ($startTime >= $endTime) {
+            throw ValidationException::withMessages([
+                'schedule' => "Waktu mulai harus lebih awal dari waktu selesai."
+            ]);
+        }
+
+        $overlappingItem = ScheduleItem::whereHas('dailySchedule', function ($query) use ($dayName, $classSchedule) {
+                $query->where('day', $dayName)
+                      ->whereHas('classSchedule', function ($q2) use ($classSchedule) {
+                          $q2->where('is_active', true)
+                             ->where('semester', $classSchedule->semester)
+                             ->where('year', $classSchedule->year);
+                      });
+            })
+            ->where(function ($query) use ($startTime, $endTime) {
+                $query->where('start_time', '<', $endTime)
+                      ->where('end_time', '>', $startTime);
+            })
+            ->where(function ($query) use ($itemData, $classSchedule) {
+                $query->where('teacher_id', $itemData['teacher_id'])
+                      ->orWhereHas('dailySchedule', function ($q) use ($classSchedule) {
+                            $q->where('class_schedule_id', $classSchedule->id);
+                      });
+            })
+            ->first();
+
+        if ($overlappingItem) {
+            $isSameClass = $overlappingItem->dailySchedule->class_schedule_id === $classSchedule->id;
+
+            if ($isSameClass) {
+                throw ValidationException::withMessages([
+                    'schedule' => "Jadwal kelas bentrok pada hari {$dayName} jam {$startTime} - {$endTime}."
+                ]);
+            } else {
+                $teacher = TeacherProfile::find($itemData['teacher_id']);
+                $teacherName = $teacher ? $teacher->user->name : 'Guru';
+                $className = $overlappingItem->dailySchedule->classSchedule->class->name ?? 'Kelas Lain';
+
+                throw ValidationException::withMessages([
+                    'schedule' => "{$teacherName} sudah memiliki jadwal mengajar di kelas {$className} pada hari {$dayName} jam {$startTime} - {$endTime}."
+                ]);
+            }
+        }
     }
 }

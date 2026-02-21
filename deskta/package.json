@@ -5,8 +5,9 @@
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "vite",
-    "electron:dev": "concurrently \"bun run dev\" \"wait-on http://localhost:5173 && bun exec electron .\"",
+    "dev": "vite --port 5180 --strictPort",
+    "electron:dev": "concurrently \"bun run dev\" \"wait-on -t 30000 http://127.0.0.1:5180 && ./node_modules/.bin/electron .\"",
+    "electron:run": "bun exec electron .",
     "build": "tsc -b && vite build",
     "electron:build": "bun run build && bun exec electron-builder",
     "lint": "eslint .",

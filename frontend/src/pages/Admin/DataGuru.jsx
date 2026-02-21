@@ -482,21 +482,28 @@ function DataGuru() {
 
         const result = await apiService.importTeachers(importedTeachers);
 
-        if (result.data) {
-          const { imported, duplicates } = result.data;
-
-          let message = `✅ Berhasil mengimpor ${imported} data guru.`;
-
-          if (duplicates && duplicates.length > 0) {
-            message += `\n\n❌ ${duplicates.length} data ditolak karena Kode Guru sudah ada:\n${duplicates.join(', ')}`;
-          }
-
-          alert(message);
+        if (result.total_rows !== undefined) {
+          alert(`✅ Berhasil mengimpor ${result.success_count} data guru dari total ${result.total_rows} baris.`);
+          await loadTeachers();
+        } else {
+          alert(`✅ Berhasil mengimpor data guru.`);
           await loadTeachers();
         }
 
       } catch (error) {
-        alert('❌ Gagal membaca file Excel!\n\n' + error.message);
+        if (error.data && error.data.errors) {
+          const { total_rows, success_count, failed_count, errors } = error.data;
+          let message = `❌ Impor gagal.\n\nTotal Baris: ${total_rows}\nBerhasil: ${success_count}\nGagal: ${failed_count}\n\nDetail Error:\n`;
+          errors.slice(0, 10).forEach(err => {
+            message += `- Baris ${err.row}, Kolom ${err.column}: ${err.message}\n`;
+          });
+          if (errors.length > 10) {
+            message += `... dan ${errors.length - 10} error lainnya.`;
+          }
+          alert(message);
+        } else {
+          alert('❌ Terjadi kesalahan saat mengimpor data!\n\n' + error.message);
+        }
         console.error(error);
       }
     };

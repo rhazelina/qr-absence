@@ -29,62 +29,7 @@ class TeacherController extends Controller
         return TeacherResource::collection($teachers)->response();
     }
 
-    /**
-     * Import Teachers
-     *
-     * Bulk import teachers from a data array.
-     */
-    public function import(Request $request): JsonResponse
-    {
-        $dto = \App\Data\TeacherImportData::fromRequest($request);
-        $data = $request->validate([
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
-            'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
-            'items.*.password' => ['nullable', 'string', 'min:6'],
-            'items.*.nip' => ['required', 'string', 'distinct', 'unique:teacher_profiles,nip'],
-            'items.*.phone' => ['nullable', 'string', 'max:30'],
-            'items.*.contact' => ['nullable', 'string', 'max:50'],
-            'items.*.homeroom_class_id' => ['nullable', 'exists:classes,id'],
-            'items.*.subject' => ['nullable', 'string', 'max:100'],
-        ], [
-            'items.*.username.unique' => 'Username :input sudah digunakan.',
-            'items.*.email.unique' => 'Email :input sudah digunakan.',
-            'items.*.nip.unique' => 'NIP :input sudah digunakan oleh guru lain.',
-            'items.*.username.distinct' => 'Username :input duplikat dalam daftar import.',
-            'items.*.email.distinct' => 'Email :input duplikat dalam daftar import.',
-            'items.*.nip.distinct' => 'NIP :input duplikat dalam daftar import.',
-        ]);
 
-        $count = 0;
-
-        DB::transaction(function () use ($dto, &$count): void {
-            foreach ($dto->items as $item) {
-                $user = User::create([
-                    'name' => $item['name'],
-                    'username' => $item['username'],
-                    'email' => $item['email'] ?? null,
-                    'password' => Hash::make($item['password'] ?? $item['nip']),
-                    'phone' => $item['phone'] ?? null,
-                    'contact' => $item['contact'] ?? null,
-                    'user_type' => 'teacher',
-                ]);
-
-                $user->teacherProfile()->create([
-                    'nip' => $item['nip'],
-                    'homeroom_class_id' => $item['homeroom_class_id'] ?? null,
-                    'subject' => $item['subject'] ?? null,
-                ]);
-                $count++;
-            }
-        });
-
-        return response()->json([
-            'created' => $count,
-            'message' => "Successfully imported {$count} teachers.",
-        ], 201);
-    }
 
     /**
      * Create Teacher

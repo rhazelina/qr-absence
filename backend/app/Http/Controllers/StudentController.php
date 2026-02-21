@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classes;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -80,70 +81,7 @@ class StudentController extends Controller
         )->response();
     }
 
-    /**
-     * Import Students
-     *
-     * Bulk import students from a data array.
-     */
-    public function import(Request $request): JsonResponse
-    {
-        $dto = \App\Data\StudentImportData::fromRequest($request);
-        $data = $request->validate([
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
-            'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
-            'items.*.password' => ['nullable', 'string', 'min:6'],
-            'items.*.nisn' => ['required', 'string', 'distinct', 'unique:student_profiles,nisn'],
-            'items.*.nis' => ['required', 'string', 'distinct', 'unique:student_profiles,nis'],
-            'items.*.gender' => ['required', 'in:L,P'],
-            'items.*.address' => ['required', 'string'],
-            'items.*.class_id' => ['required', 'exists:classes,id'],
-            'items.*.is_class_officer' => ['nullable', 'boolean'],
-            'items.*.phone' => ['nullable', 'string', 'max:30'],
-            'items.*.contact' => ['nullable', 'string', 'max:50'],
-        ], [
-            'items.*.username.unique' => 'Username :input sudah digunakan.',
-            'items.*.email.unique' => 'Email :input sudah digunakan.',
-            'items.*.nisn.unique' => 'NISN :input sudah digunakan oleh siswa lain.',
-            'items.*.nis.unique' => 'NIS :input sudah digunakan oleh siswa lain.',
-            'items.*.username.distinct' => 'Username :input duplikat dalam daftar import.',
-            'items.*.email.distinct' => 'Email :input duplikat dalam daftar import.',
-            'items.*.nisn.distinct' => 'NISN :input duplikat dalam daftar import.',
-            'items.*.nis.distinct' => 'NIS :input duplikat dalam daftar import.',
-        ]);
 
-        $count = 0;
-
-        DB::transaction(function () use ($dto, &$count): void {
-            foreach ($dto->items as $item) {
-                $user = User::create([
-                    'name' => $item['name'],
-                    'username' => $item['username'],
-                    'email' => $item['email'] ?? null,
-                    'password' => Hash::make($item['password'] ?? $item['nisn']), // Default to NISN instead of hardcoded string
-                    'phone' => $item['phone'] ?? null,
-                    'contact' => $item['contact'] ?? null,
-                    'user_type' => 'student',
-                ]);
-
-                $user->studentProfile()->create([
-                    'nisn' => $item['nisn'],
-                    'nis' => $item['nis'],
-                    'gender' => $item['gender'],
-                    'address' => $item['address'],
-                    'class_id' => $item['class_id'],
-                    'is_class_officer' => $item['is_class_officer'] ?? false,
-                ]);
-                $count++;
-            }
-        });
-
-        return response()->json([
-            'created' => $count,
-            'message' => "Successfully imported {$count} students.",
-        ], 201);
-    }
 
     /**
      * Create Student

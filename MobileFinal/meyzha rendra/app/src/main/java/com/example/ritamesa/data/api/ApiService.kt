@@ -19,7 +19,7 @@ interface ApiService {
     @GET("api/me")
     suspend fun getProfile(): Response<BaseResponse<UserDto>>
 
-    @GET("api/me/class/schedules")
+    @GET("api/me/schedules/today")
     suspend fun getSchedules(): Response<BaseResponse<List<ScheduleDto>>>
 
     @POST("api/attendance/scan")

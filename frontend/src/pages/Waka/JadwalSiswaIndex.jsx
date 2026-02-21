@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import './JadwalSiswaIndex.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import {
@@ -10,6 +11,8 @@ import {
   FaChevronDown,
   FaBriefcase,
   FaDoorOpen,
+  FaUpload,
+  FaDownload
 } from "react-icons/fa";
 import apiService from '../../utils/api';
 
@@ -26,6 +29,11 @@ function JadwalSiswaIndex() {
   // Master Data for Filters
   const [classes, setClasses] = useState([]);
   const [majors, setMajors] = useState([]);
+
+  // Import states
+  const fileInputRef = useRef(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importErrors, setImportErrors] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -138,6 +146,133 @@ function JadwalSiswaIndex() {
     }
   };
 
+  // Download Template
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Mata Pelajaran': 'Matematika',
+        'NIP Guru': '198001012005011001',
+        'Nama Kelas': 'X RPL 1',
+        'Semester (ganjil/genap)': 'ganjil',
+        'Tahun Ajaran (ex: 2024/2025)': '2024/2025',
+        'Hari (Senin-Minggu)': 'senin',
+        'Jam Mulai (HH:MM)': '07:00',
+        'Jam Selesai (HH:MM)': '08:30'
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Jadwal');
+
+    worksheet['!cols'] = [
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 }
+    ];
+
+    const fileName = 'Format_Jadwal.xlsx';
+    XLSX.writeFile(workbook, fileName);
+    alert('Format Excel berhasil diunduh!');
+  };
+
+  // Import from Excel
+  const handleImportFromExcel = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        setLoading(true);
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+        if (jsonData.length === 0) {
+          alert('File Excel kosong!');
+          setLoading(false);
+          return;
+        }
+
+        const subjectMap = {};
+        try {
+          const subjectRes = await apiService.get('/subjects');
+          const subjects = subjectRes.data || subjectRes;
+          subjects.forEach(s => subjectMap[s.name] = s.id);
+        } catch(err) {}
+
+        const teacherMap = {};
+        try {
+          const teacherRes = await apiService.getTeachers({ per_page: 1000 });
+          if (teacherRes.data) {
+             teacherRes.data.forEach(t => teacherMap[t.nip] = t.id);
+          }
+        } catch(err) {}
+
+        const classMap = {};
+        try {
+          const classRes = await apiService.get('/classes');
+          const classesList = classRes.data || classRes;
+          classesList.forEach(c => classMap[c.name] = c.id);
+        } catch(err) {}
+
+        const importedSchedules = jsonData.map(row => {
+          let startTime = String(row['Jam Mulai (HH:MM)'] || '').trim();
+          let endTime = String(row['Jam Selesai (HH:MM)'] || '').trim();
+          
+          if (startTime && startTime.length === 5) startTime += ':00';
+          if (endTime && endTime.length === 5) endTime += ':00';
+
+          return {
+            subject_id: subjectMap[String(row['Mata Pelajaran'] || '').trim()] || null,
+            teacher_profile_id: teacherMap[String(row['NIP Guru'] || '').trim()] || null,
+            class_id: classMap[String(row['Nama Kelas'] || '').trim()] || null,
+            semester: String(row['Semester (ganjil/genap)'] || '').trim().toLowerCase(),
+            year: String(row['Tahun Ajaran (ex: 2024/2025)'] || '').trim(),
+            day: String(row['Hari (Senin-Minggu)'] || '').trim().toLowerCase(),
+            start_time: startTime,
+            end_time: endTime
+          };
+        });
+
+        try {
+          const result = await apiService.importSchedules({ items: importedSchedules });
+          alert(`Sukses mengimpor ${result.success_count} data jadwal!`);
+          await fetchData();
+          event.target.value = ''; // Reset file input
+        } catch (error) {
+           if (error.errors && Array.isArray(error.errors)) {
+            setImportErrors({
+              total: error.total_rows,
+              success: error.success_count,
+              failed: error.failed_count,
+              details: error.errors
+            });
+            setIsImportModalOpen(true);
+          } else {
+            alert('Gagal mengimpor data jadwal. Pastikan format file sesuai template.');
+          }
+        }
+      } catch (error) {
+        console.error('Error reading excel file:', error);
+        alert('Gagal membaca file Excel!');
+      } finally {
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+
   return (
     <div className="jadwal-siswa-index-root">
       <NavbarWaka />
@@ -198,13 +333,36 @@ function JadwalSiswaIndex() {
           </div>
 
           {/* Add Button */}
-          <div className="filter-group" style={{ justifyContent: 'flex-end' }}>
-             <button
+          <div className="filter-group" style={{ justifyContent: 'flex-end', flexDirection: 'row', gap: '8px', alignItems: 'center' }}>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept=".xlsx, .xls"
+              onChange={handleImportFromExcel}
+            />
+            <button
+              onClick={() => fileInputRef.current.click()}
+              className="jadwal-siswa-index-btn-add"
+              style={{ backgroundColor: '#10b981' }}
+              title="Import Jadwal"
+            >
+              <FaUpload /> Import
+            </button>
+            <button
+              onClick={handleDownloadTemplate}
+              className="jadwal-siswa-index-btn-add"
+              style={{ backgroundColor: '#64748b' }}
+              title="Format Excel"
+            >
+              <FaDownload /> Format
+            </button>
+            <button
               onClick={handleCreate}
               className="jadwal-siswa-index-btn-add"
               title="Tambah Jadwal Baru"
             >
-              <FaPlus /> Tambah Jadwal
+              <FaPlus /> Tambah
             </button>
           </div>
 
@@ -296,6 +454,58 @@ function JadwalSiswaIndex() {
           )}
         </div>
       </div>
+
+      {/* Import Error Modal */}
+      {isImportModalOpen && importErrors && (
+        <div className="kelas-modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={() => setIsImportModalOpen(false)}>
+          <div className="kelas-modal-content" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '90%', maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div className="kelas-modal-header" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ color: '#ef4444', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                Gagal Mengimpor File
+              </h2>
+              <button style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }} onClick={() => setIsImportModalOpen(false)}>×</button>
+            </div>
+            
+            <div className="kelas-modal-body" style={{ overflowY: 'auto', padding: '15px 0' }}>
+              <div style={{ padding: '15px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#991b1b', marginBottom: '20px' }}>
+                <p style={{ margin: '0 0 10px 0', fontWeight: '500' }}>Terdapat {importErrors.failed} baris data yang bermasalah.</p>
+                <div style={{ display: 'flex', gap: '15px', fontSize: '14px' }}>
+                  <span>📋 Total: {importErrors.total}</span>
+                  <span style={{ color: '#059669' }}>✅ Sukses: {importErrors.success}</span>
+                  <span style={{ color: '#dc2626' }}>❌ Gagal: {importErrors.failed}</span>
+                </div>
+              </div>
+
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#1e293b' }}>Detail Error:</h3>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {importErrors.details.map((err, idx) => (
+                  <div key={idx} style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#f8fafc', fontSize: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ fontWeight: '600', color: '#334155' }}>Baris {err.row}</span>
+                      <span style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase' }}>{err.column}</span>
+                    </div>
+                    <div style={{ color: '#ef4444' }}>{err.message}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="kelas-modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setIsImportModalOpen(false)}
+                style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

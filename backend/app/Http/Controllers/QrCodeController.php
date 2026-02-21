@@ -121,8 +121,12 @@ class QrCodeController extends Controller
                 $existing->update(['is_active' => false, 'status' => 'expired']);
             }
 
+            $uuid = Str::uuid()->toString();
+            $signature = hash_hmac('sha256', $uuid, config('app.key'));
+            $signedToken = $uuid . '.' . $signature;
+
             return Qrcode::create([
-                'token' => Str::uuid()->toString(),
+                'token' => $signedToken,
                 'type' => $data['type'],
                 'schedule_id' => $schedule->id,
                 'issued_by' => $request->user()->id,

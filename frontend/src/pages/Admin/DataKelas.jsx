@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import apiService from '../../utils/api';
 import Pagination from '../../components/Common/Pagination';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
+import * as XLSX from 'xlsx';
 import './DataKelas.css';
 
 function DataKelas() {
@@ -28,6 +29,12 @@ function DataKelas() {
     waliKelas: ''
   });
   const [errors, setErrors] = useState({});
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [importErrors, setImportErrors] = useState(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const fileInputRef = useRef(null);
+  const exportButtonRef = useRef(null);
 
   // Load classes from API
   useEffect(() => {
@@ -235,6 +242,106 @@ function DataKelas() {
     }
   };
 
+  // Download Template
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Tingkat (X/XI/XII)': '',
+        'Jurusan': '',
+        'Label': '',
+        'NIP Wali Kelas': ''
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Data Kelas');
+
+    worksheet['!cols'] = [
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 25 }
+    ];
+
+    const fileName = 'Format_Data_Kelas.xlsx';
+    XLSX.writeFile(workbook, fileName);
+    alert('Format Excel berhasil diunduh!');
+  };
+
+  // Import from Excel
+  const handleImportFromExcel = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        setLoading(true);
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+        if (jsonData.length === 0) {
+          alert('File Excel kosong!');
+          setLoading(false);
+          return;
+        }
+
+        const jurusanMap = {};
+        try {
+          const jurusanRes = await apiService.getMajors({ per_page: 1000 });
+          if (jurusanRes.data) {
+            jurusanRes.data.forEach(m => jurusanMap[m.name] = m.id);
+          }
+        } catch (err) {}
+
+        const teacherMap = {};
+        try {
+          const teacherRes = await apiService.getTeachers({ per_page: 1000 });
+          if (teacherRes.data) {
+             teacherRes.data.forEach(t => teacherMap[t.nip] = t.id);
+          }
+        } catch (err) {}
+
+        const importedClasses = jsonData.map(row => ({
+          grade: String(row['Tingkat (X/XI/XII)'] || '').trim(),
+          label: String(row['Label'] || '').trim(),
+          major_id: jurusanMap[String(row['Jurusan'] || '').trim()] || null,
+          homeroom_teacher_id: teacherMap[String(row['NIP Wali Kelas'] || '').trim()] || null
+        }));
+
+        try {
+          const result = await apiService.importClasses({ items: importedClasses });
+          alert(`Sukses mengimpor ${result.success_count} data kelas!`);
+          await loadClasses();
+          event.target.value = ''; // Reset file input
+        } catch (error) {
+           if (error.errors && Array.isArray(error.errors)) {
+            setImportErrors({
+              total: error.total_rows,
+              success: error.success_count,
+              failed: error.failed_count,
+              details: error.errors
+            });
+            setIsImportModalOpen(true);
+          } else {
+            alert('Gagal mengimpor data kelas. Pastikan format file sesuai template.');
+          }
+        }
+      } catch (error) {
+        console.error('Error reading excel file:', error);
+        alert('Gagal membaca file Excel!');
+      } finally {
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
   // Filter
   const filteredKelas = kelas.filter(k => {
     const matchKelas = searchKelas === '' || k.grade === searchKelas;
@@ -346,6 +453,40 @@ function DataKelas() {
             >
               Tambahkan
             </button>
+            <div className="kelas-btn-group" style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept=".xlsx, .xls"
+                onChange={handleImportFromExcel}
+              />
+              <button 
+                className="kelas-btn-import" 
+                style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                onClick={() => fileInputRef.current.click()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Import
+              </button>
+              <button 
+                className="kelas-btn-template" 
+                style={{ backgroundColor: '#e2e8f0', color: '#475569', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                onClick={handleDownloadTemplate}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <polyline points="9 15 12 18 15 15"></polyline>
+                </svg>
+                Format Excel
+              </button>
+            </div>
           </div>
         </div>
 
@@ -612,6 +753,58 @@ function DataKelas() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Error Modal */}
+      {isImportModalOpen && importErrors && (
+        <div className="kelas-modal-overlay" onClick={() => setIsImportModalOpen(false)}>
+          <div className="kelas-modal-content" style={{ maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div className="kelas-modal-header" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
+              <h2 style={{ color: '#ef4444', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                Gagal Mengimpor File
+              </h2>
+              <button className="kelas-modal-close" onClick={() => setIsImportModalOpen(false)}>×</button>
+            </div>
+            
+            <div className="kelas-modal-body" style={{ overflowY: 'auto', padding: '15px 0' }}>
+              <div style={{ padding: '15px', backgroundColor: '#fee2e2', borderRadius: '8px', color: '#991b1b', marginBottom: '20px' }}>
+                <p style={{ margin: '0 0 10px 0', fontWeight: '500' }}>Terdapat {importErrors.failed} baris data yang bermasalah.</p>
+                <div style={{ display: 'flex', gap: '15px', fontSize: '14px' }}>
+                  <span>📋 Total: {importErrors.total}</span>
+                  <span style={{ color: '#059669' }}>✅ Sukses: {importErrors.success}</span>
+                  <span style={{ color: '#dc2626' }}>❌ Gagal: {importErrors.failed}</span>
+                </div>
+              </div>
+
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#1e293b' }}>Detail Error:</h3>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {importErrors.details.map((err, idx) => (
+                  <div key={idx} style={{ padding: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#f8fafc', fontSize: '14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                      <span style={{ fontWeight: '600', color: '#334155' }}>Baris {err.row}</span>
+                      <span style={{ color: '#64748b', fontSize: '12px', textTransform: 'uppercase' }}>{err.column}</span>
+                    </div>
+                    <div style={{ color: '#ef4444' }}>{err.message}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="kelas-modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '15px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setIsImportModalOpen(false)}
+                style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

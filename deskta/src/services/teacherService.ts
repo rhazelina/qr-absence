@@ -72,7 +72,7 @@ export const teacherService = {
   },
 
   importTeachers: async (items: any[]) => {
-    const response = await fetch(`${API_BASE_URL}/teachers/import`, {
+    const response = await fetch(`${API_BASE_URL}/import/guru`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ items })
@@ -85,7 +85,7 @@ export const teacherService = {
     const headers = getHeaders();
     delete (headers as any)['Content-Type'];
     
-    const response = await fetch(`${API_BASE_URL}/teachers/import`, {
+    const response = await fetch(`${API_BASE_URL}/import/guru`, {
       method: 'POST',
       headers: {
         ...headers,

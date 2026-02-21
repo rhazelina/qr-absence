@@ -334,13 +334,20 @@ export default function DashboardWalliKelas({
       // must be fixed
       const response = await scheduleService.getMyHomeroomSchedules();
       if (response.items) {
-        const mappedSchedules = response.items.map((item: any) => ({
-          id: String(item.id),
-          subject: item.subject,
-          className: item.class_name || item.class,
-          jurusan: item.major || '-',
-          jam: `${item.start_time} - ${item.end_time}`
-        }));
+        // Filter for today
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayIndex = new Date().getDay();
+        const todayName = days[todayIndex];
+
+        const mappedSchedules = response.items
+          .filter((item: any) => item.day === todayName)
+          .map((item: any) => ({
+            id: String(item.id),
+            subject: item.subject,
+            className: item.class_name || item.class,
+            jurusan: item.major || '-',
+            jam: `${item.start_time} - ${item.end_time}`
+          }));
         setSchedules(mappedSchedules);
       }
     } catch (error) {
