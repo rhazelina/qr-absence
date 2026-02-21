@@ -1225,31 +1225,21 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `AttendanceResource`\n\nArray of `AttendanceResource`",
+                        "description": "Array of `AttendanceResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
                                             "type": "array",
                                             "items": {
                                                 "$ref": "#/components/schemas/AttendanceResource"
                                             }
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/AttendanceResource"
-                                                    }
-                                                }
-                                            },
-                                            "required": [
-                                                "data"
-                                            ]
                                         }
+                                    },
+                                    "required": [
+                                        "data"
                                     ]
                                 }
                             }
@@ -2002,6 +1992,27 @@
                     }
                 ],
                 "responses": {
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -2644,14 +2655,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/LengthAwarePaginator"
-                                        }
-                                    ]
+                                    "$ref": "#/components/schemas/LengthAwarePaginator"
                                 }
                             }
                         }
@@ -3452,7 +3456,7 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 15
+                            "default": 10
                         }
                     }
                 ],
@@ -3632,6 +3636,27 @@
                     }
                 ],
                 "responses": {
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -4734,6 +4759,1263 @@
                 }
             }
         },
+        "/import/guru": {
+            "post": {
+                "operationId": "import.importGuru",
+                "tags": [
+                    "Import"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "maxLength": 255
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "maxLength": 50
+                                                },
+                                                "email": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "email"
+                                                },
+                                                "password": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "minLength": 6
+                                                },
+                                                "nip": {
+                                                    "type": "number"
+                                                },
+                                                "phone": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 30
+                                                },
+                                                "contact": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 50
+                                                },
+                                                "homeroom_class_id": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "subject": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 100
+                                                }
+                                            },
+                                            "required": [
+                                                "name",
+                                                "username",
+                                                "nip"
+                                            ]
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "required": [
+                                    "items"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "prefixItems": [
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "row": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "column": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "system"
+                                                            ]
+                                                        },
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "row",
+                                                        "column",
+                                                        "message"
+                                                    ]
+                                                }
+                                            ],
+                                            "minItems": 1,
+                                            "maxItems": 1,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer",
+                                            "description": "Transaction will abort, so 0 success"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "row": {
+                                                                "type": "string"
+                                                            },
+                                                            "column": {
+                                                                "type": "string"
+                                                            },
+                                                            "message": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "row",
+                                                            "column",
+                                                            "message"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "row": {
+                                                                "type": "integer",
+                                                                "enum": [
+                                                                    0
+                                                                ]
+                                                            },
+                                                            "column": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "file"
+                                                                ]
+                                                            },
+                                                            "message": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "row",
+                                                            "column",
+                                                            "message"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/import/siswa": {
+            "post": {
+                "operationId": "import.importSiswa",
+                "tags": [
+                    "Import"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "name": {
+                                                    "type": "string",
+                                                    "maxLength": 255
+                                                },
+                                                "username": {
+                                                    "type": "string",
+                                                    "maxLength": 50
+                                                },
+                                                "email": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "format": "email"
+                                                },
+                                                "password": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "nisn": {
+                                                    "type": "number"
+                                                },
+                                                "nis": {
+                                                    "type": "string"
+                                                },
+                                                "gender": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "L",
+                                                        "P"
+                                                    ]
+                                                },
+                                                "address": {
+                                                    "type": "string"
+                                                },
+                                                "class_id": {
+                                                    "type": "integer"
+                                                },
+                                                "is_class_officer": {
+                                                    "type": [
+                                                        "boolean",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "phone": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 30
+                                                },
+                                                "contact": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 50
+                                                }
+                                            },
+                                            "required": [
+                                                "name",
+                                                "username",
+                                                "nisn",
+                                                "nis",
+                                                "gender",
+                                                "address",
+                                                "class_id"
+                                            ]
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "required": [
+                                    "items"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "prefixItems": [
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "row": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "column": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "system"
+                                                            ]
+                                                        },
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "row",
+                                                        "column",
+                                                        "message"
+                                                    ]
+                                                }
+                                            ],
+                                            "minItems": 1,
+                                            "maxItems": 1,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer",
+                                            "description": "Transaction will abort, so 0 success"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "row": {
+                                                                "type": "string"
+                                                            },
+                                                            "column": {
+                                                                "type": "string"
+                                                            },
+                                                            "message": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "row",
+                                                            "column",
+                                                            "message"
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "row": {
+                                                                "type": "integer",
+                                                                "enum": [
+                                                                    0
+                                                                ]
+                                                            },
+                                                            "column": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "file"
+                                                                ]
+                                                            },
+                                                            "message": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "row",
+                                                            "column",
+                                                            "message"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/import/kelas": {
+            "post": {
+                "operationId": "import.importKelas",
+                "tags": [
+                    "Import"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "grade": {
+                                                    "type": "string"
+                                                },
+                                                "label": {
+                                                    "type": "string"
+                                                },
+                                                "major_id": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "homeroom_teacher_id": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "grade",
+                                                "label"
+                                            ]
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "required": [
+                                    "items"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "prefixItems": [
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "row": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "column": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "system"
+                                                            ]
+                                                        },
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "row",
+                                                        "column",
+                                                        "message"
+                                                    ]
+                                                }
+                                            ],
+                                            "minItems": 1,
+                                            "maxItems": 1,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "total_rows": {
+                                                    "type": "integer"
+                                                },
+                                                "success_count": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "failed_count": {
+                                                    "type": "integer"
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "grade/label/major"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "Kombinasi grade, label, dan jurusan duplikat dalam file."
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "grade/label/major"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "Kelas sudah ada di database."
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total_rows",
+                                                "success_count",
+                                                "failed_count",
+                                                "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "total_rows": {
+                                                    "type": "integer"
+                                                },
+                                                "success_count": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "failed_count": {
+                                                    "type": "integer",
+                                                    "description": "Transaction will abort, so 0 success"
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "integer",
+                                                                        "enum": [
+                                                                            0
+                                                                        ]
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "file"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total_rows",
+                                                "success_count",
+                                                "failed_count",
+                                                "errors"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/import/jadwal": {
+            "post": {
+                "operationId": "import.importJadwal",
+                "tags": [
+                    "Import"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "class_id": {
+                                                    "type": "integer"
+                                                },
+                                                "semester": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "ganjil",
+                                                        "genap"
+                                                    ]
+                                                },
+                                                "year": {
+                                                    "type": "string"
+                                                },
+                                                "day": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "senin",
+                                                        "selasa",
+                                                        "rabu",
+                                                        "kamis",
+                                                        "jumat",
+                                                        "sabtu",
+                                                        "minggu"
+                                                    ]
+                                                },
+                                                "start_time": {
+                                                    "type": "string"
+                                                },
+                                                "end_time": {
+                                                    "type": "string"
+                                                },
+                                                "subject_id": {
+                                                    "type": "integer"
+                                                },
+                                                "teacher_profile_id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "class_id",
+                                                "semester",
+                                                "year",
+                                                "day",
+                                                "start_time",
+                                                "end_time",
+                                                "subject_id",
+                                                "teacher_profile_id"
+                                            ]
+                                        },
+                                        "minItems": 1
+                                    }
+                                },
+                                "required": [
+                                    "items"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer"
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Rollback affects all",
+                                            "prefixItems": [
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "row": {
+                                                            "type": "integer",
+                                                            "enum": [
+                                                                0
+                                                            ]
+                                                        },
+                                                        "column": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                                "system/collision"
+                                                            ]
+                                                        },
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "row",
+                                                        "column",
+                                                        "message"
+                                                    ]
+                                                }
+                                            ],
+                                            "minItems": 1,
+                                            "maxItems": 1,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total_rows": {
+                                            "type": "integer"
+                                        },
+                                        "success_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "failed_count": {
+                                            "type": "integer",
+                                            "enum": [
+                                                0
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "minItems": 0,
+                                            "maxItems": 0,
+                                            "additionalItems": false
+                                        }
+                                    },
+                                    "required": [
+                                        "total_rows",
+                                        "success_count",
+                                        "failed_count",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "total_rows": {
+                                                    "type": "integer"
+                                                },
+                                                "success_count": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "failed_count": {
+                                                    "type": "integer"
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "start_time/end_time"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "Waktu mulai harus lebih awal dari waktu selesai."
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "schedule"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total_rows",
+                                                "success_count",
+                                                "failed_count",
+                                                "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "total_rows": {
+                                                    "type": "integer"
+                                                },
+                                                "success_count": {
+                                                    "type": "integer",
+                                                    "enum": [
+                                                        0
+                                                    ]
+                                                },
+                                                "failed_count": {
+                                                    "type": "integer",
+                                                    "description": "Transaction will abort, so 0 success"
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "integer",
+                                                                        "enum": [
+                                                                            0
+                                                                        ]
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "file"
+                                                                        ]
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "total_rows",
+                                                "success_count",
+                                                "failed_count",
+                                                "errors"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/majors": {
             "get": {
                 "operationId": "majors.index",
@@ -4748,7 +6030,7 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 15
+                            "default": 10
                         }
                     }
                 ],
@@ -4928,6 +6210,27 @@
                     }
                 ],
                 "responses": {
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -5855,6 +7158,16 @@
                 "tags": [
                     "Schedule"
                 ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 10
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "",
@@ -6010,6 +7323,27 @@
                     }
                 ],
                 "responses": {
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -6382,6 +7716,207 @@
                                                 "message"
                                             ]
                                         }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/me/schedules/today": {
+            "get": {
+                "operationId": "schedule.today",
+                "summary": "Get Today's Schedules (Student/Teacher)",
+                "tags": [
+                    "Schedule"
+                ],
+                "responses": {
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Unauthorized"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "no_schedule",
+                                                        "success"
+                                                    ]
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Tidak ada kelas hari ini",
+                                                        "Berhasil mengambil jadwal hari ini"
+                                                    ]
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/ScheduleItem"
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "status",
+                                                "message",
+                                                "items"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "no_schedule",
+                                                        "success"
+                                                    ]
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "Tidak ada jam mengajar hari ini",
+                                                        "Berhasil mengambil jadwal hari ini"
+                                                    ]
+                                                },
+                                                "items": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
+                                                            "day": {
+                                                                "type": "string"
+                                                            },
+                                                            "start_time": {
+                                                                "type": "string"
+                                                            },
+                                                            "end_time": {
+                                                                "type": "string"
+                                                            },
+                                                            "class": {
+                                                                "type": "string"
+                                                            },
+                                                            "subject": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
+                                                                    },
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "N/A"
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "room": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "teacher": {
+                                                                "type": [
+                                                                    "object",
+                                                                    "null"
+                                                                ],
+                                                                "properties": {
+                                                                    "nip": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "anyOf": [
+                                                                            {
+                                                                                "type": "string"
+                                                                            },
+                                                                            {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "Guru"
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "nip",
+                                                                    "name"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "id",
+                                                            "day",
+                                                            "start_time",
+                                                            "end_time",
+                                                            "class",
+                                                            "subject",
+                                                            "room",
+                                                            "teacher"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "status",
+                                                "message",
+                                                "items"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Profile not found"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }
@@ -7131,37 +8666,27 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 15
+                            "default": 10
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `StudentResource`\n\nArray of `StudentResource`",
+                        "description": "Array of `StudentResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "data": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/StudentResource"
-                                                    }
-                                                }
-                                            },
-                                            "required": [
-                                                "data"
-                                            ]
-                                        },
-                                        {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
                                             "type": "array",
                                             "items": {
                                                 "$ref": "#/components/schemas/StudentResource"
                                             }
                                         }
+                                    },
+                                    "required": [
+                                        "data"
                                     ]
                                 }
                             }
@@ -7321,6 +8846,27 @@
                     }
                 ],
                 "responses": {
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -7344,143 +8890,6 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/students/import": {
-            "post": {
-                "operationId": "student.import",
-                "description": "Bulk import students from a data array.",
-                "summary": "Import Students",
-                "tags": [
-                    "Student"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "items": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "name": {
-                                                    "type": "string",
-                                                    "maxLength": 255
-                                                },
-                                                "username": {
-                                                    "type": "string",
-                                                    "maxLength": 50
-                                                },
-                                                "email": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "email"
-                                                },
-                                                "password": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "minLength": 6
-                                                },
-                                                "nisn": {
-                                                    "type": "string"
-                                                },
-                                                "nis": {
-                                                    "type": "string"
-                                                },
-                                                "gender": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "L",
-                                                        "P"
-                                                    ]
-                                                },
-                                                "address": {
-                                                    "type": "string"
-                                                },
-                                                "class_id": {
-                                                    "type": "integer"
-                                                },
-                                                "is_class_officer": {
-                                                    "type": [
-                                                        "boolean",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "phone": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 30
-                                                },
-                                                "contact": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 50
-                                                }
-                                            },
-                                            "required": [
-                                                "name",
-                                                "username",
-                                                "nisn",
-                                                "nis",
-                                                "gender",
-                                                "address",
-                                                "class_id"
-                                            ]
-                                        },
-                                        "minItems": 1
-                                    }
-                                },
-                                "required": [
-                                    "items"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "created": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "created",
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -8669,7 +10078,7 @@
                         "in": "query",
                         "schema": {
                             "type": "integer",
-                            "default": 15
+                            "default": 10
                         }
                     }
                 ],
@@ -9056,6 +10465,27 @@
                     }
                 ],
                 "responses": {
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "enum": [
+                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -9079,130 +10509,6 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/teachers/import": {
-            "post": {
-                "operationId": "teacher.import",
-                "description": "Bulk import teachers from a data array.",
-                "summary": "Import Teachers",
-                "tags": [
-                    "Teacher"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "items": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "name": {
-                                                    "type": "string",
-                                                    "maxLength": 255
-                                                },
-                                                "username": {
-                                                    "type": "string",
-                                                    "maxLength": 50
-                                                },
-                                                "email": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "email"
-                                                },
-                                                "password": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "minLength": 6
-                                                },
-                                                "nip": {
-                                                    "type": "string"
-                                                },
-                                                "phone": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 30
-                                                },
-                                                "contact": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 50
-                                                },
-                                                "homeroom_class_id": {
-                                                    "type": [
-                                                        "integer",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "subject": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 100
-                                                }
-                                            },
-                                            "required": [
-                                                "name",
-                                                "username",
-                                                "nip"
-                                            ]
-                                        },
-                                        "minItems": 1
-                                    }
-                                },
-                                "required": [
-                                    "items"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "created": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
-                                        },
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "created",
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -13214,6 +14520,12 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "major_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -13227,7 +14539,8 @@
                     "updated_at",
                     "class_id",
                     "is_class_officer",
-                    "parent_phone"
+                    "parent_phone",
+                    "major_id"
                 ],
                 "title": "StudentProfile"
             },
