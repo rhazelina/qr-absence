@@ -59,6 +59,9 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     // Public teachers list (read-only for mobile app)
     Route::get('/teachers', [TeacherController::class, 'index'])->middleware('role:admin,student,teacher');
 
+    // Public students list (with internal contextual filtering)
+    Route::get('/students', [StudentController::class, 'index'])->middleware('role:admin,teacher,student');
+
     // Public classes list (read-only for mobile/web app)
     Route::get('/semesters', [SemesterController::class, 'index']);
     Route::get('/classes', [ClassController::class, 'index'])->middleware('role:admin,teacher,student');
@@ -90,7 +93,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('classes', ClassController::class)->except(['index', 'show']); // show is public now
         Route::apiResource('teachers', TeacherController::class)->except(['index']); // index available publicly
         Route::post('/import/guru', [\App\Http\Controllers\ImportController::class, 'importGuru']);
-        Route::apiResource('students', StudentController::class);
+        Route::apiResource('students', StudentController::class)->except(['index']);
         Route::post('/import/siswa', [\App\Http\Controllers\ImportController::class, 'importSiswa']);
         Route::post('/import/kelas', [\App\Http\Controllers\ImportController::class, 'importKelas']);
         Route::post('/import/jadwal', [\App\Http\Controllers\ImportController::class, 'importJadwal']);

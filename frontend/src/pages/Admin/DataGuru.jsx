@@ -408,10 +408,15 @@ function DataGuru() {
   const handleDownloadTemplate = () => {
     const templateData = [
       {
-        'Kode Guru': 'GR001',
-        'Nama Guru': 'Contoh Nama Guru',
-        'Jabatan': 'Guru/Waka/Kapro/Wali Kelas',
-        'Keterangan': 'Mapel/Bidang Waka/Konsentrasi/Kelas'
+        'name': 'Budi Santoso',
+        'username': 'budi123',
+        'email': 'budi@example.com',
+        'password': 'password123',
+        'nip': '198001012024011001',
+        'phone': '081234567890',
+        'contact': '',
+        'homeroom_class_id': '',
+        'subject': 'Matematika'
       }
     ];
 
@@ -419,16 +424,9 @@ function DataGuru() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Data Guru');
 
-    worksheet['!cols'] = [
-      { wch: 15 },
-      { wch: 30 },
-      { wch: 25 },
-      { wch: 20 }
-    ];
-
-    const fileName = 'format-data-guru.xlsx';
+    const fileName = 'Format_Data_Guru.xlsx';
     XLSX.writeFile(workbook, fileName);
-    alert('Format Excel berhasil diunduh!');
+    alert('Format Excel berhasil diunduh! Pastikan mengisi homeroom_class_id sesuai ID kelas di database (jika wali kelas).');
   };
 
   // Import from Excel
@@ -443,7 +441,7 @@ function DataGuru() {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
         if (jsonData.length === 0) {
           alert('File Excel kosong!');
@@ -451,34 +449,17 @@ function DataGuru() {
         }
 
         const importedTeachers = jsonData
-          .map((row, index) => {
-            const kodeGuru = String(
-              row['Kode Guru'] || row['kodeGuru'] || row['Kode'] || ''
-            ).trim();
-
-            const namaGuru = String(
-              row['Nama Guru'] || row['namaGuru'] || row['Nama'] || ''
-            ).trim();
-
-            const mataPelajaran = String(
-              row['Mata Pelajaran'] || row['mataPelajaran'] || row['Mapel'] || ''
-            ).trim();
-
-            const jabatan = String(
-              row['Jabatan'] || row['jabatan'] || row['Role'] || ''
-            ).trim();
-
-            if (!kodeGuru || !namaGuru || !jabatan) {
-              throw new Error(`Baris ${index + 2}: Data tidak lengkap (Kode Guru, Nama Guru, dan Jabatan wajib diisi)`);
-            }
-
-            return {
-              code: kodeGuru,
-              name: namaGuru,
-              role: jabatan,
-              subject: jabatan === 'Guru' ? mataPelajaran : undefined
-            };
-          });
+          .map((row) => ({
+            name: String(row['name'] || '').trim(),
+            username: String(row['username'] || '').trim(),
+            email: String(row['email'] || '').trim() || null,
+            password: String(row['password'] || '').trim() || null,
+            nip: String(row['nip'] || '').trim(),
+            phone: String(row['phone'] || '').trim() || null,
+            contact: String(row['contact'] || '').trim() || null,
+            homeroom_class_id: parseInt(row['homeroom_class_id'], 10) || null,
+            subject: String(row['subject'] || '').trim() || null
+          }));
 
         const result = await apiService.importTeachers(importedTeachers);
 

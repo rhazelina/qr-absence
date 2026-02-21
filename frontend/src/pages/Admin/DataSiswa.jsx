@@ -162,13 +162,21 @@ function DataSiswa() {
 
   // Download Template
   const handleDownloadTemplate = () => {
+    // Generate the exact columns required by ImportController
     const templateData = [
       {
-        'No': '',
-        'Nama Siswa': '',
-        'NISN': '',
-        'Jurusan': '',
-        'Kelas': ''
+        'name': 'Garnacho',
+        'username': 'garnacho123',
+        'email': 'garnacho@example.com',
+        'password': 'password',
+        'nisn': '0011223344',
+        'nis': '12345',
+        'gender': 'L',
+        'address': 'Jl. Kemerdekaan 1',
+        'class_id': '1',
+        'is_class_officer': '',
+        'phone': '0812345678',
+        'contact': ''
       }
     ];
 
@@ -176,17 +184,9 @@ function DataSiswa() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Data Siswa');
 
-    worksheet['!cols'] = [
-      { wch: 5 },
-      { wch: 30 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 10 }
-    ];
-
     const fileName = 'Format_Data_Siswa.xlsx';
     XLSX.writeFile(workbook, fileName);
-    alert('Format Excel berhasil diunduh!');
+    alert('Format Excel berhasil diunduh! Pastikan mengisi class_id sesuai ID kelas di database.');
   };
 
   // Export to Excel
@@ -290,7 +290,7 @@ function DataSiswa() {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); // keep empty cells
 
         if (jsonData.length === 0) {
           alert('File Excel kosong!');
@@ -298,23 +298,20 @@ function DataSiswa() {
         }
 
         const importedStudents = jsonData
-          .map((row, index) => {
-            const nisn = String(row['NISN'] || '').trim();
-            const nama = String(row['Nama Siswa'] || '').trim();
-            const jurusan = String(row['Jurusan'] || '').trim();
-            const kelas = String(row['Kelas'] || '').trim();
-
-            if (!nisn || !nama) {
-              throw new Error(`Baris ${index + 2}: Data tidak lengkap (NISN dan Nama Siswa wajib diisi)`);
-            }
-
-            return {
-              name: nama,
-              nisn: nisn,
-              major: jurusan,
-              grade: kelas
-            };
-          });
+          .map((row) => ({
+            name: String(row['name'] || '').trim(),
+            username: String(row['username'] || '').trim(),
+            email: String(row['email'] || '').trim() || null,
+            password: String(row['password'] || '').trim() || null,
+            nisn: String(row['nisn'] || '').trim(),
+            nis: String(row['nis'] || '').trim(),
+            gender: String(row['gender'] || '').trim(),
+            address: String(row['address'] || '').trim(),
+            class_id: parseInt(row['class_id'], 10) || null,
+            is_class_officer: String(row['is_class_officer']).toLowerCase() === 'true' || row['is_class_officer'] == '1',
+            phone: String(row['phone'] || '').trim() || null,
+            contact: String(row['contact'] || '').trim() || null
+          }));
 
         const result = await apiService.importStudents(importedStudents);
 
