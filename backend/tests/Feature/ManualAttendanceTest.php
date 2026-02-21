@@ -13,6 +13,10 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // Friday
+});
+
 it('allows teacher to submit manual attendance', function () {
     // 1. Setup Data
     $class = Classes::factory()->create();

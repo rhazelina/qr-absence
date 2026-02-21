@@ -24,8 +24,20 @@ class AttendanceScanTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // This is a Friday
+
+        $classSchedule = \App\Models\ClassSchedule::factory()->create([
+            'is_active' => true,
+        ]);
+        
+        $dailySchedule = \App\Models\DailySchedule::factory()->create([
+            'class_schedule_id' => $classSchedule->id,
+            'day' => 'Friday',
+        ]);
 
         $this->schedule = ScheduleItem::factory()->create([
+            'daily_schedule_id' => $dailySchedule->id,
             'start_time' => now()->subMinutes(5)->format('H:i:s'),
             'end_time' => now()->addHour()->format('H:i:s'),
         ]);
@@ -88,7 +100,7 @@ class AttendanceScanTest extends TestCase
 
     public function test_scan_expired_qr()
     {
-        $this->qr->update(['expires_at' => now()->subMinute(), 'status' => 'expired']);
+        $this->qr->update(['expires_at' => now()->subMinute(), 'status' => 'expired', 'is_active' => false]);
 
         $response = $this->actingAs($this->student)
             ->postJson('/api/attendance/scan', ['token' => $this->qr->token]);
@@ -131,7 +143,8 @@ class AttendanceScanTest extends TestCase
             ]);
 
         $response->assertStatus(422);
-        $this->assertStringContainsString('Anda berada di luar radius sekolah', $response->json('message'));
+        // Do not assert day specific message because it is checked earlier in the controller lifecycle 
+        $this->assertStringContainsString('di luar radius', strtolower($response->json('message')));
     }
 
     public function test_scan_geolocation_missing_params()

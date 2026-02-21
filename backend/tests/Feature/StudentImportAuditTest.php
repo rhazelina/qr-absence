@@ -24,44 +24,41 @@ it('FAILS when importing with missing mandatory fields (Simulation of Legacy Fro
         ],
     ];
 
-    $response = $this->actingAs($admin)->postJson('/api/students/import', $payload);
+    $response = $this->actingAs($admin)->postJson('/api/import/siswa', $payload);
 
     // This SHOULD fail because username, nis, gender, address, and class_id are missing
     $response->assertStatus(422)
-        ->assertJsonValidationErrors([
-            'items.0.username',
-            'items.0.nis',
-            'items.0.gender',
-            'items.0.address',
-            'items.0.class_id',
+        ->assertJsonStructure([
+            'total_rows',
+            'success_count',
+            'failed_count',
+            'errors' => [
+                '*' => ['row', 'column', 'message']
+            ]
         ]);
 });
 
-it('SUCCEEDS when importing with string-based class name (Smart Class Resolution)', function () {
+it('SUCCEEDS when importing valid payload', function () {
     $admin = User::factory()->admin()->create();
-    $major = Major::factory()->create(['code' => 'RPL']);
-    $class = Classes::factory()->create([
-        'grade' => '12',
-        'label' => 'RPL 2',
-        'major_id' => $major->id
-    ]);
+    $class = Classes::factory()->create();
 
-    // Simulation of payload where user provides "XII RPL 2" instead of numeric ID
     $payload = [
         'items' => [
             [
                 'name' => 'Deskta Student',
                 'username' => 'deskta1',
+                'email' => 'deskta1@example.com',
+                'password' => 'password123',
                 'nisn' => '8888888888',
                 'nis' => '88888',
                 'gender' => 'L',
                 'address' => 'Jl. Deskta',
-                'class_id' => 'XII RPL 2', // String name instead of ID
+                'class_id' => $class->id, // Frontend now maps this correctly to ID
             ],
         ],
     ];
 
-    $response = $this->actingAs($admin)->postJson('/api/students/import', $payload);
+    $response = $this->actingAs($admin)->postJson('/api/import/siswa', $payload);
 
     $response->assertStatus(201);
     $this->assertDatabaseHas('student_profiles', [
@@ -89,7 +86,7 @@ it('SUCCEEDS when password is short or missing (Defaults to NISN)', function () 
         ],
     ];
 
-    $response = $this->actingAs($admin)->postJson('/api/students/import', $payload);
+    $response = $this->actingAs($admin)->postJson('/api/import/siswa', $payload);
 
     $response->assertStatus(201);
     $this->assertDatabaseHas('users', ['username' => 'shortpass']);

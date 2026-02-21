@@ -125,8 +125,8 @@ test('item 17: class officer cannot generate qr for future days', function () {
         'expires_in' => 5,
     ]);
 
-    $today = now()->format('l');
-    $scheduleDay = $schedule->dailySchedule->day;
+    $today = strtolower(now()->format('l'));
+    $scheduleDay = strtolower($schedule->dailySchedule->day);
     $response->assertStatus(422)
         ->assertJson(['message' => "QR hanya bisa dibuat pada hari jadwal (Hari ini $today, jadwal $scheduleDay)"]);
 });

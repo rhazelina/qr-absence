@@ -80,9 +80,9 @@ class QrCodeController extends Controller
         }
 
         // 2. Day must match
-        $today = now()->format('l');
-        $scheduleDay = $schedule->dailySchedule->day;
-        if (strcasecmp($scheduleDay, $today) !== 0) {
+        $today = strtolower(now()->format('l'));
+        $scheduleDay = strtolower($schedule->dailySchedule->day);
+        if ($scheduleDay !== $today) {
             abort(422, "QR hanya bisa dibuat pada hari jadwal (Hari ini $today, jadwal $scheduleDay)");
         }
 
@@ -107,18 +107,22 @@ class QrCodeController extends Controller
 
         // Prevent concurrent active QR generation
         $qr = \Illuminate\Support\Facades\DB::transaction(function () use ($schedule, $data, $request, $expiresAt) {
-            // Check for existing active QR for this schedule with lock
-            $existing = Qrcode::where('schedule_id', $schedule->id)
+            $query = Qrcode::where('schedule_id', $schedule->id)
                 ->where('type', $data['type'])
-                ->where('is_active', true)
-                ->lockForUpdate()
-                ->first();
+                ->where('is_active', true);
+
+            if (\Illuminate\Support\Facades\DB::connection()->getDriverName() !== 'sqlite') {
+                $query->lockForUpdate();
+            }
+
+            $existing = $query->first();
 
             if ($existing) {
                 if (! $existing->isExpired()) {
                     return $existing;
                 }
                 $existing->update(['is_active' => false, 'status' => 'expired']);
+                dump('Controller Update Result:', $existing->toArray());
             }
 
             $uuid = Str::uuid()->toString();

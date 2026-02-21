@@ -1,3 +1,5 @@
+import { toast } from 'react-toastify';
+
 const baseURL = import.meta.env.VITE_API_URL;
 const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
@@ -12,26 +14,44 @@ const apiService = {
       ...options.headers
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+      });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/';
-        throw new Error('Sesi telah berakhir, silakan login kembali');
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/';
+          throw new Error('Sesi telah berakhir, silakan login kembali');
+        }
+
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 403) {
+          toast.error(errorData.message || 'Anda tidak memiliki akses (Forbidden). Hubungi Administrator.');
+        } else if (response.status >= 500) {
+          toast.error('Terjadi kesalahan pada server (Internal Server Error).');
+        }
+
+        const error = new Error(errorData.message || `API Error: ${response.status}`);
+        error.data = errorData;
+
+        // Return structured error instead of throwing a generic one string
+        // Many frontend components expect error.data to exist and contain error details
+        throw error;
       }
 
-      const errorData = await response.json().catch(() => ({}));
-      const error = new Error(errorData.message || `API Error: ${response.status}`);
-      error.data = errorData;
+      return await response.json();
+    } catch (error) {
+      // Only toast if it's a TypeError (Network Error from fetch failing) and not our custom re-thrown error
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Gagal terhubung ke server. Periksa koneksi internet Anda.', { toastId: 'network-err' });
+      }
       throw error;
     }
-
-    return response.json();
   },
 
   get(endpoint, options = {}) {

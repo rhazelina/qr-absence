@@ -11,6 +11,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // Friday
+});
+
 it('allows waka to record manual attendance', function () {
     $waka = User::factory()->waka()->create();
     $waka->refresh();

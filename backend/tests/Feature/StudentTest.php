@@ -91,10 +91,10 @@ it('allows admin to import students', function () {
         ],
     ];
 
-    $response = $this->actingAs($admin)->postJson('/api/students/import', $payload);
+    $response = $this->actingAs($admin)->postJson('/api/import/siswa', $payload);
 
     $response->assertStatus(201)
-        ->assertJson(['created' => 2]);
+        ->assertJsonFragment(['success_count' => 2]);
 
     $this->assertDatabaseHas('users', ['username' => 'imp1']);
     $this->assertDatabaseHas('users', ['username' => 'imp2']);
