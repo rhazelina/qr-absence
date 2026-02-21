@@ -3,20 +3,26 @@ package com.example.ritamesa
 import android.app.AlertDialog
 import android.app.Dialog
 import android.os.Bundle
-import android.view.View
+import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.ritamesa.data.api.ApiClient
+import com.example.ritamesa.data.api.ApiService
+import com.example.ritamesa.data.dto.TeacherDto
+import kotlinx.coroutines.launch
 
 class TotalGuru : AppCompatActivity() {
 
     // ===== DATA CLASS =====
     data class Guru(
-        val id: Int,
+        val id: String,
         val nama: String,
         val kode: String,
         val nip: String,
@@ -27,31 +33,31 @@ class TotalGuru : AppCompatActivity() {
     // ===== ADAPTER =====
     inner class GuruAdapter(
         private var listGuru: List<Guru>,
-        private val onEditClick: (Guru, Int) -> Unit,
-        private val onDeleteClick: (Guru, Int) -> Unit
-    ) : RecyclerView.Adapter<GuruAdapter.GuruViewHolder>() {  // ← GuruViewHolder
+        private val onEditClick: (Guru) -> Unit,
+        private val onDeleteClick: (Guru) -> Unit
+    ) : RecyclerView.Adapter<GuruAdapter.GuruViewHolder>() {
 
         private var currentPage = 1
         private val itemsPerPage = 10
 
-        inner class GuruViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {  // ← GuruViewHolder, BUKAN GuruViewModel
+        inner class GuruViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
             val tvNo: TextView = itemView.findViewById(R.id.tvNo)
             val tvNama: TextView = itemView.findViewById(R.id.tvNama)
             val tvKode: TextView = itemView.findViewById(R.id.tvKode)
-            val tvNip: TextView = itemView.findViewById(R.id.tvNIP)  // ← tvNip, BUKAN tvNIP
+            val tvNip: TextView = itemView.findViewById(R.id.tvNIP)
             val tvMapel: TextView = itemView.findViewById(R.id.tvMapel)
-            val tvRole: TextView = itemView.findViewById(R.id.tvKeterangan)  // ← tvRole, BUKAN tvKeterangan
+            val tvRole: TextView = itemView.findViewById(R.id.tvKeterangan)
             val btnEdit: LinearLayout = itemView.findViewById(R.id.btnEdit)
             val btnHapus: LinearLayout = itemView.findViewById(R.id.btnHapus)
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GuruViewHolder {  // ← GuruViewHolder
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GuruViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_crud_guru, parent, false)
-            return GuruViewHolder(view)  // ← GuruViewHolder
+            return GuruViewHolder(view)
         }
 
-        override fun onBindViewHolder(holder: GuruViewHolder, position: Int) {  // ← GuruViewHolder
+        override fun onBindViewHolder(holder: GuruViewHolder, position: Int) {
             val guru = listGuru[position]
             val nomorUrut = ((currentPage - 1) * itemsPerPage) + position + 1
 
@@ -62,15 +68,8 @@ class TotalGuru : AppCompatActivity() {
             holder.tvMapel.text = guru.mapel
             holder.tvRole.text = guru.keterangan
 
-            holder.btnEdit.setOnClickListener {
-                val actualPosition = listGuruDummy.indexOfFirst { it.id == guru.id }
-                if (actualPosition != -1) onEditClick(guru, actualPosition)
-            }
-
-            holder.btnHapus.setOnClickListener {
-                val actualPosition = listGuruDummy.indexOfFirst { it.id == guru.id }
-                if (actualPosition != -1) onDeleteClick(guru, actualPosition)
-            }
+            holder.btnEdit.setOnClickListener { onEditClick(guru) }
+            holder.btnHapus.setOnClickListener { onDeleteClick(guru) }
         }
 
         override fun getItemCount(): Int = listGuru.size
@@ -90,6 +89,10 @@ class TotalGuru : AppCompatActivity() {
     private lateinit var ivSearch: ImageButton
     private lateinit var btnBack: ImageButton
 
+    // ===== API =====
+    private lateinit var apiService: ApiService
+    private val masterGuru = arrayListOf<Guru>()
+
     // ===== PAGINATION =====
     private var currentPage = 1
     private val itemsPerPage = 10
@@ -105,54 +108,47 @@ class TotalGuru : AppCompatActivity() {
     private lateinit var etGoToPage: EditText
     private lateinit var btnGo: Button
 
-    // ===== DATA GURU =====
-    private val listGuruDummy = arrayListOf(
-        Guru(1, "TRIANA ARDIANI, S.Pd", "0918415784", "0918415784", "12 Rekayasa Perangkat Lunak 2", "Wali Kelas"),
-        Guru(2, "SOLIKAH,S.Pd", "0918417765", "0918417765", "Matematika", "Guru"),
-        Guru(3, "WIWIN WINANGSIH, S.Pd,M.Pd", "0918415785", "0918415785", "Matematika", "Guru"),
-        Guru(4, "FAJAR NINGTYAS, S.Pd", "0918775542", "0918775542", "Bahasa Inggris", "Guru"),
-        Guru(5, "Hj. TITIK MARIYATI, S.Pd", "0919765542", "0919765542", "Bahasa Indonesia", "Guru"),
-        Guru(6, "Drs. SUTRISNO, M.Pd", "198305142010011015", "198305142010011015", "Matematika", "Waka"),
-        Guru(7, "Dra. SRI WAHYUNI", "197812052005012010", "197812052005012010", "Bahasa Indonesia", "Guru"),
-        Guru(8, "AGUS SALIM, S.Kom", "198512102011011020", "198512102011011020", "Informatika", "Guru"),
-        Guru(9, "LINA MARLINA, S.Pd", "199001152014022025", "199001152014022025", "Bahasa Inggris", "Guru"),
-        Guru(10, "H. AHMAD FAUZI, S.Ag", "197511102005011030", "197511102005011030", "PAI", "Guru"),
-        Guru(11, "RINA SEPTRIANA, S.Pd", "198808152013012018", "198808152013012018", "PKN", "Guru"),
-        Guru(12, "Dr. HARIYANTO, M.Si", "196903152005011012", "196903152005011012", "Sejarah", "Kepsek"),
-        Guru(13, "YULI ASTUTI, S.Pd", "199205102019022026", "199205102019022026", "Olahraga", "Guru"),
-        Guru(14, "DWI CAHYONO, S.Pd", "198702182010011014", "198702182010011014", "Bahasa Jawa", "Guru"),
-        Guru(15, "RETNO WULANDARI, S.Pd", "199103122015032021", "199103122015032021", "IPAS", "Guru"),
-        Guru(16, "BAMBANG SUPRIYADI, S.Pd", "198412152011011016", "198412152011011016", "BK", "Guru"),
-        Guru(17, "IDA ROHAYATI, S.Pd", "198905172019022027", "198905172019022027", "MPP", "Guru"),
-        Guru(18, "NURUL HIDAYAH, S.Pd", "199307252020012024", "199307252020012024", "MPKK", "Guru"),
-        Guru(19, "HENDRA KURNIAWAN, S.Kom", "198811152018011017", "198811152018011017", "Informatika", "Guru"),
-        Guru(20, "SITI AMINAH, S.Pd", "198612052015022022", "198612052015022022", "PKDK", "Guru"),
-        Guru(21, "MUHAMMAD RIDWAN, S.Pd.I", "198307162011011019", "198307162011011019", "PAI", "Guru"),
-        Guru(22, "DEVI FITRIANI, S.Pd", "199210252019022028", "199210252019022028", "Bahasa Jepang", "Guru"),
-        Guru(23, "SUPRIYANTO, S.Pd", "198002152008011013", "198002152008011013", "Olahraga", "Guru"),
-        Guru(24, "FITRI YANTI, S.Pd", "199101162015032023", "199101162015032023", "Matematika", "Guru"),
-        Guru(25, "EKO PRASETYO, S.Pd", "198605232011011015", "198605232011011015", "Bahasa Inggris", "Guru"),
-        Guru(26, "LILIS SURYANI, S.Pd", "198712152012022024", "198712152012022024", "Bahasa Indonesia", "Guru"),
-        Guru(27, "KARTIKA SARI, S.Pd", "199308162020012025", "199308162020012025", "PKN", "Guru"),
-        Guru(28, "ADI NUGROHO, S.Pd", "198411152010011016", "198411152010011016", "Sejarah", "Guru"),
-        Guru(29, "RATNA DEWI, S.Pd", "198905202013022026", "198905202013022026", "Bahasa Jawa", "Guru"),
-        Guru(30, "DEDI KURNIAWAN, S.Pd", "198706152011011018", "198706152011011018", "IPAS", "Guru"),
-        Guru(31, "SRI MULYANI, S.Pd", "199012152014022027", "199012152014022027", "Matematika", "Guru"),
-        Guru(32, "TEGUH SANTOSO, S.Pd", "198303152008011014", "198303152008011014", "Olahraga", "Guru"),
-        Guru(33, "ANITA WULANDARI, S.Pd", "199204162019022029", "199204162019022029", "Bahasa Inggris", "Guru"),
-        Guru(34, "RUDI HARTONO, S.Pd", "198109152005011015", "198109152005011015", "Informatika", "Guru"),
-        Guru(35, "MARLINA, S.Pd", "198808152013022028", "198808152013022028", "BK", "Guru")
-    )
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.total_guru)
+
+        apiService = ApiClient.getService(this)
 
         initView()
         setupRecyclerView()
         setupPaginationLayout()
         setupActions()
-        updatePagination()
+
+        // Fetch real data
+        fetchData()
+    }
+
+    private fun fetchData() {
+        lifecycleScope.launch {
+            try {
+                val response = apiService.getTeachers()
+                if (response.isSuccessful && response.body() != null) {
+                    val dtos = response.body()?.data ?: emptyList()
+                    masterGuru.clear()
+                    masterGuru.addAll(dtos.map { 
+                        Guru(
+                            id = """${it.id}""", 
+                            nama = it.name ?: "", 
+                            kode = it.code ?: "", 
+                            nip = it.nip ?: "", 
+                            mapel = it.subjectName ?: it.subject ?: "", 
+                            keterangan = it.role ?: ""
+                        ) 
+                    })
+                    searchGuru()
+                } else {
+                    Toast.makeText(this@TotalGuru, "Gagal mengambil data guru", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("TotalGuru", "Error fetching data", e)
+                Toast.makeText(this@TotalGuru, "Koneksi bermasalah: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun initView() {
@@ -163,7 +159,7 @@ class TotalGuru : AppCompatActivity() {
         btnBack = findViewById(R.id.imageView36)
         editTextSearch.hint = "Cari nama guru"
 
-        filteredList = ArrayList(listGuruDummy)
+        filteredList = ArrayList(masterGuru)
         calculateTotalPages()
     }
 
@@ -173,8 +169,8 @@ class TotalGuru : AppCompatActivity() {
 
         guruAdapter = GuruAdapter(
             currentDisplayList,
-            onEditClick = { guru, position -> showEditDialog(guru, position) },
-            onDeleteClick = { guru, position -> showDeleteConfirmation(guru, position) }
+            onEditClick = { guru -> showEditDialog(guru) },
+            onDeleteClick = { guru -> showDeleteConfirmation(guru) }
         )
         recyclerView.adapter = guruAdapter
     }
@@ -397,9 +393,9 @@ class TotalGuru : AppCompatActivity() {
     private fun searchGuru() {
         val query = editTextSearch.text.toString().trim().lowercase()
         filteredList = if (query.isEmpty()) {
-            ArrayList(listGuruDummy)
+            ArrayList(masterGuru)
         } else {
-            ArrayList(listGuruDummy.filter {
+            ArrayList(masterGuru.filter {
                 it.nama.lowercase().contains(query) ||
                         it.nip.contains(query, true) ||
                         it.mapel.lowercase().contains(query) ||
@@ -414,14 +410,6 @@ class TotalGuru : AppCompatActivity() {
 
         currentPage = 1
         updatePagination()
-    }
-
-    private fun isKodeExist(kode: String, currentId: Int? = null): Boolean {
-        return listGuruDummy.any { it.kode == kode && it.id != currentId }
-    }
-
-    private fun isNipExist(nip: String, currentId: Int? = null): Boolean {
-        return listGuruDummy.any { it.nip == nip && it.id != currentId }
     }
 
     private fun validateInput(nama: String, nip: String, kode: String, mapel: String, keterangan: String): Boolean {
@@ -440,7 +428,6 @@ class TotalGuru : AppCompatActivity() {
             )
             dialog.setCancelable(true)
 
-            // PERBAIKAN: SESUAIKAN ID DENGAN XML
             val inputNama = dialog.findViewById<EditText>(R.id.input_keterangan_nama)
             val inputNip = dialog.findViewById<EditText>(R.id.input_keterangan_nip)
             val inputKode = dialog.findViewById<EditText>(R.id.input_keterangan_kode)
@@ -451,17 +438,9 @@ class TotalGuru : AppCompatActivity() {
             val btnBatal = dialog.findViewById<Button>(R.id.btn_batal)
             val btnSimpan = dialog.findViewById<Button>(R.id.btn_simpan)
 
-            btnArrowMapel?.setOnClickListener {
-                showMapelDropdown(inputMapel)
-            }
-
-            btnArrowRole?.setOnClickListener {
-                showKeteranganDropdown(inputKeterangan)
-            }
-
-            btnBatal?.setOnClickListener {
-                dialog.dismiss()
-            }
+            btnArrowMapel?.setOnClickListener { showMapelDropdown(inputMapel) }
+            btnArrowRole?.setOnClickListener { showKeteranganDropdown(inputKeterangan) }
+            btnBatal?.setOnClickListener { dialog.dismiss() }
 
             btnSimpan?.setOnClickListener {
                 val nama = inputNama?.text?.toString()?.trim() ?: ""
@@ -475,26 +454,38 @@ class TotalGuru : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                if (isKodeExist(kode)) {
-                    Toast.makeText(this, "Kode guru sudah digunakan!", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-
-                if (isNipExist(nip)) {
-                    Toast.makeText(this, "NIP sudah digunakan!", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-
                 showSaveConfirmation("Tambah") {
-                    val newId = if (listGuruDummy.isNotEmpty()) listGuruDummy.last().id + 1 else 1
-                    val newGuru = Guru(newId, nama, kode, nip, mapel, keterangan)
-                    listGuruDummy.add(newGuru)
+                    val newTeacher = TeacherDto(
+                        id = null,
+                        name = nama,
+                        nip = nip,
+                        code = kode,
+                        subject = null,
+                        subjectName = mapel,
+                        role = keterangan,
+                        wakaField = null,
+                        majorExpertise = null,
+                        email = null,
+                        phone = null,
+                        photoUrl = null,
+                        classesCount = null,
+                        homeroomClassId = null
+                    )
 
-                    currentPage = 1
-                    searchGuru()
-
-                    Toast.makeText(this, "Data guru berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+                    lifecycleScope.launch {
+                        try {
+                            val response = apiService.createTeacher(newTeacher)
+                            if (response.isSuccessful) {
+                                Toast.makeText(this@TotalGuru, "Data guru berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                                fetchData()
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(this@TotalGuru, "Gagal menambahkan: ${response.message()}", Toast.LENGTH_LONG).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(this@TotalGuru, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             }
 
@@ -502,11 +493,10 @@ class TotalGuru : AppCompatActivity() {
 
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
         }
     }
 
-    private fun showEditDialog(guru: Guru, position: Int) {
+    private fun showEditDialog(guru: Guru) {
         try {
             val dialog = Dialog(this)
             dialog.setContentView(R.layout.pop_up_edit_guru)
@@ -517,7 +507,6 @@ class TotalGuru : AppCompatActivity() {
             )
             dialog.setCancelable(true)
 
-            // PERBAIKAN: SESUAIKAN ID DENGAN XML EDIT
             val inputNama = dialog.findViewById<EditText>(R.id.input_keterangan_nama)
             val inputNip = dialog.findViewById<EditText>(R.id.input_keterangan_nip)
             val inputKode = dialog.findViewById<EditText>(R.id.input_keterangan_kode)
@@ -534,17 +523,9 @@ class TotalGuru : AppCompatActivity() {
             inputMapel?.setText(guru.mapel)
             inputKeterangan?.setText(guru.keterangan)
 
-            btnArrowMapel?.setOnClickListener {
-                showMapelDropdown(inputMapel)
-            }
-
-            btnArrowRole?.setOnClickListener {
-                showKeteranganDropdown(inputKeterangan)
-            }
-
-            btnBatal?.setOnClickListener {
-                dialog.dismiss()
-            }
+            btnArrowMapel?.setOnClickListener { showMapelDropdown(inputMapel) }
+            btnArrowRole?.setOnClickListener { showKeteranganDropdown(inputKeterangan) }
+            btnBatal?.setOnClickListener { dialog.dismiss() }
 
             btnSimpan?.setOnClickListener {
                 val nama = inputNama?.text?.toString()?.trim() ?: ""
@@ -558,31 +539,38 @@ class TotalGuru : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                val isDataChanged = nama != guru.nama || nip != guru.nip ||
-                        kode != guru.kode || mapel != guru.mapel ||
-                        keterangan != guru.keterangan
-
-                if (!isDataChanged) {
-                    Toast.makeText(this, "Tidak ada perubahan data", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
-                    return@setOnClickListener
-                }
-
-                if (isKodeExist(kode, guru.id)) {
-                    Toast.makeText(this, "Kode guru sudah digunakan!", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-
-                if (isNipExist(nip, guru.id)) {
-                    Toast.makeText(this, "NIP sudah digunakan!", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-
                 showSaveConfirmation("Edit") {
-                    listGuruDummy[position] = Guru(guru.id, nama, kode, nip, mapel, keterangan)
-                    searchGuru()
-                    Toast.makeText(this, "Data guru berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+                    val editTeacher = TeacherDto(
+                        id = guru.id,
+                        name = nama,
+                        nip = nip,
+                        code = kode,
+                        subject = null,
+                        subjectName = mapel,
+                        role = keterangan,
+                        wakaField = null,
+                        majorExpertise = null,
+                        email = null,
+                        phone = null,
+                        photoUrl = null,
+                        classesCount = null,
+                        homeroomClassId = null
+                    )
+
+                    lifecycleScope.launch {
+                        try {
+                            val response = apiService.updateTeacher(guru.id, editTeacher)
+                            if (response.isSuccessful) {
+                                Toast.makeText(this@TotalGuru, "Data guru berhasil diupdate", Toast.LENGTH_SHORT).show()
+                                fetchData()
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(this@TotalGuru, "Gagal update: ${response.message()}", Toast.LENGTH_LONG).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(this@TotalGuru, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             }
 
@@ -590,18 +578,27 @@ class TotalGuru : AppCompatActivity() {
 
         } catch (e: Exception) {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
         }
     }
 
-    private fun showDeleteConfirmation(guru: Guru, position: Int) {
+    private fun showDeleteConfirmation(guru: Guru) {
         AlertDialog.Builder(this)
             .setTitle("Konfirmasi Hapus")
             .setMessage("Apakah Anda yakin akan menghapus data ${guru.nama}?")
             .setPositiveButton("Ya, Hapus") { _, _ ->
-                listGuruDummy.removeAt(position)
-                searchGuru()
-                Toast.makeText(this, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    try {
+                        val response = apiService.deleteTeacher(guru.id)
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@TotalGuru, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            fetchData()
+                        } else {
+                            Toast.makeText(this@TotalGuru, "Gagal menghapus: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@TotalGuru, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             .setNegativeButton("Batal", null)
             .show()
@@ -624,12 +621,9 @@ class TotalGuru : AppCompatActivity() {
             "IPAS", "Bahasa Jawa", "PKN", "PAI", "Olahraga",
             "Informatika", "BK", "MPP", "MPKK", "PKDK",
             "Sejarah", "Bahasa Jepang",
-            "10 Rekayasa Perangkat Lunak 1",
-            "10 Rekayasa Perangkat Lunak 2",
-            "11 Rekayasa Perangkat Lunak 1",
-            "11 Rekayasa Perangkat Lunak 2",
-            "12 Rekayasa Perangkat Lunak 1",
-            "12 Rekayasa Perangkat Lunak 2"
+            "10 Rekayasa Perangkat Lunak 1", "10 Rekayasa Perangkat Lunak 2",
+            "11 Rekayasa Perangkat Lunak 1", "11 Rekayasa Perangkat Lunak 2",
+            "12 Rekayasa Perangkat Lunak 1", "12 Rekayasa Perangkat Lunak 2"
         )
 
         AlertDialog.Builder(this)

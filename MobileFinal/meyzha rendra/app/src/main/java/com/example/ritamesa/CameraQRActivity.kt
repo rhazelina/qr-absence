@@ -37,6 +37,9 @@ class CameraQRActivity : AppCompatActivity() {
     companion object {
         private const val CAMERA_PERMISSION_REQUEST = 100
         const val EXTRA_QR_RESULT = "qr_result"
+        const val EXTRA_IS_TEACHER = "IS_TEACHER"
+        const val EXTRA_MAPEL = "mapel"
+        const val EXTRA_KELAS = "kelas"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,7 +103,12 @@ class CameraQRActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                val response = attendanceRepo.scanQr(qrText)
+                val isTeacher = intent.getBooleanExtra(EXTRA_IS_TEACHER, false)
+                val response = if (isTeacher) {
+                    attendanceRepo.scanStudentQr(qrText)
+                } else {
+                    attendanceRepo.scanQr(qrText)
+                }
                 progressBar.visibility = View.GONE
                 
                 if (response.isSuccessful) {

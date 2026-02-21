@@ -235,6 +235,7 @@ class DetailJadwalWakelActivity : AppCompatActivity() {
             val intent = Intent(this, CameraQRActivity::class.java).apply {
                 putExtra(CameraQRActivity.EXTRA_MAPEL, currentJadwal.mataPelajaran)
                 putExtra(CameraQRActivity.EXTRA_KELAS, currentJadwal.kelas)
+                putExtra(CameraQRActivity.EXTRA_IS_TEACHER, true)
             }
             qrScannerLauncher.launch(intent)
         }

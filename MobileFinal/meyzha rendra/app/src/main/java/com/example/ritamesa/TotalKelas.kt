@@ -3,45 +3,102 @@ package com.example.ritamesa
 import android.app.AlertDialog
 import android.app.Dialog
 import android.os.Bundle
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.ritamesa.data.api.ApiClient
+import com.example.ritamesa.data.api.ApiService
+import com.example.ritamesa.data.dto.ClassRoomDto
+import com.example.ritamesa.data.dto.MajorDto
+import com.example.ritamesa.data.dto.TeacherDto
+import kotlinx.coroutines.launch
 
 class TotalKelas : AppCompatActivity() {
 
-    // ===== DATA LIST =====
-    private val listKelasDummy = arrayListOf(
-        Kelas(1, "RPL", "XII RPL 1", "Budi Santoso"),
-        Kelas(2, "TKJ", "XII TKJ 1", "Siti Aminah"),
-        Kelas(3, "MM", "XII MM 1", "Ahmad Rizki"),
-        Kelas(4, "TKR", "XII TKR 1", "Dewi Lestari"),
-        Kelas(5, "TSM", "XII TSM 1", "Joko Widodo"),
-        Kelas(6, "TITL", "XII TITL 1", "Rina Melati"),
-        Kelas(7, "RPL", "XI RPL 1", "Agus Salim"),
-        Kelas(8, "TKJ", "XI TKJ 1", "Maya Sari"),
-        Kelas(9, "MM", "XI MM 1", "Rudi Hartono"),
-        Kelas(10, "TKR", "XI TKR 1", "Linda Wijaya")
-    )
-
     // ===== DATA DROPDOWN =====
-    private val listJurusan = listOf("RPL", "TKJ", "MM", "TKR", "TSM", "TITL", "AK", "AP", "PH")
-    private val listTingkatan = listOf("X", "XI", "XII")
+    private val listTingkatan = listOf("10", "11", "12")
     private val listRombel = listOf("1", "2", "3", "4", "5", "6")
+
+    private val masterJurusan = arrayListOf<MajorDto>()
+    private val listNamaJurusan = arrayListOf<String>()
+
+    private val masterGuru = arrayListOf<TeacherDto>()
+    private val listNamaGuru = arrayListOf<String>()
 
     // ===== COMPONENTS =====
     private lateinit var recyclerView: RecyclerView
     private lateinit var kelasAdapter: KelasAdapter
     private lateinit var editTextSearch: EditText
 
+    // ===== API =====
+    private lateinit var apiService: ApiService
+    private val masterKelas = arrayListOf<Kelas>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.total_kelas)
 
+        apiService = ApiClient.getService(this)
+
         initView()
         setupRecyclerView()
         setupActions()
+
+        fetchData()
+    }
+
+    private fun fetchData() {
+        lifecycleScope.launch {
+            try {
+                // Fetch Kelas
+                val resClass = apiService.getClasses()
+                if (resClass.isSuccessful && resClass.body() != null) {
+                    val dtos = resClass.body()?.data ?: emptyList()
+                    masterKelas.clear()
+                    masterKelas.addAll(dtos.map {
+                        Kelas(
+                            id = it.id ?: "",
+                            namaJurusan = it.major?.name ?: "",
+                            namaKelas = it.name ?: "",
+                            waliKelas = it.homeroomTeacher?.name ?: "-",
+                            majorId = it.majorId,
+                            homeroomTeacherId = it.homeroomTeacherId
+                        )
+                    })
+                    searchKelas()
+                } else {
+                    Toast.makeText(this@TotalKelas, "Gagal mengambil data kelas", Toast.LENGTH_SHORT).show()
+                }
+
+                // Fetch Jurusan
+                val resMajor = apiService.getMajors()
+                if (resMajor.isSuccessful && resMajor.body() != null) {
+                    val majors = resMajor.body()?.data ?: emptyList()
+                    masterJurusan.clear()
+                    masterJurusan.addAll(majors)
+                    listNamaJurusan.clear()
+                    listNamaJurusan.addAll(majors.map { it.name ?: "" })
+                }
+
+                // Fetch Guru
+                val resTeacher = apiService.getTeachers()
+                if (resTeacher.isSuccessful && resTeacher.body() != null) {
+                    val teachers = resTeacher.body()?.data ?: emptyList()
+                    masterGuru.clear()
+                    masterGuru.addAll(teachers)
+                    listNamaGuru.clear()
+                    listNamaGuru.addAll(teachers.map { it.name ?: "" })
+                }
+
+            } catch (e: Exception) {
+                Log.e("TotalKelas", "Error fetching data", e)
+                Toast.makeText(this@TotalKelas, "Koneksi bermasalah: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun initView() {
@@ -55,15 +112,9 @@ class TotalKelas : AppCompatActivity() {
         recyclerView.setHasFixedSize(true)
 
         kelasAdapter = KelasAdapter(
-            listKelasDummy,
-            onEditClickListener = { kelas ->
-                val position = listKelasDummy.indexOf(kelas)
-                showEditDialog(kelas, position)
-            },
-            onDeleteClickListener = { kelas ->
-                val position = listKelasDummy.indexOf(kelas)
-                showDeleteConfirmation(kelas, position)
-            }
+            masterKelas,
+            onEditClickListener = { kelas -> showEditDialog(kelas) },
+            onDeleteClickListener = { kelas -> showDeleteConfirmation(kelas) }
         )
         recyclerView.adapter = kelasAdapter
     }
@@ -100,9 +151,9 @@ class TotalKelas : AppCompatActivity() {
     private fun searchKelas() {
         val query = editTextSearch.text.toString().trim()
         val filteredList = if (query.isEmpty()) {
-            listKelasDummy
+            masterKelas
         } else {
-            listKelasDummy.filter {
+            masterKelas.filter {
                 it.namaJurusan.contains(query, true) ||
                         it.namaKelas.contains(query, true) ||
                         it.waliKelas.contains(query, true)
@@ -116,15 +167,17 @@ class TotalKelas : AppCompatActivity() {
         kelasAdapter.updateData(filteredList)
     }
 
+    private var selectedMajorId: String? = null
+    private var selectedTeacherId: String? = null
+
     private fun showAddDialog() {
         try {
-            // Buat dialog dengan layout XML
             val dialog = Dialog(this)
             dialog.setContentView(R.layout.pop_up_tambah_kelas)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
             dialog.window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            dialog.setCancelable(false)
+            dialog.setCancelable(true)
 
-            // Initialize views
             val etJurusan = dialog.findViewById<EditText>(R.id.input_keterangan_nama)
             val etKelas = dialog.findViewById<EditText>(R.id.input_keterangan_nisn)
             val etWaliKelas = dialog.findViewById<EditText>(R.id.input_keterangan_jurusan)
@@ -133,31 +186,41 @@ class TotalKelas : AppCompatActivity() {
             val btnBatal = dialog.findViewById<Button>(R.id.btn_batal)
             val btnSimpan = dialog.findViewById<Button>(R.id.btn_simpan)
 
-            // Setup dropdown jurusan
-            btnArrowJurusan.setOnClickListener {
-                showJurusanDropdown(dialog, etJurusan)
-            }
+            selectedMajorId = null
+            selectedTeacherId = null
 
-            // Setup dropdown kelas
-            btnArrowKelas.setOnClickListener {
-                showKelasDropdown(dialog, etKelas)
+            // Dropdown Jurusan
+            val setupJurusan = {
+                showJurusanDropdown(dialog, etJurusan) { id, name ->
+                    selectedMajorId = id
+                    etJurusan.setText(name)
+                }
             }
+            btnArrowJurusan.setOnClickListener { setupJurusan() }
+            etJurusan.setOnClickListener { setupJurusan() }
 
-            // Click listener untuk EditText juga bisa membuka dropdown
-            etJurusan.setOnClickListener {
-                showJurusanDropdown(dialog, etJurusan)
+            // Dropdown Kelas (Grade + Rombel)
+            val setupKelas = {
+                showKelasDropdown(dialog, etKelas) { name ->
+                    etKelas.setText(name)
+                }
             }
+            btnArrowKelas.setOnClickListener { setupKelas() }
+            etKelas.setOnClickListener { setupKelas() }
 
-            etKelas.setOnClickListener {
-                showKelasDropdown(dialog, etKelas)
+            // Dropdown Wali Kelas (No separate arrow in XML usually, so clicking on EditText)
+            val setupWaliKelas = {
+                showGuruDropdown(dialog, etWaliKelas) { id, name ->
+                    selectedTeacherId = id
+                    etWaliKelas.setText(name)
+                }
             }
+            etWaliKelas.setOnClickListener { setupWaliKelas() }
 
-            // Tombol Batal
             btnBatal.setOnClickListener {
                 dialog.dismiss()
             }
 
-            // Tombol Simpan
             btnSimpan.setOnClickListener {
                 val jurusan = etJurusan.text.toString().trim()
                 val kelas = etKelas.text.toString().trim()
@@ -168,13 +231,37 @@ class TotalKelas : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                val newId = if (listKelasDummy.isNotEmpty()) listKelasDummy.last().id + 1 else 1
-                val newKelas = Kelas(newId, jurusan, kelas, waliKelas)
-                listKelasDummy.add(newKelas)
-                kelasAdapter.updateData(listKelasDummy)
+                if (selectedMajorId == null || selectedTeacherId == null) {
+                    Toast.makeText(this, "Harap pilih dari dropdown!", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
 
-                Toast.makeText(this, "Data kelas berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
+                val gradeExtract = kelas.split(" ").firstOrNull() ?: "10"
+
+                val newClassDto = ClassRoomDto(
+                    id = null,
+                    name = kelas,
+                    grade = gradeExtract,
+                    majorId = selectedMajorId,
+                    major = null,
+                    homeroomTeacherId = selectedTeacherId,
+                    homeroomTeacher = null
+                )
+
+                lifecycleScope.launch {
+                    try {
+                        val response = apiService.createClass(newClassDto)
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@TotalKelas, "Data kelas berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                            fetchData()
+                            dialog.dismiss()
+                        } else {
+                            Toast.makeText(this@TotalKelas, "Gagal menambahkan: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@TotalKelas, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
 
             dialog.show()
@@ -184,50 +271,64 @@ class TotalKelas : AppCompatActivity() {
         }
     }
 
-    private fun showJurusanDropdown(dialog: Dialog, etJurusan: EditText) {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listJurusan)
-
+    private fun showJurusanDropdown(dialog: Dialog, etJurusan: EditText, onSelected: (String, String) -> Unit) {
+        if (listNamaJurusan.isEmpty()) {
+            Toast.makeText(this, "Data jurusan masih kosong / belum dimuat", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listNamaJurusan)
         AlertDialog.Builder(this)
             .setTitle("Pilih Jurusan")
             .setAdapter(adapter) { _, which ->
-                val selectedJurusan = listJurusan[which]
-                etJurusan.setText(selectedJurusan)
+                val major = masterJurusan[which]
+                onSelected(major.id ?: "", major.name ?: "")
             }
             .setNegativeButton("Batal", null)
             .show()
     }
 
-    private fun showKelasDropdown(dialog: Dialog, etKelas: EditText) {
-        // Buat kombinasi kelas dari tingkatan dan rombel
+    private fun showKelasDropdown(dialog: Dialog, etKelas: EditText, onSelected: (String) -> Unit) {
         val kelasOptions = mutableListOf<String>()
-
         for (tingkat in listTingkatan) {
             for (rombel in listRombel) {
                 kelasOptions.add("$tingkat $rombel")
             }
         }
-
         val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, kelasOptions)
-
         AlertDialog.Builder(this)
-            .setTitle("Pilih Kelas")
+            .setTitle("Pilih Kelas/Rombel (Tanpa Jurusan)")
             .setAdapter(adapter) { _, which ->
                 val selectedKelas = kelasOptions[which]
-                etKelas.setText(selectedKelas)
+                onSelected(selectedKelas)
             }
             .setNegativeButton("Batal", null)
             .show()
     }
 
-    private fun showEditDialog(kelas: Kelas, position: Int) {
+    private fun showGuruDropdown(dialog: Dialog, etWaliKelas: EditText, onSelected: (String, String) -> Unit) {
+        if (listNamaGuru.isEmpty()) {
+            Toast.makeText(this, "Data guru masih kosong / belum dimuat", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, listNamaGuru)
+        AlertDialog.Builder(this)
+            .setTitle("Pilih Wali Kelas")
+            .setAdapter(adapter) { _, which ->
+                val teacher = masterGuru[which]
+                onSelected(teacher.id ?: "", teacher.name ?: "")
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showEditDialog(kelas: Kelas) {
         try {
-            // Buat dialog dengan layout XML untuk edit
             val dialog = Dialog(this)
             dialog.setContentView(R.layout.pop_up_edit_kelas)
+            dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
             dialog.window?.setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            dialog.setCancelable(false)
+            dialog.setCancelable(true)
 
-            // Initialize views
             val etJurusan = dialog.findViewById<EditText>(R.id.input_keterangan_nama)
             val etKelas = dialog.findViewById<EditText>(R.id.input_keterangan_nisn)
             val etWaliKelas = dialog.findViewById<EditText>(R.id.input_keterangan_jurusan)
@@ -236,36 +337,42 @@ class TotalKelas : AppCompatActivity() {
             val btnBatal = dialog.findViewById<Button>(R.id.btn_batal)
             val btnSimpan = dialog.findViewById<Button>(R.id.btn_simpan)
 
-            // Set nilai awal
             etJurusan.setText(kelas.namaJurusan)
             etKelas.setText(kelas.namaKelas)
             etWaliKelas.setText(kelas.waliKelas)
 
-            // Setup dropdown jurusan
-            btnArrowJurusan.setOnClickListener {
-                showJurusanDropdown(dialog, etJurusan)
-            }
+            selectedMajorId = kelas.majorId
+            selectedTeacherId = kelas.homeroomTeacherId
 
-            // Setup dropdown kelas
-            btnArrowKelas.setOnClickListener {
-                showKelasDropdown(dialog, etKelas)
+            val setupJurusan = {
+                showJurusanDropdown(dialog, etJurusan) { id, name ->
+                    selectedMajorId = id
+                    etJurusan.setText(name)
+                }
             }
+            btnArrowJurusan.setOnClickListener { setupJurusan() }
+            etJurusan.setOnClickListener { setupJurusan() }
 
-            // Click listener untuk EditText juga bisa membuka dropdown
-            etJurusan.setOnClickListener {
-                showJurusanDropdown(dialog, etJurusan)
+            val setupKelas = {
+                showKelasDropdown(dialog, etKelas) { name ->
+                    etKelas.setText(name)
+                }
             }
+            btnArrowKelas.setOnClickListener { setupKelas() }
+            etKelas.setOnClickListener { setupKelas() }
 
-            etKelas.setOnClickListener {
-                showKelasDropdown(dialog, etKelas)
+            val setupWaliKelas = {
+                showGuruDropdown(dialog, etWaliKelas) { id, name ->
+                    selectedTeacherId = id
+                    etWaliKelas.setText(name)
+                }
             }
+            etWaliKelas.setOnClickListener { setupWaliKelas() }
 
-            // Tombol Batal
             btnBatal.setOnClickListener {
                 dialog.dismiss()
             }
 
-            // Tombol Simpan
             btnSimpan.setOnClickListener {
                 val jurusan = etJurusan.text.toString().trim()
                 val kelasText = etKelas.text.toString().trim()
@@ -276,16 +383,37 @@ class TotalKelas : AppCompatActivity() {
                     return@setOnClickListener
                 }
 
-                listKelasDummy[position] = Kelas(
-                    kelas.id,
-                    jurusan,
-                    kelasText,
-                    waliKelas
-                )
-                kelasAdapter.updateData(listKelasDummy)
+                if (selectedMajorId == null || selectedTeacherId == null) {
+                    Toast.makeText(this, "Harap pilih dari dropdown jika ada perubahan!", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
 
-                Toast.makeText(this, "Data kelas berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
+                val gradeExtract = kelasText.split(" ").firstOrNull() ?: "10"
+
+                val editClassDto = ClassRoomDto(
+                    id = kelas.id,
+                    name = kelasText,
+                    grade = gradeExtract,
+                    majorId = selectedMajorId,
+                    major = null,
+                    homeroomTeacherId = selectedTeacherId,
+                    homeroomTeacher = null
+                )
+
+                lifecycleScope.launch {
+                    try {
+                        val response = apiService.updateClass(kelas.id, editClassDto)
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@TotalKelas, "Data kelas berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                            fetchData()
+                            dialog.dismiss()
+                        } else {
+                            Toast.makeText(this@TotalKelas, "Gagal update: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@TotalKelas, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
 
             dialog.show()
@@ -295,14 +423,24 @@ class TotalKelas : AppCompatActivity() {
         }
     }
 
-    private fun showDeleteConfirmation(kelas: Kelas, position: Int) {
+    private fun showDeleteConfirmation(kelas: Kelas) {
         AlertDialog.Builder(this)
             .setTitle("Konfirmasi Hapus")
             .setMessage("Apakah Anda yakin akan menghapus data kelas ${kelas.namaKelas}?")
             .setPositiveButton("Ya, Hapus") { _, _ ->
-                listKelasDummy.removeAt(position)
-                kelasAdapter.updateData(listKelasDummy)
-                Toast.makeText(this, "Data kelas berhasil dihapus", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    try {
+                        val response = apiService.deleteClass(kelas.id)
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@TotalKelas, "Data kelas berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            fetchData()
+                        } else {
+                            Toast.makeText(this@TotalKelas, "Gagal menghapus: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@TotalKelas, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             .setNegativeButton("Batal", null)
             .show()

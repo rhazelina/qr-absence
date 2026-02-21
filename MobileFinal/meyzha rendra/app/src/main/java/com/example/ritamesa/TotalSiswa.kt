@@ -2,6 +2,7 @@ package com.example.ritamesa
 
 import android.app.Dialog
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,23 +10,31 @@ import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.ritamesa.data.api.ApiClient
+import com.example.ritamesa.data.api.ApiService
+import com.example.ritamesa.data.dto.ClassRoomDto
+import com.example.ritamesa.data.dto.StudentDto
+import kotlinx.coroutines.launch
 
 class TotalSiswa : AppCompatActivity() {
 
     // ===== DATA CLASS =====
     data class ModelSiswa(
+        val id: String,
         val nisn: String,
         val nama: String,
-        val kelas: String
+        val kelas: String,
+        val classId: String
     )
 
     // ===== ADAPTER =====
     inner class SiswaAdapter(
         private var listSiswa: List<ModelSiswa>,
-        private val onEditClick: (ModelSiswa, Int) -> Unit,
-        private val onDeleteClick: (ModelSiswa, Int) -> Unit
+        private val onEditClick: (ModelSiswa) -> Unit,
+        private val onDeleteClick: (ModelSiswa) -> Unit
     ) : RecyclerView.Adapter<SiswaAdapter.SiswaViewHolder>() {
 
         private var currentPage = 1
@@ -53,15 +62,8 @@ class TotalSiswa : AppCompatActivity() {
             holder.tvNisn.text = siswa.nisn
             holder.tvKelas.text = siswa.kelas
 
-            holder.btnEdit.setOnClickListener {
-                val actualPosition = listSiswaDummy.indexOfFirst { it.nisn == siswa.nisn }
-                if (actualPosition != -1) onEditClick(siswa, actualPosition)
-            }
-
-            holder.btnHapus.setOnClickListener {
-                val actualPosition = listSiswaDummy.indexOfFirst { it.nisn == siswa.nisn }
-                if (actualPosition != -1) onDeleteClick(siswa, actualPosition)
-            }
+            holder.btnEdit.setOnClickListener { onEditClick(siswa) }
+            holder.btnHapus.setOnClickListener { onDeleteClick(siswa) }
         }
 
         override fun getItemCount(): Int = listSiswa.size
@@ -81,6 +83,13 @@ class TotalSiswa : AppCompatActivity() {
     private lateinit var ivSearch: ImageButton
     private lateinit var btnBack: ImageButton
 
+    // ===== API =====
+    private lateinit var apiService: ApiService
+
+    // ===== STATE =====
+    private val masterSiswa = arrayListOf<ModelSiswa>()
+    private val masterKelas = arrayListOf<ClassRoomDto>()
+
     // ===== PAGINATION =====
     private var currentPage = 1
     private val itemsPerPage = 10
@@ -96,89 +105,55 @@ class TotalSiswa : AppCompatActivity() {
     private lateinit var etGoToPage: EditText
     private lateinit var btnGo: Button
 
-    // ===== DATA DUMMY =====
-    private val listSiswaDummy = arrayListOf(
-        ModelSiswa("3078207819", "ABRORY AKBAR AL BATAMI", "XI RPL 1"),
-        ModelSiswa("0086659776", "AFIF FIRMANSYAH", "XI RPL 1"),
-        ModelSiswa("0087441890", "AGIES WIDYAWATI", "XI RPL 1"),
-        ModelSiswa("0071026334", "AGIL RIFATUL HAQ", "XI RPL 1"),
-        ModelSiswa("0078492418", "AKH. SEPTIAN FIO RAMADHAN", "XI RPL 1"),
-        ModelSiswa("0077521428", "Alya Fitri Larasati", "XI RPL 1"),
-        ModelSiswa("0084302867", "ANASTASYA DYAH AYU PROBONINGRUM", "XI RPL 1"),
-        ModelSiswa("0079564039", "ANISA PUSPITASARI", "XI RPL 1"),
-        ModelSiswa("0087599872", "Anissa Prissilvia Tahara", "XI RPL 1"),
-        ModelSiswa("0084701495", "AQILLA MAULIDDYAH", "XI RPL 1"),
-        ModelSiswa("0079518058", "AQILNA FAILLA LILFARA AIZANI", "XI RPL 1"),
-        ModelSiswa("0076823738", "Aristia Faren Rafaela", "XI RPL 1"),
-        ModelSiswa("0088840490", "ASYHARIL KAHFI DEWANDA", "XI RPL 1"),
-        ModelSiswa("0086920055", "Athaar Putra Ruhenda", "XI RPL 1"),
-        ModelSiswa("0088032174", "AVRILIANA ANJANI", "XI RPL 1"),
-        ModelSiswa("0089732684", "AZHAR ANISATUL JANNAH", "XI RPL 1"),
-        ModelSiswa("0086246127", "BINTANG FIRMAN ARDANA", "XI RPL 1"),
-        ModelSiswa("3079461424", "CALLISTA SHAFA RAMADHANI", "XI RPL 1"),
-        ModelSiswa("0077372447", "CHEVY APRILIA HUTABARAT", "XI RPL 1"),
-        ModelSiswa("0073851099", "CINDI TRI PRASETYO", "XI RPL 1"),
-        ModelSiswa("0082111423", "CINTYA KARINA PUTRI", "XI RPL 1"),
-        ModelSiswa("0078343685", "DHIA MIRZA HANDHIONO", "XI RPL 1"),
-        ModelSiswa("0081555900", "DIANDHIKA DWI PRANATA", "XI RPL 1"),
-        ModelSiswa("0081936855", "FAIRUZ QUDS ZAHRAN FIRDAUS", "XI RPL 1"),
-        ModelSiswa("0079300540", "FARDAN RASYAH ISLAMI", "XI RPL 1"),
-        ModelSiswa("0088713839", "FATCHUR ROHMAN ROFIAN", "XI RPL 1"),
-        ModelSiswa("0087853322", "FIDATUL AVIVA", "XI RPL 1"),
-        ModelSiswa("0088560011", "FIRLI ZULFA AZZAHRA", "XI RPL 1"),
-        ModelSiswa("0062756939", "HAPSARI ISMARTOYO", "XI RPL 1"),
-        ModelSiswa("0087538918", "HAVID ABDILAH SURAHMAD", "XI RPL 1"),
-        ModelSiswa("0072226999", "IGNACIA ZANDRA", "XI RPL 1"),
-        ModelSiswa("0074853632", "IQBAL LAZUARDI", "XI RPL 1"),
-        ModelSiswa("0089462835", "IQLIMAHDA TANZILLA FINAN DIVA", "XI RPL 1"),
-        ModelSiswa("0077181841", "IRDINA MARSYA MAZARINA", "XI RPL 1"),
-        ModelSiswa("0086237279", "ISABEL CAHAYA HATI", "XI RPL 1"),
-        ModelSiswa("0074316703", "KHOIRUN NI'MAH NURUL HIDAYAH", "XI RPL 1"),
-        ModelSiswa("0074182519", "LAURA LAVIDA LOCA", "XI RPL 2"),
-        ModelSiswa("0074320819", "LELY SAGITA", "XI RPL 2"),
-        ModelSiswa("0078658367", "MAYA MELINDA WIJAYANTI", "XI RPL 2"),
-        ModelSiswa("0079292238", "MOCH. ABYL GUSTIAN", "XI RPL 2"),
-        ModelSiswa("0084421457", "MUHAMMAD AMINULLAH", "XI RPL 2"),
-        ModelSiswa("0089104721", "Muhammad Azka Fadli Atthaya", "XI RPL 2"),
-        ModelSiswa("0087917739", "MUHAMMAD HADI FIRMANSYAH", "XI RPL 2"),
-        ModelSiswa("0074704843", "MUHAMMAD HARRIS MAULANA SAPUTRA", "XI RPL 2"),
-        ModelSiswa("0077192596", "MUHAMMAD IBNU RAFFI AHDAN", "XI RPL 2"),
-        ModelSiswa("0075024492", "MUHAMMAD REYHAN ATHADIANSYAH", "XI RPL 2"),
-        ModelSiswa("0141951182", "MUHAMMAD WISNU DEWANDARU", "XI RPL 2"),
-        ModelSiswa("0072504970", "NABILA RAMADHAN", "XI RPL 2"),
-        ModelSiswa("0061631562", "NADIA SINTA DEVI OKTAVIA", "XI RPL 2"),
-        ModelSiswa("0081112175", "NADJWA KIRANA FIRDAUS", "XI RPL 2"),
-        ModelSiswa("0089965810", "NINDI NARITA MAULIDYA", "XI RPL 2"),
-        ModelSiswa("0085834363", "NISWATUL KHOIRIYAH", "XI RPL 2"),
-        ModelSiswa("0087884391", "NOVERITA PASCALIA RAHMA", "XI RPL 2"),
-        ModelSiswa("0078285764", "NOVITA ANDRIANI", "XI RPL 2"),
-        ModelSiswa("0078980482", "NOVITA AZZAHRA", "XI RPL 2"),
-        ModelSiswa("0078036100", "NURUL KHASANAH", "XI RPL 2"),
-        ModelSiswa("0081838771", "RACHEL ALUNA MEIZHA", "XI RPL 2"),
-        ModelSiswa("0079312790", "RAENA WESTI DHEANOFA HERLIANI", "XI RPL 2"),
-        ModelSiswa("0084924963", "RAYHANUN", "XI RPL 2"),
-        ModelSiswa("0077652198", "RAYYAN DAFFA AL AFFANI", "XI RPL 2"),
-        ModelSiswa("0087959211", "RHAMEYZHA ALEA CHALILA PUTRI EDWARD", "XI RPL 2"),
-        ModelSiswa("0089530132", "RHEISYA MAULIDDIVA PUTRI", "XI RPL 2"),
-        ModelSiswa("0089479412", "RHEYVAN RAMADHAN I.P", "XI RPL 2"),
-        ModelSiswa("0073540571", "RISKY RAMADHANI", "XI RPL 2"),
-        ModelSiswa("0076610748", "RITA AURA AGUSTINA", "XI RPL 2"),
-        ModelSiswa("0077493253", "RIZKY RAMADHANI", "XI RPL 2"),
-        ModelSiswa("0076376703", "SA'IDHATUL HASANA", "XI RPL 2"),
-        ModelSiswa("0072620559", "SHISILIA ISMU PUTRI", "XI RPL 2"),
-        ModelSiswa("0072336597", "SUCI RAMADANI INDRIANSYAH", "XI RPL 2"),
-        ModelSiswa("0075802873", "TALITHA NUDIA RISMATULLAH", "XI RPL 2")
-    )
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.total_siswa)
+
+        apiService = ApiClient.getService(this)
 
         initView()
         setupRecyclerView()
         setupPaginationLayout()
         setupActions()
-        updatePagination()
+        
+        // Fetch real data
+        fetchData()
+    }
+
+    private fun fetchData() {
+        lifecycleScope.launch {
+            try {
+                // Fetch classes for dropdowns
+                val classRes = apiService.getClasses()
+                if (classRes.isSuccessful && classRes.body()?.data != null) {
+                    masterKelas.clear()
+                    masterKelas.addAll(classRes.body()!!.data!!)
+                }
+
+                // Fetch students
+                val response = apiService.getStudents()
+                if (response.isSuccessful && response.body() != null) {
+                    val dtos = response.body()?.data ?: emptyList()
+                    masterSiswa.clear()
+                    masterSiswa.addAll(dtos.map { 
+                        ModelSiswa(
+                            id = """${it.id}""", 
+                            nisn = it.nisn ?: "", 
+                            nama = it.name ?: "", 
+                            kelas = it.className ?: "Unknown",
+                            classId = it.classId ?: ""
+                        ) 
+                    })
+                    
+                    searchSiswa() // Updates filtered list and paginates
+                } else {
+                    Toast.makeText(this@TotalSiswa, "Gagal mengambil data siswa", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("TotalSiswa", "Error fetching data", e)
+                Toast.makeText(this@TotalSiswa, "Koneksi bermasalah: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun initView() {
@@ -189,7 +164,7 @@ class TotalSiswa : AppCompatActivity() {
         btnBack = findViewById(R.id.btnBack)
         editTextSearch.hint = "Cari nama/NISN/kelas"
 
-        filteredList = ArrayList(listSiswaDummy)
+        filteredList = ArrayList(masterSiswa)
         calculateTotalPages()
     }
 
@@ -199,8 +174,8 @@ class TotalSiswa : AppCompatActivity() {
 
         siswaAdapter = SiswaAdapter(
             currentDisplayList,
-            onEditClick = { siswa, position -> showEditDialog(siswa, position) },
-            onDeleteClick = { siswa, position -> showDeleteDialog(siswa.nama, position) }
+            onEditClick = { siswa -> showEditDialog(siswa) },
+            onDeleteClick = { siswa -> showDeleteDialog(siswa) }
         )
         recyclerView.adapter = siswaAdapter
     }
@@ -423,9 +398,9 @@ class TotalSiswa : AppCompatActivity() {
     private fun searchSiswa() {
         val query = editTextSearch.text.toString().trim().lowercase()
         filteredList = if (query.isEmpty()) {
-            ArrayList(listSiswaDummy)
+            ArrayList(masterSiswa)
         } else {
-            ArrayList(listSiswaDummy.filter {
+            ArrayList(masterSiswa.filter {
                 it.nama.lowercase().contains(query) ||
                         it.nisn.contains(query) ||
                         it.kelas.lowercase().contains(query)
@@ -438,18 +413,6 @@ class TotalSiswa : AppCompatActivity() {
 
         currentPage = 1
         updatePagination()
-    }
-
-    private fun isNisnExist(nisn: String, currentNisn: String? = null): Boolean {
-        return listSiswaDummy.any { it.nisn == nisn && it.nisn != currentNisn }
-    }
-
-    private fun isSiswaExist(nama: String, kelas: String, currentNisn: String? = null): Boolean {
-        return listSiswaDummy.any {
-            it.nama.equals(nama, ignoreCase = true) &&
-                    it.kelas == kelas &&
-                    it.nisn != currentNisn
-        }
     }
 
     private fun showAddDialog() {
@@ -470,36 +433,64 @@ class TotalSiswa : AppCompatActivity() {
             inputKelas?.isFocusable = false
             inputKelas?.isClickable = true
 
-            btnArrowKelas?.setOnClickListener { showKelasDropdown(inputKelas) }
-            inputKelas?.setOnClickListener { showKelasDropdown(inputKelas) }
+            var selectedClassId = ""
+
+            val showKelasDropdown = {
+                val names = masterKelas.map { it.name ?: "" }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle("Pilih Kelas")
+                    .setItems(names) { _, which ->
+                        inputKelas?.setText(names[which])
+                        selectedClassId = masterKelas[which].id?.toString() ?: ""
+                    }
+                    .show()
+            }
+
+            btnArrowKelas?.setOnClickListener { showKelasDropdown() }
+            inputKelas?.setOnClickListener { showKelasDropdown() }
             btnBatal?.setOnClickListener { dialog.dismiss() }
 
             btnSimpan?.setOnClickListener {
                 val nama = inputNama?.text.toString().trim()
                 val nisn = inputNisn?.text.toString().trim()
-                val kelas = inputKelas?.text.toString().trim()
 
-                if (nama.isEmpty() || nisn.isEmpty() || kelas.isEmpty()) {
+                if (nama.isEmpty() || nisn.isEmpty() || selectedClassId.isEmpty()) {
                     Toast.makeText(this, "Harap isi semua field!", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
 
-                if (isNisnExist(nisn)) {
-                    Toast.makeText(this, "NISN $nisn sudah terdaftar!", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
-
-                if (isSiswaExist(nama, kelas)) {
-                    Toast.makeText(this, "Siswa dengan nama $nama kelas $kelas sudah terdaftar!", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
-
                 showSaveConfirmation("Tambah") {
-                    listSiswaDummy.add(ModelSiswa(nisn, nama, kelas))
-                    currentPage = 1
-                    searchSiswa()
-                    Toast.makeText(this, "Data siswa berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+                    val newStudent = StudentDto(
+                        id = null,
+                        name = nama,
+                        nisn = nisn,
+                        nis = null,
+                        email = null,
+                        major = null,
+                        majorName = null,
+                        classId = selectedClassId,
+                        className = null,
+                        grade = null,
+                        gender = "L",
+                        phone = null,
+                        address = null,
+                        photoUrl = null
+                    )
+
+                    lifecycleScope.launch {
+                        try {
+                            val response = apiService.createStudent(newStudent)
+                            if (response.isSuccessful) {
+                                Toast.makeText(this@TotalSiswa, "Siswa berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                                fetchData()
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(this@TotalSiswa, "Gagal menambahkan: ${response.message()}", Toast.LENGTH_LONG).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(this@TotalSiswa, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             }
 
@@ -509,7 +500,7 @@ class TotalSiswa : AppCompatActivity() {
         }
     }
 
-    private fun showEditDialog(siswa: ModelSiswa, position: Int) {
+    private fun showEditDialog(siswa: ModelSiswa) {
         try {
             val dialog = Dialog(this)
             dialog.setContentView(R.layout.pop_up_edit_data_siswa)
@@ -527,8 +518,21 @@ class TotalSiswa : AppCompatActivity() {
             inputKelas?.isFocusable = false
             inputKelas?.isClickable = true
 
-            btnArrowKelas?.setOnClickListener { showKelasDropdown(inputKelas) }
-            inputKelas?.setOnClickListener { showKelasDropdown(inputKelas) }
+            var selectedClassId = siswa.classId
+
+            val showKelasDropdown = {
+                val names = masterKelas.map { it.name ?: "" }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle("Pilih Kelas")
+                    .setItems(names) { _, which ->
+                        inputKelas?.setText(names[which])
+                        selectedClassId = masterKelas[which].id?.toString() ?: ""
+                    }
+                    .show()
+            }
+
+            btnArrowKelas?.setOnClickListener { showKelasDropdown() }
+            inputKelas?.setOnClickListener { showKelasDropdown() }
 
             inputNama?.setText(siswa.nama)
             inputNisn?.setText(siswa.nisn)
@@ -539,35 +543,44 @@ class TotalSiswa : AppCompatActivity() {
             btnSimpan?.setOnClickListener {
                 val nama = inputNama?.text.toString().trim()
                 val nisn = inputNisn?.text.toString().trim()
-                val kelas = inputKelas?.text.toString().trim()
 
-                if (nama.isEmpty() || nisn.isEmpty() || kelas.isEmpty()) {
+                if (nama.isEmpty() || nisn.isEmpty() || selectedClassId.isEmpty()) {
                     Toast.makeText(this, "Harap isi semua field!", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
 
-                val isDataChanged = nama != siswa.nama || nisn != siswa.nisn || kelas != siswa.kelas
-                if (!isDataChanged) {
-                    Toast.makeText(this, "Tidak ada perubahan data", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
-                    return@setOnClickListener
-                }
-
-                if (isNisnExist(nisn, siswa.nisn)) {
-                    Toast.makeText(this, "NISN $nisn sudah digunakan oleh siswa lain!", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
-
-                if (isSiswaExist(nama, kelas, siswa.nisn)) {
-                    Toast.makeText(this, "Siswa dengan nama $nama kelas $kelas sudah terdaftar!", Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
-                }
-
                 showSaveConfirmation("Update") {
-                    listSiswaDummy[position] = ModelSiswa(nisn, nama, kelas)
-                    searchSiswa()
-                    Toast.makeText(this, "Data siswa berhasil diupdate", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+                    val updatedStudent = StudentDto(
+                        id = siswa.id,
+                        name = nama,
+                        nisn = nisn,
+                        nis = null,
+                        email = null,
+                        major = null,
+                        majorName = null,
+                        classId = selectedClassId,
+                        className = null,
+                        grade = null,
+                        gender = "L",
+                        phone = null,
+                        address = null,
+                        photoUrl = null
+                    )
+
+                    lifecycleScope.launch {
+                        try {
+                            val response = apiService.updateStudent(siswa.id, updatedStudent)
+                            if (response.isSuccessful) {
+                                Toast.makeText(this@TotalSiswa, "Data siswa berhasil diupdate", Toast.LENGTH_SHORT).show()
+                                fetchData()
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(this@TotalSiswa, "Gagal update: ${response.message()}", Toast.LENGTH_LONG).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(this@TotalSiswa, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
             }
 
@@ -577,14 +590,24 @@ class TotalSiswa : AppCompatActivity() {
         }
     }
 
-    private fun showDeleteDialog(namaSiswa: String, position: Int) {
+    private fun showDeleteDialog(siswa: ModelSiswa) {
         AlertDialog.Builder(this)
             .setTitle("Konfirmasi Hapus")
-            .setMessage("Apakah Anda yakin ingin menghapus data siswa:\n$namaSiswa?")
+            .setMessage("Apakah Anda yakin ingin menghapus data siswa:\n${siswa.nama}?")
             .setPositiveButton("Hapus") { _, _ ->
-                listSiswaDummy.removeAt(position)
-                searchSiswa()
-                Toast.makeText(this, "Data siswa berhasil dihapus", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    try {
+                        val response = apiService.deleteStudent(siswa.id)
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@TotalSiswa, "Data siswa berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            fetchData()
+                        } else {
+                            Toast.makeText(this@TotalSiswa, "Gagal menghapus: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@TotalSiswa, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             .setNegativeButton("Batal", null)
             .show()
@@ -596,14 +619,6 @@ class TotalSiswa : AppCompatActivity() {
             .setMessage("Yakin akan $action data?")
             .setPositiveButton("Ya, Simpan") { _, _ -> onConfirm() }
             .setNegativeButton("Batal", null)
-            .show()
-    }
-
-    private fun showKelasDropdown(editText: EditText?) {
-        val kelasList = arrayOf("X RPL 1", "X RPL 2", "XI RPL 1", "XI RPL 2", "XII RPL 1", "XII RPL 2")
-        AlertDialog.Builder(this)
-            .setTitle("Pilih Kelas")
-            .setItems(kelasList) { _, which -> editText?.setText(kelasList[which]) }
             .show()
     }
 }

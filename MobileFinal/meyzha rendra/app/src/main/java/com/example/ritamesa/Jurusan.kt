@@ -1,7 +1,7 @@
 package com.example.ritamesa
 
 data class Jurusan(
-    val id: Int,
+    val id: String,
     val KonsentrasiKeahlian: String,
     val Kodejurusan: String,
 )
