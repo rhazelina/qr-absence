@@ -44,34 +44,6 @@ class ScheduleController extends Controller
     /**
      * Store a new Class Schedule
      */
-    /**
-     * Normalize day name to English Title Case
-     */
-    private function normalizeDay(string $day): string
-    {
-        $map = [
-            'senin' => 'Monday',
-            'selasa' => 'Tuesday',
-            'rabu' => 'Wednesday',
-            'kamis' => 'Thursday',
-            'jumat' => 'Friday',
-            'sabtu' => 'Saturday',
-            'minggu' => 'Sunday',
-            'monday' => 'Monday',
-            'tuesday' => 'Tuesday',
-            'wednesday' => 'Wednesday',
-            'thursday' => 'Thursday',
-            'friday' => 'Friday',
-            'saturday' => 'Saturday',
-            'sunday' => 'Sunday',
-        ];
-
-        return $map[strtolower($day)] ?? 'Monday';
-    }
-
-    /**
-     * Store a new Class Schedule
-     */
     public function store(StoreClassScheduleRequest $request): JsonResponse
     {
         $data = $request->validated();

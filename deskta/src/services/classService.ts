@@ -1,7 +1,6 @@
 import { API_BASE_URL, handleResponse } from './api';
 
 
-
 const classService = {
   getMyClass: async () => {
     const response = await fetch(`${API_BASE_URL}/me/class`, {

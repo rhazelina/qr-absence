@@ -70,6 +70,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::get('/subjects', [SubjectController::class, 'index'])->middleware('role:admin,teacher,student');
 
     Route::middleware(['role:admin', 'admin-type:waka'])->group(function (): void {
+        Route::post('/classes/{class}/schedules/bulk', [ScheduleController::class, 'bulkUpsert']);
         // Absence requests moved to shared group
         Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
         Route::get('/waka/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']); // Backward-compatible alias
@@ -107,8 +108,8 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('rooms', RoomController::class);
         Route::apiResource('subjects', SubjectController::class)->except(['index']);
         Route::apiResource('time-slots', TimeSlotController::class);
-        Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
-        Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
+        // Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
+        // Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
         Route::get('/settings', [SettingController::class, 'index']);
         Route::post('/settings/bulk', [SettingController::class, 'bulkUpdate']);
         Route::post('/settings', [SettingController::class, 'update']);
@@ -210,7 +211,8 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
 
     Route::middleware('role:student')->group(function (): void {
         Route::get('/me/attendance', [\App\Http\Controllers\AttendanceController::class, 'me']);
-        Route::get('/me/attendance/summary', [\App\Http\Controllers\AttendanceController::class, 'summary']);
+        Route::get('/me/attendance/summary', [AttendanceController::class, 'summaryMe']);
+        Route::get('/student/profile', [AuthController::class, 'me']); // Alias for mobile legacy
         Route::post('/me/devices', [DeviceController::class, 'store']);
         Route::post('/devices', [DeviceController::class, 'store']); // Consistent alias
         Route::delete('/me/devices/{device}', [DeviceController::class, 'destroy']);
