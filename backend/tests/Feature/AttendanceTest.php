@@ -8,8 +8,13 @@ use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    Carbon::setTestNow(Carbon::parse('2026-02-23 08:00:00')); // It is a Monday
+});
 
 it('allows waka to record manual attendance', function () {
     $waka = User::factory()->waka()->create();
@@ -181,14 +186,10 @@ it('allows student to access their own document', function () {
 });
 
 it('allows homeroom teacher (wali kelas) to record bulk attendance for their class schedule', function () {
-    $classRoom = \App\Models\ClassRoom::factory()->create();
+    $classRoom = \App\Models\Classes::factory()->create();
 
     $waliKelas = User::factory()->teacher()->create();
     // Assuming teacherProfile exists and related to user
-    if (! $waliKelas->teacherProfile) {
-        $waliKelas->teacherProfile()->create(['user_id' => $waliKelas->id]);
-        $waliKelas->refresh();
-    }
     $waliKelas->teacherProfile->update(['homeroom_class_id' => $classRoom->id]);
 
     $subjectTeacher = User::factory()->teacher()->create();
@@ -205,17 +206,9 @@ it('allows homeroom teacher (wali kelas) to record bulk attendance for their cla
 
     $student1 = User::factory()->student()->create();
     // Assuming studentProfile exists
-    if (! $student1->studentProfile) {
-        $student1->studentProfile()->create(['user_id' => $student1->id]);
-        $student1->refresh();
-    }
     $student1->studentProfile->update(['class_id' => $classRoom->id]);
 
     $student2 = User::factory()->student()->create();
-    if (! $student2->studentProfile) {
-        $student2->studentProfile()->create(['user_id' => $student2->id]);
-        $student2->refresh();
-    }
     $student2->studentProfile->update(['class_id' => $classRoom->id]);
 
     // Create attendance items
@@ -250,6 +243,6 @@ it('allows homeroom teacher (wali kelas) to record bulk attendance for their cla
     $this->assertDatabaseHas('attendances', [
         'student_id' => $student2->studentProfile->id,
         'schedule_id' => $schedule->id,
-        'status' => 'absent',
+        'status' => 'alfa',
     ]);
 });

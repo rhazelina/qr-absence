@@ -20,13 +20,14 @@ class AttendanceSeeder extends Seeder
 
         if ($students->isEmpty()) {
             $this->command->info('No students found. Skipping AttendanceSeeder.');
+
             return;
         }
 
         // Get schedules for the last 30 days
         // We need to simulate attendance for past days based on schedules.
         // Assuming schedules are recurring weekly.
-        
+
         $startDate = Carbon::now()->subDays(30);
         $endDate = Carbon::now();
 
@@ -47,11 +48,12 @@ class AttendanceSeeder extends Seeder
                 // Skip weekends
                 if ($currentDate->isWeekend()) {
                     $currentDate->addDay();
+
                     continue;
                 }
 
                 $dayEnglish = $currentDate->format('l'); // Monday, Tuesday, etc.
-                
+
                 // Find daily schedule for this day
                 // USE strict comparison for day name
                 $dailySchedule = $classSchedule->dailySchedules->filter(function ($ds) use ($dayEnglish) {
@@ -59,10 +61,11 @@ class AttendanceSeeder extends Seeder
                 })->first();
 
                 if (! $dailySchedule) {
-                     $currentDate->addDay();
-                     continue;
+                    $currentDate->addDay();
+
+                    continue;
                 }
-                
+
                 if ($dailySchedule->scheduleItems->isEmpty()) {
                     // No items for this day
                 }
@@ -94,14 +97,14 @@ class AttendanceSeeder extends Seeder
                             'schedule_id' => $item->id, // References schedule_items.id
                             'date' => $currentDate->toDateString(),
                             'status' => $status,
-                            'checked_in_at' => $status === 'present' || $status === 'late' 
-                                ? $currentDate->copy()->setTimeFromTimeString($item->start_time)->addMinutes(rand(0, 30)) 
+                            'checked_in_at' => $status === 'present' || $status === 'late'
+                                ? $currentDate->copy()->setTimeFromTimeString($item->start_time)->addMinutes(rand(0, 30))
                                 : null,
                             'source' => 'seeder',
                             'reason' => $reason,
                         ]);
                     } catch (\Illuminate\Database\QueryException $e) {
-                         // Ignore duplicate entry errors
+                        // Ignore duplicate entry errors
                         continue;
                     }
                 }

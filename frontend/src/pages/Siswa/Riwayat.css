@@ -12,9 +12,9 @@
 }
 
 .riwayat-main {
-  max-width: 1280px;
+  max-width: var(--web-content-max);
   margin: 0 auto;
-  padding: calc(80px + 2rem) 1.5rem 2rem;
+  padding: calc(80px + clamp(12px, 2vw, 24px)) var(--web-page-pad-x) clamp(20px, 3vw, 36px);
 }
 
 /* Date Range Filter */

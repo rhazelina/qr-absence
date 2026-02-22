@@ -2,7 +2,7 @@
 
 .jadwal-container {
   min-height: 100vh;
-  padding: 110px 40px 40px;
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
   background-image: url('../../assets/bg.png');
   background-size: cover;
   background-position: center;
@@ -16,14 +16,14 @@
   font-size: 32px;
   font-weight: 700;
   margin-bottom: 30px;
-  max-width: 1400px;
+  max-width: var(--web-content-max);
   margin-left: auto;
   margin-right: auto;
   padding-left: 0;
 }
 
 .jadwal-wrapper {
-  max-width: 1400px;
+  max-width: var(--web-content-max);
   margin: 0 auto;
   background: white;
   border-radius: 30px;
@@ -123,11 +123,11 @@
 /* Responsive */
 @media (max-width: 1400px) {
   .jadwal-wrapper {
-    max-width: 1200px;
+    max-width: var(--web-content-max);
   }
   
   .jadwal-title {
-    max-width: 1200px;
+    max-width: var(--web-content-max);
     font-size: 28px;
   }
   

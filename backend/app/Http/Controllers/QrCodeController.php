@@ -70,35 +70,67 @@ class QrCodeController extends Controller
             if ($data['type'] !== 'student') {
                 abort(422, 'Pengurus kelas hanya boleh membuat QR siswa');
             }
+        }
 
-            // Limit period: Officer can only generate for TODAY
-            $today = now()->format('l'); // Monday, Tuesday...
-            $scheduleDay = $schedule->dailySchedule->day;
-            if (strcasecmp($scheduleDay, $today) !== 0) {
-                abort(422, 'Pengurus kelas hanya boleh membuat QR untuk jadwal hari ini ('.$today.')');
-            }
+        // --- HARD VALIDATIONS FOR BOTH ROLES ---
+        
+        // 1. Schedule must be active
+        if (! $schedule->dailySchedule->classSchedule->is_active) {
+            abort(422, 'Jadwal pelajaran ini sudah tidak aktif (semester/tahun ajaran berlalu).');
+        }
+
+        // 2. Day must match
+        $today = strtolower(now()->format('l'));
+        $scheduleDay = strtolower($schedule->dailySchedule->day);
+        if ($scheduleDay !== $today) {
+            abort(422, "QR hanya bisa dibuat pada hari jadwal (Hari ini $today, jadwal $scheduleDay)");
+        }
+
+        // 3. Time must be active (allowing 15 min early and late up to end time)
+        $nowTime = now()->format('H:i:s');
+        $startTimeAllowed = now()->setTimeFromTimeString($schedule->start_time)->subMinutes(15)->format('H:i:s');
+        if ($nowTime < $startTimeAllowed || $nowTime > $schedule->end_time) {
+            abort(422, "QR hanya bisa dibuat pada jam aktif atau 15 menit sebelumnya ({$schedule->start_time} - {$schedule->end_time})");
+        }
+
+        // 4. Must not be closed
+        $isClosed = \App\Models\Attendance::where('schedule_id', $schedule->id)
+            ->whereDate('date', today())
+            ->where('source', 'system_close')
+            ->exists();
+            
+        if ($isClosed) {
+            abort(422, 'Sesi absensi untuk jadwal ini sudah ditutup.');
         }
 
         $expiresAt = now()->addMinutes($data['expires_in_minutes'] ?? 15);
 
         // Prevent concurrent active QR generation
         $qr = \Illuminate\Support\Facades\DB::transaction(function () use ($schedule, $data, $request, $expiresAt) {
-            // Check for existing active QR for this schedule with lock
-            $existing = Qrcode::where('schedule_id', $schedule->id)
+            $query = Qrcode::where('schedule_id', $schedule->id)
                 ->where('type', $data['type'])
-                ->where('is_active', true)
-                ->lockForUpdate()
-                ->first();
+                ->where('is_active', true);
+
+            if (\Illuminate\Support\Facades\DB::connection()->getDriverName() !== 'sqlite') {
+                $query->lockForUpdate();
+            }
+
+            $existing = $query->first();
 
             if ($existing) {
                 if (! $existing->isExpired()) {
                     return $existing;
                 }
                 $existing->update(['is_active' => false, 'status' => 'expired']);
+                dump('Controller Update Result:', $existing->toArray());
             }
 
+            $uuid = Str::uuid()->toString();
+            $signature = hash_hmac('sha256', $uuid, config('app.key'));
+            $signedToken = $uuid . '.' . $signature;
+
             return Qrcode::create([
-                'token' => Str::uuid()->toString(),
+                'token' => $signedToken,
                 'type' => $data['type'],
                 'schedule_id' => $schedule->id,
                 'issued_by' => $request->user()->id,

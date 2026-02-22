@@ -18,8 +18,9 @@ class NewScheduleSeeder extends Seeder
     {
         // Find a class to seed
         $class = Classes::first();
-        if (!$class) {
+        if (! $class) {
             $this->command->warn('No classes found. Skipping schedule seeding.');
+
             return;
         }
 
@@ -31,12 +32,13 @@ class NewScheduleSeeder extends Seeder
             'is_active' => true,
         ]);
 
-        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         $subjects = Subject::all();
         $teachers = TeacherProfile::all();
 
         if ($subjects->isEmpty() || $teachers->isEmpty()) {
             $this->command->warn('No subjects or teachers found. Skipping item seeding.');
+
             return;
         }
 
@@ -45,10 +47,10 @@ class NewScheduleSeeder extends Seeder
 
             // Add 3-4 items per day
             $startTime = Carbon::createFromTime(7, 0);
-            
+
             for ($i = 0; $i < 4; $i++) {
                 $endTime = $startTime->copy()->addMinutes(45);
-                
+
                 $daily->scheduleItems()->create([
                     'subject_id' => $subjects->random()->id,
                     'teacher_id' => $teachers->random()->id,

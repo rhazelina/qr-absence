@@ -1,0 +1,43 @@
+====================================================
+LAPORAN AUDIT TOTAL & EVALUASI SISTEM QR ABSENCE
+====================================================
+
+Berdasarkan pengecekan menyeluruh terhadap kapabilitas Backend, Frontend (Web/Deskta), dan integrasi Mobile, berikut adalah hasil temuan audit:
+
+1. DAFTAR FITUR YANG SUDAH BENAR & BERJALAN BAIK
+--------------------------------------------------
+- [x] CRUD 8 Modul Utama (Siswa, Guru, Kelas, Mapel, dll) beserta relasi DB-nya sangat terstruktur dan routing API tersedia penuh.
+- [x] Sistem QR Generate & Scan: Validasi waktu (15 menit sebelum hingga jam habis), token HMAC signature, expired time, validasi radius lokasi, dan pencegahan double scan dengan Cache Lock DB sudah sangat baik.
+- [x] Sistem Scheduling (Jadwal): Bentrok waktu/guru/kelas di-check dan diverifikasi secara mendetail pada transaksi BE (`ScheduleController` dan fitur `ImportController`).
+- [x] Fitur Import Excel: Backend API parsing dengan cermat, mengecek row by row, memeriksa duplikat di file serta Database, dan menyediakan message error detail per line ke FE.
+- [x] Session & Role Management: Layer keamanan Sanctum dan Middleware policy (`role:admin`, `role:teacher`) mencegah unauthorized request secara mutlak.
+
+2. DAFTAR FITUR YANG BELUM LENGKAP
+--------------------------------------------------
+- [!] Download Format Excel: Logika Frontend (di `dataManager.js`) merujuk ke absolute path `/templates/template_siswa.xlsx`, dll. Tetapi di sisi repository (`frontend/public/templates`), direktori serta file template ini belum dibuat. Oleh karenanya, user/admin saat ini gagal/mendapatkan 404 ketika ingin melihat contoh format data excel untuk di inisiasi importnya.
+
+3. DAFTAR MISMATCH FE & BE
+--------------------------------------------------
+- [!] Mobile Android ("TotalSiswa"): Aplikasi mobile menggunakan `apiService.getStudents()` (endpoint `GET /api/students`) untuk list total siswa. Permasalahannya, di Backend `api.php`, resource `/api/students` digembok Penuh di dalam blok Middleware `role:admin`. Hal ini dipastikan menyebabkan error `403 Forbidden` jika seorang Guru login ke app mobile dan mencoba membuka Total Siswa.
+- [!] Penanganan Status Catch 403 FE: Beberapa exception API call 403 Forbidden di FE tidak di-wrap menjadi *toast notification* yang user-friendly melainkan fail silent di console.
+
+4. REKOMENDASI PERBAIKAN PRIORITAS
+--------------------------------------------------
+- Prioritas 1: Segera buat dan sediakan file `.xlsx` statis untuk template (Siswa, Guru, Jadwal, Kelas) di dalam folder project `/frontend/public/templates/` agar proses Import admin bisa utuh.
+- Prioritas 2: Modifikasi scope perlindungan Router `GET /api/students` pada `routes/api.php` agar dapat diakses tidak hanya oleh `admin` tetapi juga oleh `teacher`. 
+
+5. FLOW SISTEM FINAL YANG IDEAL
+--------------------------------------------------
+- Admin mengelola CRUD data inti (Siswa/Guru/Jadwal) yang mana Download Format berjalan otomatis dan diunggah dengan feedback row Validation jika terdapat duplikasi maupun overlapping.
+- Pembuatan QR dikunci dan dijalankan oleh Pengurus Kelas, di mana Logic HMAC, expiry, dan validasi bentrok class match sudah terjamin oleh `AttendanceService.php`.
+- Scanning QR dan Rekap Absensi diproses oleh Backend lewat transaction locks, dan Dashboard summary untuk Wali Kelas/Wakasek tergenerate melalui relasi eloquent dengan Role scope yang sempurna.
+- Guru mobile app memperoleh data agregat/Daftar siswa secara natural (tanpa tersandung permission constraints) untuk UX yang halus.
+
+6. LIST ENDPOINT YANG PERLU DIBUAT/DIUBAH
+--------------------------------------------------
+- **REST UBAH**: Router `routes/api.php`. Memecah constraint `Route::apiResource('students', StudentController::class)` yang saat ini exclusif di `role:admin`, untuk mengeluarkan method `index` secara parsial agar dapat memanggil `GET /api/students` dan membungkusnya dalam middleware `role:admin,teacher` untuk mensupport API request app Mobile.
+
+7. LIST VALIDASI YANG PERLU DITAMBAHKAN
+--------------------------------------------------
+- Seluruh endpoint inti BE (bentrok jadwal guru/kelas, pembajakan QR dari kelas lain/orang lain, batasan timeout, upload excel fail-fast) SUDAH TERVALIDASI DENGAN BAIK. 
+- Validation layer Backend saat ini sudah sangat ideal (production-ready). Yang perlu dilakukan hanyalah men-sinkronkan middleware role untuk kebutuhan multi-device dan melengkapi file template fisiknya.

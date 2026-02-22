@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import "./KehadiranSiswaShow.css";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
@@ -45,16 +45,9 @@ function KehadiranSiswaShow() {
   const [kelas, setKelas] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedSubject, setSelectedSubject] = useState('all');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [stats, setStats] = useState({
-    present: 0,
-    late: 0,
-    excused: 0,
-    sick: 0,
-    absent: 0,
-    return: 0
-  });
 
   useEffect(() => {
     fetchData();
@@ -71,33 +64,6 @@ function KehadiranSiswaShow() {
       setKelas(classRes.data || classRes);
       const items = attendanceRes.items || [];
       setAttendanceData(items);
-
-      // Calculate overall stats for the day
-      const dailyStats = {
-        present: 0,
-        late: 0,
-        excused: 0,
-        sick: 0,
-        absent: 0,
-        return: 0
-      };
-
-      // Since multiple schedules exist, we count unique students' latest/dominant status?
-      // For now, let's just aggregate all attendance records found in all items.
-      const seenAttendance = new Set();
-      items.forEach(item => {
-        item.attendances.forEach(att => {
-          if (!seenAttendance.has(att.id)) {
-            const status = att.status.toLowerCase();
-            if (dailyStats[status] !== undefined) {
-              dailyStats[status]++;
-            }
-            seenAttendance.add(att.id);
-          }
-        });
-      });
-
-      setStats(dailyStats);
     } catch (error) {
       console.error("Error fetching class attendance:", error);
     } finally {
@@ -110,6 +76,57 @@ function KehadiranSiswaShow() {
     setShowDetailModal(true);
   };
 
+  const subjectOptions = useMemo(() => {
+    const map = new Map();
+    attendanceData.forEach((item) => {
+      const scheduleId = item.schedule?.id;
+      const subjectName = item.schedule?.subject?.name;
+      if (scheduleId && subjectName) {
+        map.set(String(scheduleId), subjectName);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [attendanceData]);
+
+  const filteredAttendanceData = useMemo(() => {
+    if (selectedSubject === 'all') return attendanceData;
+    return attendanceData.filter((item) => String(item.schedule?.id) === selectedSubject);
+  }, [attendanceData, selectedSubject]);
+
+  const stats = useMemo(() => {
+    const computed = {
+      present: 0,
+      late: 0,
+      excused: 0,
+      sick: 0,
+      absent: 0,
+      return: 0
+    };
+
+    const seenAttendance = new Set();
+    filteredAttendanceData.forEach((item) => {
+      item.attendances.forEach((att) => {
+        if (!seenAttendance.has(att.id)) {
+          const status = (att.status || '').toLowerCase();
+          if (computed[status] !== undefined) {
+            computed[status]++;
+          }
+          seenAttendance.add(att.id);
+        }
+      });
+    });
+
+    return computed;
+  }, [filteredAttendanceData]);
+
+  useEffect(() => {
+    if (selectedSubject === 'all') return;
+    const stillExists = subjectOptions.some((option) => option.id === selectedSubject);
+    if (!stillExists) {
+      setSelectedSubject('all');
+    }
+  }, [subjectOptions, selectedSubject]);
+
   if (loading && !kelas) {
     return (
       <div className="flex items-center justify-center min-vh-100 bg-gray-50 text-blue-600">
@@ -119,10 +136,10 @@ function KehadiranSiswaShow() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <div className="kehadiran-siswa-show-root min-h-screen pb-12">
       <NavbarWaka />
 
-      <div className="pt-24 px-4 max-w-7xl mx-auto">
+      <div className="kehadiran-siswa-show-container">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap pb-2">
             <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
@@ -157,10 +174,25 @@ function KehadiranSiswaShow() {
 
               <div className="flex flex-wrap items-center gap-4">
                  <div className="relative group">
+                    <FaChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <select
+                      className="kehadiran-siswa-subject-select pl-4 pr-10 py-3 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-700 cursor-pointer appearance-none"
+                      value={selectedSubject}
+                      onChange={(e) => setSelectedSubject(e.target.value)}
+                    >
+                      <option value="all">Semua Mata Pelajaran</option>
+                      {subjectOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                 </div>
+                 <div className="relative group">
                     <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none" />
                     <input 
                        type="date"
-                       className="pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-700 cursor-pointer"
+                       className="kehadiran-siswa-date-input pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-700 cursor-pointer"
                        value={selectedDate}
                        onChange={(e) => setSelectedDate(e.target.value)}
                     />
@@ -190,9 +222,9 @@ function KehadiranSiswaShow() {
         </div>
 
         {/* ATTENDANCE DATA */}
-        {attendanceData.length > 0 ? (
+        {filteredAttendanceData.length > 0 ? (
           <div className="space-y-8">
-             {attendanceData.map((item, idx) => (
+             {filteredAttendanceData.map((item, idx) => (
                 <div key={idx} className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
                    <div className="p-6 border-b border-gray-50 bg-gray-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
@@ -271,7 +303,10 @@ function KehadiranSiswaShow() {
                 <FaHistory />
              </div>
              <h3 className="text-2xl font-black text-gray-800 mb-2">Belum Ada Data</h3>
-             <p className="text-gray-500 font-medium max-w-sm mx-auto">Tidak ada jadwal atau rekaman kehadiran yang ditemukan pada tanggal {selectedDate}</p>
+             <p className="text-gray-500 font-medium max-w-sm mx-auto">
+               Tidak ada jadwal atau rekaman kehadiran pada tanggal {selectedDate}
+               {selectedSubject !== 'all' ? ' untuk mata pelajaran terpilih' : ''}
+             </p>
              <button 
                 onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
                 className="mt-8 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"

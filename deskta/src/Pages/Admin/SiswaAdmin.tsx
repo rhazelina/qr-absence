@@ -102,15 +102,22 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   const [totalPages, setTotalPages] = useState(1);
   const [, setTotalStudentsCount] = useState(0);
 
+  // Import Preview State
+  const [importPreviewData, setImportPreviewData] = useState<any[]>([]);
+  const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
+  const [importRowErrors, setImportRowErrors] = useState<{[key: number]: string[]}>({});
+
   // Initial Data Fetch
   useEffect(() => {
     fetchMasterData();
   }, []);
 
-  // Fetch students when search or page changes
+  // Fetch students when filters or page changes
   useEffect(() => {
+    const controller = new AbortController();
     fetchStudents();
-  }, [searchValue, pageIndex]);
+    return () => controller.abort();
+  }, [searchValue, pageIndex, selectedJurusan, selectedKelas]);
 
   const fetchMasterData = async () => {
     try {
@@ -131,7 +138,9 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       const params = {
         page: pageIndex,
         per_page: itemsPerPage,
-        search: searchValue
+        search: searchValue,
+        major_id: selectedJurusan || undefined,
+        class_id: selectedKelas || undefined
       };
       
       const response = await studentService.getStudents(params as any);
@@ -162,19 +171,16 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         }
       }
       
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError' || err.message === 'canceled') return;
       console.error('Error fetching students:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filtered Data for Display
-  const filteredData = students.filter((item) => {
-    const matchJurusan = selectedJurusan ? item.jurusan === selectedJurusan || item.jurusanId === selectedJurusan : true;
-    const matchKelas = selectedKelas ? item.kelas === selectedKelas || item.kelasId === selectedKelas : true;
-    return matchJurusan && matchKelas;
-  });
+  // Remote filtering handles this now
+  const filteredData = students;
 
   // Validation
   const validateField = (name: string, value: string) => {
@@ -319,60 +325,121 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     fileInputRef.current?.click();
   };
 
-  const handleDownloadFormatExcel = () => {
-    const headers = ['Nama', 'NISN', 'NIS', 'Username', 'Password', 'Email', 'Alamat', 'Gender', 'ClassID', 'PengurusKelas', 'Telepon', 'Kontak'];
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const bstr = evt.target?.result;
-          const wb = XLSX.read(bstr, { type: 'binary' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
-          const data: any[] = XLSX.utils.sheet_to_json(ws);
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          if (data.length === 0) {
-            alert('File kosong atau format tidak sesuai.');
-            return;
-          }
+        console.log('Raw data from Excel:', jsonData);
 
-          const mappedItems = data.map(row => ({
-            name: row.Nama || row.name,
-            username: row.Username || row.username,
+        const mappedData = jsonData.map((row: any) => {
+          // Sanitization helpers
+          const sanitizeGender = (val: string) => {
+            if (!val) return 'L';
+            const v = val.toString().toUpperCase();
+            if (v.startsWith('P')) return 'P';
+            return 'L';
+          };
+
+          const sanitizeBoolean = (val: any) => {
+            if (val === undefined || val === null) return false;
+            const v = val.toString().toLowerCase();
+            return v === '1' || v === 'true' || v === 'ya' || v === 'yes';
+          };
+
+          return {
+            name: row.Nama || row.name || row.__EMPTY || '',
+            username: row.Username || row.username || '',
             email: row.Email || row.email || null,
-            password: row.Password || row.password || 'password123',
-            nisn: String(row.NISN || row.nisn),
-            nis: String(row.NIS || row.nis),
-            gender: row.Gender || row.gender || 'L',
-            address: row.Alamat || row.address,
-            class_id: row.ClassID || row.class_id || row.KelasID,
-            is_class_officer: row.PengurusKelas || row.is_class_officer || false,
-            phone: row.Telepon || row.phone || null,
-            contact: row.Kontak || row.contact || null,
-          }));
+            password: row.Password || row.password || null,
+            nisn: (row.NISN || row.nisn || row.__EMPTY_1 || '').toString(),
+            nis: (row.NIS || row.nis || row.nisn || row.__EMPTY_1 || '').toString(),
+            gender: sanitizeGender(row['Jenis Kelamin'] || row.gender || row.Gender || row.JK),
+            address: row.Alamat || row.address || '',
+            class_id: row.Kelas || row.class_id || row.KELAS || row.ClassID || row.__EMPTY_2 || '', // Can be name or ID
+            is_class_officer: sanitizeBoolean(row['Pengurus Kelas'] || row.is_class_officer || row.PengurusKelas || row.Pengurus_Kelas),
+            phone: (row.Telepon || row.phone || row.hp || row.Mobile || null)?.toString(),
+            contact: row.Kontak || row.contact || null
+          };
+        });
 
-          setLoading(true);
-          const result = await studentService.importStudents(mappedItems);
-          alert(`Berhasil mengimpor ${result.created} siswa.`);
-          fetchStudents();
-        } catch (error: any) {
-          console.error('Import failed:', error);
-          alert('Gagal mengimpor data: ' + (error.message || 'Lengkapi data wajib.'));
-        } finally {
-          setLoading(false);
-          e.target.value = '';
-        }
+        console.log('Mapped data ready for preview:', mappedData);
+        
+        setImportPreviewData(mappedData);
+        setIsImportPreviewOpen(true);
+        if (event.target) event.target.value = ''; // Clear the file input
       };
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     }
+  };
+
+  const handleCommitImport = async () => {
+    try {
+      setLoading(true);
+      setImportRowErrors({});
+      const result = await studentService.importStudents(importPreviewData);
+      
+      if (result.total_rows !== undefined) {
+        alert(`Berhasil mengimpor ${result.success_count} data siswa dari total ${result.total_rows} baris.`);
+      } else {
+        alert(`Berhasil mengimpor data siswa.`);
+      }
+      
+      setIsImportPreviewOpen(false);
+      setImportPreviewData([]);
+      fetchStudents();
+    } catch (error: any) {
+      console.error('Import failed:', error);
+      
+      const errData = error.data || error;
+      if (errData && errData.errors && Array.isArray(errData.errors)) {
+        const rowErrors: {[key: number]: string[]} = {};
+        
+        errData.errors.forEach((err: any) => {
+          if (!rowErrors[err.row]) rowErrors[err.row] = [];
+          rowErrors[err.row].push(err.message);
+        });
+        
+        if (Object.keys(rowErrors).length > 0) {
+          setImportRowErrors(rowErrors);
+          alert(`Gagal mengimpor.\nTotal Baris: ${errData.total_rows}\nBerhasil: ${errData.success_count}\nGagal: ${errData.failed_count}\n\nAda kesalahan data pada baris yang ditandai merah.`);
+          return;
+        }
+      }
+      
+      alert('Gagal mengimpor data: ' + (error.message || 'Terjadi kesalahan sistem.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadFormatExcel = () => {
+    const format = [
+      {
+        'Nama': 'Ahmad Siswa',
+        'Username': 'ahmad123',
+        'Email': 'ahmad@example.com',
+        'Password': '',
+        'NISN': '0012345678',
+        'NIS': '12345',
+        'Jenis Kelamin': 'L',
+        'Alamat': 'Jl. Contoh No. 123',
+        'Kelas': 'XII RPL 2',
+        'Pengurus Kelas': 'Tidak',
+        'Telepon': '08123456789',
+        'Kontak': 'Ibu Ahmad'
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(format);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Format Import Siswa');
+    XLSX.writeFile(wb, 'Format_Import_Siswa.xlsx');
   };
 
   const handleExportPDF = () => {
@@ -957,6 +1024,102 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                     <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFFFFF', cursor: 'pointer' }}>Simpan</button>
                  </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* IMPORT PREVIEW MODAL */}
+      {isImportPreviewOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#0B1221', borderRadius: '16px', padding: '24px',
+            maxWidth: '1000px', width: '100%', maxHeight: '90vh', display: 'flex',
+            flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#FFFFFF' }}>
+                Preview Import Siswa ({importPreviewData.length} data)
+              </h2>
+              <button 
+                onClick={() => setIsImportPreviewOpen(false)} 
+                style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}
+              >
+                <X size={18} color="#FFFFFF" />
+              </button>
+            </div>
+            
+            <div style={{ 
+              backgroundColor: '#FFFFFF', 
+              borderRadius: '10px', 
+              padding: '0', 
+              overflowY: 'auto',
+              flex: 1
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, backgroundColor: '#F3F4F6' }}>
+                  <tr>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Nama</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>NISN</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Username</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Kelas</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Gender</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {importPreviewData.map((row, idx) => {
+                    const hasError = importRowErrors[idx];
+                    return (
+                      <tr key={idx} style={{ 
+                        borderBottom: '1px solid #F3F4F6',
+                        backgroundColor: hasError ? '#FEF2F2' : 'transparent'
+                      }}>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', position: 'relative' }}>
+                          {hasError && (
+                            <div title={hasError.join(', ')} style={{ position: 'absolute', left: 2, top: '50%', transform: 'translateY(-50%)' }}>
+                              <div style={{ width: 4, height: 4, borderRadius: '50%', backgroundColor: '#EF4444' }} />
+                            </div>
+                          )}
+                          {row.name}
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('NISN')) ? '#EF4444' : 'inherit' }}>{row.nisn}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('Username')) ? '#EF4444' : 'inherit' }}>{row.username}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('Kelas')) ? '#EF4444' : 'inherit' }}>{row.class_id}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px' }}>{row.gender}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setIsImportPreviewOpen(false)} 
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#FFFFFF', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleCommitImport} 
+                disabled={loading}
+                style={{ 
+                  padding: '8px 16px', 
+                  borderRadius: '6px', 
+                  border: 'none', 
+                  background: '#10B981', 
+                  color: '#FFFFFF', 
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1,
+                  fontWeight: 600
+                }}
+              >
+                {loading ? 'Mengimpor...' : 'Konfirmasi & Impor'}
+              </button>
             </div>
           </div>
         </div>

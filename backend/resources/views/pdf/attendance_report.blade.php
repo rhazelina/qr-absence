@@ -28,10 +28,10 @@
         <tbody>
             @foreach($attendances as $attendance)
             <tr>
-                <td>{{ $attendance->student->user->name ?? 'N/A' }}</td>
-                <td>{{ $attendance->schedule->class->name ?? 'N/A' }}</td>
+                <td>{{ optional($attendance->student?->user)->name ?? 'N/A' }}</td>
+                <td>{{ optional($attendance->schedule?->class)->name ?? 'N/A' }}</td>
                 <td>{{ $attendance->status }}</td>
-                <td>{{ $attendance->checked_in_at ? $attendance->checked_in_at->format('H:i') : '-' }}</td>
+                <td>{{ $attendance->checked_in_at ? \Carbon\Carbon::parse($attendance->checked_in_at)->format('H:i') : '-' }}</td>
             </tr>
             @endforeach
         </tbody>

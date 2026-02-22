@@ -63,7 +63,9 @@ export default function KehadiranGuru({
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     fetchData();
+    return () => controller.abort();
   }, [selectedTanggal]);
 
   const fetchData = async () => {
@@ -74,7 +76,8 @@ export default function KehadiranGuru({
         masterService.getTimeSlots(),
         attendanceService.getTeachersDailyAttendance(selectedTanggal)
       ]);
-
+      
+      // ... (rest of the logic remains the same)
       const timeSlots: TimeSlot[] = timeSlotsResponse.data || [];
       // Sort time slots by start_time
       timeSlots.sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -130,7 +133,8 @@ export default function KehadiranGuru({
       });
 
       setRows(newRows);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError' || error.message === 'canceled') return;
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);

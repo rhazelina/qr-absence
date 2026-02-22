@@ -1,135 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './DataGuru.css';
+import React, { useState, useEffect, useRef } from 'react';
+import apiService from '../../utils/api';
+import Pagination from '../../components/Common/Pagination';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
-// API Configuration
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-// API Service
-const apiService = {
-  // Get all teachers
-  getTeachers: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch teachers');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching teachers:', error);
-      return { data: [] };
-    }
-  },
-
-  // Get available classes for homeroom teacher
-  getAvailableClasses: async (teacherId = null) => {
-    try {
-      const url = teacherId 
-        ? `${API_BASE_URL}/classes/available?teacher_id=${teacherId}`
-        : `${API_BASE_URL}/classes/available`;
-        
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch available classes');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching available classes:', error);
-      return { data: [] };
-    }
-  },
-
-  // Add teacher
-  addTeacher: async (teacherData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(teacherData)
-      });
-      if (!response.ok) throw new Error('Failed to add teacher');
-      return await response.json();
-    } catch (error) {
-      console.error('Error adding teacher:', error);
-      throw error;
-    }
-  },
-
-  // Update teacher
-  updateTeacher: async (id, teacherData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(teacherData)
-      });
-      if (!response.ok) throw new Error('Failed to update teacher');
-      return await response.json();
-    } catch (error) {
-      console.error('Error updating teacher:', error);
-      throw error;
-    }
-  },
-
-  // Delete teacher
-  deleteTeacher: async (id) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to delete teacher');
-      return await response.json();
-    } catch (error) {
-      console.error('Error deleting teacher:', error);
-      throw error;
-    }
-  },
-
-  // Import teachers (bulk)
-  importTeachers: async (teachersData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/teachers/import`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ teachers: teachersData })
-      });
-      if (!response.ok) throw new Error('Failed to import teachers');
-      return await response.json();
-    } catch (error) {
-      console.error('Error importing teachers:', error);
-      throw error;
-    }
-  }
-};
+import './DataGuru.css';
 
 function DataGuru() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -139,7 +15,7 @@ function DataGuru() {
   const [availableClasses, setAvailableClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingTeacher, setEditingTeacher] = useState(null);
-  
+
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
 
@@ -196,18 +72,63 @@ function DataGuru() {
     jurusan: 'TKJ'
   });
 
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    lastPage: 1,
+    total: 0,
+    from: 0,
+    to: 0
+  });
+
   // Load teachers from API
   useEffect(() => {
     loadTeachers();
-  }, []);
+  }, [pagination.currentPage]);
+
+  // Handle search with debounce
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (pagination.currentPage !== 1) {
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+      } else {
+        loadTeachers();
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const loadTeachers = async () => {
     setLoading(true);
-    const result = await apiService.getTeachers();
-    if (result.data) {
-      setTeachers(result.data);
+    try {
+      const params = {
+        page: pagination.currentPage,
+        search: searchTerm,
+        per_page: 15
+      };
+
+      const result = await apiService.getTeachers(params);
+      if (result.data) {
+        setTeachers(result.data);
+        if (result.meta) {
+          setPagination(prev => ({
+            ...prev,
+            currentPage: result.meta.current_page,
+            lastPage: result.meta.last_page,
+            total: result.meta.total,
+            from: result.meta.from,
+            to: result.meta.to
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading teachers:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
   };
 
   // Load available classes when modal opens for homeroom teacher
@@ -219,24 +140,7 @@ function DataGuru() {
     }
   };
 
-  // Filter & Search
-  const getFilteredTeachers = () => {
-    return teachers.filter(teacher => {
-      const searchLower = searchTerm.toLowerCase();
-      const matchSearch = searchTerm === '' || 
-        teacher.name?.toLowerCase().includes(searchLower) ||
-        teacher.code?.toLowerCase().includes(searchLower) ||
-        teacher.role?.toLowerCase().includes(searchLower) ||
-        (teacher.subject_name && teacher.subject_name.toLowerCase().includes(searchLower)) ||
-        (teacher.waka_field && teacher.waka_field.toLowerCase().includes(searchLower)) ||
-        (teacher.major_expertise && teacher.major_expertise.toLowerCase().includes(searchLower)) ||
-        (teacher.homeroom_class?.name && teacher.homeroom_class.name.toLowerCase().includes(searchLower));
-
-      return matchSearch;
-    });
-  };
-
-  const filteredTeachers = getFilteredTeachers();
+  const filteredTeachers = teachers;
 
   // Reset Filter
   const handleResetFilter = () => {
@@ -246,7 +150,7 @@ function DataGuru() {
   // Add or Update Teacher
   const handleAddTeacher = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.kodeGuru.trim()) {
       alert('Kode Guru harus diisi!');
       return;
@@ -292,10 +196,10 @@ function DataGuru() {
   // Edit Teacher
   const handleEditTeacher = async (teacher) => {
     setEditingTeacher(teacher);
-    
+
     let kelasValue = teacher.grade || 'X';
     let jurusanValue = teacher.major || 'TKJ';
-    
+
     setFormData({
       kodeGuru: teacher.code,
       namaGuru: teacher.name,
@@ -306,9 +210,9 @@ function DataGuru() {
       kelas: kelasValue,
       jurusan: jurusanValue
     });
-    
+
     setIsModalOpen(true);
-    
+
     // Load available classes if role is Wali Kelas
     if (teacher.role === 'Wali Kelas') {
       await loadAvailableClasses();
@@ -386,12 +290,12 @@ function DataGuru() {
   // Export to Excel
   const handleExportToExcel = () => {
     const dataToExport = filteredTeachers.length > 0 ? filteredTeachers : teachers;
-    
+
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
       return;
     }
-    
+
     const excelData = dataToExport.map((teacher, index) => {
       let data = {
         'No': index + 1,
@@ -436,17 +340,17 @@ function DataGuru() {
   // Export to PDF
   const handleExportToPDF = () => {
     const dataToExport = filteredTeachers.length > 0 ? filteredTeachers : teachers;
-    
+
     if (dataToExport.length === 0) {
       alert('Tidak ada data untuk diekspor!');
       return;
     }
 
     const doc = new jsPDF();
-    
+
     doc.setFontSize(18);
     doc.text('Data Guru', 14, 22);
-    
+
     doc.setFontSize(10);
     doc.text(`Tanggal: ${new Date().toLocaleDateString('id-ID')}`, 14, 30);
 
@@ -504,10 +408,15 @@ function DataGuru() {
   const handleDownloadTemplate = () => {
     const templateData = [
       {
-        'Kode Guru': 'GR001',
-        'Nama Guru': 'Contoh Nama Guru',
-        'Jabatan': 'Guru/Waka/Kapro/Wali Kelas',
-        'Keterangan': 'Mapel/Bidang Waka/Konsentrasi/Kelas'
+        'name': 'Budi Santoso',
+        'username': 'budi123',
+        'email': 'budi@example.com',
+        'password': 'password123',
+        'nip': '198001012024011001',
+        'phone': '081234567890',
+        'contact': '',
+        'homeroom_class_id': '',
+        'subject': 'Matematika'
       }
     ];
 
@@ -515,16 +424,9 @@ function DataGuru() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Data Guru');
 
-    worksheet['!cols'] = [
-      { wch: 15 },
-      { wch: 30 },
-      { wch: 25 },
-      { wch: 20 }
-    ];
-
-    const fileName = 'format-data-guru.xlsx';
+    const fileName = 'Format_Data_Guru.xlsx';
     XLSX.writeFile(workbook, fileName);
-    alert('Format Excel berhasil diunduh!');
+    alert('Format Excel berhasil diunduh! Pastikan mengisi homeroom_class_id sesuai ID kelas di database (jika wali kelas).');
   };
 
   // Import from Excel
@@ -539,7 +441,7 @@ function DataGuru() {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
         if (jsonData.length === 0) {
           alert('File Excel kosong!');
@@ -547,52 +449,42 @@ function DataGuru() {
         }
 
         const importedTeachers = jsonData
-          .map((row, index) => {
-            const kodeGuru = String(
-              row['Kode Guru'] || row['kodeGuru'] || row['Kode'] || ''
-            ).trim();
-
-            const namaGuru = String(
-              row['Nama Guru'] || row['namaGuru'] || row['Nama'] || ''
-            ).trim();
-
-            const mataPelajaran = String(
-              row['Mata Pelajaran'] || row['mataPelajaran'] || row['Mapel'] || ''
-            ).trim();
-
-            const jabatan = String(
-              row['Jabatan'] || row['jabatan'] || row['Role'] || ''
-            ).trim();
-
-            if (!kodeGuru || !namaGuru || !jabatan) {
-              throw new Error(`Baris ${index + 2}: Data tidak lengkap (Kode Guru, Nama Guru, dan Jabatan wajib diisi)`);
-            }
-
-            return {
-              code: kodeGuru,
-              name: namaGuru,
-              role: jabatan,
-              subject: jabatan === 'Guru' ? mataPelajaran : undefined
-            };
-          });
+          .map((row) => ({
+            name: String(row['name'] || '').trim(),
+            username: String(row['username'] || '').trim(),
+            email: String(row['email'] || '').trim() || null,
+            password: String(row['password'] || '').trim() || null,
+            nip: String(row['nip'] || '').trim(),
+            phone: String(row['phone'] || '').trim() || null,
+            contact: String(row['contact'] || '').trim() || null,
+            homeroom_class_id: parseInt(row['homeroom_class_id'], 10) || null,
+            subject: String(row['subject'] || '').trim() || null
+          }));
 
         const result = await apiService.importTeachers(importedTeachers);
-        
-        if (result.data) {
-          const { imported, duplicates } = result.data;
-          
-          let message = `✅ Berhasil mengimpor ${imported} data guru.`;
-          
-          if (duplicates && duplicates.length > 0) {
-            message += `\n\n❌ ${duplicates.length} data ditolak karena Kode Guru sudah ada:\n${duplicates.join(', ')}`;
-          }
-          
-          alert(message);
+
+        if (result.total_rows !== undefined) {
+          alert(`✅ Berhasil mengimpor ${result.success_count} data guru dari total ${result.total_rows} baris.`);
+          await loadTeachers();
+        } else {
+          alert(`✅ Berhasil mengimpor data guru.`);
           await loadTeachers();
         }
 
       } catch (error) {
-        alert('❌ Gagal membaca file Excel!\n\n' + error.message);
+        if (error.data && error.data.errors) {
+          const { total_rows, success_count, failed_count, errors } = error.data;
+          let message = `❌ Impor gagal.\n\nTotal Baris: ${total_rows}\nBerhasil: ${success_count}\nGagal: ${failed_count}\n\nDetail Error:\n`;
+          errors.slice(0, 10).forEach(err => {
+            message += `- Baris ${err.row}, Kolom ${err.column}: ${err.message}\n`;
+          });
+          if (errors.length > 10) {
+            message += `... dan ${errors.length - 10} error lainnya.`;
+          }
+          alert(message);
+        } else {
+          alert('❌ Terjadi kesalahan saat mengimpor data!\n\n' + error.message);
+        }
         console.error(error);
       }
     };
@@ -649,10 +541,10 @@ function DataGuru() {
     return (
       <div className="guru-data-container">
         <NavbarAdmin />
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           minHeight: '60vh',
           fontSize: '18px',
           color: '#6b7280'
@@ -670,17 +562,17 @@ function DataGuru() {
 
       <div className="guru-table-wrapper">
         <div className="guru-filter-box">
-          <input 
-            type="text" 
-            placeholder="Cari Guru (Nama/Kode/Jabatan)..." 
-            className="guru-search" 
+          <input
+            type="text"
+            placeholder="Cari Guru (Nama/Kode/Jabatan)..."
+            className="guru-search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <div className="guru-select-group">
             {searchTerm && (
-              <button 
-                className="guru-btn-reset-filter" 
+              <button
+                className="guru-btn-reset-filter"
                 onClick={handleResetFilter}
                 title="Reset Filter"
               >
@@ -688,8 +580,8 @@ function DataGuru() {
               </button>
             )}
 
-            <button 
-              className="guru-btn-tambah" 
+            <button
+              className="guru-btn-tambah"
               onClick={() => {
                 setEditingTeacher(null);
                 setIsModalOpen(true);
@@ -697,16 +589,16 @@ function DataGuru() {
             >
               Tambahkan
             </button>
-            
+
             <div style={{ position: 'relative', display: 'inline-block' }}>
-              <button 
+              <button
                 ref={exportButtonRef}
-                className="guru-btn-export" 
+                className="guru-btn-export"
                 onClick={() => setShowExportMenu(!showExportMenu)}
               >
                 Ekspor ▼
               </button>
-              
+
               {showExportMenu && (
                 <div style={{
                   position: 'absolute',
@@ -768,15 +660,15 @@ function DataGuru() {
               onChange={handleImportFromExcel}
               style={{ display: 'none' }}
             />
-            <button 
-              className="guru-btn-import" 
+            <button
+              className="guru-btn-import"
               onClick={() => fileInputRef.current?.click()}
             >
               Impor
             </button>
 
-            <button 
-              className="guru-btn-download-template" 
+            <button
+              className="guru-btn-download-template"
               onClick={handleDownloadTemplate}
             >
               <DownloadIcon /> Format Excel
@@ -785,9 +677,9 @@ function DataGuru() {
         </div>
 
         {searchTerm && (
-          <div style={{ 
-            padding: '10px 20px', 
-            backgroundColor: '#e3f2fd', 
+          <div style={{
+            padding: '10px 20px',
+            backgroundColor: '#e3f2fd',
             borderLeft: '4px solid #2196f3',
             marginBottom: '15px',
             borderRadius: '4px'
@@ -809,8 +701,8 @@ function DataGuru() {
             </tr>
           </thead>
           <tbody>
-            {filteredTeachers.length > 0 ? (
-              filteredTeachers.map((teacher, index) => {
+            {teachers.length > 0 ? (
+              teachers.map((teacher, index) => {
                 let detail = '';
                 if (teacher.role === 'Guru') {
                   detail = teacher.subject || '';
@@ -819,31 +711,33 @@ function DataGuru() {
                 } else if (teacher.role === 'Kapro') {
                   detail = teacher.major_expertise || '';
                 } else if (teacher.role === 'Wali Kelas') {
-                  detail = `${teacher.grade || ''} ${teacher.major || ''}`;
+                  detail = teacher.homeroom_class?.name || (teacher.grade && teacher.major ? `${teacher.grade} ${teacher.major}` : '');
                 }
 
                 return (
                   <tr key={teacher.id}>
-                    <td>{index + 1}</td>
+                    <td>{pagination.from + index}</td>
                     <td>{teacher.code}</td>
                     <td>{teacher.name}</td>
                     <td>{teacher.role}</td>
                     <td>{detail}</td>
                     <td className="guru-aksi-cell">
-                      <button 
-                        className="guru-aksi guru-edit" 
-                        onClick={() => handleEditTeacher(teacher)}
-                        title="Edit"
-                      >
-                        <EditIcon />
-                      </button>
-                      <button 
-                        className="guru-aksi guru-hapus" 
-                        onClick={() => handleDeleteTeacher(teacher.id)}
-                        title="Hapus"
-                      >
-                        <DeleteIcon />
-                      </button>
+                      <div className="aksi-container">
+                        <button
+                          className="guru-aksi guru-edit"
+                          onClick={() => handleEditTeacher(teacher)}
+                          title="Edit"
+                        >
+                          <EditIcon />
+                        </button>
+                        <button
+                          className="guru-aksi guru-hapus"
+                          onClick={() => handleDeleteTeacher(teacher.id)}
+                          title="Hapus"
+                        >
+                          <DeleteIcon />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -851,14 +745,21 @@ function DataGuru() {
             ) : (
               <tr>
                 <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
-                  {searchTerm 
-                    ? 'Tidak ada data yang sesuai dengan pencarian' 
-                    : 'Tidak ada data guru'}
+                  {loading ? 'Memuat data...' : (searchTerm ? 'Tidak ada data yang sesuai dengan pencarian' : 'Tidak ada data guru')}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+
+        <Pagination
+          currentPage={pagination.currentPage}
+          lastPage={pagination.lastPage}
+          onPageChange={handlePageChange}
+          total={pagination.total}
+          from={pagination.from}
+          to={pagination.to}
+        />
       </div>
 
       {/* MODAL */}

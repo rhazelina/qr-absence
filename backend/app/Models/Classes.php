@@ -25,22 +25,24 @@ class Classes extends Model
 
     public function getNameAttribute(): string
     {
-        return trim("{$this->grade_roman} {$this->label}");
+        $majorCode = $this->major?->code ?? '';
+
+        return trim("{$this->grade_roman} {$majorCode} {$this->label}");
     }
 
-    // public function getGradeRomanAttribute(): string
-    // {
-    //     $map = [
-    //         '10' => 'X',
-    //         '11' => 'XI',
-    //         '12' => 'XII',
-    //         'X' => 'X',
-    //         'XI' => 'XI',
-    //         'XII' => 'XII',
-    //     ];
+    public function getGradeRomanAttribute(): string
+    {
+        $map = [
+            '10' => 'X',
+            '11' => 'XI',
+            '12' => 'XII',
+            'X' => 'X',
+            'XI' => 'XI',
+            'XII' => 'XII',
+        ];
 
-    //     return $map[$this->grade] ?? $this->grade;
-    // }
+        return $map[$this->grade] ?? $this->grade;
+    }
 
     // Siswa untuk
     public function students(): HasMany

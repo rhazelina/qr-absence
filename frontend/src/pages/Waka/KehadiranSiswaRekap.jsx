@@ -186,10 +186,10 @@ export default function KehadiranSiswaRekap() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <div className="kehadiran-siswa-rekap-root min-h-screen bg-gray-50 pb-12">
       <NavbarWaka />
 
-      <div className="pt-24 px-4 max-w-7xl mx-auto">
+      <div className="kehadiran-siswa-rekap-container">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap">
             <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
@@ -228,7 +228,7 @@ export default function KehadiranSiswaRekap() {
                       <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
                       <input 
                         type="date"
-                        className="pl-11 pr-4 py-2 bg-transparent border-none focus:ring-0 font-bold text-gray-700 text-sm"
+                        className="kehadiran-siswa-rekap-date-input pl-11 pr-4 py-2 bg-transparent border-none focus:ring-0 font-bold text-gray-700 text-sm"
                         value={selectedDateFrom}
                         onChange={(e) => setSelectedDateFrom(e.target.value)}
                       />
@@ -238,7 +238,7 @@ export default function KehadiranSiswaRekap() {
                       <FaCalendarAlt className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500" />
                       <input 
                         type="date"
-                        className="pl-11 pr-4 py-2 bg-transparent border-none focus:ring-0 font-bold text-gray-700 text-sm"
+                        className="kehadiran-siswa-rekap-date-input pl-11 pr-4 py-2 bg-transparent border-none focus:ring-0 font-bold text-gray-700 text-sm"
                         value={selectedDateTo}
                         onChange={(e) => setSelectedDateTo(e.target.value)}
                       />
@@ -284,9 +284,9 @@ export default function KehadiranSiswaRekap() {
         </div>
 
         {/* TABLE CONTENT */}
-        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="kehadiran-siswa-rekap-table-wrap bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
            <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="kehadiran-siswa-rekap-table w-full">
                  <thead>
                     <tr className="bg-gray-50/50">
                        <th className="px-6 py-5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Siswa</th>
@@ -361,7 +361,7 @@ export default function KehadiranSiswaRekap() {
       {showDetailModal && selectedStudent && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDetailModal(false)} />
-           <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+           <div className="kehadiran-siswa-rekap-modal-content relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="p-8 pb-4 flex items-center justify-between">
                  <div className="flex items-center gap-5">
                     <div className="w-16 h-16 rounded-[1.5rem] bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200 text-2xl uppercase">
@@ -400,8 +400,8 @@ export default function KehadiranSiswaRekap() {
                          })}
                       </div>
 
-                      <div className="bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden">
-                         <table className="w-full text-left">
+                      <div className="kehadiran-siswa-rekap-modal-table-wrap bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden">
+                         <table className="kehadiran-siswa-rekap-modal-table w-full text-left">
                             <thead>
                                <tr className="bg-white/50">
                                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tanggal</th>

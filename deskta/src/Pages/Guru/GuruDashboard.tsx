@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { scheduleService } from "../../services/scheduleService";
+import { attendanceService } from "../../services/attendanceService";
 import GuruLayout from "../../component/Guru/GuruLayout";
 import DetailJadwalGuru from "./DetailJadwalGuru";
 import InputAbsenGuru from "./InputManualGuru";
@@ -427,6 +428,18 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
     setActiveModal(null);
   };
 
+  const handleScanSuccess = async (text: string) => {
+    if (!selectedSchedule) return;
+    try {
+      await attendanceService.scanStudent(text, selectedSchedule.id);
+      alert("Berhasil mencatat kehadiran siswa!");
+      setActiveModal(null);
+      setCurrentPage("input-manual");
+    } catch (error: any) {
+      alert(error.message || "Gagal mencatat kehadiran.");
+    }
+  };
+
   // ========== RENDER PAGES ==========
   const renderPage = () => {
     switch (currentPage) {
@@ -847,6 +860,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
               onPilihQR={handlePilihQR}
               onPilihManual={handlePilihManual}
               onTidakBisaMengajar={handleTidakBisaMengajar}
+              onScanSuccess={handleScanSuccess}
             />
 
             <TidakBisaMengajar

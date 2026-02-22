@@ -7,7 +7,7 @@ import { authService } from "../services/authService";
 // ==================== INTERFACE DEFINITIONS ====================
 interface LoginPageProps {
   role: string | null;
-  onLogin: (role: string, name: string, phone: string, profile?: any) => void;
+  onLogin: (role: string, name: string, phone: string, profile?: any, extraData?: { user_type?: string, is_class_officer?: boolean }) => void;
   onBack: () => void;
 }
 
@@ -40,17 +40,32 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
     phone: "",
   });
 
-  const normalizeRole = (rawRole?: string, userType?: string, isClassOfficer?: boolean) => {
-    const normalized = (rawRole || "").toLowerCase();
-    if (normalized === "walikelas") return "wakel";
-    if (["admin", "guru", "siswa", "pengurus_kelas", "waka", "wakel"].includes(normalized)) {
-      return normalized;
+  const normalizeRole = (backendRole?: string, userType?: string, isClassOfficer?: boolean) => {
+    const b = (backendRole || "").toLowerCase();
+    const t = (userType || "").toLowerCase();
+    const s = (role || "").toLowerCase(); // selection role from prop
+
+    // 1. Honor selection if it's a valid base role for the person's status
+    if (s === "guru" && (b === "wakel" || b === "walikelas" || b === "guru")) return "guru";
+    if (s === "siswa" && (b === "pengurus_kelas" || b === "siswa")) return "siswa";
+
+    // 2. High priority: backend explicit specialized roles (if no specific selection above)
+    if (b === "wakel" || b === "walikelas") return "wakel";
+    if (b === "pengurus_kelas") return "pengurus_kelas";
+    if (b === "waka" || b === "admin") return b;
+
+    // 3. Type-based logic (trusting backend data)
+    if (t === "student") {
+      return isClassOfficer ? "pengurus_kelas" : "siswa";
+    }
+    if (t === "teacher") {
+      return (b === "wakel" || b === "walikelas") ? "wakel" : "guru";
     }
 
-    const type = (userType || "").toLowerCase();
-    if (type === "student") return isClassOfficer ? "pengurus_kelas" : "siswa";
-    if (type === "teacher") return "guru";
-    if (type === "admin") return "admin";
+    // 3. Last fallback
+    const valid = ["admin", "waka", "wakel", "guru", "siswa", "pengurus_kelas"];
+    if (valid.includes(b)) return b;
+    if (valid.includes(s)) return s;
 
     return role || "siswa";
   };
@@ -117,7 +132,8 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
           normalizeRole(user.role, user.user_type, user.is_class_officer),
           user.name,
           user.profile?.nis || user.profile?.nip || "",
-          user.profile
+          user.profile,
+          { user_type: user.user_type, is_class_officer: user.is_class_officer }
         );
       } else {
         setError("Gagal masuk: Data tidak valid");

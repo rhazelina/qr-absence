@@ -89,6 +89,7 @@ const Data = () => {
 
     } catch (error) {
       console.error("Failed to fetch data", error);
+      // alert("Gagal mengambil data homeroom.");
     } finally {
       setLoading(false);
     }

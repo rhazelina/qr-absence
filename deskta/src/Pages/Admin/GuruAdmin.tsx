@@ -437,11 +437,28 @@ export default function GuruAdmin({
 
           setLoading(true);
           const result = await teacherService.importTeachers(mappedItems);
-          alert(`Berhasil mengimpor ${result.created} guru.`);
+          if (result.total_rows !== undefined) {
+             alert(`Berhasil mengimpor ${result.success_count} data guru dari total ${result.total_rows} baris.`);
+          } else {
+             alert(`Berhasil mengimpor data guru.`);
+          }
           fetchTeachers();
         } catch (error: any) {
+          const errData = error.data || error;
+          if (errData && errData.errors && Array.isArray(errData.errors)) {
+            const { total_rows, success_count, failed_count, errors } = errData;
+            let message = `❌ Impor gagal.\n\nTotal Baris: ${total_rows}\nBerhasil: ${success_count}\nGagal: ${failed_count}\n\nDetail Error:\n`;
+            errors.slice(0, 10).forEach((err: any) => {
+              message += `- Baris ${err.row}, Kolom ${err.column}: ${err.message}\n`;
+            });
+            if (errors.length > 10) {
+              message += `... dan ${errors.length - 10} error lainnya.`;
+            }
+            alert(message);
+          } else {
+            alert('❌ Terjadi kesalahan saat mengimpor data!\n\n' + error.message);
+          }
           console.error('Import failed:', error);
-          alert('Gagal mengimpor data: ' + (error.message || 'Lengkapi data wajib.'));
         } finally {
           setLoading(false);
           e.target.value = '';

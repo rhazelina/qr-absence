@@ -1,9 +1,8 @@
 .jadwal-siswa-index-root {
-  padding-top: 100px; 
-  padding-left: 3rem;
-  padding-right: 3rem;
-  padding-bottom: 3rem;
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
   min-height: 100vh;
+  max-width: var(--web-content-max);
+  margin: 0 auto;
 }
 
 
@@ -17,15 +16,36 @@
   font-weight: bold;
   color: white;
   margin-bottom: 0.5rem;
-  text-shadow: 0 2px 4px rgba(0,0,0,.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .3);
+}
+
+.jadwal-siswa-index-root {
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
+  min-height: 100vh;
+  max-width: var(--web-content-max);
+  margin: 0 auto;
+}
+
+
+/* HEADER */
+.jadwal-siswa-index-header {
+  margin-bottom: 1.5rem;
+}
+
+.jadwal-siswa-index-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, .3);
 }
 
 .jadwal-siswa-index-subtitle {
-  color: rgba(255,255,255,.9);
+  color: rgba(255, 255, 255, .9);
   font-size: 1rem;
 }
 
-/* Filter Card - lebih dekat */
+/* Filter Card */
 .filter-card {
   background: white;
   border-radius: 16px;
@@ -46,8 +66,26 @@
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr 1fr auto;
+  /* Major, Class, Button */
   gap: 24px;
+  align-items: end;
+  /* Align items to the bottom */
+}
+
+@media (max-width: 768px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .jadwal-siswa-index-btn-add {
+    width: 100%;
+  }
 }
 
 .filter-group {
@@ -73,7 +111,7 @@
 }
 
 .filter-select {
-  min-width: 100%;
+  width: 100%;
   padding: 12px 16px;
   padding-right: 40px;
   border-radius: 8px;
@@ -81,7 +119,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   appearance: none;
-  color: black;
+  color: #1f2937;
   border: 2px solid #e5e7eb;
   background: #f9fafb;
 }
@@ -107,7 +145,7 @@
   background: white;
   border-radius: 1rem;
   overflow: hidden;
-  box-shadow: 0 15px 30px rgba(0,0,0,.12);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, .12);
 }
 
 .jadwal-siswa-index-table-header {
@@ -266,4 +304,95 @@ tbody tr:hover {
   height: 18px;
   color: white;
   margin: 0;
+}
+
+/* ================= ADDED STYLES FOR FUNCTIONALITY ================= */
+
+/* Search Input - Matches .filter-select */
+.search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 12px 16px;
+  padding-left: 16px;
+  /* Adjust if adding an icon inside */
+  border-radius: 8px;
+  font-size: 14px;
+  border: 2px solid #e5e7eb;
+  background: #f9fafb;
+  color: #1f2937;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.filter-input:focus {
+  border-color: #1a4d6d;
+  box-shadow: 0 0 0 3px rgba(26, 77, 109, 0.1);
+}
+
+.filter-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Add Button */
+.jadwal-siswa-index-btn-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #10b981;
+  /* Emerald 500 */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 45px;
+  /* Match input height mostly */
+}
+
+.jadwal-siswa-index-btn-add:hover {
+  background: #059669;
+  /* Emerald 600 */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.jadwal-siswa-index-btn-add svg {
+  font-size: 16px;
+}
+
+/* Delete Button */
+.jadwal-siswa-index-btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+  background: #ef4444;
+  /* Red 500 */
+}
+
+.jadwal-siswa-index-btn-delete:hover {
+  background: #dc2626;
+  /* Red 600 */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}
+
+.jadwal-siswa-index-btn-delete svg {
+  width: 16px;
+  height: 16px;
+  color: white;
 }

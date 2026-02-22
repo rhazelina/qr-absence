@@ -84,8 +84,8 @@ it('allows admin to import teachers', function () {
         ],
     ];
 
-    $response = $this->actingAs($admin)->postJson('/api/teachers/import', $payload);
+    $response = $this->actingAs($admin)->postJson('/api/import/guru', $payload);
 
     $response->assertStatus(201)
-        ->assertJson(['created' => 2]);
+        ->assertJsonFragment(['success_count' => 2]);
 });

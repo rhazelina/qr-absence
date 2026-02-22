@@ -30,19 +30,34 @@ export default function App() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const normalizeRole = useCallback((rawRole?: string, userType?: string, isClassOfficer?: boolean, fallbackRole?: string) => {
-    const role = (rawRole || "").toLowerCase();
-    if (role === "walikelas") return "wakel";
-    if (role === "wakel" || role === "waka" || role === "guru" || role === "admin" || role === "siswa" || role === "pengurus_kelas") {
-      return role;
+  const normalizeRole = useCallback((backendRole?: string, userType?: string, isClassOfficer?: boolean, selectionRole?: string) => {
+    const b = (backendRole || "").toLowerCase();
+    const t = (userType || "").toLowerCase();
+    const s = (selectionRole || "").toLowerCase();
+
+    // 1. Honor selection if it's a valid base role for the person's status
+    if (s === "guru" && (b === "wakel" || b === "walikelas" || b === "guru")) return "guru";
+    if (s === "siswa" && (b === "pengurus_kelas" || b === "siswa")) return "siswa";
+
+    // 2. High priority: backend explicit specialized roles (if no specific selection above)
+    if (b === "wakel" || b === "walikelas") return "wakel";
+    if (b === "pengurus_kelas") return "pengurus_kelas";
+    if (b === "waka" || b === "admin") return b;
+
+    // 3. Type-based logic (trusting backend data)
+    if (t === "student") {
+      return isClassOfficer ? "pengurus_kelas" : "siswa";
+    }
+    if (t === "teacher") {
+      return (b === "wakel" || b === "walikelas") ? "wakel" : "guru";
     }
 
-    const type = (userType || "").toLowerCase();
-    if (type === "student") return isClassOfficer ? "pengurus_kelas" : "siswa";
-    if (type === "teacher") return fallbackRole === "wakel" ? "wakel" : "guru";
-    if (type === "admin") return "admin";
+    // 3. Fallback to valid strings
+    const valid = ["admin", "waka", "wakel", "guru", "siswa", "pengurus_kelas"];
+    if (valid.includes(b)) return b;
+    if (valid.includes(s)) return s;
 
-    return fallbackRole || "";
+    return "";
   }, []);
 
   // Restore user dari localStorage & Sync Profile
@@ -114,9 +129,9 @@ export default function App() {
     localStorage.setItem("selectedRole", role);
   }, []);
 
-  const handleLogin = useCallback((role: string, name: string, phone: string, profile?: any) => {
+  const handleLogin = useCallback((role: string, name: string, phone: string, profile?: any, extraData?: { user_type?: string, is_class_officer?: boolean }) => {
     const userData = {
-      role: normalizeRole(role, undefined, undefined, role),
+      role: normalizeRole(role, extraData?.user_type, extraData?.is_class_officer, role),
       name,
       phone,
       profile,
@@ -289,10 +304,10 @@ export default function App() {
           element={
             currentUser?.role === "waka" ? (
               <div className="bg-[#F9FAFB] min-h-screen">
-                <JadwalSiswaEdit 
-                  user={currentUser} 
-                  onLogout={handleLogout} 
-                  onMenuClick={() => window.location.href = '/waka/dashboard'} 
+                <JadwalSiswaEdit
+                  user={currentUser}
+                  onLogout={handleLogout}
+                  onMenuClick={() => window.location.href = '/waka/dashboard'}
                 />
               </div>
             ) : (

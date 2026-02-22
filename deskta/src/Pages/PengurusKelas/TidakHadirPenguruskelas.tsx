@@ -17,9 +17,6 @@ interface AbsensiRecord {
   nis?: string;
 }
 
-// Dummy data - nanti dari API
-// Dummy data removed - using backend data
-
 function CalendarIcon() {
   return (
     <svg
@@ -157,7 +154,7 @@ export default function TidakHadirPenguruskelas({
             params.status = statusFilter;
           }
         }
-        
+
         const data = await classService.getMyClassAttendance(params);
         setAttendanceData(data);
       } catch (err) {
@@ -276,7 +273,7 @@ export default function TidakHadirPenguruskelas({
       label: "Jam Pelajaran",
       width: "130px",
       align: "center" as const,
-      render: (_: any, row: any) => row.schedule ? `${row.schedule.start_time.substring(0,5)} - ${row.schedule.end_time.substring(0,5)}` : "-",
+      render: (_: any, row: any) => row.schedule ? `${row.schedule.start_time.substring(0, 5)} - ${row.schedule.end_time.substring(0, 5)}` : "-",
     },
     {
       key: "mataPelajaran",
@@ -619,11 +616,11 @@ export default function TidakHadirPenguruskelas({
                               textAlign: col.align || "left",
                             }}
                           >
-                            {col.key === "no" 
+                            {col.key === "no"
                               ? index + 1
                               : col.render
-                              ? col.render(row[col.key], row)
-                              : row[col.key]}
+                                ? col.render(row[col.key], row)
+                                : row[col.key]}
                           </td>
                         ))}
                       </tr>
@@ -745,7 +742,7 @@ export default function TidakHadirPenguruskelas({
             </div>
 
             {/* Content Modal */}
-            <div style={{ 
+            <div style={{
               padding: 24,
               overflowY: "auto",
               flex: 1,
@@ -877,7 +874,7 @@ export default function TidakHadirPenguruskelas({
 
               {/* Catatan untuk status Hadir */}
               {selectedRecord.status === "hadir" && (
-                <div style={{ 
+                <div style={{
                   marginTop: 24,
                   padding: "12px 16px",
                   backgroundColor: "#F0FDF4",

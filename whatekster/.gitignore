@@ -1,9 +1,0 @@
-# Node Modules
-node_modules
-
-# Env
-.env
-.env.*
-
-# Credentials
-auth

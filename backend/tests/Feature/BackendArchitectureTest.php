@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Attendance;
+use App\Models\ClassSchedule;
+use App\Models\DailySchedule;
 use App\Models\Qrcode;
-use App\Models\Schedule;
+use App\Models\ScheduleItem;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,31 +17,39 @@ uses(RefreshDatabase::class);
 // });
 
 test('architecture: application logic rejects double scan', function () {
-    // 1. Arrange
+    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // This is a Friday
     $user = User::factory()->create(['user_type' => 'student']);
     $student = StudentProfile::factory()->create(['user_id' => $user->id]);
-    $schedule = Schedule::factory()->create();
+    $classSchedule = \App\Models\ClassSchedule::factory()->create();
+    $dailySchedule = \App\Models\DailySchedule::factory()->create(['class_schedule_id' => $classSchedule->id]);
+    $schedule = \App\Models\ScheduleItem::factory()->create(['daily_schedule_id' => $dailySchedule->id]);
     // Ensure QR matches the schedule
+    $uuid = \Illuminate\Support\Str::uuid()->toString();
+    $signature = hash_hmac('sha256', $uuid, config('app.key'));
+    $signedToken = $uuid . '.' . $signature;
+
+    $teacher = User::factory()->create(['user_type' => 'teacher']);
     $qr = Qrcode::create([
         'schedule_id' => $schedule->id,
         'params' => 'test',
-        'token' => 'test-token',
+        'token' => $signedToken,
         'is_active' => true,
         'expires_at' => now()->addHour(),
         'type' => 'student',
+        'issued_by' => $teacher->id,
     ]);
 
     // 2. Act: First Scan
     $response1 = $this->actingAs($user)->postJson('/api/attendance/scan', [
-        'token' => 'test-token',
+        'token' => $signedToken,
     ]);
 
     // 3. Assert: First scan successful
-    $response1->assertStatus(200);
+    $response1->dump()->assertStatus(200);
 
     // 4. Act: Second Scan (Simulate user trying again)
     $response2 = $this->actingAs($user)->postJson('/api/attendance/scan', [
-        'token' => 'test-token',
+        'token' => $signedToken,
     ]);
 
     // 5. Assert: Second scan rejected nicely (not 500 error)

@@ -230,7 +230,7 @@ function JadwalSiswaEdit() {
       // 1. Digital Schedule Structure
       await apiService.post(`/classes/${headerData.class_id}/schedules/bulk`, payload);
 
-      // 2. Schedule Image (Optional)
+      // 2. Schedule Image (Adjust kalo datanya ngga ke show)
       if (scheduleImage) {
         const imageFormData = new FormData();
         imageFormData.append('file', scheduleImage);
@@ -257,10 +257,10 @@ function JadwalSiswaEdit() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="jadwal-siswa-edit-root min-h-screen bg-gray-50 pb-20">
       <NavbarWaka />
 
-      <div className="pt-24 px-4 max-w-7xl mx-auto">
+      <div className="jadwal-siswa-edit-container jadwal-siswa-edit-page">
         {/* BREADCRUMB */}
         <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap">
             <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors flex items-center gap-2">
@@ -302,9 +302,9 @@ function JadwalSiswaEdit() {
            </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8 jadwal-siswa-edit-form">
           
-          <div className="lg:col-span-2 flex flex-col gap-8">
+          <div className="lg:col-span-2 flex flex-col gap-8 jadwal-siswa-edit-main">
             {isEditMode && isFetchingSchedule && (
               <div className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-3 text-sm font-bold text-gray-600">
                 <FaSpinner className="animate-spin text-blue-600" />
@@ -313,21 +313,21 @@ function JadwalSiswaEdit() {
             )}
 
             {/* INFORMATION CARD */}
-            <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden jadwal-siswa-card">
                 <div className="p-8 border-b border-gray-100 bg-gray-50/30">
                   <h2 className="text-xl font-black text-gray-900 flex items-center gap-3">
                      <FaDoorOpen className="text-blue-600" /> Informasi Utama
                   </h2>
                 </div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="flex flex-col gap-2">
+                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 jadwal-siswa-info-grid">
+                  <div className="flex flex-col gap-2 jadwal-siswa-field">
                     <label className="text-sm font-bold text-gray-600 uppercase tracking-widest pl-1">Kelas</label>
                     <select
                       name="class_id"
                       value={headerData.class_id}
                       onChange={handleHeaderChange}
                       required
-                      className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-600 transition-all outline-none"
+                      className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-600 transition-all outline-none jadwal-siswa-input"
                     >
                       <option value="">Pilih Kelas</option>
                       {classes.map(c => (
@@ -336,7 +336,7 @@ function JadwalSiswaEdit() {
                     </select>
                   </div>
 
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 jadwal-siswa-field">
                     <label className="text-sm font-bold text-gray-600 uppercase tracking-widest pl-1">Tahun Ajaran</label>
                     <input
                       type="text"
@@ -344,47 +344,43 @@ function JadwalSiswaEdit() {
                       value={headerData.year}
                       onChange={handleHeaderChange}
                       placeholder="2024/2025"
-                      className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-600 transition-all outline-none"
+                      className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-600 transition-all outline-none jadwal-siswa-input"
                     />
                   </div>
 
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 jadwal-siswa-field">
                     <label className="text-sm font-bold text-gray-600 uppercase tracking-widest pl-1">Semester</label>
                     <select
                       name="semester"
                       value={headerData.semester}
                       onChange={handleHeaderChange}
-                      className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-600 transition-all outline-none"
+                      className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-600 transition-all outline-none jadwal-siswa-input"
                     >
                       <option value="1">Semester Ganjil</option>
                       <option value="2">Semester Genap</option>
                     </select>
                   </div>
 
-                  <label htmlFor="is_active" className="flex items-center justify-between gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mt-auto cursor-pointer">
+                  <label htmlFor="is_active" className="flex items-center justify-between gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mt-auto cursor-pointer jadwal-siswa-active-card">
                     <div>
                       <p className="text-sm font-bold text-blue-900">Set Aktif</p>
                       <p className="text-xs font-semibold text-blue-700/80 mt-0.5">Ditampilkan ke siswa</p>
                     </div>
-                    <span className="relative inline-block w-12 h-7">
-                      <input
-                        type="checkbox"
-                        id="is_active"
-                        name="is_active"
-                        checked={headerData.is_active}
-                        onChange={handleHeaderChange}
-                        className="peer sr-only"
-                      />
-                      <span className="absolute inset-0 rounded-full bg-gray-300 transition-colors peer-checked:bg-blue-600" />
-                      <span className="absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
-                    </span>
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      name="is_active"
+                      checked={headerData.is_active}
+                      onChange={handleHeaderChange}
+                      className="jadwal-siswa-active-checkbox"
+                    />
                   </label>
                 </div>
             </div>
 
             {/* DAILY STRUCTURE SECTION */}
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2 jadwal-siswa-structure-header">
                 <div>
                   <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3">
                     <FaClock className="text-blue-600" /> Struktur Harian
@@ -396,15 +392,15 @@ function JadwalSiswaEdit() {
                 <button 
                    type="button" 
                    onClick={addDay} 
-                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 text-sm"
+                   className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 text-sm jadwal-siswa-add-day-btn"
                 >
                   <FaPlus /> Tambah Hari
                 </button>
               </div>
 
               {days.map((day, dayIndex) => (
-                <div key={dayIndex} className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden mb-2">
-                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex items-center justify-between">
+                <div key={dayIndex} className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden mb-2 jadwal-siswa-day-card">
+                   <div className="p-6 border-b border-gray-100 bg-gray-50/30 flex items-center justify-between jadwal-siswa-day-head">
                       <div className="flex items-center gap-4">
                          <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center">
                             <FaCalendarAlt className="text-blue-600" />
@@ -429,13 +425,13 @@ function JadwalSiswaEdit() {
                       </button>
                    </div>
 
-                   <div className="p-8">
+                   <div className="p-8 jadwal-siswa-day-body">
                       {day.items.length > 0 ? (
                         <div className="flex flex-col gap-4">
                            {day.items.map((item, itemIndex) => (
-                             <div key={itemIndex} className="group p-6 bg-gray-50/50 border border-gray-100 rounded-3xl relative hover:bg-white hover:shadow-xl hover:shadow-gray-100/50 transition-all grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+                             <div key={itemIndex} className="group p-6 bg-gray-50/50 border border-gray-100 rounded-3xl relative hover:bg-white hover:shadow-xl hover:shadow-gray-100/50 transition-all grid grid-cols-1 lg:grid-cols-12 gap-6 items-end jadwal-siswa-item-grid">
                                 
-                                <div className="lg:col-span-3">
+                                <div className="lg:col-span-3 jadwal-siswa-item-time">
                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Waktu</label>
                                    <div className="flex items-center gap-2 min-w-0">
                                       <input
@@ -454,7 +450,7 @@ function JadwalSiswaEdit() {
                                    </div>
                                 </div>
 
-                                <div className="lg:col-span-3">
+                                <div className="lg:col-span-3 jadwal-siswa-item-subject">
                                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Mata Pelajaran</label>
                                   <select
                                     value={item.subject_id}
@@ -469,7 +465,7 @@ function JadwalSiswaEdit() {
                                   </select>
                                 </div>
 
-                                <div className="lg:col-span-3">
+                                <div className="lg:col-span-3 jadwal-siswa-item-teacher">
                                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Guru Pengajar</label>
                                   <select
                                     value={item.teacher_id}
@@ -484,7 +480,7 @@ function JadwalSiswaEdit() {
                                   </select>
                                 </div>
 
-                                <div className="lg:col-span-2">
+                                <div className="lg:col-span-2 jadwal-siswa-item-room">
                                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Ruangan</label>
                                   <input
                                     type="text"
@@ -495,7 +491,7 @@ function JadwalSiswaEdit() {
                                   />
                                 </div>
 
-                                <div className="lg:col-span-1 flex justify-center pb-1">
+                                <div className="lg:col-span-1 flex justify-center pb-1 jadwal-siswa-item-delete">
                                   <button 
                                      type="button" 
                                      onClick={() => removeItem(dayIndex, itemIndex)} 
@@ -545,9 +541,9 @@ function JadwalSiswaEdit() {
             </div>
           </div>
 
-          <div className="lg:col-span-1 flex flex-col gap-8">
+          <div className="lg:col-span-1 flex flex-col gap-8 jadwal-siswa-side">
              {/* VISUAL UPLOAD CARD */}
-             <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden lg:sticky lg:top-24">
+             <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden lg:sticky lg:top-24 jadwal-siswa-visual-card">
                 <div className="p-8 border-b border-gray-100 bg-gray-50/30">
                    <h2 className="text-xl font-black text-gray-900 flex items-center gap-3">
                       <FaImage className="text-blue-600" /> Jadwal Visual
@@ -571,7 +567,7 @@ function JadwalSiswaEdit() {
                            </div>
                         </div>
                       ) : (
-                        <div className="aspect-[3/4] rounded-[2rem] border-2 border-dashed border-blue-100 bg-gray-50 flex flex-col items-center justify-center p-8 text-center transition-all group-hover:bg-blue-50/30 group-hover:border-blue-300">
+                        <div className="aspect-[3/4] rounded-[2rem] border-2 border-dashed border-blue-100 bg-gray-50 flex flex-col items-center justify-center p-8 text-center transition-all group-hover:bg-blue-50/30 group-hover:border-blue-300 jadwal-siswa-upload-empty">
                            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-6 text-blue-600">
                               <FaImage size={28} />
                            </div>
@@ -579,17 +575,17 @@ function JadwalSiswaEdit() {
                            <p className="text-xs text-gray-400 font-bold">Klik atau seret file ke sini</p>
                         </div>
                       )}
-                      <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                      <input type="file" className="jadwal-siswa-file-input" onChange={handleFileChange} accept="image/*" />
                    </label>
                    {imageError && (
                      <p className="text-xs font-bold text-red-500 mt-4">{imageError}</p>
                    )}
 
-                   <div className="mt-10 pt-8 border-t border-gray-100">
+                   <div className="mt-10 pt-8 border-t border-gray-100 jadwal-siswa-submit-area">
                       <button 
                         type="submit" 
                         disabled={isSubmitting || isFetchingSchedule || days.length === 0}
-                        className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 jadwal-siswa-submit-btn"
                       >
                          {isSubmitting ? <FaSpinner className="animate-spin" /> : <FaSave />}
                          <span>{isEditMode ? 'Simpan Perubahan' : 'Terbitkan Jadwal'}</span>
@@ -602,7 +598,7 @@ function JadwalSiswaEdit() {
                       <button 
                         type="button" 
                         onClick={() => navigate('/waka/jadwal-siswa')}
-                        className="w-full mt-4 py-4 text-gray-400 font-black hover:text-gray-600 transition-all"
+                        className="w-full mt-4 py-4 text-gray-400 font-black hover:text-gray-600 transition-all jadwal-siswa-cancel-btn"
                       >
                          Batalkan
                       </button>

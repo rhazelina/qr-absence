@@ -684,9 +684,13 @@ const Dashboard = () => {
                 </div>
 
                 <div className="siswa-tampilan-rentang-waktu">
-                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.start_time}</div>
+                  <div className="siswa-kotak-tampilan-waktu">
+                    {schoolHours.start_time?.slice(0, 5)}
+                  </div>
                   <div className="siswa-pemisah-rentang-waktu">—</div>
-                  <div className="siswa-kotak-tampilan-waktu">{schoolHours.end_time}</div>
+                  <div className="siswa-kotak-tampilan-waktu">
+                    {schoolHours.end_time?.slice(0, 5)}
+                  </div>
                 </div>
               </div>
 
@@ -708,9 +712,7 @@ const Dashboard = () => {
                     )}
                   </div>
                   <BookOpen size={64} style={{ opacity: 0.8 }} />
-                </div>
-
-                <button onClick={() => setShowSubjects(true)} className="siswa-btn-aksi" style={{
+                </div>                <button onClick={() => setShowSubjects(true)} className="siswa-btn-aksi" style={{
                   width: '100%', background: 'linear-gradient(135deg, #1e3a8a)',
                   color: 'white', border: 'none', boxShadow: '0 4px 12px rgba(30, 58, 138, 0.3)'
                 }}>

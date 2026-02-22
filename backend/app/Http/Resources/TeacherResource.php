@@ -17,8 +17,10 @@ class TeacherResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->user->name,
+            'nama_guru' => $this->user->name, // For Deskta
             'nip' => $this->nip,
             'code' => $this->nip, // Virtual field untuk Mobile (backward compatible)
+            'kode_guru' => $this->kode_guru ?? $this->nip, // For Deskta
             'email' => $this->user->email,
             'phone' => $this->user->phone,
             'contact' => $this->user->contact,
@@ -39,6 +41,7 @@ class TeacherResource extends JsonResource
             }),
             'photo_url' => $this->user->photo_url ?? null,
             'schedule_image_path' => $this->schedule_image_path ?? 'schedules/defaults/default_schedule.jpg',
+            'schedule_image_url' => $this->schedule_image_path ? asset('storage/' . $this->schedule_image_path) : asset('storage/schedules/defaults/default_schedule.jpg'),
             'classes_count' => \App\Models\ClassSchedule::whereHas('dailySchedules.scheduleItems', function ($q) {
                 $q->where('teacher_id', $this->id);
             })->distinct('class_id')->count('class_id'),

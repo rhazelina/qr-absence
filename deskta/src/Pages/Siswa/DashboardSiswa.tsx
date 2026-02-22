@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect } from "react";
 import { scheduleService } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
+// import { classService } from "../../services/classService";
+import classService from "../../services/classService";
 import SiswaLayout from "../../component/Siswa/SiswaLayout";
 // import openBook from "../../assets/Icon/open-book.png";
 import { Modal } from "../../component/Shared/Modal";
@@ -20,6 +22,7 @@ import {
   ArrowRight,
   TrendingUp,
   AlarmClock,
+  ImageIcon,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -58,8 +61,8 @@ interface ScheduleItem {
 }
 
 interface DashboardSiswaProps {
-  user: { 
-    name: string; 
+  user: {
+    name: string;
     phone: string;
     profile?: {
       nis?: string;
@@ -80,8 +83,9 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
   const [currentTime, setCurrentTime] = useState("");
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  
+
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [scheduleImageUrl, setScheduleImageUrl] = useState<string | null>(null);
   const [monthlyTrendData, setMonthlyTrendData] = useState<any[]>([]);
   const [weeklyStats, setWeeklyStats] = useState({
     hadir: 0,
@@ -91,11 +95,11 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     pulang: 0,
   });
   // const [dailyStats, setDailyStats] = useState<any[]>([]);
-  
+
   // Use data directly from user object (synced in App.tsx)
   const displayName = user.name;
   const displayNISN = user.profile?.nis || user.phone || "0000000000";
-  
+
   const userWithName = {
     name: displayName,
     phone: user.phone,
@@ -112,7 +116,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
         day: "numeric",
       };
       setCurrentDate(now.toLocaleDateString("id-ID", options));
-      
+
       // Format waktu dengan jam:menit:detik
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -133,13 +137,9 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
         const scheduleResponse = await scheduleService.getMySchedule();
         const scheduleItems = (scheduleResponse.items || [])
           .filter((item: any) => {
-            // Optional: Filter only today's schedule if needed, but the UI shows "Jadwal Hari Ini"
-            // So we probably want today's schedule.
-            
-            // JADWAL DIMULAI DARI SENIN - JUMAT
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
             const todayName = days[new Date().getDay()];
-            return item.day === todayName; 
+            return item.day === todayName;
           })
           .map((item: any) => ({
             id: item.id.toString(),
@@ -150,34 +150,41 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
           }));
         setSchedules(scheduleItems);
 
+        // Fetch Schedule Image
+        try {
+          const classInfo = await classService.getMyClass();
+          if (classInfo?.id) {
+            const blob = await classService.getScheduleImage(classInfo.id);
+            const url = URL.createObjectURL(blob);
+            setScheduleImageUrl(url);
+          }
+        } catch {
+          // No schedule image available — ignore
+        }
+
         // Fetch Attendance Summary
         const summaryResponse = await attendanceService.getStudentSummary();
         if (summaryResponse.status === 'success') {
-           // Normalize trend data
-           const normalizedTrend = (summaryResponse.data.trend || []).map((t: any) => ({
-             month: t.month,
-             hadir: t.present || 0,
-             alpha: t.absent || 0,
-             sakit: t.sick || 0,
-             izin: t.izin || 0,
-             pulang: t.return || 0
-           }));
-           setMonthlyTrendData(normalizedTrend);
-           
-           // Normalize daily stats if needed, or just set as is
-           // The backend DailyStats for bar chart: hadir, tidak_hadir, izin, sakit, pulang
-           // setDailyStats(summaryResponse.data.daily_stats || []);
+          const normalizedTrend = (summaryResponse.data.trend || []).map((t: any) => ({
+            month: t.month,
+            hadir: t.present || 0,
+            alpha: t.absent || 0,
+            sakit: t.sick || 0,
+            izin: t.izin || 0,
+            pulang: t.return || 0
+          }));
+          setMonthlyTrendData(normalizedTrend);
 
-           if (summaryResponse.data.statistik) {
-             const s = summaryResponse.data.statistik;
-             setWeeklyStats({
-               hadir: s.hadir || 0,
-               izin: s.izin || 0,
-               sakit: s.sakit || 0,
-               alpha: s.alpha || 0,
-               pulang: s.pulang || 0,
-             });
-           }
+          if (summaryResponse.data.statistik) {
+            const s = summaryResponse.data.statistik;
+            setWeeklyStats({
+              hadir: s.hadir || 0,
+              izin: s.izin || 0,
+              sakit: s.sakit || 0,
+              alpha: s.alpha || 0,
+              pulang: s.pulang || 0,
+            });
+          }
         }
 
       } catch (error) {
@@ -186,6 +193,14 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     };
 
     fetchData();
+
+    return () => {
+      // Cleanup blob URL
+      setScheduleImageUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
   }, []);
 
   const handleMenuClick = (page: string) => {
@@ -386,6 +401,59 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                   </div>
                 </div>
               </div>
+
+              {/* Schedule Image Section */}
+              {scheduleImageUrl && (
+                <div style={{
+                  backgroundColor: "white",
+                  borderRadius: "16px",
+                  padding: "28px",
+                  boxShadow: "0 4px 20px rgba(0, 31, 62, 0.08)",
+                  border: "1px solid #E5E7EB",
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    marginBottom: "20px"
+                  }}>
+                    <div style={{
+                      width: "40px",
+                      height: "40px",
+                      backgroundColor: "#DBEAFE",
+                      borderRadius: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      <ImageIcon size={18} color="#2563EB" />
+                    </div>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      color: "#001F3E"
+                    }}>
+                      Jadwal Kelas
+                    </h3>
+                  </div>
+                  <div style={{
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    border: "1px solid #E5E7EB",
+                  }}>
+                    <img
+                      src={scheduleImageUrl}
+                      alt="Jadwal Kelas"
+                      style={{
+                        width: "100%",
+                        height: "auto",
+                        display: "block",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Stats Cards */}
               <div style={{
@@ -596,92 +664,92 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 }}>
                   {schedules.length > 0 ? (
                     schedules.map((schedule) => (
-                    <div
-                      key={schedule.id}
-                      onClick={() => handleScheduleClick(schedule)}
-                      style={{
-                        padding: "20px",
-                        borderRadius: "12px",
-                        border: "1px solid #E5E7EB",
-                        backgroundColor: "#F9FAFB",
-                        cursor: "pointer",
-                        transition: "all 0.3s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.backgroundColor = "#F0F9FF";
-                        e.currentTarget.style.borderColor = "#0EA5E9";
-                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(14, 165, 233, 0.15)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.backgroundColor = "#F9FAFB";
-                        e.currentTarget.style.borderColor = "#E5E7EB";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    >
-                      <div style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "16px",
-                        marginBottom: "16px"
-                      }}>
+                      <div
+                        key={schedule.id}
+                        onClick={() => handleScheduleClick(schedule)}
+                        style={{
+                          padding: "20px",
+                          borderRadius: "12px",
+                          border: "1px solid #E5E7EB",
+                          backgroundColor: "#F9FAFB",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-4px)";
+                          e.currentTarget.style.backgroundColor = "#F0F9FF";
+                          e.currentTarget.style.borderColor = "#0EA5E9";
+                          e.currentTarget.style.boxShadow = "0 8px 24px rgba(14, 165, 233, 0.15)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.backgroundColor = "#F9FAFB";
+                          e.currentTarget.style.borderColor = "#E5E7EB";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      >
                         <div style={{
-                          width: "48px",
-                          height: "48px",
-                          backgroundColor: "#EFF6FF",
-                          borderRadius: "10px",
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: "16px",
+                          marginBottom: "16px"
+                        }}>
+                          <div style={{
+                            width: "48px",
+                            height: "48px",
+                            backgroundColor: "#EFF6FF",
+                            borderRadius: "10px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "20px"
+                          }}>
+                            <BookOpenCheck size={20} color="#1D4ED8" />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <h4 style={{
+                              margin: "0 0 6px 0",
+                              fontSize: "17px",
+                              fontWeight: "600",
+                              color: "#001F3E"
+                            }}>
+                              {schedule.mapel}
+                            </h4>
+                            <p style={{
+                              margin: "0",
+                              fontSize: "14px",
+                              color: "#6B7280"
+                            }}>
+                              {schedule.guru}
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "20px"
+                          gap: "12px",
+                          padding: "10px 14px",
+                          backgroundColor: "#F3F4F6",
+                          borderRadius: "8px",
+                          border: "1px solid #E5E7EB"
                         }}>
-                          <BookOpenCheck size={20} color="#1D4ED8" />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <h4 style={{
-                            margin: "0 0 6px 0",
-                            fontSize: "17px",
-                            fontWeight: "600",
-                            color: "#001F3E"
-                          }}>
-                            {schedule.mapel}
-                          </h4>
-                          <p style={{
-                            margin: "0",
+                          <span style={{
                             fontSize: "14px",
-                            color: "#6B7280"
+                            color: "#6B7280",
+                            fontWeight: "500"
                           }}>
-                            {schedule.guru}
-                          </p>
+                            <Clock size={14} />
+                          </span>
+                          <span style={{
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            color: "#111827"
+                          }}>
+                            {schedule.start} - {schedule.end}
+                          </span>
                         </div>
                       </div>
-                      <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 14px",
-                        backgroundColor: "#F3F4F6",
-                        borderRadius: "8px",
-                        border: "1px solid #E5E7EB"
-                      }}>
-                        <span style={{
-                          fontSize: "14px",
-                          color: "#6B7280",
-                          fontWeight: "500"
-                        }}>
-                          <Clock size={14} />
-                        </span>
-                        <span style={{
-                          fontSize: "14px",
-                          fontWeight: "600",
-                          color: "#111827"
-                        }}>
-                          {schedule.start} - {schedule.end}
-                        </span>
-                      </div>
-                    </div>
-                  ))
+                    ))
                   ) : (
                     <div style={{
                       gridColumn: "1 / -1",
@@ -911,14 +979,14 @@ function MonthlyLineChart({
   data: Array<{ month: string; hadir: number; izin: number; sakit: number; alpha: number; pulang: number }>;
 }) {
   if (!data || data.length === 0) {
-     return (
-       <div style={{ height: "300px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF" }}>
-          <div style={{ textAlign: "center" }}>
-             <div style={{ fontSize: "24px", marginBottom: "8px" }}>📈</div>
-             <div>Belum ada data kehadiran bulanan</div>
-          </div>
-       </div>
-     );
+    return (
+      <div style={{ height: "300px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "24px", marginBottom: "8px" }}>📈</div>
+          <div>Belum ada data kehadiran bulanan</div>
+        </div>
+      </div>
+    );
   }
 
   const chartData = {
@@ -1021,7 +1089,7 @@ function MonthlyLineChart({
         cornerRadius: 8,
         displayColors: true,
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
@@ -1081,15 +1149,15 @@ function WeeklyDonutChart({
   data: { hadir: number; izin: number; sakit: number; alpha: number; pulang: number };
 }) {
   const total = data.hadir + data.izin + data.sakit + data.alpha + data.pulang;
-  
+
   if (total === 0) {
     return (
-       <div style={{ height: "250px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF" }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>📊</div>
-            <div>Belum ada data statistik minggu ini</div>
-          </div>
-       </div>
+      <div style={{ height: "250px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "24px", marginBottom: "8px" }}>📊</div>
+          <div>Belum ada data statistik minggu ini</div>
+        </div>
+      </div>
     );
   }
 
@@ -1171,43 +1239,43 @@ function WeeklyDonutChart({
 //         </div>
 //       </div>
 //     );
-  // }
+// }
 
-  // const chartData = {
-  //   labels: data.map(d => d.day),
-  //   datasets: [
-  //     {
-  //       label: "Hadir",
-  //       data: data.map(d => d.hadir),
-  //       backgroundColor: "#1FA83D",
-  //       borderRadius: 6,
-  //     },
-  //     {
-  //       label: "Izin",
-  //       data: data.map(d => d.izin),
-  //       backgroundColor: "#ACA40D",
-  //       borderRadius: 6,
-  //     },
-  //     {
-  //       label: "Sakit",
-  //       data: data.map(d => d.sakit),
-  //       backgroundColor: "#520C8F",
-  //       borderRadius: 6,
-  //     },
-  //     {
-  //       label: "Alfa",
-  //       data: data.map(d => d.tidak_hadir),
-  //       backgroundColor: "#D90000",
-  //       borderRadius: 6,
-  //     },
-  //     {
-  //       label: "Pulang",
-  //       data: data.map(d => d.pulang),
-  //       backgroundColor: "#2F85EB",
-  //       borderRadius: 6,
-  //     },
-  //   ],
-  // };
+// const chartData = {
+//   labels: data.map(d => d.day),
+//   datasets: [
+//     {
+//       label: "Hadir",
+//       data: data.map(d => d.hadir),
+//       backgroundColor: "#1FA83D",
+//       borderRadius: 6,
+//     },
+//     {
+//       label: "Izin",
+//       data: data.map(d => d.izin),
+//       backgroundColor: "#ACA40D",
+//       borderRadius: 6,
+//     },
+//     {
+//       label: "Sakit",
+//       data: data.map(d => d.sakit),
+//       backgroundColor: "#520C8F",
+//       borderRadius: 6,
+//     },
+//     {
+//       label: "Alfa",
+//       data: data.map(d => d.tidak_hadir),
+//       backgroundColor: "#D90000",
+//       borderRadius: 6,
+//     },
+//     {
+//       label: "Pulang",
+//       data: data.map(d => d.pulang),
+//       backgroundColor: "#2F85EB",
+//       borderRadius: 6,
+//     },
+//   ],
+// };
 
 //   const options = {
 //     responsive: true,

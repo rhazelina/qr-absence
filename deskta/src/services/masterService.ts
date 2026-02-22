@@ -99,6 +99,15 @@ export const masterService = {
       headers: getHeaders()
     });
     return handleResponse(response);
+  },
+
+  importClasses: async (data: any) => {
+    const response = await fetch(`${API_BASE_URL}/import/kelas`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return handleResponse(response);
   }
 };
 

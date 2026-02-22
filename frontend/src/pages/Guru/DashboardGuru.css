@@ -16,9 +16,9 @@ body {
 .dashboard-container {
   min-height: 100vh;
   padding-top: 95px;
-  padding-left: 300px;
-  padding-right: 30px;
-  padding-bottom: 30px;
+  padding-left: calc(var(--web-sidebar-w) + var(--web-sidebar-gap));
+  padding-right: var(--web-page-pad-x);
+  padding-bottom: clamp(20px, 3vw, 36px);
 }
 
 /* Sidebar Profile */
@@ -117,7 +117,9 @@ body {
 
 /* Main Content */
 .main-content {
-  max-width: 1400px;
+  max-width: var(--web-content-max);
+  width: 100%;
+  margin: 0 auto;
   transition: margin-left 0.3s ease;
 }
 
@@ -128,15 +130,15 @@ body {
 /* Header Section */
 .header-section {
   display: flex;
-  gap: 25px;
-  margin-bottom: 30px;
+  gap: clamp(14px, 2vw, 25px);
+  margin-bottom: clamp(18px, 2.4vw, 30px);
 }
 
 .date-time-card {
   background: white;
   backdrop-filter: blur(2px);
   border-radius: 20px;
-  padding: 25px 35px;
+  padding: clamp(16px, 2.3vw, 25px) clamp(16px, 2.8vw, 35px);
   flex: 1;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
@@ -207,9 +209,9 @@ body {
   background: rgb(255, 255, 255);
   backdrop-filter: blur(2px);
   border-radius: 20px;
-  padding: 25px 35px;
+  padding: clamp(16px, 2.3vw, 25px) clamp(16px, 2.8vw, 35px);
   text-align: center;
-  min-width: 320px;
+  min-width: clamp(220px, 24vw, 320px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
@@ -237,7 +239,7 @@ body {
   background: linear-gradient(180deg, rgb(255, 255, 255) 0%, #0070DF 100%);
   backdrop-filter: blur(2px);
   border-radius: 25px;
-  padding: 35px;
+  padding: clamp(18px, 2.5vw, 35px);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 

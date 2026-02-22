@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Qrcode;
-use App\Models\Schedule;
+use App\Models\ScheduleItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -14,10 +14,12 @@ class QrcodeFactory extends Factory
 
     public function definition(): array
     {
+        $uuid = Str::uuid()->toString();
+        $signature = hash_hmac('sha256', $uuid, config('app.key'));
         return [
-            'token' => Str::uuid()->toString(),
+            'token' => $uuid . '.' . $signature,
             'type' => 'student',
-            'schedule_id' => Schedule::factory(),
+            'schedule_id' => ScheduleItem::factory(),
             'issued_by' => User::factory(),
             'expires_at' => now()->addMinutes(15),
             'is_active' => true,

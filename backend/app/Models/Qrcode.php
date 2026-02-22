@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use App\Models\ScheduleItem;
 
 class Qrcode extends Model
 {
@@ -39,6 +38,10 @@ class Qrcode extends Model
 
     public function isExpired(): bool
     {
-        return $this->expires_at instanceof Carbon && $this->expires_at->isPast();
+        $expires = $this->expires_at;
+        if (is_string($expires)) {
+            $expires = Carbon::parse($expires);
+        }
+        return $expires instanceof Carbon && $expires->isPast();
     }
 }
