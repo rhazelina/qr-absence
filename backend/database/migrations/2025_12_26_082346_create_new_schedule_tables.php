@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('class_id')->constrained('classes')->cascadeOnDelete();
             $table->integer('semester')->comment('1: Ganjil, 2: Genap'); // Or enum
-            $table->year('year'); // e.g., 2025
+            $table->string('year', 10)->comment('e.g., 2024/2025');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

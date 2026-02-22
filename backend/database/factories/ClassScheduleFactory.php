@@ -15,7 +15,7 @@ class ClassScheduleFactory extends Factory
         return [
             'class_id' => Classes::factory(),
             'semester' => 1,
-            'year' => 2025,
+            'year' => '2024/2025',
             'is_active' => true,
         ];
     }

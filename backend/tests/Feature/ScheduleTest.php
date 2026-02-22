@@ -32,7 +32,7 @@ test('waka can create class schedule', function () {
     $payload = [
         'class_id' => $this->classRoom->id,
         'semester' => 1,
-        'year' => 2025,
+        'year' => '2024/2025',
         'is_active' => true,
         'days' => [
             [
@@ -68,12 +68,12 @@ test('waka can update class schedule', function () {
     $schedule = ClassSchedule::create([
         'class_id' => $this->classRoom->id,
         'semester' => 1,
-        'year' => 2025,
+        'year' => '2024/2025',
         'is_active' => true,
     ]);
 
     $payload = [
-        'year' => 2026,
+        'year' => '2025/2026',
         'days' => [
             [
                 'day' => 'Tuesday',
@@ -90,7 +90,7 @@ test('waka can update class schedule', function () {
 
     $this->assertDatabaseHas('class_schedules', [
         'id' => $schedule->id,
-        'year' => 2026,
+        'year' => '2025/2026',
     ]);
 });
 
@@ -98,7 +98,7 @@ test('waka can delete class schedule', function () {
     $schedule = ClassSchedule::create([
         'class_id' => $this->classRoom->id,
         'semester' => 1,
-        'year' => 2025,
+        'year' => '2024/2025',
         'is_active' => true,
     ]);
 

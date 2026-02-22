@@ -24,7 +24,7 @@ class StoreScheduleRequest extends FormRequest
             'class_id' => ['required', 'exists:classes,id'],
             'room' => ['nullable', 'string', 'max:50'],
             'semester' => ['required', 'integer', 'min:1', 'max:2'],
-            'year' => ['required', 'integer', 'min:2020'],
+            'year' => ['required', 'string', 'regex:/^\d{4}\/\d{4}$/'],
         ];
     }
 

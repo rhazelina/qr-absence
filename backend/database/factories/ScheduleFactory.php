@@ -23,7 +23,7 @@ class ScheduleFactory extends Factory
             'class_id' => Classes::factory(),
             'room' => 'Lab '.fake()->numerify('##'),
             'semester' => 1,
-            'year' => 2025,
+            'year' => '2024/2025',
         ];
     }
 }

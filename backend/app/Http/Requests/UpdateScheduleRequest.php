@@ -24,7 +24,7 @@ class UpdateScheduleRequest extends FormRequest
             'class_id' => ['sometimes', 'exists:classes,id'],
             'room' => ['nullable', 'string', 'max:50'],
             'semester' => ['sometimes', 'integer', 'min:1', 'max:2'],
-            'year' => ['sometimes', 'integer', 'min:2020'],
+            'year' => ['sometimes', 'string', 'regex:/^\d{4}\/\d{4}$/'],
         ];
     }
 }
