@@ -113,8 +113,9 @@ const apiService = {
     return this.get('/me/homeroom');
   },
 
-  getHomeroomSchedules() {
-    return this.get('/me/homeroom/schedules');
+  getHomeroomSchedules(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/me/homeroom/schedules${query}`);
   },
 
   getHomeroomStudents() {

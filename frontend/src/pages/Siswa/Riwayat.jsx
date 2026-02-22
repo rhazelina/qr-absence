@@ -106,12 +106,27 @@ function Riwayat() {
         
         // Fetch stats from attendance summary endpoint
         const summaryResponse = await apiService.get('/me/attendance/summary');
-        const summary = summaryResponse || {};
+        
+        // Transform status_summary array to object
+        const statusSummary = summaryResponse?.status_summary || [];
+        const summaryMap = {};
+        statusSummary.forEach(item => {
+          summaryMap[item.status] = item.total;
+        });
+        
+        const summary = {
+          present: summaryMap.present || 0,
+          late: summaryMap.late || 0,
+          sick: summaryMap.sick || 0,
+          excused: (summaryMap.excused || 0) + (summaryMap.izin || 0),
+          absent: summaryMap.absent || 0,
+          return: summaryMap.return || 0
+        };
         
         setStats({
           hadir: summary.present || 0,
           terlambat: summary.late || 0,
-          izin: (summary.excused || 0) + (summary.permission || 0),
+          izin: summary.excused || 0,
           sakit: summary.sick || 0,
           alpha: summary.absent || 0,
           pulang: summary.return || 0

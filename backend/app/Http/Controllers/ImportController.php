@@ -143,14 +143,17 @@ class ImportController extends Controller
         $validator = Validator::make($request->all(), [
             'items' => ['required', 'array', 'min:1'],
             'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
+            'items.*.username' => ['nullable', 'string', 'max:50', 'distinct', 'unique:users,username'],
             'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
             'items.*.password' => ['nullable', 'string', 'min:6'],
-            'items.*.nip' => ['required', 'numeric', 'distinct', 'unique:teacher_profiles,nip'],
+            'items.*.nip' => ['nullable', 'string', 'distinct', 'unique:teacher_profiles,nip'],
             'items.*.phone' => ['nullable', 'string', 'max:30'],
             'items.*.contact' => ['nullable', 'string', 'max:50'],
             'items.*.homeroom_class_id' => ['nullable', 'exists:classes,id'],
             'items.*.subject' => ['nullable', 'string', 'max:100'],
+            'items.*.jabatan' => ['nullable', 'string', 'in:Guru,Waka,Kapro,Wali Kelas'],
+            'items.*.bidang' => ['nullable', 'string', 'max:100'],
+            'items.*.konsentrasi_keahlian' => ['nullable', 'string', 'max:100'],
         ]);
 
         if ($validator->fails()) {
@@ -162,11 +165,25 @@ class ImportController extends Controller
         try {
             DB::transaction(function () use ($items, &$count) {
                 foreach ($items as $item) {
+                    // Auto-generate missing fields (order matters!)
+                    $item['nip'] = $item['nip'] ?? ($item['kode_guru'] ?? null);
+                    $item['username'] = $item['username'] ?? ($item['nip'] ?? null);
+                    $item['password'] = $item['password'] ?? ($item['nip'] ?? 'password123');
+                    $item['jabatan'] = $item['jabatan'] ?? 'Guru';
+
+                    // Map class_name to class_id if provided
+                    if (! empty($item['class_name']) && empty($item['homeroom_class_id'])) {
+                        $class = \App\Models\Classes::where('label', $item['class_name'])->first();
+                        if ($class) {
+                            $item['homeroom_class_id'] = $class->id;
+                        }
+                    }
+
                     $user = User::create([
                         'name' => $item['name'],
                         'username' => $item['username'],
                         'email' => $item['email'] ?? null,
-                        'password' => Hash::make($item['password'] ?? $item['nip']),
+                        'password' => Hash::make($item['password']),
                         'phone' => $item['phone'] ?? null,
                         'contact' => $item['contact'] ?? null,
                         'user_type' => 'teacher',
@@ -176,6 +193,10 @@ class ImportController extends Controller
                         'nip' => $item['nip'],
                         'homeroom_class_id' => $item['homeroom_class_id'] ?? null,
                         'subject' => $item['subject'] ?? null,
+                        'jabatan' => $item['jabatan'] ?? 'Guru',
+                        'bidang' => $item['bidang'] ?? null,
+                        'konsentrasi_keahlian' => $item['konsentrasi_keahlian'] ?? null,
+                        'kode_guru' => $item['kode_guru'] ?? $item['nip'] ?? null,
                     ]);
                     $count++;
                 }
@@ -317,17 +338,83 @@ class ImportController extends Controller
     {
         $items = $request->input('items', []);
 
-        // The expected structure from the frontend template might be:
-        // [ { class_id, semester, year, day, start_time, end_time, subject_id, teacher_profile_id } ]
+        // Accept both ID-based and name-based format
+        // ID-based: { class_id, semester, year, day, start_time, end_time, subject_id, teacher_profile_id }
+        // Name-based: { class_name, semester, year, day, start_time, end_time, subject_name, teacher_nip }
 
-        $validator = Validator::make($request->all(), [
+        // Resolve name-based items to ID-based
+        $resolvedItems = [];
+        foreach ($items as $item) {
+            $resolved = $item;
+
+            // Resolve class_name to class_id
+            if (isset($item['class_name']) && empty($item['class_id'])) {
+                $class = \App\Models\Classes::where('name', $item['class_name'])->first();
+                if (!$class) {
+                    return response()->json([
+                        'message' => "Kelas tidak ditemukan: {$item['class_name']}"
+                    ], 422);
+                }
+                $resolved['class_id'] = $class->id;
+            }
+
+            // Resolve subject_name to subject_id
+            if (isset($item['subject_name']) && empty($item['subject_id'])) {
+                $subject = \App\Models\Subject::where('name', $item['subject_name'])->first();
+                if (!$subject) {
+                    return response()->json([
+                        'message' => "Mata pelajaran tidak ditemukan: {$item['subject_name']}"
+                    ], 422);
+                }
+                $resolved['subject_id'] = $subject->id;
+            }
+
+            // Resolve teacher_nip to teacher_profile_id
+            if (isset($item['teacher_nip']) && empty($item['teacher_profile_id'])) {
+                $teacher = \App\Models\TeacherProfile::where('kode_guru', $item['teacher_nip'])
+                    ->orWhere('nip', $item['teacher_nip'])->first();
+                if (!$teacher) {
+                    return response()->json([
+                        'message' => "Guru tidak ditemukan: {$item['teacher_nip']}"
+                    ], 422);
+                }
+                $resolved['teacher_profile_id'] = $teacher->id;
+            }
+
+            // Normalize semester (1 -> ganjil, 2 -> genap)
+            if (isset($item['semester'])) {
+                $semesterMap = ['1' => 'ganjil', 'ganjil' => 'ganjil', '2' => 'genap', 'genap' => 'genap'];
+                $resolved['semester'] = $semesterMap[$item['semester']] ?? $item['semester'];
+            }
+
+            // Normalize day to lowercase Indonesian
+            if (isset($item['day'])) {
+                $dayMap = ['senin' => 'senin', 'selasa' => 'selasa', 'rabu' => 'rabu', 'kamis' => 'kamis', 'jumat' => 'jumat', 'jumat' => 'jumat', 'sabtu' => 'sabtu', 'minggu' => 'minggu'];
+                $dayLower = strtolower($item['day']);
+                $resolved['day'] = $dayMap[$dayLower] ?? $dayLower;
+            }
+
+            // Add seconds to time if not present
+            if (isset($item['start_time']) && strlen($item['start_time']) === 5) {
+                $resolved['start_time'] = $item['start_time'] . ':00';
+            }
+            if (isset($item['end_time']) && strlen($item['end_time']) === 5) {
+                $resolved['end_time'] = $item['end_time'] . ':00';
+            }
+
+            $resolvedItems[] = $resolved;
+        }
+
+        $items = $resolvedItems;
+
+        $validator = Validator::make(['items' => $items], [
             'items' => ['required', 'array', 'min:1'],
             'items.*.class_id' => ['required', 'exists:classes,id'],
             'items.*.semester' => ['required', 'in:ganjil,genap'],
             'items.*.year' => ['required', 'string'],
             'items.*.day' => ['required', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
             'items.*.start_time' => ['required', 'date_format:H:i:s'],
-            'items.*.end_time' => ['required', 'date_format:H:i:s'],
+            'items.*.end_time' => ['required', 'date_format:H:i:s', 'after:items.*.start_time'],
             'items.*.subject_id' => ['required', 'exists:subjects,id'],
             'items.*.teacher_profile_id' => ['required', 'exists:teacher_profiles,id'],
         ]);
