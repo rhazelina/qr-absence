@@ -3,32 +3,29 @@
 use App\Models\ClassSchedule;
 use App\Models\DailySchedule;
 use App\Models\Qrcode;
-use App\Models\ScheduleItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC'));
+    Carbon::setTestNow(Carbon::parse('2026-02-23 08:00:00')); // Monday
 });
 
 it('returns existing active qr code if generated again for same schedule (idempotency)', function () {
     // 1. Setup
     $teacher = User::factory()->teacher()->create();
     $teacher->refresh();
-    $classSchedule = ClassSchedule::factory()->create([
-        'is_active' => true,
-    ]);
-    $dailySchedule = DailySchedule::factory()->create([
+
+    $classSchedule = \App\Models\ClassSchedule::factory()->create();
+    $dailySchedule = \App\Models\DailySchedule::factory()->create([
         'class_schedule_id' => $classSchedule->id,
-        'day' => 'Friday',
+        'day' => 'Monday',
     ]);
-    $schedule = ScheduleItem::factory()->create([
+    $schedule = \App\Models\ScheduleItem::factory()->create([
         'daily_schedule_id' => $dailySchedule->id,
         'teacher_id' => $teacher->teacherProfile->id,
-        'start_time' => now()->subMinutes(30)->format('H:i:s'),
-        'end_time' => now()->addMinutes(30)->format('H:i:s'),
     ]);
 
     // 2. First Generation
@@ -64,18 +61,15 @@ it('generates new qr code if previous one is expired', function () {
     // 1. Setup
     $teacher = User::factory()->teacher()->create();
     $teacher->refresh();
-    $classSchedule = ClassSchedule::factory()->create([
-        'is_active' => true,
-    ]);
-    $dailySchedule = DailySchedule::factory()->create([
+
+    $classSchedule = \App\Models\ClassSchedule::factory()->create();
+    $dailySchedule = \App\Models\DailySchedule::factory()->create([
         'class_schedule_id' => $classSchedule->id,
-        'day' => 'Friday',
+        'day' => 'Monday',
     ]);
-    $schedule = ScheduleItem::factory()->create([
+    $schedule = \App\Models\ScheduleItem::factory()->create([
         'daily_schedule_id' => $dailySchedule->id,
         'teacher_id' => $teacher->teacherProfile->id,
-        'start_time' => now()->subMinutes(30)->format('H:i:s'),
-        'end_time' => now()->addMinutes(30)->format('H:i:s'),
     ]);
 
     // 2. First Generation (Expired)

@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -65,16 +65,16 @@ class AuthTest extends TestCase
         // Let's verify if logic allows empty password.
         // Logic: $isStudentNisnLogin = $user->user_type === 'student' && empty($data['password']) ...
         // If so, it skips password check.
-        
+
         $response->assertStatus(200);
     }
 
     public function test_login_success_teacher_nip()
     {
         $user = User::factory()->create([
-            'user_type' => 'teacher', 
+            'user_type' => 'teacher',
             'password' => bcrypt('password'),
-            'active' => true
+            'active' => true,
         ]);
         TeacherProfile::factory()->create([
             'user_id' => $user->id,
@@ -94,7 +94,7 @@ class AuthTest extends TestCase
         User::factory()->create([
             'email' => 'test@example.com',
             'password' => bcrypt('password'),
-             'active' => true
+            'active' => true,
         ]);
 
         $response = $this->postJson('/api/auth/login', [
@@ -108,10 +108,10 @@ class AuthTest extends TestCase
     public function test_me_endpoint()
     {
         $user = User::factory()->create(['user_type' => 'admin', 'active' => true]);
-        
+
         $token = $user->createToken('test')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/me');
 
         $response->assertStatus(200)

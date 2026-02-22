@@ -20,16 +20,16 @@ beforeEach(function () {
         'user_id' => $this->admin->id,
         'type' => 'waka',
     ]);
-    
+
     $this->teacher = User::factory()->create(['user_type' => 'teacher', 'username' => 'teacher']);
     $this->teacherProfile = TeacherProfile::factory()->create(['user_id' => $this->teacher->id]);
-    
+
     $this->student = User::factory()->create(['user_type' => 'student', 'username' => 'student']);
     $this->major = \App\Models\Major::factory()->create();
     $this->classRoom = Classes::create([
-        'grade' => 'X', 
-        'label' => 'RPL 1', 
-        'major_id' => $this->major->id
+        'grade' => 'X',
+        'label' => 'RPL 1',
+        'major_id' => $this->major->id,
     ]);
     $this->studentProfile = StudentProfile::factory()->create([
         'user_id' => $this->student->id,
@@ -44,7 +44,7 @@ beforeEach(function () {
         'year' => '2025/2026',
         'is_active' => true,
     ]);
-    
+
     $this->dailySchedule = DailySchedule::create([
         'class_schedule_id' => $this->classSchedule->id,
         'day' => now()->format('l'), // Today
@@ -70,15 +70,15 @@ test('waka can view teachers daily attendance', function () {
         'source' => 'qrcode',
     ]);
 
-    // Assuming 'admin' query scope or middleware allows this. 
+    // Assuming 'admin' query scope or middleware allows this.
     // Route says: middleware(['role:admin', 'admin-type:waka'])
-    // But 'admin' role check usually passes for any admin user if not strict on type in role middleware, 
+    // But 'admin' role check usually passes for any admin user if not strict on type in role middleware,
     // OR we need to specific 'admin_type' column if it exists.
-    // Checking AuthController/User model for admin_type... 
+    // Checking AuthController/User model for admin_type...
     // For now, testing with basic admin.
-    
+
     $response = $this->actingAs($this->admin)
-        ->getJson('/api/attendance/teachers/daily?date=' . now()->toDateString());
+        ->getJson('/api/attendance/teachers/daily?date='.now()->toDateString());
 
     $response->assertStatus(200)
         ->assertJsonFragment(['name' => $this->teacher->name])
@@ -119,5 +119,5 @@ test('student can view their own schedule', function () {
 
     $response->assertStatus(200)
        // Structure for student is different (nested)
-       ->assertJsonFragment(['name' => 'Matematika']);
+        ->assertJsonFragment(['name' => 'Matematika']);
 });

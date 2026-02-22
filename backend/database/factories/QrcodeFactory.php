@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Qrcode;
+use App\Models\ScheduleItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ class QrcodeFactory extends Factory
         return [
             'token' => $uuid . '.' . $signature,
             'type' => 'student',
-            'schedule_id' => \App\Models\ScheduleItem::factory(),
+            'schedule_id' => ScheduleItem::factory(),
             'issued_by' => User::factory(),
             'expires_at' => now()->addMinutes(15),
             'is_active' => true,

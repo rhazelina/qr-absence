@@ -4,19 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\AbsenceRequest;
 use App\Models\StudentLeavePermission;
-use App\Models\StudentProfile;
 use App\Services\AttendanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class AbsenceRequestController extends Controller
 {
-    public function __construct(protected AttendanceService $attendanceService)
-    {
-    }
+    public function __construct(protected AttendanceService $attendanceService) {}
 
     /**
      * List my requests (Student) or class requests (Teacher)
@@ -84,7 +80,7 @@ class AbsenceRequestController extends Controller
         if ($user->user_type === 'student') {
             $student = $user->studentProfile;
         } elseif ($user->user_type === 'teacher') {
-             return response()->json(['message' => 'Only students can create requests currently'], 403);
+            return response()->json(['message' => 'Only students can create requests currently'], 403);
         }
 
         if (! $student) {
@@ -120,6 +116,7 @@ class AbsenceRequestController extends Controller
     public function show(Request $request, AbsenceRequest $absenceRequest): JsonResponse
     {
         $this->authorizeView($request, $absenceRequest);
+
         return response()->json($absenceRequest->load(['student.user', 'classRoom', 'approver']));
     }
 
@@ -145,7 +142,7 @@ class AbsenceRequestController extends Controller
             $endDate = Carbon::parse($absenceRequest->end_date);
             $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
 
-            $permissionType = match($absenceRequest->type) {
+            $permissionType = match ($absenceRequest->type) {
                 'sick' => 'sakit',
                 'permit' => 'izin',
                 'dispensation' => 'dispensasi',
@@ -208,9 +205,15 @@ class AbsenceRequestController extends Controller
     private function authorizeView(Request $request, AbsenceRequest $absenceRequest): void
     {
         $user = $request->user();
-        if ($user->user_type === 'admin') return;
-        if ($user->user_type === 'student' && $absenceRequest->student_id === $user->studentProfile?->id) return;
-        if ($user->user_type === 'teacher' && $user->teacherProfile?->homeroom_class_id === $absenceRequest->class_id) return;
+        if ($user->user_type === 'admin') {
+            return;
+        }
+        if ($user->user_type === 'student' && $absenceRequest->student_id === $user->studentProfile?->id) {
+            return;
+        }
+        if ($user->user_type === 'teacher' && $user->teacherProfile?->homeroom_class_id === $absenceRequest->class_id) {
+            return;
+        }
 
         abort(403, 'Unauthorized');
     }
@@ -218,8 +221,10 @@ class AbsenceRequestController extends Controller
     private function authorizeApprove(Request $request, AbsenceRequest $absenceRequest): void
     {
         $user = $request->user();
-        if ($user->user_type === 'admin') return;
-        
+        if ($user->user_type === 'admin') {
+            return;
+        }
+
         // dd([
         //     'user_id' => $user->id,
         //     'user_type' => $user->user_type,
@@ -227,9 +232,10 @@ class AbsenceRequestController extends Controller
         //     'request_class_id' => $absenceRequest->class_id,
         // ]);
 
-        if ($user->user_type === 'teacher' && 
-            (int)$user->teacherProfile?->homeroom_class_id === (int)$absenceRequest->class_id) 
+        if ($user->user_type === 'teacher' &&
+            (int) $user->teacherProfile?->homeroom_class_id === (int) $absenceRequest->class_id) {
             return;
+        }
 
         abort(403, 'Unauthorized');
     }

@@ -169,11 +169,23 @@ class ClassController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->studentProfile || ! $user->studentProfile->classRoom) {
-            return response()->json(['message' => 'Class not found'], 404);
+        if ($user->user_type === 'student') {
+            if (! $user->studentProfile || ! $user->studentProfile->class_id) {
+                return response()->json(['message' => 'Class not found'], 404);
+            }
+
+            return response()->json($user->studentProfile->classRoom->load('major'));
         }
 
-        return response()->json($user->studentProfile->classRoom->load('major'));
+        if ($user->user_type === 'teacher') {
+            if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+                return response()->json(['message' => 'Homeroom class not found'], 404);
+            }
+
+            return response()->json($user->teacherProfile->homeroomClass->load('major'));
+        }
+
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
 
     /**
@@ -184,12 +196,22 @@ class ClassController extends Controller
     public function myClassSchedules(Request $request): JsonResponse
     {
         $user = $request->user();
+        $classRoom = null;
 
-        if (! $user->studentProfile || ! $user->studentProfile->classRoom) {
-            return response()->json(['message' => 'Class not found'], 404);
+        if ($user->user_type === 'student') {
+            if (! $user->studentProfile || ! $user->studentProfile->classRoom) {
+                return response()->json(['message' => 'Class not found'], 404);
+            }
+            $classRoom = $user->studentProfile->classRoom;
+        } elseif ($user->user_type === 'teacher') {
+            if (! $user->teacherProfile || ! $user->teacherProfile->homeroomClass) {
+                return response()->json(['message' => 'Homeroom class not found'], 404);
+            }
+            $classRoom = $user->teacherProfile->homeroomClass;
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $classRoom = $user->studentProfile->classRoom;
         $activeSchedule = $classRoom->classSchedules()
             ->where('is_active', true)
             ->with([
@@ -257,28 +279,40 @@ class ClassController extends Controller
     public function myClassAttendance(Request $request): JsonResponse
     {
         $user = $request->user();
+        $classId = null;
 
-        if (! $user->studentProfile || ! $user->studentProfile->class_id) {
-            return response()->json(['message' => 'Class not found'], 404);
+        if ($user->user_type === 'student') {
+            if (! $user->studentProfile || ! $user->studentProfile->class_id) {
+                return response()->json(['message' => 'Class not found'], 404);
+            }
+            $classId = $user->studentProfile->class_id;
+        } elseif ($user->user_type === 'teacher') {
+            if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+                return response()->json(['message' => 'Homeroom class not found'], 404);
+            }
+            $classId = $user->teacherProfile->homeroom_class_id;
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
-
-        // This usually means getting the attendance records for the class
-        // We need Attendance model, which is linked to Student, which is linked to Class.
-        // Or Attendance linked to Schedule which is linked to Class.
-        // Assuming we want attendance of students IN this class.
-
-        $classId = $user->studentProfile->class_id;
 
         $query = \App\Models\Attendance::whereHas('student.classRoom', function ($q) use ($classId) {
             $q->where('id', $classId);
         });
 
+        if ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+        // Legacy parameter support
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+            $query->whereDate('date', '>=', $request->from);
         }
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+            $query->whereDate('date', '<=', $request->to);
         }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -294,12 +328,23 @@ class ClassController extends Controller
     public function myClassStudents(Request $request): JsonResponse
     {
         $user = $request->user();
+        $classId = null;
 
-        if (! $user->studentProfile || ! $user->studentProfile->class_id) {
-            return response()->json(['message' => 'Class not found'], 404);
+        if ($user->user_type === 'student') {
+            if (! $user->studentProfile || ! $user->studentProfile->class_id) {
+                return response()->json(['message' => 'Class not found'], 404);
+            }
+            $classId = $user->studentProfile->class_id;
+        } elseif ($user->user_type === 'teacher') {
+            if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+                return response()->json(['message' => 'Homeroom class not found'], 404);
+            }
+            $classId = $user->teacherProfile->homeroom_class_id;
+        } else {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $students = $user->studentProfile->classRoom->students()
+        $students = \App\Models\StudentProfile::where('class_id', $classId)
             ->with('user')
             ->get()
             ->sortBy('user.name')

@@ -24,13 +24,13 @@ class AttendanceScanTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // This is a Friday
 
         $classSchedule = \App\Models\ClassSchedule::factory()->create([
             'is_active' => true,
         ]);
-        
+
         $dailySchedule = \App\Models\DailySchedule::factory()->create([
             'class_schedule_id' => $classSchedule->id,
             'day' => 'Friday',
@@ -62,7 +62,7 @@ class AttendanceScanTest extends TestCase
             'is_active' => true,
         ]);
 
-        // Clear settings and settings cache for each test
+        // Clear settings for basic tests
         Setting::where('key', 'school_lat')->delete();
         Setting::where('key', 'school_long')->delete();
         Setting::where('key', 'attendance_radius_meters')->delete();
@@ -143,7 +143,7 @@ class AttendanceScanTest extends TestCase
             ]);
 
         $response->assertStatus(422);
-        // Do not assert day specific message because it is checked earlier in the controller lifecycle 
+        // Do not assert day specific message because it is checked earlier in the controller lifecycle
         $this->assertStringContainsString('di luar radius', strtolower($response->json('message')));
     }
 

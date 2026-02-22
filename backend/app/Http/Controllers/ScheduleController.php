@@ -11,7 +11,6 @@ use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
 {
@@ -161,16 +160,9 @@ class ScheduleController extends Controller
      */
     public function destroy(ClassSchedule $schedule): JsonResponse
     {
-        try {
-            $schedule->delete();
+        $schedule->delete();
 
-            return response()->json(['message' => 'Schedule deleted successfully']);
-        } catch (\Illuminate\Database\QueryException $e) {
-            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
-                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
-            }
-            throw $e;
-        }
+        return response()->json(['message' => 'Schedule deleted successfully']);
     }
 
     /**
@@ -215,17 +207,12 @@ class ScheduleController extends Controller
                 ->get()
                 ->map(function ($item) {
                     return [
-                        'id' => $item->id,
                         'day' => $item->dailySchedule->day,
                         'start_time' => $item->start_time,
                         'end_time' => $item->end_time,
                         'class' => $item->dailySchedule->classSchedule->class->name,
                         'subject' => $item->subject->name ?? 'N/A',
                         'room' => $item->room,
-                        'teacher' => $item->teacher ? [
-                            'nip' => $item->teacher->nip,
-                            'name' => $item->teacher->user->name ?? 'Guru',
-                        ] : null,
                     ];
                 });
 
@@ -395,7 +382,7 @@ class ScheduleController extends Controller
     {
         $startTime = $itemData['start_time'];
         $endTime = $itemData['end_time'];
-        
+
         if ($startTime >= $endTime) {
             throw ValidationException::withMessages([
                 'schedule' => "Waktu mulai harus lebih awal dari waktu selesai."
@@ -403,22 +390,22 @@ class ScheduleController extends Controller
         }
 
         $overlappingItem = ScheduleItem::whereHas('dailySchedule', function ($query) use ($dayName, $classSchedule) {
-                $query->where('day', $dayName)
-                      ->whereHas('classSchedule', function ($q2) use ($classSchedule) {
-                          $q2->where('is_active', true)
-                             ->where('semester', $classSchedule->semester)
-                             ->where('year', $classSchedule->year);
-                      });
-            })
+            $query->where('day', $dayName)
+                ->whereHas('classSchedule', function ($q2) use ($classSchedule) {
+                    $q2->where('is_active', true)
+                        ->where('semester', $classSchedule->semester)
+                        ->where('year', $classSchedule->year);
+                });
+        })
             ->where(function ($query) use ($startTime, $endTime) {
                 $query->where('start_time', '<', $endTime)
-                      ->where('end_time', '>', $startTime);
+                    ->where('end_time', '>', $startTime);
             })
             ->where(function ($query) use ($itemData, $classSchedule) {
                 $query->where('teacher_id', $itemData['teacher_id'])
-                      ->orWhereHas('dailySchedule', function ($q) use ($classSchedule) {
-                            $q->where('class_schedule_id', $classSchedule->id);
-                      });
+                    ->orWhereHas('dailySchedule', function ($q) use ($classSchedule) {
+                        $q->where('class_schedule_id', $classSchedule->id);
+                    });
             })
             ->first();
 

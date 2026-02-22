@@ -8,11 +8,12 @@ use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // Friday
+    Carbon::setTestNow(Carbon::parse('2026-02-23 08:00:00')); // It is a Monday
 });
 
 it('allows waka to record manual attendance', function () {
@@ -242,6 +243,6 @@ it('allows homeroom teacher (wali kelas) to record bulk attendance for their cla
     $this->assertDatabaseHas('attendances', [
         'student_id' => $student2->studentProfile->id,
         'schedule_id' => $schedule->id,
-        'status' => 'absent',
+        'status' => 'alfa',
     ]);
 });

@@ -25,15 +25,13 @@ class Classes extends Model
 
     public function getNameAttribute(): string
     {
-        return trim("{$this->grade_roman} {$this->label}");
+        $majorCode = $this->major?->code ?? '';
+
+        return trim("{$this->grade_roman} {$majorCode} {$this->label}");
     }
 
     public function getGradeRomanAttribute(): string
     {
-        if (!$this->grade) {
-            return '';
-        }
-
         $map = [
             '10' => 'X',
             '11' => 'XI',

@@ -20,16 +20,9 @@ test('architecture: application logic rejects double scan', function () {
     \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // This is a Friday
     $user = User::factory()->create(['user_type' => 'student']);
     $student = StudentProfile::factory()->create(['user_id' => $user->id]);
-    $classSchedule = ClassSchedule::factory()->create(['class_id' => $student->class_id, 'is_active' => true]);
-    $dailySchedule = DailySchedule::factory()->create([
-        'class_schedule_id' => $classSchedule->id,
-        'day' => 'Friday',
-    ]);
-    $schedule = ScheduleItem::factory()->create([
-        'daily_schedule_id' => $dailySchedule->id,
-        'start_time' => now()->subHour()->format('H:i:s'),
-        'end_time' => now()->addHour()->format('H:i:s'),
-    ]);
+    $classSchedule = \App\Models\ClassSchedule::factory()->create();
+    $dailySchedule = \App\Models\DailySchedule::factory()->create(['class_schedule_id' => $classSchedule->id]);
+    $schedule = \App\Models\ScheduleItem::factory()->create(['daily_schedule_id' => $dailySchedule->id]);
     // Ensure QR matches the schedule
     $uuid = \Illuminate\Support\Str::uuid()->toString();
     $signature = hash_hmac('sha256', $uuid, config('app.key'));

@@ -32,7 +32,7 @@ it('allows teacher to scan student QR', function () {
         'class_id' => $class->id,
         'is_active' => true,
     ]);
-    
+
     $dailySchedule = \App\Models\DailySchedule::factory()->create([
         'class_schedule_id' => $classSchedule->id,
         'day' => $now->format('l'),
