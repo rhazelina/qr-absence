@@ -24,7 +24,7 @@ class UpdateClassScheduleRequest extends FormRequest
         return [
             'class_id' => ['sometimes', 'exists:classes,id'],
             'semester' => ['sometimes', 'integer', 'in:1,2'],
-            'year' => ['sometimes', 'regex:/^\d{4}$/'],
+            'year' => ['sometimes', 'string'],
             'is_active' => ['boolean'],
             'days' => ['sometimes', 'array'],
             'days.*.day' => ['required_with:days', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday'],

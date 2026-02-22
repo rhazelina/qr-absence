@@ -25,7 +25,7 @@ function JadwalSiswaEdit() {
 
   const [headerData, setHeaderData] = useState({
     class_id: '',
-    year: '2025',
+    year: '2024/2025',
     semester: '1',
     is_active: true,
   });

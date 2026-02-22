@@ -297,7 +297,7 @@ class ScheduleController extends Controller
     public function bulkUpsert(Request $request, Classes $class): JsonResponse
     {
         $data = $request->validate([
-            'year' => 'required|regex:/^\d{4}$/',
+            'year' => 'required|string',
             'semester' => 'required|string',
             'is_active' => 'boolean',
             'days' => 'required|array',
