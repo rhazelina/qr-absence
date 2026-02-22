@@ -140,7 +140,24 @@ function DataGuru() {
     }
   };
 
-  const filteredTeachers = teachers;
+  // Filter & Search
+  const getFilteredTeachers = () => {
+    return teachers.filter(teacher => {
+      const searchLower = searchTerm.toLowerCase();
+      const matchSearch = searchTerm === '' ||
+        teacher.name?.toLowerCase().includes(searchLower) ||
+        teacher.code?.toLowerCase().includes(searchLower) ||
+        teacher.role?.toLowerCase().includes(searchLower) ||
+        (teacher.subject_name && teacher.subject_name.toLowerCase().includes(searchLower)) ||
+        (teacher.waka_field && teacher.waka_field.toLowerCase().includes(searchLower)) ||
+        (teacher.major_expertise && teacher.major_expertise.toLowerCase().includes(searchLower)) ||
+        (teacher.homeroom_class?.name && teacher.homeroom_class.name.toLowerCase().includes(searchLower));
+
+      return matchSearch;
+    });
+  };
+
+  const filteredTeachers = getFilteredTeachers();
 
   // Reset Filter
   const handleResetFilter = () => {
@@ -463,13 +480,22 @@ function DataGuru() {
 
         const result = await apiService.importTeachers(importedTeachers);
 
-        if (result.total_rows !== undefined) {
+        if (result.data) {
+          const { imported, duplicates } = result.data;
+
+          let message = `✅ Berhasil mengimpor ${imported} data guru.`;
+
+          if (duplicates && duplicates.length > 0) {
+            message += `\n\n❌ ${duplicates.length} data ditolak karena Kode Guru sudah ada:\n${duplicates.join(', ')}`;
+          }
+
+          alert(message);
+        } else if (result.total_rows !== undefined) {
           alert(`✅ Berhasil mengimpor ${result.success_count} data guru dari total ${result.total_rows} baris.`);
-          await loadTeachers();
         } else {
           alert(`✅ Berhasil mengimpor data guru.`);
-          await loadTeachers();
         }
+        await loadTeachers();
 
       } catch (error) {
         if (error.data && error.data.errors) {
@@ -610,7 +636,8 @@ function DataGuru() {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                   zIndex: 1000,
                   minWidth: '170px',
-                  marginTop: '5px'
+                  marginTop: '5px',
+                  color: "black"
                 }}>
                   <button
                     onClick={handleExportToExcel}
@@ -623,7 +650,8 @@ function DataGuru() {
                       cursor: 'pointer',
                       fontSize: '14px',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      color: "black"
                     }}
                     onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'}
                     onMouseOut={(e) => e.target.style.backgroundColor = 'white'}
@@ -642,7 +670,8 @@ function DataGuru() {
                       fontSize: '14px',
                       borderTop: '1px solid #f0f0f0',
                       display: 'flex',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      color: "black"
                     }}
                     onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'}
                     onMouseOut={(e) => e.target.style.backgroundColor = 'white'}

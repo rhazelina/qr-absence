@@ -466,10 +466,10 @@ function DataSiswa() {
 
               {showExportMenu && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: 'white', border: '1px solid #ddd', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 1000, minWidth: '170px', marginTop: '5px' }}>
-                  <button onClick={handleExportToExcel} style={{ width: '100%', padding: '10px 15px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'} onMouseOut={(e) => e.target.style.backgroundColor = 'white'}>
+                  <button onClick={handleExportToExcel} style={{ width: '100%', padding: '10px 15px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', color: "black" }} onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'} onMouseOut={(e) => e.target.style.backgroundColor = 'white'}>
                     <ExcelIcon /> Excel (.xlsx)
                   </button>
-                  <button onClick={handleExportToPDF} style={{ width: '100%', padding: '10px 15px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '14px', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }} onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'} onMouseOut={(e) => e.target.style.backgroundColor = 'white'}>
+                  <button onClick={handleExportToPDF} style={{ width: '100%', padding: '10px 15px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: '14px', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', color: "black" }} onMouseOver={(e) => e.target.style.backgroundColor = '#f0f0f0'} onMouseOut={(e) => e.target.style.backgroundColor = 'white'}>
                     <PDFIcon /> PDF (.pdf)
                   </button>
                 </div>

@@ -1,27 +1,43 @@
+/* d:\Users\Ernestoyoofi\Code\@harris\qr-absence\frontend\src\pages\Admin\Profilesekolah.css */
+
+/* Reset for this page to fight index.css flex */
 .profil-sekolah-wrapper {
+  display: block;
+  width: 100%;
   min-height: 100vh;
   background-image: url('../../assets/bg.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  margin-top: 1300px;
-  padding: 60px 60px 80px;}
+  background-attachment: fixed;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  /* margin-top: 30%; */
+}
+
 .profil-sekolah-konten {
-  margin-top: 0; /* Ubah dari 120px menjadi 0 atau hapus properti ini */
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  /* Kunci perbaikan: Offset dari navbar + padding tambahan */
+  padding: 120px 40px 60px;
+  box-sizing: border-box;
 }
 
 .profil-judul-halaman {
   color: white;
-  font-size: 46px;
+  font-size: 48px;
   font-weight: 700;
   text-align: center;
-  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
-  margin-bottom: 40px;
+  text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+  margin: 0 0 40px 0;
 }
 
 .profil-kontainer {
-  max-width: 1400px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
 /* Bagian Media (Logo & Maskot) */
@@ -29,14 +45,13 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 30px;
-  margin-bottom: 40px;
 }
 
 .profil-media-kartu {
   background: white;
   border-radius: 20px;
   padding: 30px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .profil-media-judul {
@@ -74,7 +89,7 @@
 .profil-maskot-preview {
   max-height: 250px;
 }
-/* Keterangan Logo Default */
+
 .profil-logo-info {
   display: flex;
   align-items: center;
@@ -90,96 +105,16 @@
   font-weight: 600;
 }
 
-.profil-logo-info i {
-  font-size: 14px;
-}
-.profil-no-gambar {
-  text-align: center;
-  color: #94a3b8;
-}
-
-.profil-no-gambar i {
-  font-size: 64px;
-  margin-bottom: 15px;
-  display: block;
-}
-
-.profil-no-gambar p {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.profil-media-tombol {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-}
-
-.profil-btn-upload,
-.profil-btn-reset,
-.profil-btn-hapus {
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profil-btn-upload {
-  background: #3b82f6;
-  color: white;
-}
-
-.profil-btn-upload:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
-}
-
-.profil-btn-reset {
-  background: #64748b;
-  color: white;
-}
-
-.profil-btn-reset:hover:not(:disabled) {
-  background: #475569;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(100, 116, 139, 0.3);
-}
-
-.profil-btn-hapus {
-  background: #ef4444;
-  color: white;
-}
-
-.profil-btn-hapus:hover:not(:disabled) {
-  background: #dc2626;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
-}
-
-.profil-btn-upload:disabled,
-.profil-btn-reset:disabled,
-.profil-btn-hapus:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* Bagian Form */
 .profil-form-data {
   background: white;
   border-radius: 20px;
   padding: 40px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .profil-form-bagian {
-  margin-bottom: 35px;
+  margin-bottom: 40px;
 }
 
 .profil-form-bagian:last-of-type {
@@ -230,20 +165,10 @@
   font-weight: 500;
 }
 
-.profil-form-input:focus:not(:disabled) {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
 .profil-form-input:disabled {
   background: #f8fafc;
   color: #64748b;
   cursor: not-allowed;
-}
-
-.profil-form-input option {
-  font-weight: 500;
 }
 
 /* Tombol Aksi */
@@ -251,17 +176,20 @@
   display: flex;
   justify-content: center;
   gap: 15px;
-  margin-top: 35px;
+  margin-top: 40px;
   padding-top: 30px;
   border-top: 3px solid #e2e8f0;
 }
 
 .profil-btn-edit,
 .profil-btn-simpan,
-.profil-btn-batal {
-  padding: 14px 40px;
+.profil-btn-batal,
+.profil-btn-upload,
+.profil-btn-reset,
+.profil-btn-hapus {
+  padding: 12px 24px;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -274,146 +202,55 @@
 .profil-btn-edit {
   background: #3b82f6;
   color: white;
-}
-
-.profil-btn-edit:hover {
-  background: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+  padding: 14px 40px;
 }
 
 .profil-btn-simpan {
   background: #10b981;
   color: white;
-}
-
-.profil-btn-simpan:hover {
-  background: #059669;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  padding: 14px 40px;
 }
 
 .profil-btn-batal {
   background: #64748b;
   color: white;
+  padding: 14px 40px;
 }
 
-.profil-btn-batal:hover {
-  background: #475569;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(100, 116, 139, 0.3);
+.profil-btn-upload {
+  background: #3b82f6;
+  color: white;
 }
 
-.profil-btn-edit:active,
-.profil-btn-simpan:active,
-.profil-btn-batal:active {
-  transform: translateY(0);
+.profil-btn-reset {
+  background: #64748b;
+  color: white;
+}
+
+.profil-btn-hapus {
+  background: #ef4444;
+  color: white;
+}
+
+.profil-media-tombol {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
-  .profil-sekolah-wrapper {
-    padding: 40px 40px 80px;
-  }
-}
-
 @media (max-width: 992px) {
-  .profil-media-section {
-    grid-template-columns: 1fr;
-  }
 
+  .profil-media-section,
   .profil-form-baris {
     grid-template-columns: 1fr;
   }
 
-  .profil-judul-halaman {
-    font-size: 38px;
-  }
-}
-
-@media (max-width: 768px) {
-  .profil-sekolah-wrapper {
-    padding: 100px 20px 60px; /* Sesuaikan untuk mobile */
-  }
-
   .profil-sekolah-konten {
-    margin-top: 10px; /* Kurangi spacing untuk mobile */
+    padding: 100px 20px 40px;
   }
 
   .profil-judul-halaman {
-    font-size: 32px;
-    margin-bottom: 30px;
-  }
-
-  .profil-media-kartu {
-    padding: 25px 20px;
-  }
-
-  .profil-media-judul {
-    font-size: 20px;
-  }
-
-  .profil-form-data {
-    padding: 30px 20px;
-  }
-
-  .profil-bagian-judul {
-    font-size: 20px;
-  }
-
-  .profil-form-label {
-    font-size: 14px;
-  }
-
-  .profil-form-input {
-    padding: 10px 14px;
-    font-size: 14px;
-  }
-
-  .profil-media-tombol {
-    flex-direction: column;
-  }
-
-  .profil-btn-upload,
-  .profil-btn-reset,
-  .profil-btn-hapus {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .profil-form-aksi {
-    flex-direction: column;
-  }
-
-  .profil-btn-edit,
-  .profil-btn-simpan,
-  .profil-btn-batal {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .profil-judul-halaman {
-    font-size: 28px;
-  }
-
-  .profil-media-preview {
-    min-height: 200px;
-  }
-
-  .profil-preview-gambar {
-    max-height: 180px;
-  }
-
-  .profil-bagian-judul {
-    font-size: 18px;
-  }
-
-  .profil-btn-edit,
-  .profil-btn-simpan,
-  .profil-btn-batal {
-    padding: 12px 30px;
-    font-size: 15px;
+    font-size: 36px;
   }
 }

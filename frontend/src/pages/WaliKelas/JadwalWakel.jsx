@@ -16,7 +16,7 @@ const JadwalWakel = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const headers = { 
+      const headers = {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json'
       };
@@ -43,7 +43,10 @@ const JadwalWakel = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Memuat jadwal kelas...</div>;
+    return <div className="jadwal-container">
+      <NavbarWakel />
+      <div className="flex justify-center items-center h-screen" style={{ color: '#94a3b8' }}>Memuat jadwal kelas...</div>
+    </div>;
   }
 
   // Group items by day
