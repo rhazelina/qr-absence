@@ -74,7 +74,7 @@ const Jadwal = () => {
           {/* Sidebar Profile */}
           <div className="md:w-1/4 mb-6 md:mb-0">
             <div className="bg-white rounded-lg shadow p-6 text-center">
-              <div className="w-24 h-24 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-500">
+              <div className="w-24 h-24 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-500 py-4">
                 <FaUser size={40} />
               </div>
               <h2 className="text-xl font-bold text-gray-800">{profile?.name}</h2>

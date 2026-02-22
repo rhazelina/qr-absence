@@ -75,7 +75,7 @@ function KehadiranGuruIndex() {
       setPagination(result.items);
     } catch (error) {
       console.error('Error fetching kehadiran guru:', error);
-      alert('Terjadi kesalahan saat memuat data: ' + error.message);
+      // alert('Terjadi kesalahan saat memuat data: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -107,7 +107,7 @@ function KehadiranGuruIndex() {
   // Helper to map attendances to 10 slots
   const getAttendanceSlots = (attendances = []) => {
     const slots = Array(10).fill(null);
-    
+
     // Sort attendances by start_time if possible, or just use sequence
     const sorted = [...attendances].sort((a, b) => {
       const timeA = a.schedule?.start_time || '00:00';
@@ -181,11 +181,15 @@ function KehadiranGuruIndex() {
 
   if (loading) {
     return (
-      <div className="wadah-muat">
-        <div className="konten-muat">
-          <FaSpinner />
-          <span>Sinkronisasi data...</span>
-        </div>
+      <div className="kehadiran-guru-index-container">
+        <NavbarWaka />
+        <div className='w-full py-20' style={{ color: "white", textAlign: "center", width: "100%" }}>Sinkronisasi data...</div>
+        {/* <div className="wadah-muat">
+          <div className="konten-muat">
+            <FaSpinner />
+            <span>Sinkronisasi data...</span>
+          </div>
+        </div> */}
       </div>
     );
   }
@@ -193,7 +197,7 @@ function KehadiranGuruIndex() {
   return (
     <div className="kehadiran-guru-index-container">
       <NavbarWaka />
-      
+
       <div className="kehadiran-guru-index-header">
         <div>
           <h1>Kehadiran Guru</h1>
@@ -212,7 +216,7 @@ function KehadiranGuruIndex() {
           {showExport && (
             <div className="kehadiran-guru-index-export-menu">
               <div className="export-date-range">
-                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2">Pilih Format</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2">Pilih Format</p>
               </div>
               <button className="export-item pdf" onClick={handleExportPDF}>
                 <FaFilePdf /> PDF Document
@@ -312,23 +316,23 @@ function KehadiranGuruIndex() {
                       ))}
                       <td style={{ textAlign: 'center' }}>
                         <div className="flex items-center justify-center gap-2">
-                           {k.attendances && k.attendances.length > 0 && (
-                             <button
-                               className="kehadiran-guru-action-btn"
-                               style={{ backgroundColor: '#dc2626' }}
-                               onClick={() => setDeleteModal({ show: true, id: k.attendances[0].id, namaGuru: k.teacher.user?.name })}
-                               title="Batalkan Kehadiran Terbaru"
-                             >
-                               <FaTrash />
-                             </button>
-                           )}
-                           <button
-                             className="kehadiran-guru-action-btn"
-                             onClick={() => navigate(`/waka/kehadiran-guru/${k.teacher.id}`)}
-                             title="Lihat Detail Riwayat"
-                           >
-                             <FaEye />
-                           </button>
+                          {k.attendances && k.attendances.length > 0 && (
+                            <button
+                              className="kehadiran-guru-action-btn"
+                              style={{ backgroundColor: '#dc2626' }}
+                              onClick={() => setDeleteModal({ show: true, id: k.attendances[0].id, namaGuru: k.teacher.user?.name })}
+                              title="Batalkan Kehadiran Terbaru"
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
+                          <button
+                            className="kehadiran-guru-action-btn"
+                            onClick={() => navigate(`/waka/kehadiran-guru/${k.teacher.id}`)}
+                            title="Lihat Detail Riwayat"
+                          >
+                            <FaEye />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -344,9 +348,9 @@ function KehadiranGuruIndex() {
       {deleteModal.show && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl border border-gray-100 p-8">
-             <div className="bg-red-50 text-red-600 w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-100 border border-red-100">
-                <FaTrash size={32} />
-             </div>
+            <div className="bg-red-50 text-red-600 w-20 h-20 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-100 border border-red-100">
+              <FaTrash size={32} />
+            </div>
             <h3 className="text-2xl font-black text-center text-gray-900 mb-2">Konfirmasi Hapus</h3>
             <p className="text-gray-500 text-center font-bold mb-8">Apakah Anda yakin ingin membatalkan kehadiran untuk <strong>{deleteModal.namaGuru}</strong>? Tindakan ini tidak dapat dibatalkan.</p>
             <div className="flex gap-4">

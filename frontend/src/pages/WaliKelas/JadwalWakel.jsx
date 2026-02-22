@@ -68,7 +68,7 @@ const JadwalWakel = () => {
           {/* Sidebar Class Info */}
           <div className="md:w-1/4 mb-6 md:mb-0">
             <div className="bg-white rounded-lg shadow p-6 text-center">
-              <div className="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-600">
+              <div className="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4 text-blue-60 py-4">
                 <FaSchool size={40} />
               </div>
               <h2 className="text-xl font-bold text-gray-800">{classInfo?.name || 'Kelas Tidak Ditemukan'}</h2>

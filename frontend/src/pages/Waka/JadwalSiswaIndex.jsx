@@ -129,25 +129,25 @@ function JadwalSiswaIndex() {
       {/* ACTION & FILTER */}
       <div className="filter-card">
         <div className="filter-grid">
-          <div className="filter-group">
-            <label className="filter-label">
-              <FaSearch /> Cari Kelas
-            </label>
-            <div className="search-wrapper">
-              <input
-                type="text"
-                placeholder="Cari Nama Kelas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="filter-input"
-              />
-            </div>
+          <div className="relative w-full flex justify-center items-center">
+            <input
+              type="text"
+              placeholder="Cari Nama Kelas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md"
+              style={{ borderRadius: 6, borderColor: "gray", borderWidth: 1 }}
+            />
+            {/* <label className="absolute">
+              <FaSearch />
+            </label> */}
           </div>
 
-          <div className="filter-group" style={{ justifyContent: 'flex-end', display: 'flex', alignItems: 'flex-end' }}>
+          <div className="filter-group" style={{ justifyContent: 'flex-end', display: 'flex', alignItems: 'flex-end', backgroundColor: "white", borderRadius: 6, borderWidth: 1 }}>
             <button
               onClick={handleCreate}
               className="jadwal-siswa-index-btn-add"
+              style={{ background: "#d3d3d3" }}
             >
               <FaPlus /> Tambah Jadwal
             </button>

@@ -22,7 +22,7 @@ const getStatusColor = (status) => {
 function Riwayat() {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  
+
   const [startDate, setStartDate] = useState(firstDayOfMonth.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -47,13 +47,13 @@ function Riwayat() {
       try {
         const profile = await apiService.getProfile();
         console.log('Profile fetched:', profile);
-        
+
         // Determine the correct student ID
         // apiService.getProfile() returns the user object with nested student_profile
         const studentId = profile.student_profile?.id || profile.id;
-        
+
         setCurrentStudent({
-          studentId: studentId, 
+          studentId: studentId,
           name: profile.name,
           nis: profile.profile?.nis || ''
         });
@@ -79,13 +79,13 @@ function Riwayat() {
     const fetchAttendanceData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Fetch attendance records from real backend
         const records = await apiService.getAttendanceHistory({
           start_date: startDate,
           end_date: endDate
         });
-        
+
         // Format records
         const formattedRecords = records.map(record => ({
           id: record.id,
@@ -100,13 +100,13 @@ function Riwayat() {
           studentName: record.student?.user?.name || '',
           nis: record.student?.nis || ''
         }));
-        
+
         setAttendanceRecords(formattedRecords);
-        
+
         // Fetch stats from dashboard summary (most efficient way to get summary)
         const summaryResponse = await apiService.getStudentDashboard();
         const summary = summaryResponse.attendance_summary || {};
-        
+
         setStats({
           hadir: summary.present || 0,
           terlambat: summary.late || 0,
@@ -115,8 +115,9 @@ function Riwayat() {
           alpha: summary.absent || 0,
           pulang: summary.return || 0
         });
-        
+
       } catch (error) {
+        setIsLoading(false);
         console.error('Error fetching attendance data:', error);
         setAttendanceRecords([]);
       } finally {
@@ -126,6 +127,8 @@ function Riwayat() {
 
     fetchAttendanceData();
   }, [currentStudent?.studentId, startDate, endDate]);
+
+  console.log(isLoading)
 
 
   const formatDisplayDate = (dateString) => {
@@ -139,14 +142,14 @@ function Riwayat() {
   const handleStartDateChange = (e) => {
     const newStartDate = e.target.value;
     const todayDate = new Date().toISOString().split('T')[0];
-    
+
     if (newStartDate > todayDate) {
       alert('Tidak dapat memilih tanggal setelah hari ini!');
       return;
     }
-    
+
     setStartDate(newStartDate);
-    
+
     if (new Date(endDate) < new Date(newStartDate)) {
       setEndDate(newStartDate);
     }
@@ -155,12 +158,12 @@ function Riwayat() {
   const handleEndDateChange = (e) => {
     const newEndDate = e.target.value;
     const todayDate = new Date().toISOString().split('T')[0];
-    
+
     if (newEndDate > todayDate) {
       alert('Tidak dapat memilih tanggal setelah hari ini!');
       return;
     }
-    
+
     if (new Date(newEndDate) >= new Date(startDate)) {
       setEndDate(newEndDate);
     }
@@ -207,9 +210,9 @@ function Riwayat() {
               className="date-inputt"
             />
           </div>
-          
+
           <div className="date-separator">—</div>
-          
+
           <div className="date-inputt-group">
             <label htmlFor="endDate">
               <Calendar size={18} />
@@ -310,8 +313,8 @@ function Riwayat() {
                   </span>
                 </div>
                 <div className="table-cell">
-                  <button 
-                    className="view-btn" 
+                  <button
+                    className="view-btn"
                     onClick={() => handleViewDetail(record)}
                     title="Lihat Detail"
                   >
@@ -371,7 +374,7 @@ function Riwayat() {
               {selectedRecord.reason && (
                 <>
                   <div className="detail-divider"></div>
-                  
+
                   <div className="detail-row">
                     <span className="detail-label">Alasan:</span>
                     <span className="detail-value">{selectedRecord.reason || '-'}</span>
@@ -387,12 +390,12 @@ function Riwayat() {
                     <div className="detail-value">
                       {selectedRecord.proofImage ? (
                         <div className="proof-image-container">
-                          <div 
+                          <div
                             className="proof-image-wrapper"
                             onClick={() => handleImageZoom(selectedRecord.proofImage)}
                           >
-                            <img 
-                              src={selectedRecord.proofImage} 
+                            <img
+                              src={selectedRecord.proofImage}
                               alt="Bukti dokumen"
                               className="proof-image"
                             />
@@ -416,11 +419,11 @@ function Riwayat() {
                 <>
                   <div className="detail-divider"></div>
                   <p className="no-reason-text">
-                    {selectedRecord.status === 'Hadir' 
-                      ? 'Siswa hadir tepat waktu' 
+                    {selectedRecord.status === 'Hadir'
+                      ? 'Siswa hadir tepat waktu'
                       : selectedRecord.status === 'Terlambat'
-                      ? 'Siswa datang terlambat'
-                      : 'Tidak ada keterangan tambahan'}
+                        ? 'Siswa datang terlambat'
+                        : 'Tidak ada keterangan tambahan'}
                   </p>
                 </>
               )}
@@ -435,8 +438,8 @@ function Riwayat() {
             <button className="image-zoom-close" onClick={closeImageZoom}>
               <X size={24} />
             </button>
-            <img 
-              src={zoomedImage} 
+            <img
+              src={zoomedImage}
               alt="Bukti dokumen (diperbesar)"
               className="zoomed-image"
             />

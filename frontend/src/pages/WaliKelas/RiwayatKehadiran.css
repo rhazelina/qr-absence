@@ -152,15 +152,16 @@
 }
 
 .export-selector {
-  position: relative;
+  position: static;
 }
 
-.export-dropdown {
+.export-dropdowns {
   position: absolute;
   right: 0;
   background: white;
   border-radius: 12px;
   margin-top: 8px;
+  margin-right: 60px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10;
   overflow: hidden;

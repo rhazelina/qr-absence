@@ -122,15 +122,10 @@ function KehadiranSiswaIndex() {
 
   if (loading) {
     return (
-      <>
+      <div className="kehadiran-guru-index-container">
         <NavbarWaka />
-        <div className="wadah-muat">
-          <div className="konten-muat">
-            <FaSpinner />
-            <span>Memuat data kelas...</span>
-          </div>
-        </div>
-      </>
+        <div className='w-full py-20' style={{ color: "white", textAlign: "center", width: "100%" }}>Sinkronisasi data...</div>
+      </div>
     );
   }
 
