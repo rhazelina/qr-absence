@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 use App\Models\Classes;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class ImportController extends Controller
 {
@@ -19,7 +19,7 @@ class ImportController extends Controller
 
         foreach ($validator->errors()->messages() as $field => $messages) {
             if (preg_match('/items\.(\d+)\.(.+)/', $field, $matches)) {
-                $row = (int)$matches[1] + 1; // 1-indexed for the user
+                $row = (int) $matches[1] + 1; // 1-indexed for the user
                 $column = $matches[2];
                 $failedRows[$row] = true;
 
@@ -30,9 +30,9 @@ class ImportController extends Controller
                         'message' => $message,
                     ];
                 }
-            } else if ($field === 'items') {
+            } elseif ($field === 'items') {
                 foreach ($messages as $message) {
-                     $errors[] = [
+                    $errors[] = [
                         'row' => 0,
                         'column' => 'file',
                         'message' => $message,
@@ -59,13 +59,13 @@ class ImportController extends Controller
         $validator = Validator::make($request->all(), [
             'items' => ['required', 'array', 'min:1'],
             'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
+            'items.*.username' => ['nullable', 'string', 'max:50', 'distinct', 'unique:users,username'],
             'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
             'items.*.password' => ['nullable', 'string'],
             'items.*.nisn' => ['required', 'numeric', 'distinct', 'unique:student_profiles,nisn'],
-            'items.*.nis' => ['required', 'string', 'distinct', 'unique:student_profiles,nis'],
-            'items.*.gender' => ['required', 'in:L,P'],
-            'items.*.address' => ['required', 'string'],
+            'items.*.nis' => ['nullable', 'string', 'distinct', 'unique:student_profiles,nis'],
+            'items.*.gender' => ['nullable', 'in:L,P'],
+            'items.*.address' => ['nullable', 'string'],
             'items.*.class_id' => ['required', 'exists:classes,id'],
             'items.*.is_class_officer' => ['nullable', 'boolean'],
             'items.*.phone' => ['nullable', 'string', 'max:30'],
@@ -81,11 +81,20 @@ class ImportController extends Controller
         try {
             DB::transaction(function () use ($items, &$count) {
                 foreach ($items as $item) {
+                    // Auto-generate missing fields (same as StudentController)
+                    $item['username'] = $item['username'] ?? $item['nisn'];
+                    $item['nis'] = $item['nis'] ?? $item['nisn'];
+                    $item['gender'] = $item['gender'] ?? 'L';
+                    $item['address'] = $item['address'] ?? '-';
+                    $password = isset($item['password']) && strlen($item['password']) >= 6
+                        ? $item['password']
+                        : ($item['nisn'] ?? 'password123');
+
                     $user = User::create([
                         'name' => $item['name'],
                         'username' => $item['username'],
                         'email' => $item['email'] ?? null,
-                        'password' => Hash::make((isset($item['password']) && strlen($item['password']) >= 6) ? $item['password'] : $item['nisn']),
+                        'password' => Hash::make($password),
                         'phone' => $item['phone'] ?? null,
                         'contact' => $item['contact'] ?? null,
                         'user_type' => 'student',
@@ -107,10 +116,11 @@ class ImportController extends Controller
                 'total_rows' => count($items),
                 'success_count' => $count,
                 'failed_count' => 0,
-                'errors' => []
+                'errors' => [],
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Import Siswa failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Illuminate\Support\Facades\Log::error('Import Siswa failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'total_rows' => count($items),
                 'success_count' => 0,
@@ -119,9 +129,9 @@ class ImportController extends Controller
                     [
                         'row' => 0,
                         'column' => 'system',
-                        'message' => 'Import failed: ' . $e->getMessage()
-                    ]
-                ]
+                        'message' => 'Import failed: '.$e->getMessage(),
+                    ],
+                ],
             ], 500);
         }
     }
@@ -175,10 +185,11 @@ class ImportController extends Controller
                 'total_rows' => count($items),
                 'success_count' => $count,
                 'failed_count' => 0,
-                'errors' => []
+                'errors' => [],
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Import Guru failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Illuminate\Support\Facades\Log::error('Import Guru failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'total_rows' => count($items),
                 'success_count' => 0,
@@ -187,9 +198,9 @@ class ImportController extends Controller
                     [
                         'row' => 0,
                         'column' => 'system',
-                        'message' => 'Import failed: ' . $e->getMessage()
-                    ]
-                ]
+                        'message' => 'Import failed: '.$e->getMessage(),
+                    ],
+                ],
             ], 500);
         }
     }
@@ -218,14 +229,14 @@ class ImportController extends Controller
 
         foreach ($items as $index => $item) {
             $row = $index + 1;
-            $comb = $item['grade'] . '_' . $item['label'] . '_' . ($item['major_id'] ?? 'none');
-            
+            $comb = $item['grade'].'_'.$item['label'].'_'.($item['major_id'] ?? 'none');
+
             if (isset($combinations[$comb])) {
                 $failedRows[$row] = true;
                 $errors[] = [
                     'row' => $row,
                     'column' => 'grade/label/major',
-                    'message' => 'Kombinasi grade, label, dan jurusan duplikat dalam file.'
+                    'message' => 'Kombinasi grade, label, dan jurusan duplikat dalam file.',
                 ];
             } else {
                 $combinations[$comb] = true;
@@ -236,7 +247,7 @@ class ImportController extends Controller
                 ->where('label', $item['label'])
                 ->when(isset($item['major_id']), function ($q) use ($item) {
                     return $q->where('major_id', $item['major_id']);
-                }, function($q) {
+                }, function ($q) {
                     return $q->whereNull('major_id');
                 })->exists();
 
@@ -245,7 +256,7 @@ class ImportController extends Controller
                 $errors[] = [
                     'row' => $row,
                     'column' => 'grade/label/major',
-                    'message' => 'Kelas sudah ada di database.'
+                    'message' => 'Kelas sudah ada di database.',
                 ];
             }
         }
@@ -282,10 +293,11 @@ class ImportController extends Controller
                 'total_rows' => count($items),
                 'success_count' => $count,
                 'failed_count' => 0,
-                'errors' => []
+                'errors' => [],
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Import Kelas failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Illuminate\Support\Facades\Log::error('Import Kelas failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'total_rows' => count($items),
                 'success_count' => 0,
@@ -294,9 +306,9 @@ class ImportController extends Controller
                     [
                         'row' => 0,
                         'column' => 'system',
-                        'message' => 'Import failed: ' . $e->getMessage()
-                    ]
-                ]
+                        'message' => 'Import failed: '.$e->getMessage(),
+                    ],
+                ],
             ], 500);
         }
     }
@@ -330,20 +342,23 @@ class ImportController extends Controller
         // Validate overlapping schedule (Time validation)
         foreach ($items as $index => $item) {
             $row = $index + 1;
-            
+
             if ($item['start_time'] >= $item['end_time']) {
                 $failedRows[$row] = true;
                 $errors[] = [
                     'row' => $row,
                     'column' => 'start_time/end_time',
-                    'message' => 'Waktu mulai harus lebih awal dari waktu selesai.'
+                    'message' => 'Waktu mulai harus lebih awal dari waktu selesai.',
                 ];
+
                 continue;
             }
 
             // Check for collision with incoming items
             foreach ($items as $index2 => $item2) {
-                if ($index === $index2) continue;
+                if ($index === $index2) {
+                    continue;
+                }
                 if ($item['day'] === $item2['day']) {
                     $isOverlappingTime = ($item['start_time'] < $item2['end_time'] && $item['end_time'] > $item2['start_time']);
                     if ($isOverlappingTime) {
@@ -352,7 +367,7 @@ class ImportController extends Controller
                             $errors[] = [
                                 'row' => $row,
                                 'column' => 'schedule',
-                                'message' => 'Bentrok jadwal guru di dalam file pada hari ' . $item['day']
+                                'message' => 'Bentrok jadwal guru di dalam file pada hari '.$item['day'],
                             ];
                         }
                         if ($item['class_id'] === $item2['class_id']) {
@@ -360,7 +375,7 @@ class ImportController extends Controller
                             $errors[] = [
                                 'row' => $row,
                                 'column' => 'schedule',
-                                'message' => 'Bentrok jadwal kelas di dalam file pada hari ' . $item['day']
+                                'message' => 'Bentrok jadwal kelas di dalam file pada hari '.$item['day'],
                             ];
                         }
                     }
@@ -383,11 +398,11 @@ class ImportController extends Controller
             DB::transaction(function () use ($items, &$count, &$errors, &$failedRows) {
                 foreach ($items as $index => $item) {
                     $row = $index + 1;
-                    
+
                     // Check database for existing class schedules to avoid collision
-                    // For thorough collision check in DB: 
+                    // For thorough collision check in DB:
                     // This is simple for a clean database but let's check properly
-                    
+
                     // DB logic to insert Jadwal...
                     // Usually we search if ClassSchedule exists for (class_id, semester, year)
                     $classSchedule = \App\Models\ClassSchedule::firstOrCreate(
@@ -397,7 +412,7 @@ class ImportController extends Controller
                             'year' => $item['year'],
                         ],
                         [
-                            'is_active' => true
+                            'is_active' => true,
                         ]
                     );
 
@@ -409,12 +424,12 @@ class ImportController extends Controller
                     $existsTeacher = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($item) {
                         $q->where('day', strtolower($item['day']));
                     })
-                    ->where('teacher_profile_id', $item['teacher_profile_id'])
-                    ->where(function ($query) use ($item) {
-                        $query->where('start_time', '<', $item['end_time'])
-                              ->where('end_time', '>', $item['start_time']);
-                    })
-                    ->exists();
+                        ->where('teacher_profile_id', $item['teacher_profile_id'])
+                        ->where(function ($query) use ($item) {
+                            $query->where('start_time', '<', $item['end_time'])
+                                ->where('end_time', '>', $item['start_time']);
+                        })
+                        ->exists();
 
                     if ($existsTeacher) {
                         throw new \Exception("Row {$row}: Guru sudah ada jadwal di jam yang sama pada hari {$item['day']}");
@@ -423,7 +438,7 @@ class ImportController extends Controller
                     $existsClass = $dailySchedule->scheduleItems()
                         ->where(function ($query) use ($item) {
                             $query->where('start_time', '<', $item['end_time'])
-                                  ->where('end_time', '>', $item['start_time']);
+                                ->where('end_time', '>', $item['start_time']);
                         })
                         ->exists();
 
@@ -446,10 +461,11 @@ class ImportController extends Controller
                 'total_rows' => count($items),
                 'success_count' => $count,
                 'failed_count' => 0,
-                'errors' => []
+                'errors' => [],
             ], 201);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Import Jadwal failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Illuminate\Support\Facades\Log::error('Import Jadwal failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'total_rows' => count($items),
                 'success_count' => 0,
@@ -458,9 +474,9 @@ class ImportController extends Controller
                     [
                         'row' => 0,
                         'column' => 'system/collision',
-                        'message' => $e->getMessage()
-                    ]
-                ]
+                        'message' => $e->getMessage(),
+                    ],
+                ],
             ], 500);
         }
     }

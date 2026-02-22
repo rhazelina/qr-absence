@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Classes;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -30,7 +29,7 @@ class StudentController extends Controller
                         $q->where('is_active', true);
                     })
                     ->get()
-                    ->map(fn($item) => $item->dailySchedule->classSchedule->class_id ?? null)
+                    ->map(fn ($item) => $item->dailySchedule->classSchedule->class_id ?? null)
                     ->filter()
                     ->unique()
                     ->toArray();
@@ -81,8 +80,6 @@ class StudentController extends Controller
         )->response();
     }
 
-
-
     /**
      * Create Student
      *
@@ -91,6 +88,12 @@ class StudentController extends Controller
     public function store(\App\Http\Requests\StoreStudentRequest $request): JsonResponse
     {
         $data = $request->validated();
+
+        $data['username'] = $data['username'] ?? $data['nisn'];
+        $data['password'] = $data['password'] ?? 'password123';
+        $data['nis'] = $data['nis'] ?? $data['nisn'];
+        $data['gender'] = $data['gender'] ?? 'L';
+        $data['address'] = $data['address'] ?? '-';
 
         $student = DB::transaction(function () use ($data) {
             $user = User::create([
@@ -168,6 +171,7 @@ class StudentController extends Controller
     {
         try {
             $student->user()->delete();
+
             return response()->json(['message' => 'Deleted']);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {

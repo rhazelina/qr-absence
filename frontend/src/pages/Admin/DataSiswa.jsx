@@ -29,6 +29,10 @@ function DataSiswa() {
 
   const filteredStudents = students; // Assuming students array from backend is already filtered
 
+  const filteredClasses = filterJurusan 
+    ? classes.filter(cls => cls.major === parseInt(filterJurusan) || cls.major_id === parseInt(filterJurusan))
+    : classes;
+
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
 
@@ -108,8 +112,7 @@ function DataSiswa() {
       const studentData = {
         name: formData.namaSiswa,
         nisn: formData.nisn,
-        major: formData.jurusan,
-        grade: formData.kelas
+        class_id: formData.class_id || null
       };
 
       if (editData) {
@@ -145,10 +148,9 @@ function DataSiswa() {
   const handleEditClick = (student) => {
     setEditData({
       id: student.id,
-      namaSiswa: student.name,
+      name: student.name,
       nisn: student.nisn,
-      jurusan: student.classRoom?.major_id,
-      kelas: student.class_id
+      class_id: student.class_id
     });
     setIsModalOpen(true);
   };
@@ -162,20 +164,16 @@ function DataSiswa() {
 
   // Download Template
   const handleDownloadTemplate = () => {
-    // Generate the exact columns required by ImportController
     const templateData = [
       {
-        'name': 'Garnacho',
-        'username': 'garnacho123',
-        'email': 'garnacho@example.com',
-        'password': 'password',
+        'name': 'Ahmad',
         'nisn': '0011223344',
         'nis': '12345',
         'gender': 'L',
-        'address': 'Jl. Kemerdekaan 1',
-        'class_id': '1',
-        'is_class_officer': '',
-        'phone': '0812345678',
+        'address': 'Alamat Siswa',
+        'class_name': 'XII RPL 1',
+        'is_class_officer': 'false',
+        'phone': '',
         'contact': ''
       }
     ];
@@ -184,9 +182,21 @@ function DataSiswa() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Data Siswa');
 
+    worksheet['!cols'] = [
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 5 },
+      { wch: 30 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 }
+    ];
+
     const fileName = 'Format_Data_Siswa.xlsx';
     XLSX.writeFile(workbook, fileName);
-    alert('Format Excel berhasil diunduh! Pastikan mengisi class_id sesuai ID kelas di database.');
+    alert('Format Excel berhasil diunduh! Isi class_name sesuai nama kelas yang tersedia.');
   };
 
   // Export to Excel
@@ -202,8 +212,8 @@ function DataSiswa() {
       'No': pagination.from + index,
       'Nama Siswa': student.name,
       'NISN': student.nisn,
-      'Jurusan': student.classRoom?.major?.name || '-',
-      'Kelas': student.classRoom?.name || '-'
+      'Jurusan': student.major_name || '-',
+      'Kelas': student.class_name || '-'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -290,30 +300,39 @@ function DataSiswa() {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" }); // keep empty cells
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
         if (jsonData.length === 0) {
           alert('File Excel kosong!');
           return;
         }
 
-        const importedStudents = jsonData
-          .map((row) => ({
-            name: String(row['name'] || '').trim(),
-            username: String(row['username'] || '').trim(),
-            email: String(row['email'] || '').trim() || null,
-            password: String(row['password'] || '').trim() || null,
-            nisn: String(row['nisn'] || '').trim(),
-            nis: String(row['nis'] || '').trim(),
-            gender: String(row['gender'] || '').trim(),
-            address: String(row['address'] || '').trim(),
-            class_id: parseInt(row['class_id'], 10) || null,
-            is_class_officer: String(row['is_class_officer']).toLowerCase() === 'true' || row['is_class_officer'] == '1',
-            phone: String(row['phone'] || '').trim() || null,
-            contact: String(row['contact'] || '').trim() || null
-          }));
+        // Map class names to IDs
+        const classNameToId = {};
+        classes.forEach(cls => {
+          classNameToId[cls.name.toLowerCase()] = cls.id;
+        });
 
-        const result = await apiService.importStudents(importedStudents);
+        const importedStudents = jsonData
+          .map((row) => {
+            const className = String(row['class_name'] || '').trim().toLowerCase();
+            return {
+              name: String(row['name'] || '').trim(),
+              username: String(row['username'] || '').trim(),
+              email: String(row['email'] || '').trim() || null,
+              password: String(row['password'] || '').trim() || null,
+              nisn: String(row['nisn'] || '').trim(),
+              nis: String(row['nis'] || '').trim(),
+              gender: String(row['gender'] || '').trim(),
+              address: String(row['address'] || '').trim(),
+              class_id: classNameToId[className] || null,
+              is_class_officer: String(row['is_class_officer'] || '').toLowerCase() === 'true' || row['is_class_officer'] == '1',
+              phone: String(row['phone'] || '').trim() || null,
+              contact: String(row['contact'] || '').trim() || null
+            };
+          });
+
+        const result = await apiService.importStudents({ items: importedStudents });
 
         if (result.total_rows !== undefined) {
           alert(`✅ Berhasil mengimpor ${result.success_count} data siswa dari total ${result.total_rows} baris.`);
@@ -426,11 +445,11 @@ function DataSiswa() {
             <label>Konsentrasi Keahlian :</label>
             <select
               value={filterJurusan}
-              onChange={(e) => setFilterJurusan(e.target.value)}
+              onChange={(e) => { setFilterJurusan(e.target.value); setFilterKelas(''); }}
             >
               <option value="">Semua Jurusan</option>
               {majors.map(major => (
-                <option key={major.id} value={major.id}>{major.name}</option>
+                <option key={major.id} value={major.id}>{major.code} - {major.name}</option>
               ))}
             </select>
 
@@ -438,9 +457,10 @@ function DataSiswa() {
             <select
               value={filterKelas}
               onChange={(e) => setFilterKelas(e.target.value)}
+              disabled={!filterJurusan}
             >
-              <option value="">Semua Kelas</option>
-              {classes.map(cls => (
+              <option value="">{filterJurusan ? 'Semua Kelas' : 'Pilih Jurusan Dulu'}</option>
+              {filteredClasses.map(cls => (
                 <option key={cls.id} value={cls.id}>{cls.name}</option>
               ))}
             </select>
@@ -521,8 +541,8 @@ function DataSiswa() {
                   <td>{pagination.from + index}</td>
                   <td>{student.name}</td>
                   <td>{student.nisn}</td>
-                  <td>{student.classRoom?.major?.name || '-'}</td>
-                  <td>{student.classRoom?.name || '-'}</td>
+                  <td>{student.major_name || '-'}</td>
+                  <td>{student.class_name || '-'}</td>
                   <td className="aksi-cell">
                     <div className="aksi-container">
                       <button className="aksi edit" onClick={() => handleEditClick(student)} title="Edit">
@@ -557,7 +577,7 @@ function DataSiswa() {
         />
       </div>
 
-      <TambahSiswa isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditData(null); }} onSubmit={handleAddOrUpdate} editData={editData} />
+      <TambahSiswa isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditData(null); }} onSubmit={handleAddOrUpdate} editData={editData} majors={majors} classes={classes} />
     </div>
   );
 }
