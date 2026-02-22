@@ -517,9 +517,11 @@ class AttendanceController extends Controller
 
         // Monthly Trend (Current Year)
         $currentYear = date('Y');
+        $monthSelect = config('database.default') === 'sqlite' ? 'CAST(strftime("%m", date) AS INTEGER)' : 'MONTH(date)';
+
         $monthlyTrend = Attendance::where('student_id', $student->id)
             ->whereYear('date', $currentYear)
-            ->selectRaw('MONTH(date) as month, status, count(*) as count')
+            ->selectRaw("{$monthSelect} as month, status, count(*) as count")
             ->groupBy('month', 'status')
             ->get();
 
@@ -661,8 +663,10 @@ class AttendanceController extends Controller
             ->groupBy('status')
             ->get();
 
+        $dateSelect = config('database.default') === 'sqlite' ? 'DATE(date)' : 'DATE(date)'; // SQLite supports DATE(), MySQL supports DATE()
+
         $dailySummary = (clone $baseQuery)
-            ->selectRaw('DATE(date) as day, status, count(*) as total')
+            ->selectRaw("{$dateSelect} as day, status, count(*) as total")
             ->groupBy('day', 'status')
             ->orderBy('day')
             ->get();
@@ -1307,9 +1311,11 @@ class AttendanceController extends Controller
             ->get();
 
         $classSummary = (clone $query)
-            ->selectRaw('schedules.class_id as class_id, status, count(*) as total')
-            ->join('schedules', 'attendances.schedule_id', '=', 'schedules.id')
-            ->groupBy('schedules.class_id', 'status')
+            ->selectRaw('class_schedules.class_id as class_id, status, count(*) as total')
+            ->join('schedule_items', 'attendances.schedule_id', '=', 'schedule_items.id')
+            ->join('daily_schedules', 'schedule_items.daily_schedule_id', '=', 'daily_schedules.id')
+            ->join('class_schedules', 'daily_schedules.class_schedule_id', '=', 'class_schedules.id')
+            ->groupBy('class_schedules.class_id', 'status')
             ->get()
             ->groupBy('class_id')
             ->map(function ($rows) {
@@ -1366,7 +1372,7 @@ class AttendanceController extends Controller
             }
 
             if ($request->filled('class_id')) {
-                $q->whereHas('schedule', function ($sq) use ($request) {
+                $q->whereHas('schedule.dailySchedule.classSchedule', function ($sq) use ($request) {
                     $sq->where('class_id', $request->integer('class_id'));
                 });
             }
@@ -1382,7 +1388,7 @@ class AttendanceController extends Controller
 
         // 2. Fetch detailed attendance records for these students only
         $attendanceQuery = Attendance::query()
-            ->with(['schedule.class', 'student.user'])
+            ->with(['schedule.dailySchedule.classSchedule.class', 'student.user'])
             ->whereIn('student_id', $studentIds)
             ->where('attendee_type', 'student');
 
@@ -1398,7 +1404,7 @@ class AttendanceController extends Controller
             $attendanceQuery->where('status', '!=', 'present');
         }
         if ($request->filled('class_id')) {
-            $attendanceQuery->whereHas('schedule', fn ($q) => $q->where('class_id', $request->integer('class_id')));
+            $attendanceQuery->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $request->integer('class_id')));
         }
 
         $attendances = $attendanceQuery->orderBy('date')->get()->groupBy('student_id');
@@ -1614,9 +1620,7 @@ class AttendanceController extends Controller
 
     public function bySchedule(Request $request, ScheduleItem $schedule): JsonResponse
     {
-        if ($request->user()->user_type === 'teacher' && $schedule->teacher_id !== optional($request->user()->teacherProfile)->id) {
-            abort(403, 'Tidak boleh melihat presensi jadwal ini');
-        }
+        $this->authorizeSchedule($request, $schedule);
 
         $query = Attendance::query()
             ->with(['student.user:id,name', 'teacher.user:id,name', 'attachments'])
@@ -1640,7 +1644,7 @@ class AttendanceController extends Controller
     public function bulkManual(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'schedule_id' => ['required', 'exists:schedules,id'],
+            'schedule_id' => ['required', 'exists:schedule_items,id'],
             'date' => ['required', 'date'],
             'items' => ['required', 'array'],
             'items.*.student_id' => ['required', 'exists:student_profiles,id'],
@@ -1648,7 +1652,7 @@ class AttendanceController extends Controller
             'items.*.reason' => ['nullable', 'string'],
         ]);
 
-        $schedule = Schedule::findOrFail($data['schedule_id']);
+        $schedule = ScheduleItem::findOrFail($data['schedule_id']);
         $this->authorizeSchedule($request, $schedule);
 
         $date = $data['date'];
@@ -1731,7 +1735,7 @@ class AttendanceController extends Controller
     public function export(Request $request): StreamedResponse
     {
         $request->validate([
-            'schedule_id' => ['nullable', 'exists:schedules,id'],
+            'schedule_id' => ['nullable', 'exists:schedule_items,id'],
             'class_id' => ['nullable', 'exists:classes,id'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
@@ -1826,11 +1830,15 @@ class AttendanceController extends Controller
         }
 
         $request->validate([
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'per_page' => ['nullable', 'integer', 'min:-1', 'max:1000'],
         ]);
 
         $perPage = $request->integer('per_page', 15);
 
-        return min(max($perPage, 1), 200);
+        if ($perPage === -1) {
+            return 1000; // Cap at 1000 for safety, but effectively returns "all" for small-mid schools
+        }
+
+        return min(max($perPage, 1), 1000);
     }
 }

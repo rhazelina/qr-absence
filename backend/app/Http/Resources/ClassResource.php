@@ -18,6 +18,7 @@ class ClassResource extends JsonResource
             'id' => $this->id,
             'grade' => $this->grade,
             'label' => $this->label,
+            'name' => $this->name, // Alias for frontend compatibility
             'class_name' => $this->name, // Using the accessor defined in Classes model
             'major_id' => $this->major_id,
             'major' => $this->major?->code, // Direct major code like "RPL"

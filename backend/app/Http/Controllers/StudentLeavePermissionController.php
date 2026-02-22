@@ -17,9 +17,7 @@ use Illuminate\Support\Carbon;
 class StudentLeavePermissionController extends Controller
 {
     // for security
-    public function __construct(protected \App\Services\AttendanceService $attendanceService)
-    {
-    }
+    public function __construct(protected \App\Services\AttendanceService $attendanceService) {}
 
     /**
      * List Leave Permissions

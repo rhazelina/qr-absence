@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
             SemesterSeeder::class,
             SubjectSeeder::class,
             // MajorSeeder, ClassSeeder handled by Comprehensive
-            ComprehensiveSeeder::class, 
+            ComprehensiveSeeder::class,
             TeacherSeeder::class, // Run after to update with real names
             NewScheduleSeeder::class,
             AdminSeeder::class,

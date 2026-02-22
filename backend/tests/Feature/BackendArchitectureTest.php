@@ -18,7 +18,9 @@ test('architecture: application logic rejects double scan', function () {
     // 1. Arrange
     $user = User::factory()->create(['user_type' => 'student']);
     $student = StudentProfile::factory()->create(['user_id' => $user->id]);
-    $schedule = Schedule::factory()->create();
+    $classSchedule = \App\Models\ClassSchedule::factory()->create();
+    $dailySchedule = \App\Models\DailySchedule::factory()->create(['class_schedule_id' => $classSchedule->id]);
+    $schedule = \App\Models\ScheduleItem::factory()->create(['daily_schedule_id' => $dailySchedule->id]);
     // Ensure QR matches the schedule
     $qr = Qrcode::create([
         'schedule_id' => $schedule->id,

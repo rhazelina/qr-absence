@@ -71,12 +71,14 @@ class TeacherStatisticsController extends Controller
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
         $data = [];
 
+        $daySelect = config('database.default') === 'sqlite' ? 'CAST(strftime("%d", date) AS INTEGER)' : 'DAY(date)';
+
         // Get actual attendance counts per day
         $dailyCounts = Attendance::where('teacher_id', $teacherId)
             ->where('attendee_type', 'teacher')
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
-            ->selectRaw('DAY(date) as day, status')
+            ->selectRaw("{$daySelect} as day, status")
             ->get()
             ->groupBy('day');
 

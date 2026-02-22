@@ -2,9 +2,7 @@
 
 use App\Models\Classes;
 use App\Models\ClassSchedule;
-use App\Models\DailySchedule;
 use App\Models\Major;
-use App\Models\ScheduleItem;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,10 +45,10 @@ test('waka can create class schedule', function () {
                         'end_time' => '08:00',
                         'type' => 'regular',
                         'room' => 'Lab 1',
-                    ]
-                ]
-            ]
-        ]
+                    ],
+                ],
+            ],
+        ],
     ];
 
     $response = $this->actingAs($this->admin)
@@ -73,15 +71,15 @@ test('waka can update class schedule', function () {
         'year' => 2025,
         'is_active' => true,
     ]);
-    
+
     $payload = [
         'year' => 2026,
         'days' => [
             [
                 'day' => 'Tuesday',
-                'items' => []
-            ]
-        ]
+                'items' => [],
+            ],
+        ],
     ];
 
     $response = $this->actingAs($this->admin)

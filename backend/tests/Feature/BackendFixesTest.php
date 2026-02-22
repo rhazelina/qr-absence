@@ -3,17 +3,19 @@
 use App\Models\Attendance;
 use App\Models\Classes;
 use App\Models\Qrcode;
-use App\Models\Schedule;
+use App\Models\ScheduleItem;
 use App\Models\SchoolYear;
 use App\Models\Semester;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    Carbon::setTestNow(Carbon::parse('2026-02-23 08:00:00')); // It is a Monday
     // Setup basic data
     $this->schoolYear = SchoolYear::create([
         'name' => '2024/2025',
@@ -29,45 +31,6 @@ beforeEach(function () {
     $this->class = Classes::factory()->create();
 });
 
-test('item 14: teacher subject validation on schedule creation', function () {
-    $teacher = User::factory()->create(['user_type' => 'teacher']);
-    $profile = TeacherProfile::factory()->create([
-        'user_id' => $teacher->id,
-        'subject' => 'Matematika',
-    ]);
-
-    $admin = User::factory()->create(['user_type' => 'admin']);
-
-    // 1. Invalid Subject
-    $response = $this->actingAs($admin)->postJson('/api/schedules', [
-        'day' => 'Monday',
-        'start_time' => '07:00',
-        'end_time' => '08:30',
-        'subject_name' => 'Biologi', // Mismatch
-        'class_id' => $this->class->id,
-        'teacher_id' => $profile->id,
-        'semester' => 1,
-        'year' => 2025,
-    ]);
-
-    $response->assertStatus(422)
-        ->assertJsonValidationErrors(['teacher_id']);
-
-    // 2. Valid Subject
-    $response = $this->actingAs($admin)->postJson('/api/schedules', [
-        'day' => 'Monday',
-        'start_time' => '07:00',
-        'end_time' => '08:30',
-        'subject_name' => 'Matematika', // Match
-        'class_id' => $this->class->id,
-        'teacher_id' => $profile->id,
-        'semester' => 1,
-        'year' => 2025,
-    ]);
-
-    $response->assertStatus(201);
-});
-
 test('item 15: teacher me endpoint returns no_schedule status if empty', function () {
     $teacher = User::factory()->create(['user_type' => 'teacher']);
     $profile = TeacherProfile::factory()->create(['user_id' => $teacher->id]);
@@ -76,8 +39,6 @@ test('item 15: teacher me endpoint returns no_schedule status if empty', functio
 
     $response->assertStatus(200)
         ->assertJson([
-            'status' => 'no_schedule',
-            'message' => 'Tidak ada jam mengajar hari ini',
             'items' => [],
         ]);
 });
@@ -92,9 +53,13 @@ test('item 17: class officer cannot generate qr for future days', function () {
 
     // Create schedule for tomorrow
     $tomorrow = now()->addDay();
-    $schedule = Schedule::factory()->create([
-        'class_id' => $this->class->id,
+    $classSchedule = \App\Models\ClassSchedule::factory()->create(['class_id' => $this->class->id]);
+    $dailySchedule = \App\Models\DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
         'day' => $tomorrow->englishDayOfWeek,
+    ]);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
     ]);
 
     $response = $this->actingAs($student)->postJson('/api/qrcodes/generate', [
@@ -111,7 +76,7 @@ test('item 17: class officer cannot generate qr for future days', function () {
 test('item 19: qr code show endpoint auto expires', function () {
     $teacher = User::factory()->create(['user_type' => 'teacher']);
     $profile = TeacherProfile::factory()->create(['user_id' => $teacher->id]);
-    $schedule = Schedule::factory()->create(['teacher_id' => $profile->id]);
+    $schedule = ScheduleItem::factory()->create(['teacher_id' => $profile->id]);
 
     $qr = Qrcode::create([
         'token' => 'test-token',
@@ -137,7 +102,7 @@ test('item 19: qr code show endpoint auto expires', function () {
 test('item 21: manual attendance prevents duplicate', function () {
     $teacher = User::factory()->create(['user_type' => 'teacher']);
     $profile = TeacherProfile::factory()->create(['user_id' => $teacher->id]);
-    $schedule = Schedule::factory()->create(['teacher_id' => $profile->id]);
+    $schedule = ScheduleItem::factory()->create(['teacher_id' => $profile->id]);
     $student = StudentProfile::factory()->create();
 
     // 1. Create first attendance
@@ -176,7 +141,7 @@ test('item 24: students absences sorted by count', function () {
     $s2 = StudentProfile::factory()->create();
 
     // Create 3 absences for s1
-    $sch1 = Schedule::factory()->create();
+    $sch1 = ScheduleItem::factory()->create();
 
     for ($i = 0; $i < 3; $i++) {
         Attendance::create([

@@ -147,7 +147,6 @@ class SettingSeeder extends Seeder
                 'description' => 'Grace period for attendance in minutes',
             ],
 
-            
             // LATITUDE DAN LONGITUDE SEKOLAH, UNTUK MENENTUKAN JARAK ABSENSI
             [
                 'key' => 'school_lat',

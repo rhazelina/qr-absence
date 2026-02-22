@@ -2,8 +2,13 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    Carbon::setTestNow(Carbon::parse('2026-02-23 08:00:00')); // Monday
+});
 
 it('returns admin summary stats', function () {
     $admin = User::factory()->admin()->create();

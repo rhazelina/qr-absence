@@ -8,8 +8,13 @@ use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    Carbon::setTestNow(Carbon::parse('2026-02-23 08:00:00')); // It is a Monday
+});
 
 it('allows waka to record manual attendance', function () {
     $waka = User::factory()->waka()->create();
@@ -181,7 +186,7 @@ it('allows student to access their own document', function () {
 });
 
 it('allows homeroom teacher (wali kelas) to record bulk attendance for their class schedule', function () {
-    $classRoom = \App\Models\ClassRoom::factory()->create();
+    $classRoom = \App\Models\Classes::factory()->create();
 
     $waliKelas = User::factory()->teacher()->create();
     // Assuming teacherProfile exists and related to user
@@ -250,6 +255,6 @@ it('allows homeroom teacher (wali kelas) to record bulk attendance for their cla
     $this->assertDatabaseHas('attendances', [
         'student_id' => $student2->studentProfile->id,
         'schedule_id' => $schedule->id,
-        'status' => 'absent',
+        'status' => 'alfa',
     ]);
 });

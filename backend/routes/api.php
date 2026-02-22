@@ -102,8 +102,8 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('rooms', RoomController::class);
         Route::apiResource('subjects', SubjectController::class)->except(['index']);
         Route::apiResource('time-slots', TimeSlotController::class);
-        // Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
-        // Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
+        Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
+        Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
         Route::get('/settings', [SettingController::class, 'index']);
         Route::post('/settings/bulk', [SettingController::class, 'bulkUpdate']);
         Route::post('/settings', [SettingController::class, 'update']);
@@ -222,7 +222,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/absence-requests/{absenceRequest}/reject', [AbsenceRequestController::class, 'reject']);
     });
 
-    Route::middleware(['role:student', 'class-officer'])->group(function (): void {
+    Route::middleware(['role:student,teacher', 'class-officer'])->group(function (): void {
         Route::prefix('me/class')->group(function () {
             Route::get('/', [ClassController::class, 'myClass']);
             Route::get('/dashboard', [DashboardController::class, 'classDashboard']);

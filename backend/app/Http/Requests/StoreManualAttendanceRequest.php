@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class StoreManualAttendanceRequest extends FormRequest
@@ -22,7 +21,7 @@ class StoreManualAttendanceRequest extends FormRequest
                 'required',
                 Rule::in([
                     'present', 'late', 'excused', 'sick', 'absent', 'dinas', 'izin', 'pulang', 'return', 'alpha',
-                    'hadir', 'tanpa-keterangan', 'terlambat', 'sakit', 'dispensasi'
+                    'hadir', 'tanpa-keterangan', 'terlambat', 'sakit', 'dispensasi',
                 ]),
             ],
             'date' => [

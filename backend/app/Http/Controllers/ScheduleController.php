@@ -2,20 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Classes;
-use App\Models\ClassSchedule;
-use App\Models\DailySchedule;
-use App\Models\ScheduleItem;
-use App\Models\Subject;
-use App\Models\TeacherProfile;
 use App\Http\Requests\StoreClassScheduleRequest;
 use App\Http\Requests\UpdateClassScheduleRequest;
+use App\Models\Classes;
+use App\Models\ClassSchedule;
+use App\Models\ScheduleItem;
+use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
 {
@@ -110,7 +105,7 @@ class ScheduleController extends Controller
         return response()->json($schedule->load([
             'class',
             'dailySchedules.scheduleItems.subject',
-            'dailySchedules.scheduleItems.teacher.user'
+            'dailySchedules.scheduleItems.teacher.user',
         ]));
     }
 
@@ -157,6 +152,7 @@ class ScheduleController extends Controller
     public function destroy(ClassSchedule $schedule): JsonResponse
     {
         $schedule->delete();
+
         return response()->json(['message' => 'Schedule deleted successfully']);
     }
 
@@ -168,11 +164,11 @@ class ScheduleController extends Controller
         // Return ScheduleItems for this teacher, grouped by ClassSchedule?
         // Or just a flat list of items with their day/class info?
         // Let's return flat list of items ordered by day/time
-        
+
         $query = ScheduleItem::query()
             ->where('teacher_id', $teacher->id)
             ->with(['dailySchedule.classSchedule.class', 'subject'])
-            ->whereHas('dailySchedule.classSchedule', function($q) {
+            ->whereHas('dailySchedule.classSchedule', function ($q) {
                 $q->where('is_active', true);
             });
 
@@ -188,27 +184,27 @@ class ScheduleController extends Controller
 
         if ($user->user_type === 'teacher') {
             $teacher = $user->teacherProfile;
-            if (!$teacher) {
-                 return response()->json(['message' => 'Profile not found'], 404);
+            if (! $teacher) {
+                return response()->json(['message' => 'Profile not found'], 404);
             }
 
             // Get all items for active schedules
             $items = ScheduleItem::query()
                 ->where('teacher_id', $teacher->id)
                 ->with(['dailySchedule.classSchedule.class', 'subject'])
-                ->whereHas('dailySchedule.classSchedule', function($q) {
+                ->whereHas('dailySchedule.classSchedule', function ($q) {
                     $q->where('is_active', true);
                 })
                 ->get()
                 ->map(function ($item) {
-                     return [
+                    return [
                         'day' => $item->dailySchedule->day,
                         'start_time' => $item->start_time,
                         'end_time' => $item->end_time,
                         'class' => $item->dailySchedule->classSchedule->class->name,
                         'subject' => $item->subject->name ?? 'N/A',
                         'room' => $item->room,
-                     ];
+                    ];
                 });
 
             return response()->json(['items' => $items]);
@@ -216,7 +212,7 @@ class ScheduleController extends Controller
 
         if ($user->user_type === 'student') {
             $student = $user->studentProfile;
-            if (!$student) {
+            if (! $student) {
                 return response()->json(['message' => 'Profile not found'], 404);
             }
 
@@ -226,13 +222,13 @@ class ScheduleController extends Controller
                 ->with(['dailySchedules.scheduleItems.subject', 'dailySchedules.scheduleItems.teacher.user'])
                 ->first();
 
-            if (!$schedule) {
+            if (! $schedule) {
                 return response()->json(['message' => 'No active schedule found'], 404);
             }
-            
+
             return response()->json($schedule);
         }
-        
+
         return response()->json(['message' => 'Unauthorized'], 403);
     }
 

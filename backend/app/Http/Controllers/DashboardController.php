@@ -99,8 +99,15 @@ class DashboardController extends Controller
         $dayName = now()->locale('id')->translatedFormat('l');
 
         // Get today's schedules for student's class
-        $schedules = Schedule::where('class_id', $student->class_id)
-            ->where('day', now()->format('l'))
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) {
+            $q->where('day', now()->format('l'))
+                ->whereHas('classSchedule', function ($cq) {
+                    $cq->where('is_active', true);
+                });
+        })
+            ->whereHas('dailySchedule.classSchedule', function ($q) use ($student) {
+                $q->where('class_id', $student->class_id);
+            })
             ->with(['teacher.user'])
             ->orderBy('start_time')
             ->get();
@@ -168,9 +175,14 @@ class DashboardController extends Controller
         $dayEnglish = now()->format('l');
 
         // Get today's teaching schedules
-        $schedules = Schedule::where('teacher_id', $teacher->id)
-            ->where('day', $dayEnglish)
-            ->with(['class'])
+        $schedules = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
+            ->whereHas('dailySchedule', function ($q) use ($dayEnglish) {
+                $q->where('day', $dayEnglish)
+                    ->whereHas('classSchedule', function ($cq) {
+                        $cq->where('is_active', true);
+                    });
+            })
+            ->with(['dailySchedule.classSchedule.class'])
             ->orderBy('start_time')
             ->get();
 
@@ -284,8 +296,15 @@ class DashboardController extends Controller
         $homeroomClass = $teacher->homeroomClass;
 
         // Get today's schedules for homeroom class
-        $schedules = Schedule::where('class_id', $homeroomClass->id)
-            ->where('day', now()->format('l'))
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) {
+            $q->where('day', now()->format('l'))
+                ->whereHas('classSchedule', function ($cq) {
+                    $cq->where('is_active', true);
+                });
+        })
+            ->whereHas('dailySchedule.classSchedule', function ($q) use ($homeroomClass) {
+                $q->where('class_id', $homeroomClass->id);
+            })
             ->with(['teacher.user'])
             ->orderBy('start_time')
             ->get();
@@ -423,7 +442,7 @@ class DashboardController extends Controller
             // 3. Daily Stats (Weekly Breakdown for Bar Chart)
             $startOfWeek = now()->startOfWeek();
             $endOfWeek = now()->endOfWeek();
-            
+
             $dailyQuery = Attendance::whereBetween('date', [$startOfWeek->format('Y-m-d'), $endOfWeek->format('Y-m-d')])
                 ->selectRaw('DATE(date) as date_only, status, count(*) as count')
                 ->groupBy('date_only', 'status')
@@ -431,11 +450,12 @@ class DashboardController extends Controller
 
             $dailyData = [];
             $currentDay = $startOfWeek->copy();
-            
+
             while ($currentDay->lte($endOfWeek)) {
                 if ($currentDay->isWeekend()) {
-                     $currentDay->addDay();
-                     continue;
+                    $currentDay->addDay();
+
+                    continue;
                 }
 
                 $dayDate = $currentDay->format('Y-m-d');
@@ -449,8 +469,7 @@ class DashboardController extends Controller
                     'sakit' => $dayRecords->where('status', 'sick')->sum('count'),
                     'pulang' => $dayRecords->where('status', 'return')->sum('count'),
                 ];
-                
-                
+
                 $currentDay->addDay();
             }
 
