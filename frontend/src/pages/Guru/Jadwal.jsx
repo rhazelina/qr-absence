@@ -19,13 +19,13 @@ const Jadwal = () => {
       // Use apiService for consistency and base URL handling
       // Assuming apiService has methods or we can use apiService.get()
       // If specific methods don't exist, we can add them or use the generic get
-      
+
       // We'll use the generic get method if specific ones aren't available, 
       // but typically we'd look for getProfile() and getTeacherSchedules()
-      
+
       // Checking PresensiSiswa.jsx, it uses apiService.getTeacherScheduleStudents
       // Checking DashboardSiswa.jsx, it uses apiService.getProfile()
-      
+
       // Let's rely on apiService
       const [meRes, scheduleRes] = await Promise.all([
         apiService.getProfile(), // Fits /auth/me or similar
@@ -48,7 +48,10 @@ const Jadwal = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Memuat jadwal...</div>;
+    return <div className="jadwal-container">
+      <NavbarGuru />
+      <div className="flex justify-center items-center h-screen">Memuat jadwal...</div>
+    </div>;
   }
 
   // Group items by day

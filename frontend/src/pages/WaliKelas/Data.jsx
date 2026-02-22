@@ -276,7 +276,10 @@ const Data = () => {
   };
 
   if (loading) {
-    return <div className="loading-state">Memuat data...</div>;
+    return <div className="kehadiran-siswa-page">
+      <NavbarWakel />
+      <div className="loading-state text-center" style={{ color: '#94a3b8' }}>Memuat data...</div>
+    </div>;
   }
 
   return (

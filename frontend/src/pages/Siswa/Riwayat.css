@@ -2,6 +2,8 @@
 
 .riwayat-page {
   min-height: 100vh;
+  background-color: #f3f4f6;
+  /* Fallback color */
   background-image: url('../../assets/bg.png');
   background-size: cover;
   background-position: center;
@@ -40,7 +42,7 @@
 .date-inputt-group label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #374151;
+  color: #1f2937 !important;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -49,25 +51,30 @@
 .date-inputt {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 2px solid #d1d5db;
+  border: 2px solid #d1d5db !important;
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
-  color: #1f2937;
+  color: #1f2937 !important;
   transition: all 0.2s;
-  background: white;
+  background-color: #ffffff !important;
   cursor: pointer;
   font-family: inherit;
+  color-scheme: light !important;
+  /* Force light scheme for the picker */
 }
 
 .date-inputt:hover {
-  border-color: #3b82f6;
+  border-color: #3b82f6 !important;
+  background-color: #f9fafb !important;
+  color: #1f2937 !important;
 }
 
 .date-inputt:focus {
   outline: none;
-  border-color: #1e3a8a;
-  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+  border-color: #1e3a8a !important;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1) !important;
+  background-color: #ffffff !important;
 }
 
 /* Styling untuk calendar icon di dalam date input */
@@ -77,10 +84,12 @@
   padding: 0.25rem;
   border-radius: 0.25rem;
   transition: all 0.2s;
+  filter: invert(0) !important;
+  /* Pastikan tidak ter-invert jadi putih */
 }
 
 .date-inputt::-webkit-calendar-picker-indicator:hover {
-  background-color: #f3f4f6;
+  background-color: #e5e7eb !important;
 }
 
 .date-separator {
@@ -200,7 +209,7 @@
   align-items: center;
 }
 
-.table-header > div {
+.table-header>div {
   text-align: center;
 }
 
@@ -671,6 +680,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -681,6 +691,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
