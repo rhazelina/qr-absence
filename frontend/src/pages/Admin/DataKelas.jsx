@@ -9,6 +9,9 @@ function DataKelas() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [kelas, setKelas] = useState([]);
   const [availableTeachers, setAvailableTeachers] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [majorMap, setMajorMap] = useState({});
+  const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editData, setEditData] = useState(null);
   const [searchKelas, setSearchKelas] = useState('');
@@ -36,10 +39,69 @@ function DataKelas() {
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
 
+  // Convert number to Roman numeral
+  const toRoman = (num) => {
+    const romanNumerals = [
+      ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]
+    ];
+    let result = '';
+    for (const [letter, value] of romanNumerals) {
+      while (num >= value) {
+        result += letter;
+        num -= value;
+      }
+    }
+    return result;
+  };
+
+  // Convert Roman numeral to number
+  const fromRoman = (roman) => {
+    const romanValues = { 'X': 10, 'IX': 9, 'V': 5, 'IV': 4, 'I': 1 };
+    let result = 0;
+    for (let i = 0; i < roman.length; i++) {
+      if (romanValues[roman[i]] < romanValues[roman[i + 1]]) {
+        result -= romanValues[roman[i]];
+      } else {
+        result += romanValues[roman[i]];
+      }
+    }
+    return result || roman;
+  };
+
   // Load classes from API
   useEffect(() => {
     loadClasses();
   }, [pagination.currentPage, searchKelas, searchJurusan]);
+
+  // Load majors and grades from API
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      try {
+        const [majorsRes, classesRes] = await Promise.all([
+          apiService.getMajors({ per_page: 100 }),
+          apiService.getClasses({ per_page: 1000 })
+        ]);
+        
+        if (majorsRes.data) {
+          setMajors(majorsRes.data);
+          const map = {};
+          majorsRes.data.forEach(m => {
+            map[m.code] = m.id;
+          });
+          setMajorMap(map);
+        }
+        
+        if (classesRes.data) {
+          const uniqueGrades = [...new Set(classesRes.data.map(c => c.grade))].sort();
+          setGrades(uniqueGrades);
+        }
+      } catch (error) {
+        console.error('Error loading filter options:', error);
+      }
+    };
+    
+    loadFilterOptions();
+  }, []);
 
   const loadClasses = async () => {
     setLoading(true);
@@ -179,10 +241,10 @@ function DataKelas() {
 
     try {
       const classData = {
-        class_name: formData.namaKelas,
-        major: formData.jurusan,
+        label: formData.namaKelas,
+        major_id: majorMap[formData.jurusan] || null,
         grade: formData.kelas,
-        homeroom_teacher_id: formData.waliKelas
+        homeroom_teacher_id: formData.waliKelas || null
       };
 
       await apiService.addClass(classData);
@@ -202,10 +264,10 @@ function DataKelas() {
 
     try {
       const classData = {
-        class_name: formData.namaKelas,
-        major: formData.jurusan,
+        label: formData.namaKelas,
+        major_id: majorMap[formData.jurusan] || null,
         grade: formData.kelas,
-        homeroom_teacher_id: formData.waliKelas
+        homeroom_teacher_id: formData.waliKelas || null
       };
 
       await apiService.updateClass(editData.id, classData);
@@ -250,6 +312,24 @@ function DataKelas() {
         'Jurusan': '',
         'Label': '',
         'NIP Wali Kelas': ''
+      },
+      {
+        'Tingkat (X/XI/XII)': 'X',
+        'Jurusan': 'RPL',
+        'Label': 'X RPL 1',
+        'NIP Wali Kelas': ''
+      },
+      {
+        'Tingkat (X/XI/XII)': 'XI',
+        'Jurusan': 'TKJ',
+        'Label': 'XI TKJ 1',
+        'NIP Wali Kelas': ''
+      },
+      {
+        'Tingkat (X/XI/XII)': 'XII',
+        'Jurusan': 'DKV',
+        'Label': 'XII DKV 1',
+        'NIP Wali Kelas': ''
       }
     ];
 
@@ -260,7 +340,7 @@ function DataKelas() {
     worksheet['!cols'] = [
       { wch: 20 },
       { wch: 15 },
-      { wch: 10 },
+      { wch: 15 },
       { wch: 25 }
     ];
 
@@ -290,14 +370,6 @@ function DataKelas() {
           return;
         }
 
-        const jurusanMap = {};
-        try {
-          const jurusanRes = await apiService.getMajors({ per_page: 1000 });
-          if (jurusanRes.data) {
-            jurusanRes.data.forEach(m => jurusanMap[m.name] = m.id);
-          }
-        } catch (err) {}
-
         const teacherMap = {};
         try {
           const teacherRes = await apiService.getTeachers({ per_page: 1000 });
@@ -307,9 +379,9 @@ function DataKelas() {
         } catch (err) {}
 
         const importedClasses = jsonData.map(row => ({
-          grade: String(row['Tingkat (X/XI/XII)'] || '').trim(),
+          grade: fromRoman(String(row['Tingkat (X/XI/XII)'] || '').trim()),
           label: String(row['Label'] || '').trim(),
-          major_id: jurusanMap[String(row['Jurusan'] || '').trim()] || null,
+          major_id: majorMap[String(row['Jurusan'] || '').trim()] || null,
           homeroom_teacher_id: teacherMap[String(row['NIP Wali Kelas'] || '').trim()] || null
         }));
 
@@ -416,22 +488,17 @@ function DataKelas() {
             <label>Pilih Kelas :</label>
             <select value={searchKelas} onChange={(e) => setSearchKelas(e.target.value)}>
               <option value="">Semua Kelas</option>
-              <option value="X">X</option>
-              <option value="XI">XI</option>
-              <option value="XII">XII</option>
+              {grades.map(grade => (
+                <option key={grade} value={grade}>{toRoman(parseInt(grade))}</option>
+              ))}
             </select>
 
             <label>Pilih Konsentrasi Keahlian :</label>
             <select value={searchJurusan} onChange={(e) => setSearchJurusan(e.target.value)}>
               <option value="">Semua Jurusan</option>
-              <option value="RPL">RPL</option>
-              <option value="TKJ">TKJ</option>
-              <option value="DKV">DKV</option>
-              <option value="AV">AV</option>
-              <option value="MT">MT</option>
-              <option value="BC">BC</option>
-              <option value="AN">AN</option>
-              <option value="EI">EI</option>
+              {majors.map(major => (
+                <option key={major.code} value={major.code}>{major.code} - {major.name}</option>
+              ))}
             </select>
 
             {(searchKelas || searchJurusan) && (
@@ -627,9 +694,9 @@ function DataKelas() {
                   className={errors.kelas ? 'kelas-error' : ''}
                 >
                   <option value="">Pilih Tingkat Kelas</option>
-                  <option value="X">X</option>
-                  <option value="XI">XI</option>
-                  <option value="XII">XII</option>
+                  {grades.map(grade => (
+                    <option key={grade} value={grade}>{toRoman(parseInt(grade))}</option>
+                  ))}
                 </select>
                 {errors.kelas && <span className="kelas-error-message">{errors.kelas}</span>}
               </div>
@@ -643,14 +710,9 @@ function DataKelas() {
                   className={errors.jurusan ? 'kelas-error' : ''}
                 >
                   <option value="">Pilih Konsentrasi Keahlian</option>
-                  <option value="RPL">RPL - Rekayasa Perangkat Lunak</option>
-                  <option value="TKJ">TKJ - Teknik Komputer dan Jaringan</option>
-                  <option value="DKV">DKV - Desain Komunikasi Visual</option>
-                  <option value="AV">AV - Animasi Video</option>
-                  <option value="MT">MT - Mekatronika</option>
-                  <option value="BC">BC - Broadcasting</option>
-                  <option value="AN">AN - Animasi</option>
-                  <option value="EI">EI - Elektronika Industri</option>
+                  {majors.map(major => (
+                    <option key={major.code} value={major.code}>{major.code} - {major.name}</option>
+                  ))}
                 </select>
                 {errors.jurusan && <span className="kelas-error-message">{errors.jurusan}</span>}
               </div>

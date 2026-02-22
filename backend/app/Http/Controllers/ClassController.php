@@ -23,6 +23,16 @@ class ClassController extends Controller
 
         $query = Classes::query()->with(['major', 'homeroomTeacher.user'])->orderBy('id', 'desc');
 
+        if ($request->filled('grade')) {
+            $query->where('grade', $request->grade);
+        }
+
+        if ($request->filled('major')) {
+            $query->whereHas('major', function ($q) use ($request) {
+                $q->where('code', $request->major);
+            });
+        }
+
         return \App\Http\Resources\ClassResource::collection($query->paginate($perPage > 0 ? $perPage : 10))->response();
     }
 
@@ -98,6 +108,7 @@ class ClassController extends Controller
     {
         try {
             $class->delete();
+
             return response()->json(['message' => 'Deleted']);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {

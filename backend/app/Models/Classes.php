@@ -25,9 +25,7 @@ class Classes extends Model
 
     public function getNameAttribute(): string
     {
-        $majorCode = $this->major?->code ?? '';
-
-        return trim("{$this->grade_roman} {$majorCode} {$this->label}");
+        return trim($this->label ?? '');
     }
 
     public function getGradeRomanAttribute(): string
