@@ -49,13 +49,13 @@ function NavbarGuru() {
       </div>
 
       <div className="nav-right">
-        <NavLink to="/guru/dashboard" activeClassName="active">
+        <NavLink to="/guru/dashboard" className={({ isActive }) => isActive ? "active" : ""}>
           Beranda
         </NavLink>
-        <NavLink to="/guru/jadwal" activeClassName="active">
+        <NavLink to="/guru/jadwal" className={({ isActive }) => isActive ? "active" : ""}>
           Jadwal
         </NavLink>
-        <NavLink to="/guru/presensi" activeClassName="active">
+        <NavLink to="/guru/presensi" className={({ isActive }) => isActive ? "active" : ""}>
           Kehadiran Siswa
         </NavLink>
         

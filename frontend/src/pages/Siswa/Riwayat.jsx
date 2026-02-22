@@ -6,9 +6,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import './Riwayat.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
-
 import apiService from '../../utils/api';
-
 
 // ==================== UTILITY FUNCTIONS ====================
 const getStatusColor = (status) => {
@@ -50,10 +48,7 @@ function Riwayat() {
     const fetchProfile = async () => {
       try {
         const profile = await apiService.getProfile();
-        console.log('Profile fetched:', profile);
-        
         // Determine the correct student ID
-        // apiService.getProfile() returns the user object with nested student_profile
         const studentId = profile.student_profile?.id || profile.id;
         
         setCurrentStudent({
@@ -63,7 +58,6 @@ function Riwayat() {
         });
       } catch (error) {
         console.error('Error fetching profile:', error);
-        // Set default student data
         setCurrentStudent({
           studentId: null,
           name: '',
@@ -85,36 +79,39 @@ function Riwayat() {
         setIsLoading(true);
         
         // Fetch attendance records from real backend
-        const records = await apiService.getAttendanceHistory({
+        const response = await apiService.getAttendanceHistory({
           start_date: startDate,
           end_date: endDate
         });
         
+        // Handle paginated response
+        const records = response.data || response || [];
+        
         // Format records
         const formattedRecords = records.map(record => ({
           id: record.id,
-          date: formatDisplayDate(record.created_at),
-          period: record.schedule?.period || '-',
-          subject: record.schedule?.subject?.name || '-',
-          teacher: record.schedule?.teacher?.user?.name || '-',
+          date: formatDisplayDate(record.date),
+          period: record.schedule?.start_time ? `${record.schedule.start_time?.substring(0,5)}-${record.schedule.end_time?.substring(0,5)}` : '-',
+          subject: record.schedule?.subject_name || '-',
+          teacher: record.teacher?.user?.name || '-',
           status: record.status_label || record.status,
           statusColor: getStatusColor(record.status_label || record.status),
           reason: record.reason || null,
-          proofImage: record.proof_url || null,
+          proofImage: record.reason_file_url || null,
           studentName: record.student?.user?.name || '',
           nis: record.student?.nis || ''
         }));
         
         setAttendanceRecords(formattedRecords);
         
-        // Fetch stats from dashboard summary (most efficient way to get summary)
-        const summaryResponse = await apiService.getStudentDashboard();
-        const summary = summaryResponse.attendance_summary || {};
+        // Fetch stats from attendance summary endpoint
+        const summaryResponse = await apiService.get('/me/attendance/summary');
+        const summary = summaryResponse || {};
         
         setStats({
           hadir: summary.present || 0,
           terlambat: summary.late || 0,
-          izin: summary.excused || 0,
+          izin: (summary.excused || 0) + (summary.permission || 0),
           sakit: summary.sick || 0,
           alpha: summary.absent || 0,
           pulang: summary.return || 0
@@ -131,8 +128,8 @@ function Riwayat() {
     fetchAttendanceData();
   }, [currentStudent?.studentId, startDate, endDate]);
 
-
   const formatDisplayDate = (dateString) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -512,7 +509,6 @@ function Riwayat() {
       )}
 
       <style>{`
-      
         @keyframes spin {
           to { transform: rotate(360deg); }
         }

@@ -109,6 +109,10 @@ const apiService = {
   },
 
   // Homeroom Teacher Methods
+  getHomeroomInfo() {
+    return this.get('/me/homeroom');
+  },
+
   getHomeroomSchedules() {
     return this.get('/me/homeroom/schedules');
   },
@@ -136,13 +140,29 @@ const apiService = {
   },
 
   getAttendanceHistory(params) {
-    const query = new URLSearchParams(params).toString();
+    const query = new URLSearchParams({
+      from: params.start_date,
+      to: params.end_date,
+    }).toString();
     return this.get(`/me/attendance?${query}`);
   },
 
   // Shared / Public Methods
   getSemesters() {
     return this.get('/semesters');
+  },
+
+  // Settings Methods
+  getSettings() {
+    return this.get('/settings');
+  },
+
+  getPublicSettings() {
+    return this.get('/settings/public');
+  },
+
+  updateSettings(data) {
+    return this.post('/settings', data);
   },
 
   getTeachers(params) {
@@ -188,6 +208,10 @@ const apiService = {
   getClasses(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
     return this.get(`/classes${query}`);
+  },
+
+  getAvailableClasses() {
+    return this.get('/classes?available=true&per_page=1000');
   },
 
   getMajors(params) {

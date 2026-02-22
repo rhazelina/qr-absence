@@ -24,10 +24,10 @@ class UpdateClassScheduleRequest extends FormRequest
         return [
             'class_id' => ['sometimes', 'exists:classes,id'],
             'semester' => ['sometimes', 'integer', 'in:1,2'],
-            'year' => ['sometimes', 'integer', 'digits:4'],
+            'year' => ['sometimes', 'string'],
             'is_active' => ['boolean'],
             'days' => ['sometimes', 'array'],
-            'days.*.day' => ['required_with:days', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday'],
+            'days.*.day' => ['required_with:days', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday'],
             'days.*.items' => ['array'],
             'days.*.items.*.subject_id' => ['nullable', 'exists:subjects,id'],
             'days.*.items.*.teacher_id' => ['required_with:days.*.items', 'exists:teacher_profiles,id'],

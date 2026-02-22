@@ -24,10 +24,10 @@ class StoreClassScheduleRequest extends FormRequest
         return [
             'class_id' => ['required', 'exists:classes,id'],
             'semester' => ['required', 'integer', 'in:1,2'],
-            'year' => ['required', 'integer', 'digits:4'],
+            'year' => ['required', 'string'],
             'is_active' => ['boolean'],
             'days' => ['required', 'array'],
-            'days.*.day' => ['required', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday'],
+            'days.*.day' => ['required', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday'],
             'days.*.items' => ['array'],
             'days.*.items.*.subject_id' => ['nullable', 'exists:subjects,id'],
             'days.*.items.*.teacher_id' => [

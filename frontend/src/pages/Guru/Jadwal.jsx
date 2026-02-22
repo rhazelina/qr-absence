@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, User } from 'lucide-react';
 import './Jadwal.css';
-import apiService from '../../utils/api';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
-import { FaUser, FaIdCard, FaChalkboardTeacher, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import apiService from '../../utils/api';
 
 const Jadwal = () => {
   const [profile, setProfile] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchData();
@@ -16,20 +18,9 @@ const Jadwal = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Use apiService for consistency and base URL handling
-      // Assuming apiService has methods or we can use apiService.get()
-      // If specific methods don't exist, we can add them or use the generic get
-
-      // We'll use the generic get method if specific ones aren't available, 
-      // but typically we'd look for getProfile() and getTeacherSchedules()
-
-      // Checking PresensiSiswa.jsx, it uses apiService.getTeacherScheduleStudents
-      // Checking DashboardSiswa.jsx, it uses apiService.getProfile()
-
-      // Let's rely on apiService
       const [meRes, scheduleRes] = await Promise.all([
-        apiService.getProfile(), // Fits /auth/me or similar
-        apiService.get('/me/schedules') // Generic get for schedules
+        apiService.getProfile(),
+        apiService.get('/me/schedules')
       ]);
 
       if (meRes) {
@@ -37,25 +28,30 @@ const Jadwal = () => {
       }
 
       if (scheduleRes) {
-        setSchedules(scheduleRes.items || []);
+        const items = scheduleRes.items || scheduleRes.data || scheduleRes || [];
+        setSchedules(items);
       }
-
     } catch (error) {
       console.error('Error fetching data:', error);
+      setSchedules([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="jadwal-container">
-      <NavbarGuru />
-      <div className="flex justify-center items-center h-screen">Memuat jadwal...</div>
-    </div>;
-  }
-
   // Group items by day
   const dayOrder = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
+  const dayNameIndo = {
+    'Monday': 'Senin',
+    'Tuesday': 'Selasa',
+    'Wednesday': 'Rabu',
+    'Thursday': 'Kamis',
+    'Friday': 'Jumat',
+    'Saturday': 'Sabtu',
+    'Sunday': 'Minggu',
+    'Unknown': 'Tidak Diketahui'
+  };
+
   const groupedSchedules = schedules.reduce((acc, item) => {
     const day = item.day || 'Unknown';
     if (!acc[day]) acc[day] = [];
@@ -65,78 +61,94 @@ const Jadwal = () => {
 
   const sortedDays = Object.keys(groupedSchedules).sort((a, b) => (dayOrder[a] || 8) - (dayOrder[b] || 8));
 
+  if (loading) {
+    return (
+      <div className="jadwal-container">
+        <NavbarGuru />
+        <div className="flex justify-center items-center h-64 text-white">
+          Memuat jadwal...
+        </div>
+      </div>
+    );
+  }
+
+  const profilePhoto = profile?.teacher_profile?.profile_photo 
+    ? (profile.teacher_profile.profile_photo.startsWith('http') 
+        ? profile.teacher_profile.profile_photo 
+        : `${API_URL}/storage/${profile.teacher_profile.profile_photo}`)
+    : null;
+
   return (
     <div className="jadwal-container">
       <NavbarGuru />
+      
+      <h1 className="jadwal-title">Jadwal Mengajar</h1>
 
       <div className="jadwal-wrapper">
-        <div className="md:flex gap-6 p-6">
+        <div className="jadwal-layout">
           {/* Sidebar Profile */}
-          <div className="md:w-1/4 mb-6 md:mb-0">
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <div className="w-24 h-24 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4 text-gray-500">
-                <FaUser size={40} />
+          <div className="jadwal-sidebar">
+            <div className="jadwal-profile-card">
+              <div className="jadwal-avatar">
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt={profile?.name} />
+                ) : (
+                  <User size={70} />
+                )}
               </div>
-              <h2 className="text-xl font-bold text-gray-800">{profile?.name}</h2>
-              <p className="text-gray-500 mb-4">{profile?.email}</p>
-
-              <div className="text-left border-t border-gray-100 pt-4 mt-4">
-                <div className="mb-2 flex items-center gap-2 text-gray-600">
-                  <FaIdCard />
-                  <span className="font-semibold">NIP:</span>
-                  {profile?.teacher_profile?.nip || '-'}
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <FaChalkboardTeacher />
-                  <span className="font-semibold">Kode:</span>
-                  {profile?.teacher_profile?.kode_guru || '-'}
+              <div className="jadwal-teacher-info">
+                <h2 className="jadwal-teacher-name">{profile?.name || 'Nama Guru'}</h2>
+                <p className="jadwal-teacher-nip">
+                  {profile?.teacher_profile?.nip ? `NIP. ${profile.teacher_profile.nip}` : 'NIP Tidak Tersedia'}
+                </p>
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', marginTop: '10px' }}>
+                  Kode: {profile?.teacher_profile?.kode_guru || '-'}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Main Content */}
-          <div className="md:w-3/4">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-2 mb-6 border-b pb-4">
-                <FaCalendarAlt className="text-blue-600 text-xl" />
-                <h1 className="text-2xl font-bold text-gray-800">Jadwal Mengajar Saya</h1>
-              </div>
+          <div className="jadwal-main">
+            <div className="jadwal-header-main">
+              <Calendar size={30} />
+              <h1>Jadwal Pelajaran</h1>
+            </div>
 
-              <div className="space-y-6">
-                {sortedDays.map(day => (
-                  <div key={day} className="border rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-2 font-bold text-gray-700 uppercase border-b">
-                      {day}
-                    </div>
-                    <div className="divide-y">
-                      {groupedSchedules[day].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((item, idx) => (
-                        <div key={idx} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50">
-                          <div className="mb-2 sm:mb-0">
-                            <div className="font-semibold text-lg text-gray-800">{item.class}</div>
-                            <div className="text-gray-600">{item.subject}</div>
+            <div className="schedule-list-container">
+              {sortedDays.map(day => (
+                <div key={day} className="day-section">
+                  <div className="day-header">
+                    <Calendar size={18} />
+                    {dayNameIndo[day] || day}
+                  </div>
+                  <div className="schedule-items-wrapper">
+                    {groupedSchedules[day].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((item, idx) => (
+                      <div key={idx} className="schedule-item">
+                        <div className="course-info">
+                          <div className="course-class">{item.class}</div>
+                          <div className="course-subject">{item.subject}</div>
+                        </div>
+                        <div className="time-info">
+                          <div className="time-range">
+                            <Clock size={16} />
+                            {item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}
                           </div>
-                          <div className="text-right">
-                            <div className="flex items-center gap-1 text-blue-600 font-medium justify-end">
-                              <FaClock />
-                              {item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}
-                            </div>
-                            <div className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded inline-block mt-1">
-                              Ruang: {item.room || '-'}
-                            </div>
+                          <div className="room-info">
+                            Ruang: {item.room || '-'}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              ))}
 
-                {sortedDays.length === 0 && (
-                  <div className="text-center py-10 text-gray-500">
-                    Belum ada jadwal mengajar yang aktif.
-                  </div>
-                )}
-              </div>
+              {sortedDays.length === 0 && (
+                <div className="no-schedules">
+                  <p>Belum ada jadwal mengajar yang aktif untuk Anda.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
