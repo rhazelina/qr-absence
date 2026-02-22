@@ -74,33 +74,42 @@ class QrCodeController extends Controller
 
         // --- HARD VALIDATIONS FOR BOTH ROLES ---
         
+        // Skip validations in demo mode
+        $isDemoMode = config('app.demo_mode', false);
+
         // 1. Schedule must be active
-        if (! $schedule->dailySchedule->classSchedule->is_active) {
+        if (!$isDemoMode && !$schedule->dailySchedule->classSchedule->is_active) {
             abort(422, 'Jadwal pelajaran ini sudah tidak aktif (semester/tahun ajaran berlalu).');
         }
 
-        // 2. Day must match
-        $today = strtolower(now()->format('l'));
-        $scheduleDay = strtolower($schedule->dailySchedule->day);
-        if ($scheduleDay !== $today) {
-            abort(422, "QR hanya bisa dibuat pada hari jadwal (Hari ini $today, jadwal $scheduleDay)");
+        // 2. Day must match (skip in demo mode)
+        if (!$isDemoMode) {
+            $today = strtolower(now()->format('l'));
+            $scheduleDay = strtolower($schedule->dailySchedule->day);
+            if ($scheduleDay !== $today) {
+                abort(422, "QR hanya bisa dibuat pada hari jadwal (Hari ini $today, jadwal $scheduleDay)");
+            }
         }
 
-        // 3. Time must be active (allowing 15 min early and late up to end time)
-        $nowTime = now()->format('H:i:s');
-        $startTimeAllowed = now()->setTimeFromTimeString($schedule->start_time)->subMinutes(15)->format('H:i:s');
-        if ($nowTime < $startTimeAllowed || $nowTime > $schedule->end_time) {
-            abort(422, "QR hanya bisa dibuat pada jam aktif atau 15 menit sebelumnya ({$schedule->start_time} - {$schedule->end_time})");
+        // 3. Time must be active (skip in demo mode)
+        if (!$isDemoMode) {
+            $nowTime = now()->format('H:i:s');
+            $startTimeAllowed = now()->setTimeFromTimeString($schedule->start_time)->subMinutes(15)->format('H:i:s');
+            if ($nowTime < $startTimeAllowed || $nowTime > $schedule->end_time) {
+                abort(422, "QR hanya bisa dibuat pada jam aktif atau 15 menit sebelumnya ({$schedule->start_time} - {$schedule->end_time})");
+            }
         }
 
         // 4. Must not be closed
-        $isClosed = \App\Models\Attendance::where('schedule_id', $schedule->id)
-            ->whereDate('date', today())
-            ->where('source', 'system_close')
-            ->exists();
-            
-        if ($isClosed) {
-            abort(422, 'Sesi absensi untuk jadwal ini sudah ditutup.');
+        if (!$isDemoMode) {
+            $isClosed = \App\Models\Attendance::where('schedule_id', $schedule->id)
+                ->whereDate('date', today())
+                ->where('source', 'system_close')
+                ->exists();
+
+            if ($isClosed) {
+                abort(422, 'Sesi absensi untuk jadwal ini sudah ditutup.');
+            }
         }
 
         $expiresAt = now()->addMinutes($data['expires_in_minutes'] ?? 15);
@@ -127,7 +136,7 @@ class QrCodeController extends Controller
 
             $uuid = Str::uuid()->toString();
             $signature = hash_hmac('sha256', $uuid, config('app.key'));
-            $signedToken = $uuid . '.' . $signature;
+            $signedToken = $uuid.'.'.$signature;
 
             return Qrcode::create([
                 'token' => $signedToken,

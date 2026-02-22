@@ -72,29 +72,39 @@ class AttendanceService
         // Schedule Day and Time Validation
         $scheduleDay = $qr->schedule->dailySchedule->day;
         $today = $now->format('l');
+        $demoMode = config('app.demo_mode', env('APP_DEMO_MODE', false));
 
-        if (strcasecmp($scheduleDay, $today) !== 0) {
-            throw new \Exception("QR hanya valid pada hari {$scheduleDay}", 422);
+        if (! $demoMode) {
+            if (strcasecmp($scheduleDay, $today) !== 0) {
+                throw new \Exception("QR hanya valid pada hari {$scheduleDay}", 422);
+            }
+
+            $nowTime = $now->format('H:i:s');
+            $startTimeAllowed = (clone $now)->setTimeFromTimeString($qr->schedule->start_time)->subMinutes(15)->format('H:i:s');
+            if ($nowTime < $startTimeAllowed || $nowTime > $qr->schedule->end_time) {
+                throw new \Exception("Sesi presensi diluar jam aktif pelajaran ({$qr->schedule->start_time} - {$qr->schedule->end_time})", 422);
+            }
         }
 
-        $nowTime = $now->format('H:i:s');
-        $startTimeAllowed = (clone $now)->setTimeFromTimeString($qr->schedule->start_time)->subMinutes(15)->format('H:i:s');
-        if ($nowTime < $startTimeAllowed || $nowTime > $qr->schedule->end_time) {
-            throw new \Exception("Sesi presensi diluar jam aktif pelajaran ({$qr->schedule->start_time} - {$qr->schedule->end_time})", 422);
+        // 3. Check if Schedule is Open (skip in demo mode)
+        $demoMode = config('app.demo_mode', false);
+        
+        if (!$demoMode) {
+            $isClosed = \App\Models\Attendance::where('schedule_id', $qr->schedule_id)
+                ->whereDate('date', today())
+                ->where('source', 'system_close')
+                ->exists();
+
+            if ($isClosed) {
+                throw new \Exception('Sesi absensi untuk jadwal ini sudah ditutup', 422);
+            }
         }
 
-        // 3. Check if Schedule is Open
-        $isClosed = \App\Models\Attendance::where('schedule_id', $qr->schedule_id)
-            ->whereDate('date', today())
-            ->where('source', 'system_close')
-            ->exists();
-
-        if ($isClosed) {
-            throw new \Exception('Sesi absensi untuk jadwal ini sudah ditutup', 422);
+        // Geolocation Validation (skip in demo mode)
+        $demoMode = config('app.demo_mode', false);
+        if (!$demoMode) {
+            $this->validateLocation($data);
         }
-
-        // Geolocation Validation
-        $this->validateLocation($data);
 
         // Check Leave (Student only)
         if ($user->user_type === 'student' && $user->studentProfile) {
@@ -162,7 +172,7 @@ class AttendanceService
     /**
      * Scan Student QR Code by Teacher
      */
-    public function scanStudent(string $nisn, User $teacher, ?string $deviceId = null): array
+    public function scanStudent(string $nisn, User $teacher, ?string $deviceId = null, ?string $scheduleId = null): array
     {
         if ($teacher->user_type !== 'teacher' || ! $teacher->teacherProfile) {
             throw new \Exception('Hanya guru yang dapat melakukan scan ini', 403);
@@ -176,18 +186,23 @@ class AttendanceService
         $now = now();
         $day = $now->format('l');
         $time = $now->format('H:i:s');
+        $demoMode = config('app.demo_mode', env('APP_DEMO_MODE', false));
 
-        $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')
-            ->where('teacher_id', $teacher->teacherProfile->id)
-            ->whereHas('dailySchedule', function ($query) use ($day) {
-                $query->where('day', $day);
-            })
-            ->whereHas('dailySchedule.classSchedule', function ($query) {
-                $query->where('is_active', true);
-            })
-            ->where('start_time', '<=', $time)
-            ->where('end_time', '>=', $time)
-            ->first();
+        if ($demoMode && $scheduleId) {
+            $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')->find($scheduleId);
+        } else {
+            $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')
+                ->where('teacher_id', $teacher->teacherProfile->id)
+                ->whereHas('dailySchedule', function ($query) use ($day) {
+                    $query->where('day', $day);
+                })
+                ->whereHas('dailySchedule.classSchedule', function ($query) {
+                    $query->where('is_active', true);
+                })
+                ->where('start_time', '<=', $time)
+                ->where('end_time', '>=', $time)
+                ->first();
+        }
 
         if (! $schedule) {
             throw new \Exception('Tidak ada jadwal mengajar aktif saat ini.', 422);
@@ -217,10 +232,28 @@ class AttendanceService
                     ->first();
 
                 if ($existing) {
+                    // Toggle Logic: Present -> Return, Return -> Present
+                    $newStatus = $existing->status === AttendanceStatus::PRESENT->value
+                        ? AttendanceStatus::RETURN->value
+                        : AttendanceStatus::PRESENT->value;
+
+                    $existing->update([
+                        'status' => $newStatus,
+                        'updated_at' => $now,
+                    ]);
+
+                    // Propagation Logic: If status is RETURN, mark subsequent schedules
+                    if ($newStatus === AttendanceStatus::RETURN->value) {
+                        $this->propagateReturnStatus($student, $now, $schedule);
+                    } else {
+                        // Optional: Clear subsequent 'return' if toggled back to present?
+                        // For now, let's keep it simple: only auto-mark return.
+                    }
+
                     return [
-                        'status' => 'existing',
-                        'message' => 'Presensi siswa sudah tercatat',
-                        'attendance_status' => $existing->status,
+                        'status' => 'success',
+                        'message' => 'Status presensi siswa diperbarui menjadi: '.($newStatus === 'return' ? 'Pulang' : 'Hadir'),
+                        'attendance_status' => $newStatus,
                         'student' => $student,
                     ];
                 }
@@ -248,6 +281,41 @@ class AttendanceService
             }
         } finally {
             $lock->release();
+        }
+    }
+
+    /**
+     * Propagate Return Status to Subsequent Schedules
+     */
+    private function propagateReturnStatus(StudentProfile $student, Carbon $now, ScheduleItem $currentSchedule): void
+    {
+        $day = $now->format('l');
+        $date = $now->toDateString();
+
+        // Get all schedules for this class today that start AFTER or AT the same time as current schedule
+        $subsequentSchedules = ScheduleItem::whereHas('dailySchedule', function ($query) use ($day, $currentSchedule) {
+            $query->where('day', $day)
+                ->where('class_schedule_id', $currentSchedule->dailySchedule->class_schedule_id);
+        })
+            ->where('start_time', '>=', $currentSchedule->start_time)
+            ->where('id', '!=', $currentSchedule->id)
+            ->get();
+
+        foreach ($subsequentSchedules as $sch) {
+            Attendance::updateOrCreate(
+                [
+                    'attendee_type' => 'student',
+                    'student_id' => $student->id,
+                    'schedule_id' => $sch->id,
+                    'date' => $date,
+                ],
+                [
+                    'status' => AttendanceStatus::RETURN->value,
+                    'source' => 'system_propagation',
+                    'reason' => 'Siswa sudah pulang (dicatat oleh guru sebelumnya)',
+                    'checked_in_at' => $now,
+                ]
+            );
         }
     }
 
@@ -287,7 +355,7 @@ class AttendanceService
 
     /**
      * Create Full Day Attendance Records
-     * 
+     *
      * Creates attendance records for all schedules today (for full day sick/izin)
      */
     public function createFullDayAttendance(StudentProfile $student, string $status, string $date, ?string $reason): void
