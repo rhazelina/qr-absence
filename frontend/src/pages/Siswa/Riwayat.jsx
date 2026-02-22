@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Eye, X, ZoomIn } from 'lucide-react';
+import { Calendar, Eye, X, ZoomIn, FileText, FileSpreadsheet } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import './Riwayat.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
 
@@ -188,6 +192,58 @@ function Riwayat() {
     return ['Izin', 'Sakit', 'Pulang'].includes(status);
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(18);
+    doc.text('Laporan Riwayat Kehadiran', 14, 20);
+    
+    doc.setFontSize(12);
+    doc.text(`Nama: ${currentStudent?.name || '-'}`, 14, 30);
+    doc.text(`NIS: ${currentStudent?.nis || '-'}`, 14, 36);
+    doc.text(`Periode: ${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`, 14, 42);
+    
+    // Table
+    const tableColumn = ["No", "Tanggal", "Jam", "Mata Pelajaran", "Guru", "Status", "Keterangan"];
+    const tableRows = attendanceRecords.map((record, index) => [
+      index + 1,
+      record.date,
+      record.period,
+      record.subject,
+      record.teacher,
+      record.status,
+      record.reason || '-'
+    ]);
+    
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: 50,
+    });
+    
+    doc.save(`Riwayat_Kehadiran_${startDate}_${endDate}.pdf`);
+  };
+
+  const handleExportExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(attendanceRecords.map((record, index) => ({
+      No: index + 1,
+      Tanggal: record.date,
+      'Jam Pelajaran': record.period,
+      'Mata Pelajaran': record.subject,
+      Guru: record.teacher,
+      Status: record.status,
+      Keterangan: record.reason || '-'
+    })));
+    
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat Kehadiran");
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8'});
+    saveAs(data, `Riwayat_Kehadiran_${startDate}_${endDate}.xlsx`);
+  };
+
   return (
     <div className="riwayat-page">
       <NavbarSiswa />
@@ -224,6 +280,17 @@ function Riwayat() {
               onChange={handleEndDateChange}
               className="date-inputt"
             />
+          </div>
+
+          <div className="export-buttons-group">
+            <button className="export-btn pdf" onClick={handleExportPDF} disabled={isLoading || attendanceRecords.length === 0}>
+              <FileText size={18} />
+              Export PDF
+            </button>
+            <button className="export-btn excel" onClick={handleExportExcel} disabled={isLoading || attendanceRecords.length === 0}>
+              <FileSpreadsheet size={18} />
+              Export Excel
+            </button>
           </div>
         </div>
 

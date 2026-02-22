@@ -1,34 +1,57 @@
+import { toast } from 'react-toastify';
+
 const baseURL = import.meta.env.VITE_API_URL;
 const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
 const apiService = {
   async request(endpoint, options = {}) {
     const token = localStorage.getItem('token');
+    const isFormDataBody = options.body instanceof FormData;
     const headers = {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...(!isFormDataBody && { 'Content-Type': 'application/json' }),
       ...options.headers
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+      });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/';
-        throw new Error('Sesi telah berakhir, silakan login kembali');
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/';
+          throw new Error('Sesi telah berakhir, silakan login kembali');
+        }
+
+        const errorData = await response.json().catch(() => ({}));
+
+        if (response.status === 403) {
+          toast.error(errorData.message || 'Anda tidak memiliki akses (Forbidden). Hubungi Administrator.');
+        } else if (response.status >= 500) {
+          toast.error('Terjadi kesalahan pada server (Internal Server Error).');
+        }
+
+        const error = new Error(errorData.message || `API Error: ${response.status}`);
+        error.data = errorData;
+
+        // Return structured error instead of throwing a generic one string
+        // Many frontend components expect error.data to exist and contain error details
+        throw error;
       }
 
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `API Error: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      // Only toast if it's a TypeError (Network Error from fetch failing) and not our custom re-thrown error
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Gagal terhubung ke server. Periksa koneksi internet Anda.', { toastId: 'network-err' });
+      }
+      throw error;
     }
-
-    return response.json();
   },
 
   get(endpoint, options = {}) {
@@ -36,10 +59,11 @@ const apiService = {
   },
 
   post(endpoint, data, options = {}) {
+    const isFormData = data instanceof FormData;
     return this.request(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(data)
+      body: isFormData ? data : JSON.stringify(data)
     });
   },
 
@@ -54,6 +78,15 @@ const apiService = {
   },
 
   getMyClassAttendance(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/me/class/attendance${query}`);
+  },
+
+  getMyClassStudents() {
+    return this.get('/me/class/students');
+  },
+
+  getMyClassAttendanceHistory(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
     return this.get(`/me/class/attendance${query}`);
   },
@@ -112,8 +145,9 @@ const apiService = {
     return this.get('/semesters');
   },
 
-  getTeachers() {
-    return this.get('/teachers');
+  getTeachers(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/teachers${query}`);
   },
 
   // Waka Methods
@@ -151,12 +185,14 @@ const apiService = {
     return this.post(`/attendance/${attendanceId}/excuse`, data);
   },
 
-  getClasses() {
-    return this.get('/classes');
+  getClasses(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
+    return this.get(`/classes${query}`);
   },
 
-  getMajors() {
-    return this.get('/majors');
+  getMajors(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
+    return this.get(`/majors${query}`);
   },
 
   getClass(classId) {
@@ -166,6 +202,62 @@ const apiService = {
   getClassAttendanceByDate(classId, date) {
     const query = date ? `?date=${date}` : '';
     return this.get(`/waka/classes/${classId}/attendance${query}`);
+  },
+
+  // Student Admin CRUD
+  getStudents(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`/students${query}`);
+  },
+  getStudent(id) {
+    return this.get(`/students/${id}`);
+  },
+  addStudent(data) {
+    return this.post('/students', data);
+  },
+  updateStudent(id, data) {
+    return this.request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteStudent(id) {
+    return this.request(`/students/${id}`, { method: 'DELETE' });
+  },
+  importStudents(data) {
+    return this.post('/import/siswa', data);
+  },
+
+  // Teacher Admin CRUD
+  getTeacher(id) {
+    return this.get(`/teachers/${id}`);
+  },
+  addTeacher(data) {
+    return this.post('/teachers', data);
+  },
+  updateTeacher(id, data) {
+    return this.request(`/teachers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteTeacher(id) {
+    return this.request(`/teachers/${id}`, { method: 'DELETE' });
+  },
+  importTeachers(data) {
+    return this.post('/import/guru', data);
+  },
+
+  // Class Admin CRUD
+  addClass(data) {
+    return this.post('/classes', data);
+  },
+  updateClass(id, data) {
+    return this.request(`/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteClass(id) {
+    return this.request(`/classes/${id}`, { method: 'DELETE' });
+  },
+  importClasses(data) {
+    return this.post('/import/kelas', data);
+  },
+
+  importSchedules(data) {
+    return this.post('/import/jadwal', data);
   }
 };
 

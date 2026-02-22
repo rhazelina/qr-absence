@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/itemContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="4dp"
+    android:layout_marginEnd="2dp"
+    android:layout_marginHorizontal="12dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="12dp"
+    android:background="@drawable/rectangle_68">
+
+    <!-- No -->
+    <TextView
+        android:id="@+id/tvNo"
+        android:layout_width="40dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="1dp"
+        android:gravity="center"
+        android:text="1"
+        android:textColor="#090909"
+        android:textSize="14sp" />
+
+    <!-- Nama Jurusan -->
+    <TextView
+        android:id="@+id/tvKonsentrasi"
+        android:layout_width="80dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:gravity="center"
+        android:text="Mekatronika"
+        android:textColor="#090909"
+        android:textSize="14sp" />
+
+    <!-- Kode Jurusan -->
+    <TextView
+        android:id="@+id/tvKode"
+        android:layout_width="125dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="885422745"
+        android:textColor="#090909"
+        android:textSize="14sp" />
+
+    <!-- Action Buttons - HORIZONTAL -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="70dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <!-- Edit Button -->
+        <LinearLayout
+            android:id="@+id/btnEdit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/edit"
+                app:tint="#070707" />
+
+        </LinearLayout>
+
+        <!-- Delete Button -->
+        <LinearLayout
+            android:id="@+id/btnHapus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/delete"
+                app:tint="#F21010" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

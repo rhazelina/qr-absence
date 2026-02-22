@@ -51,7 +51,7 @@ const MENU_ITEMS_PENGURUS_KELAS: MenuItem[] = [
 
 //wali kelas
 const MENU_ITEMS_WALIKELAS: MenuItem[] = [
-  { id: "Beranda", label: "Beranda", icon: <Home size={20} /> },
+  { id: "dashboard", label: "Beranda", icon: <Home size={20} /> },
   { id: "jadwal-pengurus", label: "Jadwal Kelas", icon: <Calendar size={20} /> },
 ];
 

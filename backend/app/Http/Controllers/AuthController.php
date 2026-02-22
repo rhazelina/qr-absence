@@ -105,6 +105,7 @@ class AuthController extends Controller
         if ($user->user_type === 'student' && $user->studentProfile) {
             $profile = [
                 'nis' => $user->studentProfile->nis,
+                'class_id' => $user->studentProfile->class_id,
                 'class_name' => $user->studentProfile->classRoom?->name,
                 'photo_url' => $user->photo_url ?? null,
             ];
@@ -112,6 +113,9 @@ class AuthController extends Controller
             $profile = [
                 'nip' => $user->teacherProfile->nip,
                 'photo_url' => $user->photo_url ?? null,
+                'homeroom_class_id' => $user->teacherProfile->homeroom_class_id,
+                'homeroom_class_name' => $user->teacherProfile->homeroomClass?->name,
+                'total_students' => $user->teacherProfile->homeroomClass?->students()->count() ?? 0,
             ];
         }
 

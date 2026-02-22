@@ -1,14 +1,17 @@
 /* Presensi.css - Revisi dengan Navbar dan Header Baru */
 
-.presensi-container {
-  height: calc(100vh - 80px); /* viewport - navbar */
-  margin-top: 80px;          /* dorong di bawah navbar */
-  padding: 30px 90px;
-  overflow-y: auto;          /* 🔥 SCROLL DI SINI */
-  box-sizing: border-box;
+.presensi-page-shell {
+  min-height: 100vh;
+}
 
-  background: url('../assets/bg.png') no-repeat center center fixed;
-  background-size: cover;
+.presensi-container {
+  box-sizing: border-box;
+  padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
+}
+
+.presensi-page-content {
+  width: min(100%, var(--web-content-max));
+  margin: 0 auto;
 }
 
 /* ============ NO SCHEDULE STATE ============ */
@@ -1141,4 +1144,30 @@
   .preview-modal-body {
     padding: 20px;
   }
+}
+
+/* ============ SCALEABLE WEB OVERRIDES ============ */
+.kehadiran-header-bar {
+  padding: clamp(18px, 2.3vw, 28px) clamp(20px, 2.8vw, 40px);
+  border-radius: clamp(20px, 2.2vw, 28px);
+}
+
+.kelas-and-action {
+  margin-left: auto;
+}
+
+.presensi-table-wrapper,
+.kehadiran-view-wrapper {
+  padding: clamp(20px, 2.6vw, 36px);
+  border-radius: clamp(20px, 2.2vw, 28px);
+  width: 100%;
+}
+
+.presensi-table,
+.kehadiran-view-table {
+  min-width: 980px;
+}
+
+.no-schedule-wrapper {
+  min-height: min(62vh, 520px);
 }

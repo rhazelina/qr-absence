@@ -70,8 +70,8 @@ class TeacherSeeder extends Seeder
         ];
 
         foreach ($teachers as $index => $teacherData) {
-            $username = 'guru' . ($index + 1);
-            $email = $username . '@sekolah.sch.id';
+            $username = 'guru'.($index + 1);
+            $email = $username.'@sekolah.sch.id';
 
             $user = User::updateOrCreate(
                 ['username' => $username],
@@ -87,7 +87,7 @@ class TeacherSeeder extends Seeder
             TeacherProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'nip' => 'NIP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
+                    'nip' => 'NIP-'.str_pad($index + 1, 4, '0', STR_PAD_LEFT),
                     'jabatan' => $teacherData['jabatan'] ?? 'Guru',
                     'bidang' => $teacherData['bidang'] ?? null,
                     'konsentrasi_keahlian' => $teacherData['konsentrasi_keahlian'] ?? null,

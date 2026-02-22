@@ -65,7 +65,7 @@ export const studentService = {
   },
 
   importStudents: async (items: any[]) => {
-    const response = await fetch(`${API_BASE_URL}/students/import`, {
+    const response = await fetch(`${API_BASE_URL}/import/siswa`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ items })

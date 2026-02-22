@@ -86,9 +86,11 @@ export default function RekapKehadiranSiswa({
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     if (kelasId) {
         fetchData();
     }
+    return () => controller.abort();
   }, [kelasId, startDate, endDate]);
 
   const fetchData = async () => {
@@ -130,7 +132,8 @@ export default function RekapKehadiranSiswa({
         });
 
         setSiswaData(rows);
-    } catch (error) {
+    } catch (error: any) {
+        if (error.name === 'AbortError' || error.message === 'canceled') return;
         console.error("Failed to fetch recap:", error);
     } finally {
         setLoading(false);

@@ -35,8 +35,6 @@ class TeacherProfile extends Model
         return $this->belongsTo(Classes::class, 'homeroom_class_id');
     }
 
-
-
     // Item jadwal yang dijadwalkan
     public function scheduleItems(): HasMany
     {

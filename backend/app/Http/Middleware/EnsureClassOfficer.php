@@ -13,7 +13,16 @@ class EnsureClassOfficer
     {
         $user = $request->user();
 
-        if (! $user || $user->user_type !== 'student') {
+        if (! $user) {
+            return new JsonResponse(['message' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        // Allow teachers (Wali Kelas)
+        if ($user->user_type === 'teacher') {
+            return $next($request);
+        }
+
+        if ($user->user_type !== 'student') {
             return new JsonResponse(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 

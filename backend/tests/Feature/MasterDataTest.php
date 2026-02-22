@@ -1,10 +1,10 @@
 <?php
 
-use App\Models\User;
+use App\Models\AdminProfile;
 use App\Models\Classes;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
-use App\Models\AdminProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -35,7 +35,7 @@ test('admin can create student', function () {
         ->assertJsonPath('name', 'User Testing')
         ->assertJsonPath('nisn', '1234567890');
 
-    $this->assertDatabaseHas('users', ['username' => 'johndoe', 'user_type' => 'student']);
+    $this->assertDatabaseHas('users', ['username' => 'usertesting', 'user_type' => 'student']);
     $this->assertDatabaseHas('student_profiles', ['nisn' => '1234567890']);
 });
 
@@ -46,7 +46,7 @@ test('admin can list students', function () {
     $this->actingAs($this->admin)
         ->getJson('/api/students')
         ->assertStatus(200)
-        ->assertJsonFragment(['name' => 'Sabrina'])
+        ->assertJsonFragment(['name' => 'Alice'])
         ->assertJsonFragment(['nisn' => '9876543210']);
 });
 
@@ -82,15 +82,15 @@ test('admin can create teacher', function () {
         'password' => 'password123',
         'nip' => '19800101200001',
         'jabatan' => 'Guru', // Changed from 'Guru Matematika' to match in: rule
-        'gender' => 'P', 
+        'gender' => 'P',
     ];
 
     $this->actingAs($this->admin)
         ->postJson('/api/teachers', $payload)
         ->assertStatus(201)
-        ->assertJsonPath('user.name', 'Jane Teacher');
+        ->assertJsonPath('user.name', 'Guru Harris');
 
-    $this->assertDatabaseHas('users', ['username' => 'janeteacher', 'user_type' => 'teacher']);
+    $this->assertDatabaseHas('users', ['username' => 'haristeacher', 'user_type' => 'teacher']);
     $this->assertDatabaseHas('teacher_profiles', ['nip' => '19800101200001']);
 });
 
@@ -101,7 +101,7 @@ test('admin can update teacher', function () {
     $this->actingAs($this->admin)
         ->putJson("/api/teachers/{$profile->id}", ['name' => 'New Name', 'nip' => '654321'])
         ->assertStatus(200);
-        
+
     $this->assertDatabaseHas('users', ['id' => $teacher->id, 'name' => 'New Name']);
     $this->assertDatabaseHas('teacher_profiles', ['id' => $profile->id, 'nip' => '654321']);
 });
@@ -110,28 +110,28 @@ test('admin can manage classes', function () {
     // Create
     // We need a Major first.
     $major = \App\Models\Major::factory()->create();
-    
+
     $response = $this->actingAs($this->admin)->postJson('/api/classes', [
         'grade' => 'X',
         'label' => 'RPL 1',
         'major_id' => $major->id,
     ]);
-    
+
     $response->assertStatus(201);
     $classId = $response->json('id');
-    
+
     // Update
     $this->actingAs($this->admin)
         ->putJson("/api/classes/{$classId}", ['grade' => 'X', 'label' => 'RPL 2'])
         ->assertStatus(200);
-        
+
     $this->assertDatabaseHas('classes', ['id' => $classId, 'label' => 'RPL 2']);
-    
+
     // Delete
     $this->actingAs($this->admin)
         ->deleteJson("/api/classes/{$classId}")
         ->assertStatus(200);
-        
+
     $this->assertDatabaseMissing('classes', ['id' => $classId]);
 });
 

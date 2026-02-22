@@ -15,6 +15,12 @@ use Illuminate\Support\Carbon;
  */
 class TeacherScheduleDetailController extends Controller
 {
+    protected \App\Services\AttendanceService $attendanceService;
+
+    public function __construct(\App\Services\AttendanceService $attendanceService)
+    {
+        $this->attendanceService = $attendanceService;
+    }
     /**
      * Get Schedule Details
      *
@@ -306,7 +312,7 @@ class TeacherScheduleDetailController extends Controller
         ]);
 
         // Create attendance records for ALL schedules today with status sick/izin
-        $this->createFullDayAttendanceRecords($student, $data['type'], $today, $data['reason'] ?? null);
+        $this->attendanceService->createFullDayAttendance($student, $data['type'], $today, $data['reason'] ?? null);
 
         return response()->json([
             'message' => 'Student marked as '.($data['type'] === 'sakit' ? 'sick' : 'permission').' for full day',
@@ -540,37 +546,7 @@ class TeacherScheduleDetailController extends Controller
         ]);
     }
 
-    /**
-     * Helper: Create attendance records for all today's schedules (full day sick/izin)
-     */
-    private function createFullDayAttendanceRecords(StudentProfile $student, string $status, string $date, ?string $reason): void
-    {
-        $dayName = Carbon::parse($date)->format('l');
 
-        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($dayName, $student) {
-            $q->where('day', $dayName)
-                ->whereHas('classSchedule', function ($cq) use ($student) {
-                    $cq->where('class_id', $student->class_id);
-                });
-        })
-            ->get();
-
-        foreach ($schedules as $schedule) {
-            Attendance::updateOrCreate(
-                [
-                    'student_id' => $student->id,
-                    'schedule_id' => $schedule->id,
-                    'attendee_type' => 'student',
-                ],
-                [
-                    'date' => $date,
-                    'status' => $status,
-                    'reason' => $reason,
-                    'source' => 'manual',
-                ]
-            );
-        }
-    }
 
     /**
      * Helper: Mark remaining schedules as izin (for izin pulang until end of school)

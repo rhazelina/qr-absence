@@ -29,13 +29,17 @@ import apiService from '../../utils/api';
 
 function KehadiranGuruIndex() {
   const navigate = useNavigate();
+  const today = new Date().toISOString().split('T')[0];
   const [kehadirans, setKehadirans] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [pagination, setPagination] = useState({});
 
   const [filterTanggal, setFilterTanggal] = useState(
-    new Date().toISOString().split('T')[0]
+    today
   );
+  const [exportFromDate, setExportFromDate] = useState(today);
+  const [exportToDate, setExportToDate] = useState(today);
 
   const [deleteModal, setDeleteModal] = useState({ show: false, id: null, namaGuru: '' });
   const [showExport, setShowExport] = useState(false);
@@ -124,59 +128,130 @@ function KehadiranGuruIndex() {
     return slots;
   };
 
+  const getDateRange = (from, to) => {
+    const dates = [];
+    const current = new Date(`${from}T00:00:00`);
+    const end = new Date(`${to}T00:00:00`);
+
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+
+    return dates;
+  };
+
+  const buildExportRows = async () => {
+    if (!exportFromDate || !exportToDate) {
+      throw new Error('Rentang tanggal ekspor belum lengkap');
+    }
+
+    if (exportFromDate > exportToDate) {
+      throw new Error('Tanggal mulai tidak boleh lebih besar dari tanggal akhir');
+    }
+
+    const dates = getDateRange(exportFromDate, exportToDate);
+    if (dates.length > 31) {
+      throw new Error('Maksimal rentang ekspor adalah 31 hari');
+    }
+
+    const responses = await Promise.all(
+      dates.map(async (date) => {
+        const result = await apiService.getDailyTeacherAttendance(date, { per_page: 100 });
+        return { date, items: result?.items?.data || [] };
+      })
+    );
+
+    const rows = [];
+    responses.forEach(({ date, items }) => {
+      items.forEach((k, index) => {
+        const slots = getAttendanceSlots(k.attendances);
+        rows.push({
+          no: index + 1,
+          date,
+          kodeGuru: k.teacher?.kode_guru || '-',
+          namaGuru: k.teacher?.user?.name || '-',
+          slots,
+        });
+      });
+    });
+
+    if (rows.length === 0) {
+      throw new Error('Tidak ada data kehadiran pada rentang tanggal tersebut');
+    }
+
+    return rows;
+  };
+
   // --- FUNGSI EKSPOR PDF ---
-  const handleExportPDF = () => {
-    const doc = new jsPDF('l', 'mm', 'a4');
-    const title = `Laporan Kehadiran Guru - ${filterTanggal}`;
+  const handleExportPDF = async () => {
+    try {
+      setExportLoading(true);
+      const rows = await buildExportRows();
 
-    doc.setFontSize(14);
-    doc.text(title, 14, 15);
+      const doc = new jsPDF('l', 'mm', 'a4');
+      const title = `Laporan Kehadiran Guru - ${exportFromDate} s/d ${exportToDate}`;
 
-    const headers = [["No", "Kode Guru", "Nama Guru", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]];
-    const data = kehadirans.map((k, i) => {
-      const slots = getAttendanceSlots(k.attendances);
-      return [
-        i + 1,
-        k.teacher.kode_guru || '-',
-        k.teacher.user?.name || '-',
-        ...slots.map(s => s ? statusLabels[s] || s : '-')
-      ];
-    });
+      doc.setFontSize(14);
+      doc.text(title, 14, 15);
 
-    autoTable(doc, {
-      head: headers,
-      body: data,
-      startY: 22,
-      theme: 'grid',
-      styles: { fontSize: 8, halign: 'center' },
-      headStyles: { fillColor: [13, 40, 71] },
-      columnStyles: { 2: { halign: 'left' } }
-    });
+      const headers = [["Tanggal", "No", "Kode Guru", "Nama Guru", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]];
+      const data = rows.map((row) => [
+        row.date,
+        row.no,
+        row.kodeGuru,
+        row.namaGuru,
+        ...row.slots.map(s => s ? statusLabels[s] || s : '-')
+      ]);
 
-    doc.save(`Kehadiran_Guru_${filterTanggal}.pdf`);
-    setShowExport(false);
+      autoTable(doc, {
+        head: headers,
+        body: data,
+        startY: 22,
+        theme: 'grid',
+        styles: { fontSize: 8, halign: 'center' },
+        headStyles: { fillColor: [13, 40, 71] },
+        columnStyles: { 3: { halign: 'left' } }
+      });
+
+      doc.save(`Kehadiran_Guru_${exportFromDate}_sd_${exportToDate}.pdf`);
+      setShowExport(false);
+    } catch (error) {
+      alert(error.message || 'Gagal mengekspor PDF');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   // --- FUNGSI EKSPOR EXCEL ---
-  const handleExportExcel = () => {
-    const dataExcel = kehadirans.map((k, i) => {
-      const slots = getAttendanceSlots(k.attendances);
-      const row = {
-        No: i + 1,
-        'Kode Guru': k.teacher.kode_guru || '-',
-        'Nama Guru': k.teacher.user?.name || '-',
-      };
-      slots.forEach((s, idx) => {
-        row[`Jam ${idx + 1}`] = s ? statusLabels[s] || s : '-';
-      });
-      return row;
-    });
+  const handleExportExcel = async () => {
+    try {
+      setExportLoading(true);
+      const rows = await buildExportRows();
 
-    const worksheet = XLSX.utils.json_to_sheet(dataExcel);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Kehadiran");
-    XLSX.writeFile(workbook, `Kehadiran_Guru_${filterTanggal}.xlsx`);
-    setShowExport(false);
+      const dataExcel = rows.map((row) => {
+        const excelRow = {
+          Tanggal: row.date,
+          No: row.no,
+          'Kode Guru': row.kodeGuru,
+          'Nama Guru': row.namaGuru,
+        };
+        row.slots.forEach((s, idx) => {
+          excelRow[`Jam ${idx + 1}`] = s ? statusLabels[s] || s : '-';
+        });
+        return excelRow;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataExcel);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Kehadiran");
+      XLSX.writeFile(workbook, `Kehadiran_Guru_${exportFromDate}_sd_${exportToDate}.xlsx`);
+      setShowExport(false);
+    } catch (error) {
+      alert(error.message || 'Gagal mengekspor Excel');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   if (loading) {
@@ -212,12 +287,24 @@ function KehadiranGuruIndex() {
           {showExport && (
             <div className="kehadiran-guru-index-export-menu">
               <div className="export-date-range">
-                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2">Pilih Format</p>
+                 <label>Dari Tanggal</label>
+                 <input
+                   type="date"
+                   value={exportFromDate}
+                   onChange={(e) => setExportFromDate(e.target.value)}
+                 />
+                 <label>Sampai Tanggal</label>
+                 <input
+                   type="date"
+                   value={exportToDate}
+                   onChange={(e) => setExportToDate(e.target.value)}
+                 />
               </div>
-              <button className="export-item pdf" onClick={handleExportPDF}>
+              <div className="export-divider" />
+              <button className="export-item pdf" onClick={handleExportPDF} disabled={exportLoading}>
                 <FaFilePdf /> PDF Document
               </button>
-              <button className="export-item excel" onClick={handleExportExcel}>
+              <button className="export-item excel" onClick={handleExportExcel} disabled={exportLoading}>
                 <FaFileExcel /> Excel Spreadsheet
               </button>
             </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classes;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -20,8 +21,45 @@ class StudentController extends Controller
     {
         $query = StudentProfile::query()->with(['user', 'classRoom']);
 
+        $user = $request->user();
+        if ($user && $user->user_type === 'teacher') {
+            $teacher = $user->teacherProfile;
+            if ($teacher) {
+                $classIds = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
+                    ->whereHas('dailySchedule.classSchedule', function ($q) {
+                        $q->where('is_active', true);
+                    })
+                    ->get()
+                    ->map(fn($item) => $item->dailySchedule->classSchedule->class_id ?? null)
+                    ->filter()
+                    ->unique()
+                    ->toArray();
+
+                if ($teacher->homeroom_class_id) {
+                    $classIds[] = $teacher->homeroom_class_id;
+                }
+
+                $query->whereIn('class_id', array_unique($classIds));
+            }
+        } elseif ($user && $user->user_type === 'student') {
+            $student = $user->studentProfile;
+            if ($student) {
+                $query->where('class_id', $student->class_id);
+            }
+        }
+
         if ($request->filled('nisn')) {
             $query->where('nisn', $request->string('nisn'));
+        }
+
+        if ($request->filled('class_id')) {
+            $query->where('class_id', $request->integer('class_id'));
+        }
+
+        if ($request->filled('major_id')) {
+            $query->whereHas('classRoom', function ($q) use ($request) {
+                $q->where('major_id', $request->integer('major_id'));
+            });
         }
 
         if ($request->filled('search')) {
@@ -36,79 +74,14 @@ class StudentController extends Controller
             });
         }
 
-        $perPage = $request->integer('per_page', 15);
+        $perPage = $request->integer('per_page', 10);
 
-        if ($perPage === -1) {
-            return response()->json(\App\Http\Resources\StudentResource::collection($query->latest()->get()));
-        }
-
-        return \App\Http\Resources\StudentResource::collection($query->latest()->paginate($perPage)->appends($request->all()))->response();
+        return \App\Http\Resources\StudentResource::collection(
+            $query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10)->appends($request->all())
+        )->response();
     }
 
-    /**
-     * Import Students
-     *
-     * Bulk import students from a data array.
-     */
-    public function import(Request $request): JsonResponse
-    {
-        $dto = \App\Data\StudentImportData::fromRequest($request);
-        $data = $request->validate([
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
-            'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
-            'items.*.password' => ['nullable', 'string', 'min:6'],
-            'items.*.nisn' => ['required', 'string', 'distinct', 'unique:student_profiles,nisn'],
-            'items.*.nis' => ['required', 'string', 'distinct', 'unique:student_profiles,nis'],
-            'items.*.gender' => ['required', 'in:L,P'],
-            'items.*.address' => ['required', 'string'],
-            'items.*.class_id' => ['required', 'exists:classes,id'],
-            'items.*.is_class_officer' => ['nullable', 'boolean'],
-            'items.*.phone' => ['nullable', 'string', 'max:30'],
-            'items.*.contact' => ['nullable', 'string', 'max:50'],
-        ], [
-            'items.*.username.unique' => 'Username :input sudah digunakan.',
-            'items.*.email.unique' => 'Email :input sudah digunakan.',
-            'items.*.nisn.unique' => 'NISN :input sudah digunakan oleh siswa lain.',
-            'items.*.nis.unique' => 'NIS :input sudah digunakan oleh siswa lain.',
-            'items.*.username.distinct' => 'Username :input duplikat dalam daftar import.',
-            'items.*.email.distinct' => 'Email :input duplikat dalam daftar import.',
-            'items.*.nisn.distinct' => 'NISN :input duplikat dalam daftar import.',
-            'items.*.nis.distinct' => 'NIS :input duplikat dalam daftar import.',
-        ]);
 
-        $count = 0;
-
-        DB::transaction(function () use ($dto, &$count): void {
-            foreach ($dto->items as $item) {
-                $user = User::create([
-                    'name' => $item['name'],
-                    'username' => $item['username'],
-                    'email' => $item['email'] ?? null,
-                    'password' => Hash::make($item['password'] ?? 'password123'),
-                    'phone' => $item['phone'] ?? null,
-                    'contact' => $item['contact'] ?? null,
-                    'user_type' => 'student',
-                ]);
-
-                $user->studentProfile()->create([
-                    'nisn' => $item['nisn'],
-                    'nis' => $item['nis'],
-                    'gender' => $item['gender'],
-                    'address' => $item['address'],
-                    'class_id' => $item['class_id'],
-                    'is_class_officer' => $item['is_class_officer'] ?? false,
-                ]);
-                $count++;
-            }
-        });
-
-        return response()->json([
-            'created' => $count,
-            'message' => "Successfully imported {$count} students.",
-        ], 201);
-    }
 
     /**
      * Create Student
@@ -193,9 +166,15 @@ class StudentController extends Controller
      */
     public function destroy(StudentProfile $student): JsonResponse
     {
-        $student->user()->delete();
-
-        return response()->json(['message' => 'Deleted']);
+        try {
+            $student->user()->delete();
+            return response()->json(['message' => 'Deleted']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     /**

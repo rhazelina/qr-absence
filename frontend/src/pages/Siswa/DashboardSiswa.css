@@ -34,10 +34,10 @@
 
 .siswa-dashboard-konten {
   padding: 0;
-  padding-left: 300px;
+  padding-left: calc(var(--web-sidebar-w) + var(--web-sidebar-gap));
   padding-top: 100px; /* 75px navbar + 25px spacing */
-  padding-right: 32px;
-  padding-bottom: 32px;
+  padding-right: var(--web-page-pad-x);
+  padding-bottom: clamp(20px, 3vw, 36px);
   box-sizing: border-box;
 }
 
@@ -229,19 +229,22 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+  max-width: var(--web-content-max);
+  margin: 0 auto;
 }
 
 .siswa-grid-ringkasan {
   display: grid;
   grid-template-columns: 1.5fr 1fr;
-  gap: 24px;
+  gap: clamp(14px, 1.8vw, 24px);
 }
 
 /* ========== KEHADIRAN CARD ========== */
 .siswa-kartu-kehadiran {
   background: white;
   border-radius: 24px;
-  padding: 28px 32px;
+  padding: clamp(16px, 2.2vw, 28px) clamp(16px, 2.6vw, 32px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
@@ -311,7 +314,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 24px;
+  padding: clamp(14px, 1.8vw, 20px) clamp(14px, 2vw, 24px);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -388,7 +391,7 @@
 .siswa-kartu-riwayat {
   background: white;
   border-radius: 24px;
-  padding: 28px 32px;
+  padding: clamp(16px, 2.2vw, 28px) clamp(16px, 2.6vw, 32px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
@@ -432,7 +435,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 18px 20px;
+  padding: clamp(12px, 1.6vw, 18px) clamp(12px, 1.8vw, 20px);
   background: #f9fafb;
   border-left: 4px solid #1e3a8a;
   border-radius: 0 12px 12px 0;
@@ -511,7 +514,7 @@
 }
 
 .siswa-kontainer-rekap {
-  max-width: 1280px;
+  max-width: var(--web-content-max);
   margin: 0 auto;
   position: relative;
   z-index: 1;
@@ -548,7 +551,7 @@
 .siswa-kartu-rekap {
   background: white;
   border-radius: 24px;
-  padding: 32px;
+  padding: clamp(18px, 2.4vw, 32px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
@@ -606,7 +609,7 @@
 /* ========== NO DATA CONTAINER ========== */
 .siswa-kontainer-tidak-ada-data {
   text-align: center;
-  padding: 60px 40px;
+  padding: clamp(24px, 4vw, 60px) clamp(18px, 3vw, 40px);
   background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
   border-radius: 20px;
   border: 3px dashed #d1d5db;

@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\ClassSchedule;
 use App\Models\Classes;
+use App\Models\ClassSchedule;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ClassScheduleFactory extends Factory

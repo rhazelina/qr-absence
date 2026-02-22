@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Modal } from '../Modal';
 import QRCodeIcon from '../../../assets/Icon/qr_code.png';
 
+import { CameraScanner } from './../CameraScanner';
+
 interface MetodeGuruProps {
   isOpen: boolean;
   onClose: () => void;
@@ -9,6 +11,7 @@ interface MetodeGuruProps {
   onPilihManual: () => void;
   onTidakBisaMengajar?: () => void;
   onSubmitDispensasi?: (data: { alasan: string; tanggal?: string; jamMulai?: string; jamSelesai?: string; keterangan?: string; bukti?: File; }) => void;
+  onScanSuccess?: (text: string) => void;
 }
 
 export function MetodeGuru({
@@ -17,6 +20,7 @@ export function MetodeGuru({
   onPilihQR,
   onPilihManual,
   onSubmitDispensasi,
+  onScanSuccess,
 }: MetodeGuruProps) {
   const [showDispensasi, setShowDispensasi] = useState(false);
   const [liveMode, setLiveMode] = useState(true);
@@ -28,8 +32,6 @@ export function MetodeGuru({
   const [dispSelesai, setDispSelesai] = useState<string>("");
   const [dispKeterangan, setDispKeterangan] = useState("");
   const [dispBukti, setDispBukti] = useState<File | null>(null);
-
-
 
   const handleClose = () => {
     onClose();
@@ -49,8 +51,6 @@ export function MetodeGuru({
     closeDispensasi();
   };
 
-  // const simpleScanMode = true; // Removed as per new structure
-
   const handleScan = () => {
     onPilihQR();
   };
@@ -58,6 +58,12 @@ export function MetodeGuru({
   const handleManual = () => {
     onPilihManual();
     handleClose();
+  };
+
+  const handleScanSuccess = (text: string) => {
+    if (onScanSuccess) {
+      onScanSuccess(text);
+    }
   };
 
   return (
@@ -110,14 +116,19 @@ export function MetodeGuru({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              minHeight: 250
             }}
-            onClick={handleScan}
           >
-            <img
-              src={QRCodeIcon}
-              alt="Kode QR"
-              style={{ width: 200, height: 200, objectFit: "contain" }}
-            />
+            {liveMode ? (
+              <CameraScanner onScanSuccess={handleScanSuccess} />
+            ) : (
+              <img
+                src={QRCodeIcon}
+                alt="Kode QR"
+                style={{ width: 200, height: 200, objectFit: "contain", cursor: "pointer" }}
+                onClick={handleScan}
+              />
+            )}
           </div>
 
           <div

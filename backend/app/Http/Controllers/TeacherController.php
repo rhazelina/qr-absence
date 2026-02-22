@@ -22,75 +22,14 @@ class TeacherController extends Controller
     {
         $query = TeacherProfile::query()->with(['user', 'homeroomClass']);
 
-        $perPage = $request->integer('per_page', 15);
+        $perPage = $request->integer('per_page', 10);
 
-        if ($perPage === -1) {
-            $teachers = $query->latest()->get();
-
-            return TeacherResource::collection($teachers)->response();
-        }
-
-        $teachers = $query->latest()->paginate($perPage);
+        $teachers = $query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10);
 
         return TeacherResource::collection($teachers)->response();
     }
 
-    /**
-     * Import Teachers
-     *
-     * Bulk import teachers from a data array.
-     */
-    public function import(Request $request): JsonResponse
-    {
-        $dto = \App\Data\TeacherImportData::fromRequest($request);
-        $data = $request->validate([
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.name' => ['required', 'string', 'max:255'],
-            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
-            'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
-            'items.*.password' => ['nullable', 'string', 'min:6'],
-            'items.*.nip' => ['required', 'string', 'distinct', 'unique:teacher_profiles,nip'],
-            'items.*.phone' => ['nullable', 'string', 'max:30'],
-            'items.*.contact' => ['nullable', 'string', 'max:50'],
-            'items.*.homeroom_class_id' => ['nullable', 'exists:classes,id'],
-            'items.*.subject' => ['nullable', 'string', 'max:100'],
-        ], [
-            'items.*.username.unique' => 'Username :input sudah digunakan.',
-            'items.*.email.unique' => 'Email :input sudah digunakan.',
-            'items.*.nip.unique' => 'NIP :input sudah digunakan oleh guru lain.',
-            'items.*.username.distinct' => 'Username :input duplikat dalam daftar import.',
-            'items.*.email.distinct' => 'Email :input duplikat dalam daftar import.',
-            'items.*.nip.distinct' => 'NIP :input duplikat dalam daftar import.',
-        ]);
 
-        $count = 0;
-
-        DB::transaction(function () use ($dto, &$count): void {
-            foreach ($dto->items as $item) {
-                $user = User::create([
-                    'name' => $item['name'],
-                    'username' => $item['username'],
-                    'email' => $item['email'] ?? null,
-                    'password' => Hash::make($item['password'] ?? 'password123'),
-                    'phone' => $item['phone'] ?? null,
-                    'contact' => $item['contact'] ?? null,
-                    'user_type' => 'teacher',
-                ]);
-
-                $user->teacherProfile()->create([
-                    'nip' => $item['nip'],
-                    'homeroom_class_id' => $item['homeroom_class_id'] ?? null,
-                    'subject' => $item['subject'] ?? null,
-                ]);
-                $count++;
-            }
-        });
-
-        return response()->json([
-            'created' => $count,
-            'message' => "Successfully imported {$count} teachers.",
-        ], 201);
-    }
 
     /**
      * Create Teacher
@@ -133,7 +72,8 @@ class TeacherController extends Controller
      */
     public function show(TeacherProfile $teacher): JsonResponse
     {
-        return response()->json($teacher->load(['user', 'homeroomClass', 'schedules']));
+        return (new TeacherResource($teacher->load(['user', 'homeroomClass', 'scheduleItems'])))
+            ->response();
     }
 
     /**
@@ -177,9 +117,15 @@ class TeacherController extends Controller
      */
     public function destroy(TeacherProfile $teacher): JsonResponse
     {
-        $teacher->user()->delete();
-
-        return response()->json(['message' => 'Deleted']);
+        try {
+            $teacher->user()->delete();
+            return response()->json(['message' => 'Deleted']);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
+                return response()->json(['message' => 'Data tidak dapat dihapus karena masih terelasi dengan data lain'], 409);
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -308,12 +254,18 @@ class TeacherController extends Controller
             return response()->json(['message' => 'Homeroom not found'], 404);
         }
 
-        $class = $user->teacherProfile->homeroomClass;
-        $query = $class->schedules();
+        $classId = $user->teacherProfile->homeroom_class_id;
+
+        $query = \App\Models\ScheduleItem::whereHas('dailySchedule.classSchedule', function ($q) use ($classId) {
+            $q->where('class_id', $classId)
+                ->where('is_active', true);
+        });
 
         if ($request->filled('date')) {
             $day = date('l', strtotime($request->date));
-            $query->where('day', $day);
+            $query->whereHas('dailySchedule', function ($q) use ($day) {
+                $q->where('day', $day);
+            });
         }
 
         return response()->json($query->with(['subject', 'teacher.user'])->get());
@@ -396,10 +348,10 @@ class TeacherController extends Controller
         });
 
         if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
+            $query->whereDate('date', '>=', $request->from);
         }
         if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
+            $query->whereDate('date', '<=', $request->to);
         }
 
         $summary = $query->selectRaw('status, count(*) as count')
@@ -429,8 +381,13 @@ class TeacherController extends Controller
         }
 
         // Get all students from classes taught by this teacher
-        $schedules = \App\Models\Schedule::where('teacher_id', $teacher->id)->get();
-        $classIds = $schedules->pluck('class_id')->unique();
+        $schedules = \App\Models\ScheduleItem::where('teacher_id', $teacher->id)
+            ->with(['dailySchedule.classSchedule'])
+            ->get();
+
+        $classIds = $schedules->map(fn ($item) => $item->dailySchedule?->classSchedule?->class_id)
+            ->filter()
+            ->unique();
 
         $query = \App\Models\StudentProfile::whereIn('class_id', $classIds)
             ->with(['user', 'classRoom']);

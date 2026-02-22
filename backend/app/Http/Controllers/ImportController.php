@@ -1,0 +1,467 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
+use App\Models\Classes;
+
+class ImportController extends Controller
+{
+    private function formatValidationErrors($validator, array $items): JsonResponse
+    {
+        $errors = [];
+        $failedRows = [];
+
+        foreach ($validator->errors()->messages() as $field => $messages) {
+            if (preg_match('/items\.(\d+)\.(.+)/', $field, $matches)) {
+                $row = (int)$matches[1] + 1; // 1-indexed for the user
+                $column = $matches[2];
+                $failedRows[$row] = true;
+
+                foreach ($messages as $message) {
+                    $errors[] = [
+                        'row' => $row,
+                        'column' => $column,
+                        'message' => $message,
+                    ];
+                }
+            } else if ($field === 'items') {
+                foreach ($messages as $message) {
+                     $errors[] = [
+                        'row' => 0,
+                        'column' => 'file',
+                        'message' => $message,
+                    ];
+                }
+            }
+        }
+
+        $totalRows = count($items);
+        $failedCount = count($failedRows);
+
+        return response()->json([
+            'total_rows' => $totalRows,
+            'success_count' => 0, // Transaction will abort, so 0 success
+            'failed_count' => $failedCount,
+            'errors' => $errors,
+        ], 422);
+    }
+
+    public function importSiswa(Request $request): JsonResponse
+    {
+        $items = $request->input('items', []);
+
+        $validator = Validator::make($request->all(), [
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.name' => ['required', 'string', 'max:255'],
+            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
+            'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
+            'items.*.password' => ['nullable', 'string'],
+            'items.*.nisn' => ['required', 'numeric', 'distinct', 'unique:student_profiles,nisn'],
+            'items.*.nis' => ['required', 'string', 'distinct', 'unique:student_profiles,nis'],
+            'items.*.gender' => ['required', 'in:L,P'],
+            'items.*.address' => ['required', 'string'],
+            'items.*.class_id' => ['required', 'exists:classes,id'],
+            'items.*.is_class_officer' => ['nullable', 'boolean'],
+            'items.*.phone' => ['nullable', 'string', 'max:30'],
+            'items.*.contact' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->formatValidationErrors($validator, $items);
+        }
+
+        $count = 0;
+
+        try {
+            DB::transaction(function () use ($items, &$count) {
+                foreach ($items as $item) {
+                    $user = User::create([
+                        'name' => $item['name'],
+                        'username' => $item['username'],
+                        'email' => $item['email'] ?? null,
+                        'password' => Hash::make((isset($item['password']) && strlen($item['password']) >= 6) ? $item['password'] : $item['nisn']),
+                        'phone' => $item['phone'] ?? null,
+                        'contact' => $item['contact'] ?? null,
+                        'user_type' => 'student',
+                    ]);
+
+                    $user->studentProfile()->create([
+                        'nisn' => $item['nisn'],
+                        'nis' => $item['nis'],
+                        'gender' => $item['gender'],
+                        'address' => $item['address'],
+                        'class_id' => $item['class_id'],
+                        'is_class_officer' => $item['is_class_officer'] ?? false,
+                    ]);
+                    $count++;
+                }
+            });
+
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => $count,
+                'failed_count' => 0,
+                'errors' => []
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Import Siswa failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => 0,
+                'failed_count' => count($items),
+                'errors' => [
+                    [
+                        'row' => 0,
+                        'column' => 'system',
+                        'message' => 'Import failed: ' . $e->getMessage()
+                    ]
+                ]
+            ], 500);
+        }
+    }
+
+    public function importGuru(Request $request): JsonResponse
+    {
+        $items = $request->input('items', []);
+
+        $validator = Validator::make($request->all(), [
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.name' => ['required', 'string', 'max:255'],
+            'items.*.username' => ['required', 'string', 'max:50', 'distinct', 'unique:users,username'],
+            'items.*.email' => ['nullable', 'email', 'distinct', 'unique:users,email'],
+            'items.*.password' => ['nullable', 'string', 'min:6'],
+            'items.*.nip' => ['required', 'numeric', 'distinct', 'unique:teacher_profiles,nip'],
+            'items.*.phone' => ['nullable', 'string', 'max:30'],
+            'items.*.contact' => ['nullable', 'string', 'max:50'],
+            'items.*.homeroom_class_id' => ['nullable', 'exists:classes,id'],
+            'items.*.subject' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->formatValidationErrors($validator, $items);
+        }
+
+        $count = 0;
+
+        try {
+            DB::transaction(function () use ($items, &$count) {
+                foreach ($items as $item) {
+                    $user = User::create([
+                        'name' => $item['name'],
+                        'username' => $item['username'],
+                        'email' => $item['email'] ?? null,
+                        'password' => Hash::make($item['password'] ?? $item['nip']),
+                        'phone' => $item['phone'] ?? null,
+                        'contact' => $item['contact'] ?? null,
+                        'user_type' => 'teacher',
+                    ]);
+
+                    $user->teacherProfile()->create([
+                        'nip' => $item['nip'],
+                        'homeroom_class_id' => $item['homeroom_class_id'] ?? null,
+                        'subject' => $item['subject'] ?? null,
+                    ]);
+                    $count++;
+                }
+            });
+
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => $count,
+                'failed_count' => 0,
+                'errors' => []
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Import Guru failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => 0,
+                'failed_count' => count($items),
+                'errors' => [
+                    [
+                        'row' => 0,
+                        'column' => 'system',
+                        'message' => 'Import failed: ' . $e->getMessage()
+                    ]
+                ]
+            ], 500);
+        }
+    }
+
+    public function importKelas(Request $request): JsonResponse
+    {
+        $items = $request->input('items', []);
+
+        $validator = Validator::make($request->all(), [
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.grade' => ['required', 'string'],
+            'items.*.label' => ['required', 'string'],
+            'items.*.major_id' => ['nullable', 'exists:majors,id'],
+            'items.*.homeroom_teacher_id' => ['nullable', 'exists:teacher_profiles,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->formatValidationErrors($validator, $items);
+        }
+
+        // Additional uniqueness validation: combination of grade, label, major_id must be unique within file and DB.
+        // Doing this manually to be exact since unique mapping across multiple columns is complex for arrays in Laravel's distinct.
+        $errors = [];
+        $failedRows = [];
+        $combinations = [];
+
+        foreach ($items as $index => $item) {
+            $row = $index + 1;
+            $comb = $item['grade'] . '_' . $item['label'] . '_' . ($item['major_id'] ?? 'none');
+            
+            if (isset($combinations[$comb])) {
+                $failedRows[$row] = true;
+                $errors[] = [
+                    'row' => $row,
+                    'column' => 'grade/label/major',
+                    'message' => 'Kombinasi grade, label, dan jurusan duplikat dalam file.'
+                ];
+            } else {
+                $combinations[$comb] = true;
+            }
+
+            // Check db
+            $exists = Classes::where('grade', $item['grade'])
+                ->where('label', $item['label'])
+                ->when(isset($item['major_id']), function ($q) use ($item) {
+                    return $q->where('major_id', $item['major_id']);
+                }, function($q) {
+                    return $q->whereNull('major_id');
+                })->exists();
+
+            if ($exists) {
+                $failedRows[$row] = true;
+                $errors[] = [
+                    'row' => $row,
+                    'column' => 'grade/label/major',
+                    'message' => 'Kelas sudah ada di database.'
+                ];
+            }
+        }
+
+        if (count($errors) > 0) {
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => 0,
+                'failed_count' => count($failedRows),
+                'errors' => $errors,
+            ], 422);
+        }
+
+        $count = 0;
+
+        try {
+            DB::transaction(function () use ($items, &$count) {
+                foreach ($items as $item) {
+                    $class = Classes::create([
+                        'grade' => $item['grade'],
+                        'label' => $item['label'],
+                        'major_id' => $item['major_id'] ?? null,
+                    ]);
+
+                    if (isset($item['homeroom_teacher_id'])) {
+                        \App\Models\TeacherProfile::where('id', $item['homeroom_teacher_id'])
+                            ->update(['homeroom_class_id' => $class->id]);
+                    }
+                    $count++;
+                }
+            });
+
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => $count,
+                'failed_count' => 0,
+                'errors' => []
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Import Kelas failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => 0,
+                'failed_count' => count($items),
+                'errors' => [
+                    [
+                        'row' => 0,
+                        'column' => 'system',
+                        'message' => 'Import failed: ' . $e->getMessage()
+                    ]
+                ]
+            ], 500);
+        }
+    }
+
+    public function importJadwal(Request $request): JsonResponse
+    {
+        $items = $request->input('items', []);
+
+        // The expected structure from the frontend template might be:
+        // [ { class_id, semester, year, day, start_time, end_time, subject_id, teacher_profile_id } ]
+
+        $validator = Validator::make($request->all(), [
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.class_id' => ['required', 'exists:classes,id'],
+            'items.*.semester' => ['required', 'in:ganjil,genap'],
+            'items.*.year' => ['required', 'string'],
+            'items.*.day' => ['required', 'in:senin,selasa,rabu,kamis,jumat,sabtu,minggu'],
+            'items.*.start_time' => ['required', 'date_format:H:i:s'],
+            'items.*.end_time' => ['required', 'date_format:H:i:s'],
+            'items.*.subject_id' => ['required', 'exists:subjects,id'],
+            'items.*.teacher_profile_id' => ['required', 'exists:teacher_profiles,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->formatValidationErrors($validator, $items);
+        }
+
+        $errors = [];
+        $failedRows = [];
+
+        // Validate overlapping schedule (Time validation)
+        foreach ($items as $index => $item) {
+            $row = $index + 1;
+            
+            if ($item['start_time'] >= $item['end_time']) {
+                $failedRows[$row] = true;
+                $errors[] = [
+                    'row' => $row,
+                    'column' => 'start_time/end_time',
+                    'message' => 'Waktu mulai harus lebih awal dari waktu selesai.'
+                ];
+                continue;
+            }
+
+            // Check for collision with incoming items
+            foreach ($items as $index2 => $item2) {
+                if ($index === $index2) continue;
+                if ($item['day'] === $item2['day']) {
+                    $isOverlappingTime = ($item['start_time'] < $item2['end_time'] && $item['end_time'] > $item2['start_time']);
+                    if ($isOverlappingTime) {
+                        if ($item['teacher_profile_id'] === $item2['teacher_profile_id']) {
+                            $failedRows[$row] = true;
+                            $errors[] = [
+                                'row' => $row,
+                                'column' => 'schedule',
+                                'message' => 'Bentrok jadwal guru di dalam file pada hari ' . $item['day']
+                            ];
+                        }
+                        if ($item['class_id'] === $item2['class_id']) {
+                            $failedRows[$row] = true;
+                            $errors[] = [
+                                'row' => $row,
+                                'column' => 'schedule',
+                                'message' => 'Bentrok jadwal kelas di dalam file pada hari ' . $item['day']
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        if (count($errors) > 0) {
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => 0,
+                'failed_count' => count($failedRows),
+                'errors' => $errors,
+            ], 422);
+        }
+
+        $count = 0;
+
+        try {
+            DB::transaction(function () use ($items, &$count, &$errors, &$failedRows) {
+                foreach ($items as $index => $item) {
+                    $row = $index + 1;
+                    
+                    // Check database for existing class schedules to avoid collision
+                    // For thorough collision check in DB: 
+                    // This is simple for a clean database but let's check properly
+                    
+                    // DB logic to insert Jadwal...
+                    // Usually we search if ClassSchedule exists for (class_id, semester, year)
+                    $classSchedule = \App\Models\ClassSchedule::firstOrCreate(
+                        [
+                            'class_id' => $item['class_id'],
+                            'semester' => $item['semester'],
+                            'year' => $item['year'],
+                        ],
+                        [
+                            'is_active' => true
+                        ]
+                    );
+
+                    $dailySchedule = $classSchedule->dailySchedules()->firstOrCreate([
+                        'day' => strtolower($item['day']),
+                    ]);
+
+                    // Check DB Collision
+                    $existsTeacher = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($item) {
+                        $q->where('day', strtolower($item['day']));
+                    })
+                    ->where('teacher_profile_id', $item['teacher_profile_id'])
+                    ->where(function ($query) use ($item) {
+                        $query->where('start_time', '<', $item['end_time'])
+                              ->where('end_time', '>', $item['start_time']);
+                    })
+                    ->exists();
+
+                    if ($existsTeacher) {
+                        throw new \Exception("Row {$row}: Guru sudah ada jadwal di jam yang sama pada hari {$item['day']}");
+                    }
+
+                    $existsClass = $dailySchedule->scheduleItems()
+                        ->where(function ($query) use ($item) {
+                            $query->where('start_time', '<', $item['end_time'])
+                                  ->where('end_time', '>', $item['start_time']);
+                        })
+                        ->exists();
+
+                    if ($existsClass) {
+                        throw new \Exception("Row {$row}: Kelas sudah ada jadwal di jam yang sama pada hari {$item['day']}");
+                    }
+
+                    $dailySchedule->scheduleItems()->create([
+                        'subject_id' => $item['subject_id'],
+                        'teacher_profile_id' => $item['teacher_profile_id'],
+                        'start_time' => $item['start_time'],
+                        'end_time' => $item['end_time'],
+                    ]);
+
+                    $count++;
+                }
+            });
+
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => $count,
+                'failed_count' => 0,
+                'errors' => []
+            ], 201);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Import Jadwal failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'total_rows' => count($items),
+                'success_count' => 0,
+                'failed_count' => count($items), // Rollback affects all
+                'errors' => [
+                    [
+                        'row' => 0,
+                        'column' => 'system/collision',
+                        'message' => $e->getMessage()
+                    ]
+                ]
+            ], 500);
+        }
+    }
+}

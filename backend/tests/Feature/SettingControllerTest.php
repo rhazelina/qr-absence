@@ -128,7 +128,6 @@ it('deletes old mascot when updating new mascot', function () {
     $oldPath = $oldFile->store('settings/mascot', 'public');
     Setting::updateOrCreate(['key' => 'school_mascot'], ['value' => $oldPath]);
 
-    
     $newFile = UploadedFile::fake()->image('new_mascot.png');
 
     $this->actingAs($this->admin)

@@ -1,15 +1,15 @@
 <?php
 
-use App\Models\User;
-use App\Models\StudentProfile;
-use App\Models\TeacherProfile;
-use App\Models\Classes;
 use App\Models\AbsenceRequest;
-use App\Models\StudentLeavePermission;
+use App\Models\Classes;
 use App\Models\ClassSchedule;
 use App\Models\DailySchedule;
 use App\Models\ScheduleItem;
+use App\Models\StudentLeavePermission;
+use App\Models\StudentProfile;
 use App\Models\Subject;
+use App\Models\TeacherProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +21,7 @@ beforeEach(function () {
         throw new \Exception('Majors table does not exist!');
     }
     Storage::fake('public');
-    
+
     // Setup Class and Student
     $this->class = Classes::factory()->create();
     $this->studentUser = User::factory()->create(['user_type' => 'student']);
@@ -39,7 +39,7 @@ beforeEach(function () {
 
     // Create Schedules for Attendance Generation
     $this->subject = Subject::factory()->create();
-    
+
     $this->classSchedule = ClassSchedule::factory()->create([
         'class_id' => $this->class->id,
         'is_active' => true,
@@ -61,7 +61,7 @@ beforeEach(function () {
 
 test('student can create absence request with attachment', function () {
     $file = UploadedFile::fake()->image('cert.jpg');
-    
+
     $response = $this->actingAs($this->studentUser)
         ->postJson('/api/absence-requests', [
             'type' => 'sick',
@@ -72,7 +72,7 @@ test('student can create absence request with attachment', function () {
         ]);
 
     $response->assertCreated();
-    
+
     $this->assertDatabaseHas('absence_requests', [
         'student_id' => $this->student->id,
         'type' => 'sick',
@@ -88,7 +88,7 @@ test('student can create absence request with attachment', function () {
 test('homeroom teacher can approve request and it creates permissions and attendance', function () {
     // Need to set date to a Monday for schedule match
     $nextMonday = now()->next('Monday');
-    
+
     $request = AbsenceRequest::create([
         'student_id' => $this->student->id,
         'class_id' => $this->class->id,
@@ -104,7 +104,7 @@ test('homeroom teacher can approve request and it creates permissions and attend
         ->postJson("/api/absence-requests/{$request->id}/approve");
 
     $response->assertOk();
-    
+
     $this->assertDatabaseHas('absence_requests', [
         'id' => $request->id,
         'status' => 'approved',

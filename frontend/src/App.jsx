@@ -38,64 +38,81 @@ import KehadiranSiswaRekap from './pages/Waka/KehadiranSiswaRekap';
 import KehadiranGuruIndex from './pages/Waka/KehadiranGuruIndex';
 import KehadiranGuruShow from './pages/Waka/KehadiranGuruShow';
 
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 function App() {
   return (
-    <Routes>
-      {/* Halaman utama */}
-      <Route path="/" element={<LandingPage />} />
+    <>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
+      <Routes>
+        {/* Halaman utama */}
+        <Route path="/" element={<LandingPage />} />
 
-      {/* Login dengan parameter role */}
-      <Route path="/login/:role" element={<LoginPage />} />
-      <Route path="/login" element={<Navigate to="/" replace />} />
+        {/* Login dengan parameter role */}
+        <Route path="/login/:role" element={<LoginPage />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
 
-      {/* Admin Routes */}
-      <Route path="/admin/dashboard" element={<Dashboard />} />
-      <Route path="/admin/siswa" element={<DataSiswa />} />
-      <Route path="/admin/guru" element={<DataGuru />} />
-      <Route path="/admin/kelas" element={<DataKelas />} />
-      <Route path="/admin/jurusan" element={<DataJurusan />} />
-      <Route path="/admin/profil-sekolah" element={<ProfileSekolah />} />
+        {/* Admin Routes */}
+        <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/siswa" element={<DataSiswa />} />
+        <Route path="/admin/guru" element={<DataGuru />} />
+        <Route path="/admin/kelas" element={<DataKelas />} />
+        <Route path="/admin/jurusan" element={<DataJurusan />} />
+        <Route path="/admin/profil-sekolah" element={<ProfileSekolah />} />
 
-      {/* Guru Routes */}
-      <Route path="/guru/dashboard" element={<DashboardGuru />} />
-      <Route path="/guru/jadwal" element={<Jadwal />} />
-      <Route path="/guru/presensi" element={<PresensiSiswa />} />
+        {/* Guru Routes */}
+        <Route path="/guru/dashboard" element={<DashboardGuru />} />
+        <Route path="/guru/jadwal" element={<Jadwal />} />
+        <Route path="/guru/presensi" element={<PresensiSiswa />} />
 
-      {/* Siswa Routes */}
-      <Route path="/siswa/dashboard" element={<DashboardSiswa />} />
-      <Route path="/siswa/riwayat" element={<Riwayat />} />
+        {/* Siswa Routes */}
+        <Route path="/siswa/dashboard" element={<DashboardSiswa />} />
+        <Route path="/siswa/riwayat" element={<Riwayat />} />
 
-      {/* Pengurus Kelas Routes */}
-      <Route path="/pengurus-kelas/dashboard" element={<DashboardKelas />} />
-      <Route path="/pengurus-kelas/riwayat" element={<RiwayatKelas />} />
-      <Route path="/pengurus-kelas/presensi" element={<PresensiKelas />} />
+        {/* Pengurus Kelas Routes */}
+        <Route path="/pengurus-kelas/dashboard" element={<DashboardKelas />} />
+        <Route path="/pengurus-kelas/riwayat" element={<RiwayatKelas />} />
+        <Route path="/pengurus-kelas/presensi" element={<PresensiKelas />} />
 
-      {/* Wali Kelas Routes */}
-      <Route path="/walikelas/dashboard" element={<DashboardWakel />} />
-      <Route path="/walikelas/datasiswa" element={<Data />} />
-      <Route path="/walikelas/riwayatkehadiran" element={<RiwayatKehadiran />} />
-      <Route path="/walikelas/jadwalwakel" element={<JadwalWakel />} />
-      <Route path="/walikelas/presensi" element={<Presensi />} />
+        {/* Wali Kelas Routes */}
+        <Route path="/walikelas/dashboard" element={<DashboardWakel />} />
+        <Route path="/walikelas/datasiswa" element={<Data />} />
+        <Route path="/walikelas/riwayatkehadiran" element={<RiwayatKehadiran />} />
+        <Route path="/walikelas/jadwalwakel" element={<JadwalWakel />} />
+        <Route path="/walikelas/presensi" element={<Presensi />} />
 
-      {/* Waka Routes */}
-      <Route path="/waka/dashboard" element={<DashboardWaka />} />
-      <Route path="/waka/jadwal-guru" element={<JadwalGuruIndex />} />
-      <Route path="/waka/jadwal-guru/:id" element={<JadwalGuruShow />} />
-      <Route path="/waka/jadwal-guru/:id/edit" element={<JadwalGuruEdit />} />
-      <Route path="/waka/jadwal-siswa" element={<JadwalSiswaIndex />} />
-      <Route path="/waka/jadwal-siswa/create" element={<JadwalSiswaEdit />} /> {/* Reusing Edit component for Create for now, or make a new one */}
-      <Route path="/waka/jadwal-siswa/:id" element={<JadwalSiswaShow />} />
-      <Route path="/waka/jadwal-siswa/:id/edit" element={<JadwalSiswaEdit />} />
-      <Route path="/waka/kehadiran-siswa" element={<KehadiranSiswaIndex />} />
-      <Route path="/waka/kehadiran-siswa/rekap" element={<KehadiranSiswaRekap />} />
-      <Route path="/waka/kehadiran-siswa/:id" element={<KehadiranSiswaShow />} />
-      <Route path="/waka/kehadiran-guru" element={<KehadiranGuruIndex />} />
-      <Route path="/waka/kehadiran-guru/:id" element={<KehadiranGuruShow />} />
+        {/* Waka Routes */}
+        <Route path="/waka/dashboard" element={<DashboardWaka />} />
+        <Route path="/waka/jadwal-guru" element={<JadwalGuruIndex />} />
+        <Route path="/waka/jadwal-guru/:id" element={<JadwalGuruShow />} />
+        <Route path="/waka/jadwal-guru/:id/edit" element={<JadwalGuruEdit />} />
+        <Route path="/waka/jadwal-siswa" element={<JadwalSiswaIndex />} />
+        <Route path="/waka/jadwal-siswa/create" element={<JadwalSiswaEdit />} /> {/* Reusing Edit component for Create for now, or make a new one */}
+        <Route path="/waka/jadwal-siswa/:id" element={<JadwalSiswaShow />} />
+        <Route path="/waka/jadwal-siswa/:id/edit" element={<JadwalSiswaEdit />} />
+        <Route path="/waka/kehadiran-siswa" element={<KehadiranSiswaIndex />} />
+        <Route path="/waka/kehadiran-siswa/rekap" element={<KehadiranSiswaRekap />} />
+        <Route path="/waka/kehadiran-siswa/:id" element={<KehadiranSiswaShow />} />
+        <Route path="/waka/kehadiran-guru" element={<KehadiranGuruIndex />} />
+        <Route path="/waka/kehadiran-guru/:id" element={<KehadiranGuruShow />} />
 
 
-      {/* Route lain yang nggak ada, balik ke landing */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Route lain yang nggak ada, balik ke landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

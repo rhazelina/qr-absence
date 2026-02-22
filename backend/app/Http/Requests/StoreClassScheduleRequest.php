@@ -30,11 +30,27 @@ class StoreClassScheduleRequest extends FormRequest
             'days.*.day' => ['required', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday'],
             'days.*.items' => ['array'],
             'days.*.items.*.subject_id' => ['nullable', 'exists:subjects,id'],
-            'days.*.items.*.teacher_id' => ['required', 'exists:teacher_profiles,id'],
+            'days.*.items.*.teacher_id' => [
+                'required',
+                'exists:teacher_profiles,id',
+                function ($attribute, $value, $fail) {
+                    $dayIndex = explode('.', $attribute)[1];
+                    $itemIndex = explode('.', $attribute)[3];
+                    $subjectName = $this->input("days.{$dayIndex}.items.{$itemIndex}.subject_name");
+
+                    if ($subjectName) {
+                        $teacher = \App\Models\TeacherProfile::find($value);
+                        if ($teacher && $teacher->subject !== $subjectName) {
+                            $fail("Guru ini tidak mengajar mata pelajaran {$subjectName}.");
+                        }
+                    }
+                },
+            ],
             'days.*.items.*.start_time' => ['required', 'date_format:H:i'],
             'days.*.items.*.end_time' => ['required', 'date_format:H:i', 'after:days.*.items.*.start_time'],
             'days.*.items.*.room' => ['nullable', 'string', 'max:50'],
             'days.*.items.*.keterangan' => ['nullable', 'string', 'max:255'],
+            'days.*.items.*.subject_name' => ['nullable', 'string'],
         ];
     }
 }

@@ -1,2 +1,7 @@
 *
 !.gitignore
+!schedules/
+schedules/*
+!schedules/defaults/
+schedules/defaults/*
+!schedules/defaults/default_schedule.jpg

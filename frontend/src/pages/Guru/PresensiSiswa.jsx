@@ -327,23 +327,27 @@ function PresensiSiswa() {
 
   if (!hasScheduleData) {
     return (
-      <div className="presensi-container">
+      <div className="presensi-page-shell">
         <NavbarGuru />
-        <div className="no-schedule-wrapper">
-          <div className="no-schedule-card">
-            <div className="no-schedule-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-              </svg>
+        <div className="presensi-container">
+          <div className="presensi-page-content">
+            <div className="no-schedule-wrapper">
+              <div className="no-schedule-card">
+                <div className="no-schedule-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                  </svg>
+                </div>
+                <h2>Tidak Ada Jadwal Dipilih</h2>
+                <p>Silakan pilih jadwal dari dashboard terlebih dahulu untuk melakukan presensi.</p>
+                <button className="btn-back-dashboard" onClick={handleBackToDashboard}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                  </svg>
+                  Kembali ke Dashboard
+                </button>
+              </div>
             </div>
-            <h2>Tidak Ada Jadwal Dipilih</h2>
-            <p>Silakan pilih jadwal dari dashboard terlebih dahulu untuk melakukan presensi.</p>
-            <button className="btn-back-dashboard" onClick={handleBackToDashboard}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-              </svg>
-              Kembali ke Dashboard
-            </button>
           </div>
         </div>
       </div>
@@ -351,83 +355,85 @@ function PresensiSiswa() {
   }
 
   return (
-    <div className="presensi-container">
+    <div className="presensi-page-shell">
       <NavbarGuru />
-      <div className="kehadiran-header-bar">
-        <div className="header-left-section">
-          <div className="class-icon-wrapper">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
-              <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
-            </svg>
-          </div>
-          <div className="class-info">
-            <h2 className="class-title">{kelas}</h2>
-            <p className="class-subtitle">Jam Ke-{jamKe}</p>
-          </div>
-        </div>
+      <div className="presensi-container">
+        <div className="presensi-page-content">
+          <div className="kehadiran-header-bar">
+            <div className="header-left-section">
+              <div className="class-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                  <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                </svg>
+              </div>
+              <div className="class-info">
+                <h2 className="class-title">{kelas}</h2>
+                <p className="class-subtitle">Jam Ke-{jamKe}</p>
+              </div>
+            </div>
 
-        <div className="kelas-and-action">
-          <div className="kelas-pill">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-            </svg>
-            {mataPelajaran} ({jamKe})
+            <div className="kelas-and-action">
+              <div className="kelas-pill">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                {mataPelajaran} ({jamKe})
+              </div>
+
+              <div className="tanggal-pill">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                {tanggal}
+              </div>
+
+              {mode === 'input' && (
+                <button className="btn-simpan-presensi" onClick={handleSimpan}>
+                  Simpan
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="tanggal-pill">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            {tanggal}
-          </div>
-
+          {/* Mode Input Absensi */}
           {mode === 'input' && (
-            <button className="btn-simpan-presensi" onClick={handleSimpan}>
-              Simpan
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Mode Input Absensi */}
-      {mode === 'input' && (
-        <div className="presensi-table-wrapper">
-          <table className="presensi-table2">
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>NISN</th>
-                <th>Nama Siswa</th>
-                <th>Hadir</th>
-                <th>Sakit</th>
-                <th>Izin</th>
-                <th>Alfa</th>
-                <th>Terlambat</th>
-                <th>Pulang</th>
-              </tr>
-            </thead>
-            <tbody>
-              {siswaList.length === 0 ? (
-                <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                    <div>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 10px', display: 'block', opacity: 0.3 }}>
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                      </svg>
-                      <strong>Tidak ada data siswa</strong>
-                      <p style={{ fontSize: '14px', marginTop: '5px' }}>Pastikan data siswa sudah tersedia di dataManager.js</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                siswaList.map((siswa, index) => (
-                  <tr key={index}>
+            <div className="presensi-table-wrapper">
+              <table className="presensi-table">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>NISN</th>
+                    <th>Nama Siswa</th>
+                    <th>Hadir</th>
+                    <th>Sakit</th>
+                    <th>Izin</th>
+                    <th>Alfa</th>
+                    <th>Terlambat</th>
+                    <th>Pulang</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {siswaList.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                        <div>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 10px', display: 'block', opacity: 0.3 }}>
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                          </svg>
+                          <strong>Tidak ada data siswa</strong>
+                          <p style={{ fontSize: '14px', marginTop: '5px' }}>Pastikan data siswa sudah tersedia di dataManager.js</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    siswaList.map((siswa, index) => (
+                      <tr key={index}>
                     <td>{siswa.no}.</td>
                     <td>{siswa.nisn}</td>
                     <td>{siswa.nama}</td>
@@ -449,19 +455,19 @@ function PresensiSiswa() {
                     <td className="radio-cell">
                       <input type="radio" name={`status-${index}`} checked={siswa.status === 'pulang'} onChange={() => handleStatusChange(index, 'pulang')} />
                     </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      {/* Mode View Kehadiran */}
-      {mode === 'view' && (
-        <>
-          <div className="kehadiran-view-wrapper">
-            <table className="kehadiran-view-table">
+          {/* Mode View Kehadiran */}
+          {mode === 'view' && (
+            <>
+              <div className="kehadiran-view-wrapper">
+                <table className="kehadiran-view-table">
               <thead>
                 <tr>
                   <th>No</th>
@@ -535,10 +541,12 @@ function PresensiSiswa() {
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
-        </>
-      )}
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* MODAL KETERANGAN TERLAMBAT/PULANG */}
       {showKeteranganModal && (

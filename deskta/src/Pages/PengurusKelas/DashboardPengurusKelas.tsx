@@ -1,9 +1,10 @@
-﻿import { useMemo, useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import PengurusKelasLayout from "../../component/PengurusKelas/PengurusKelasLayout";
 import DaftarMapel from "./DaftarMapel";
 import TidakHadirPenguruskelas from "./TidakHadirPenguruskelas";
 import JadwalPengurus from "./JadwalPengurus";
 import { dashboardService } from "../../services/dashboardService";
+import { scheduleService } from "../../services/scheduleService";
 // import openBook from "../../assets/Icon/open-book.png";
 import INO from "../../assets/Icon/INO.png";
 import RASI from "../../assets/Icon/RASI.png";
@@ -54,9 +55,9 @@ interface ScheduleItem {
 }
 
 interface DashboardPengurusKelasProps {
-  user: { 
-    name: string; 
-    phone: string; 
+  user: {
+    name: string;
+    phone: string;
     role?: string;
     profile?: {
       nis?: string;
@@ -93,7 +94,7 @@ export default function DashboardPengurusKelas({
   // Use data directly from user object (synced in App.tsx)
   const displayName = user.name;
   const displayNISN = user.profile?.nis || user.phone || "0000000000";
-  
+
   const userWithName = {
     name: displayName,
     phone: user.phone,
@@ -145,33 +146,32 @@ export default function DashboardPengurusKelas({
   }, []);
 
   // Data Dummy 
-  const schedules = useMemo<ScheduleItem[]>(
-    () => [
-      {
-        id: "1",
-        mapel: "Matematika",
-        guru: " Wiwin Winangsih, S.Pd, M.Pd",
-        start: "07:00",
-        end: "09:40",
-      },
-      {
-        id: "2",
-        mapel: "Pendidikan Agama Islam",
-        guru: "M Juzki Arif, M.Pd",
-        start: "10:00",
-        end: "13:00",
-      },
-      {
-        id: "3",
-        mapel: "Bahasa Daerah",
-        guru: "Moch Bachrudin S.Pd",
-        start: "13:00",
-        end: "15:00",
-      },
-      
-    ],
-    []
-  );
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      setLoadingSchedules(true);
+      try {
+        const response = await scheduleService.getMySchedule();
+        if (response.items) {
+          const mapped: ScheduleItem[] = response.items.map((item: any) => ({
+            id: String(item.id),
+            mapel: item.subject,
+            guru: typeof item.teacher === 'object' ? item.teacher.name : (item.teacher || "-"),
+            start: item.start_time.substring(0, 5),
+            end: item.end_time.substring(0, 5),
+          }));
+          setSchedules(mapped);
+        }
+      } catch (error) {
+        console.error("Error fetching schedules:", error);
+      } finally {
+        setLoadingSchedules(false);
+      }
+    };
+    fetchSchedules();
+  }, []);
 
   const handleMenuClick = (page: string) => {
     const allowedPages: PageType[] = [
@@ -412,7 +412,7 @@ export default function DashboardPengurusKelas({
                     boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                   }}
                 >
-                  {schedules.length} Mapel
+                  {loadingSchedules ? "Memuat..." : `${schedules.length} Mapel`}
                 </div>
                 <button
                   onClick={() => setIsMapelModalOpen(true)}
@@ -696,7 +696,7 @@ function MonthlyLineChart({
         cornerRadius: 8,
         displayColors: true,
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
