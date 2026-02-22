@@ -297,7 +297,7 @@ class ScheduleController extends Controller
     public function bulkUpsert(Request $request, Classes $class): JsonResponse
     {
         $data = $request->validate([
-            'year' => 'required|string',
+            'year' => 'required|regex:/^\d{4}$/',
             'semester' => 'required|string',
             'is_active' => 'boolean',
             'days' => 'required|array',
@@ -357,7 +357,7 @@ class ScheduleController extends Controller
 
         if ($startTime >= $endTime) {
             throw ValidationException::withMessages([
-                'schedule' => "Waktu mulai harus lebih awal dari waktu selesai."
+                'schedule' => 'Waktu mulai harus lebih awal dari waktu selesai.',
             ]);
         }
 
@@ -386,7 +386,7 @@ class ScheduleController extends Controller
 
             if ($isSameClass) {
                 throw ValidationException::withMessages([
-                    'schedule' => "Jadwal kelas bentrok pada hari {$dayName} jam {$startTime} - {$endTime}."
+                    'schedule' => "Jadwal kelas bentrok pada hari {$dayName} jam {$startTime} - {$endTime}.",
                 ]);
             } else {
                 $teacher = TeacherProfile::find($itemData['teacher_id']);
@@ -394,9 +394,24 @@ class ScheduleController extends Controller
                 $className = $overlappingItem->dailySchedule->classSchedule->class->name ?? 'Kelas Lain';
 
                 throw ValidationException::withMessages([
-                    'schedule' => "{$teacherName} sudah memiliki jadwal mengajar di kelas {$className} pada hari {$dayName} jam {$startTime} - {$endTime}."
+                    'schedule' => "{$teacherName} sudah memiliki jadwal mengajar di kelas {$className} pada hari {$dayName} jam {$startTime} - {$endTime}.",
                 ]);
             }
         }
+    }
+
+    private function normalizeDay(string $day): string
+    {
+        $map = [
+            'senin' => 'Monday',
+            'selasa' => 'Tuesday',
+            'rabu' => 'Wednesday',
+            'kamis' => 'Thursday',
+            'jumat' => 'Friday',
+        ];
+
+        $lowercaseDay = strtolower($day);
+
+        return $map[$lowercaseDay] ?? ucfirst($lowercaseDay);
     }
 }
