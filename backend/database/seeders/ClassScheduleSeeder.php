@@ -65,7 +65,7 @@ class ClassScheduleSeeder extends Seeder
             'Wednesday' => [
                 ['07:00', '08:20', 'B. Jawa', 'Moch. Bachrudin, S.Pd'],
                 ['08:20', '09:40', 'B. Inggris', 'Fajar Ningtyas, S.Pd'],
-                ['10:00', '15:00', 'MPKK', 'Alfah Diantobes Aindra, S.Pd'],
+                ['10:00', '15:00', 'MPKK', 'Triana Ardiane S.pd'],
             ],
             'Thursday' => [
                 ['07:00', '08:20', 'MPP', 'Evi Intiyah, S.Pd'],
@@ -76,7 +76,7 @@ class ClassScheduleSeeder extends Seeder
             'Friday' => [
                 ['08:20', '10:40', 'MPKK', 'RR. Henning Gratyannis Anggraeni, S.Pd'],
                 ['10:40', '13:00', 'BI', 'Devi Arvini, S.Pd., Gr'],
-                ['13:00', '14:20', 'MPKK', 'Alfah Diantobes Aindra, S.Pd'],
+                ['13:00', '14:20', 'MPKK', 'Triana Ardiane S.pd'],
             ],
         ];
 
@@ -188,7 +188,7 @@ class ClassScheduleSeeder extends Seeder
                 'Evi Intiyah, S.Pd' => 'EWIT IRNIYAH, S.Pd',
                 'Roudhotul Husna Yanti, S.Psi' => 'ROUDHOTUL HUSNA YANIF, S.Psi',
                 'Devi Arvini, S.Pd., Gr' => 'DEVI ARVENI, S.Pd., Gr.',
-                'Alfah Diantobes Aindra, S.Pd' => 'ALIFAH DIANTEBES AINDRA, S.Pd',
+                'Alfah Diantobes Aindra, S.Pd' => 'Triana Ardiane S.pd',
             ];
 
             if (isset($map[$name])) {

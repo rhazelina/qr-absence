@@ -78,6 +78,12 @@ class SettingController extends Controller
 
             $path = $request->file('school_logo')->store('settings/logo', 'public');
             Setting::updateOrCreate(['key' => 'school_logo'], ['value' => $path]);
+        } elseif ($request->boolean('delete_school_logo')) {
+            $oldLogo = Setting::where('key', 'school_logo')->first()?->value;
+            if ($oldLogo) {
+                Storage::disk('public')->delete($oldLogo);
+                Setting::where('key', 'school_logo')->delete();
+            }
         }
 
         if ($request->hasFile('school_mascot')) {
@@ -88,6 +94,12 @@ class SettingController extends Controller
 
             $path = $request->file('school_mascot')->store('settings/mascot', 'public');
             Setting::updateOrCreate(['key' => 'school_mascot'], ['value' => $path]);
+        } elseif ($request->boolean('delete_school_mascot')) {
+            $oldMascot = Setting::where('key', 'school_mascot')->first()?->value;
+            if ($oldMascot) {
+                Storage::disk('public')->delete($oldMascot);
+                Setting::where('key', 'school_mascot')->delete();
+            }
         }
 
         // Handle other text fields

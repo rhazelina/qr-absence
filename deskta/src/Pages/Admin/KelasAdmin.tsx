@@ -224,7 +224,12 @@ export default function KelasAdmin({
           grade: formData.grade,
           homeroom_teacher_id: parseInt(formData.homeroom_teacher_id)
         });
-        setKelasList(prev => prev.map(k => k.id === editingKelas.id ? updated : k));
+        const mappedUpdated = {
+          ...updated,
+          major_name: updated.major_name || updated.major?.name || '',
+          homeroom_teacher_name: updated.homeroom_teacher_name || updated.homeroomTeacher?.user?.name || ''
+        };
+        setKelasList(prev => prev.map(k => k.id === editingKelas.id ? mappedUpdated : k));
         alert("✓ Kelas berhasil diperbarui!");
       } else {
         const newClass = await masterService.addClass({
@@ -351,7 +356,7 @@ export default function KelasAdmin({
     setEditingKelas(kelas);
     setFormData({
       label: kelas.label,
-      major_id: kelas.major_id.toString(),
+      major_id: kelas.major_id?.toString() || "",
       grade: kelas.grade,
       homeroom_teacher_id: kelas.homeroom_teacher_id?.toString() || "",
     });

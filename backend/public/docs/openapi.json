@@ -46,9 +46,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Only homeroom teachers can view requests"
-                                            ]
+                                            "const": "Only homeroom teachers can view requests"
                                         }
                                     },
                                     "required": [
@@ -69,9 +67,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "enum": [
-                                                        "Teacher profile not found"
-                                                    ]
+                                                    "const": "Teacher profile not found"
                                                 }
                                             },
                                             "required": [
@@ -83,9 +79,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "enum": [
-                                                        "Student profile not found"
-                                                    ]
+                                                    "const": "Student profile not found"
                                                 }
                                             },
                                             "required": [
@@ -165,9 +159,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Absence request created successfully"
-                                            ]
+                                            "const": "Absence request created successfully"
                                         },
                                         "request": {
                                             "$ref": "#/components/schemas/AbsenceRequest"
@@ -190,9 +182,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Student profile not found"
-                                            ]
+                                            "const": "Student profile not found"
                                         }
                                     },
                                     "required": [
@@ -211,9 +201,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Only students can create requests currently"
-                                            ]
+                                            "const": "Only students can create requests currently"
                                         }
                                     },
                                     "required": [
@@ -260,9 +248,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Request approved"
-                                            ]
+                                            "const": "Request approved"
                                         },
                                         "request": {
                                             "anyOf": [
@@ -292,9 +278,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Request already processed"
-                                            ]
+                                            "const": "Request already processed"
                                         }
                                     },
                                     "required": [
@@ -341,9 +325,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Request rejected"
-                                            ]
+                                            "const": "Request rejected"
                                         },
                                         "request": {
                                             "anyOf": [
@@ -373,9 +355,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Request already processed"
-                                            ]
+                                            "const": "Request already processed"
                                         }
                                     },
                                     "required": [
@@ -460,58 +440,9 @@
                 }
             }
         },
-        "/attendance/teachers/daily": {
-            "get": {
-                "operationId": "attendance.teachersDailyAttendance_0",
-                "tags": [
-                    "Attendance"
-                ],
-                "parameters": [
-                    {
-                        "name": "date",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "date-time"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "date": {
-                                            "type": "string"
-                                        },
-                                        "items": {
-                                            "$ref": "#/components/schemas/LengthAwarePaginator"
-                                        }
-                                    },
-                                    "required": [
-                                        "date",
-                                        "items"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/waka/attendance/teachers/daily": {
             "get": {
-                "operationId": "attendance.teachersDailyAttendance_0",
+                "operationId": "attendance.teachersDailyAttendance",
                 "tags": [
                     "Attendance"
                 ],
@@ -1066,9 +997,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Kehadiran berhasil disimpan"
-                                            ]
+                                            "const": "Kehadiran berhasil disimpan"
                                         },
                                         "attendance": {
                                             "$ref": "#/components/schemas/AttendanceResource"
@@ -1245,26 +1174,6 @@
                             }
                         }
                     },
-                    "403": {
-                        "description": "An error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Error overview.",
-                                            "example": "Tidak boleh melihat presensi jadwal ini"
-                                        }
-                                    },
-                                    "required": [
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
@@ -1333,6 +1242,26 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Attendance"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": "Jadwal tidak ditemukan untuk presensi ini."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
                                 }
                             }
                         }
@@ -1428,6 +1357,26 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Attendance"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": "Jadwal tidak ditemukan untuk presensi ini."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
                                 }
                             }
                         }
@@ -1540,20 +1489,37 @@
                         "$ref": "#/components/responses/ValidationException"
                     },
                     "403": {
-                        "description": "An error",
+                        "description": "An error\n\nAn error",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "description": "Error overview.",
-                                            "example": "Tidak boleh mengekspor jadwal ini"
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "example": "Tidak boleh mengekspor jadwal ini"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "example": "Anda tidak memiliki akses untuk mengekspor data kelas ini."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
                                         }
-                                    },
-                                    "required": [
-                                        "message"
                                     ]
                                 }
                             }
@@ -1601,6 +1567,43 @@
                             "application/json": {
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error\n\nAn error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "example": "Anda tidak memiliki akses untuk mengunduh laporan ini."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "example": "Anda tidak memiliki akses untuk mengunduh laporan kelas ini."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -2001,9 +2004,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
-                                            ]
+                                            "const": "Data tidak dapat dihapus karena masih terelasi dengan data lain"
                                         }
                                     },
                                     "required": [
@@ -2022,9 +2023,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Scan dibatalkan"
-                                            ]
+                                            "const": "Scan dibatalkan"
                                         }
                                     },
                                     "required": [
@@ -2791,6 +2790,12 @@
                                             "null"
                                         ],
                                         "description": "Accept 'token' as per frontend, but treat as NISN"
+                                    },
+                                    "schedule_id": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
                                     }
                                 },
                                 "required": [
@@ -2923,11 +2928,35 @@
         },
         "/me/attendance/summary": {
             "get": {
-                "operationId": "attendance.summary",
-                "description": "Retrieve attendance history for the currently authenticated student.",
-                "summary": "Get My Attendance History",
+                "operationId": "attendance.summaryMe",
+                "description": "Retrieve a statistical summary of attendance for the currently authenticated student.",
+                "summary": "Get My Attendance Summary",
                 "tags": [
                     "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date-time"
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -2937,144 +2966,23 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "status": {
-                                            "type": "string",
-                                            "enum": [
-                                                "success"
-                                            ]
+                                        "status_summary": {
+                                            "type": "string"
                                         },
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "monthly_trend": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "month": {
-                                                                "type": "string"
-                                                            },
-                                                            "hadir": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
-                                                                ]
-                                                            },
-                                                            "izin": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
-                                                                ]
-                                                            },
-                                                            "sakit": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
-                                                                ]
-                                                            },
-                                                            "alpha": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
-                                                                ]
-                                                            },
-                                                            "pulang": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
-                                                                ]
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "month",
-                                                            "hadir",
-                                                            "izin",
-                                                            "sakit",
-                                                            "alpha",
-                                                            "pulang"
-                                                        ]
-                                                    }
-                                                },
-                                                "weekly_stats": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                        "hadir": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
-                                                        },
-                                                        "izin": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
-                                                        },
-                                                        "sakit": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
-                                                        },
-                                                        "alpha": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
-                                                        },
-                                                        "pulang": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "hadir",
-                                                        "izin",
-                                                        "sakit",
-                                                        "alpha",
-                                                        "pulang"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "monthly_trend",
-                                                "weekly_stats"
-                                            ]
+                                        "daily_summary": {
+                                            "type": "string"
                                         }
                                     },
                                     "required": [
-                                        "status",
-                                        "data"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Student profile not found"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "message"
+                                        "status_summary",
+                                        "daily_summary"
                                     ]
                                 }
                             }
                         }
                     },
                     "403": {
-                        "description": "Changed from $user->role to $user->user_type",
+                        "description": "An error",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3082,9 +2990,8 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "description": "Error overview.",
+                                            "example": "Hanya untuk siswa"
                                         }
                                     },
                                     "required": [
@@ -3093,6 +3000,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -3135,9 +3045,7 @@
                                         "token_type": {
                                             "type": "string",
                                             "description": "Convert to seconds for compatibility",
-                                            "enum": [
-                                                "Bearer"
-                                            ]
+                                            "const": "Bearer"
                                         },
                                         "user": {
                                             "type": "object",
@@ -3253,7 +3161,7 @@
         },
         "/me": {
             "get": {
-                "operationId": "auth.me",
+                "operationId": "auth.me_0",
                 "description": "Retrieve the currently authenticated user's profile information.",
                 "summary": "Get Current User",
                 "tags": [
@@ -3380,9 +3288,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Logged out"
-                                            ]
+                                            "const": "Logged out"
                                         }
                                     },
                                     "required": [
@@ -3422,15 +3328,124 @@
                                         },
                                         "token_type": {
                                             "type": "string",
-                                            "enum": [
-                                                "Bearer"
-                                            ]
+                                            "const": "Bearer"
                                         }
                                     },
                                     "required": [
                                         "token",
                                         "expires_in",
                                         "token_type"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/student/profile": {
+            "get": {
+                "operationId": "auth.me_0",
+                "description": "Retrieve the currently authenticated user's profile information.",
+                "summary": "Get Current User",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "username": {
+                                            "type": "string"
+                                        },
+                                        "email": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "user_type": {
+                                            "type": "string"
+                                        },
+                                        "role": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "admin"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "is_class_officer": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                }
+                                            ]
+                                        },
+                                        "profile": {
+                                            "type": "object",
+                                            "properties": {
+                                                "nip": {
+                                                    "type": "string"
+                                                },
+                                                "photo_url": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "nip",
+                                                "photo_url"
+                                            ]
+                                        },
+                                        "student_profile": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "name",
+                                        "username",
+                                        "email",
+                                        "user_type",
+                                        "role",
+                                        "is_class_officer",
+                                        "profile",
+                                        "student_profile"
                                     ]
                                 }
                             }
@@ -3645,9 +3660,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
-                                            ]
+                                            "const": "Data tidak dapat dihapus karena masih terelasi dengan data lain"
                                         }
                                     },
                                     "required": [
@@ -3666,9 +3679,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -3777,9 +3788,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Image deleted"
-                                            ]
+                                            "const": "Image deleted"
                                         }
                                     },
                                     "required": [
@@ -3845,6 +3854,25 @@
                     "Class"
                 ],
                 "responses": {
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Unauthorized"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -3860,17 +3888,31 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Class not found"
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Homeroom class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
                                             ]
                                         }
-                                    },
-                                    "required": [
-                                        "message"
                                     ]
                                 }
                             }
@@ -3914,7 +3956,7 @@
                             }
                         }
                     },
-                    "404": {
+                    "403": {
                         "description": "",
                         "content": {
                             "application/json": {
@@ -3923,9 +3965,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Class not found"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -3935,50 +3975,36 @@
                             }
                         }
                     },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/me/class/attendance": {
-            "get": {
-                "operationId": "class.myClassAttendance",
-                "description": "Retrieve the attendance records for the class of the currently authenticated student.",
-                "summary": "Get My Class Attendance",
-                "tags": [
-                    "Class"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/Attendance"
-                                    }
-                                }
-                            }
-                        }
-                    },
                     "404": {
                         "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Class not found"
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Homeroom class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
                                             ]
                                         }
-                                    },
-                                    "required": [
-                                        "message"
                                     ]
                                 }
                             }
@@ -4012,7 +4038,7 @@
                             }
                         }
                     },
-                    "404": {
+                    "403": {
                         "description": "",
                         "content": {
                             "application/json": {
@@ -4021,13 +4047,128 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Class not found"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
                                         "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Homeroom class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/me/class/attendance": {
+            "get": {
+                "operationId": "class.myClassAttendance",
+                "description": "Retrieve the attendance records for the class of the currently authenticated student.",
+                "summary": "Get My Class Attendance",
+                "tags": [
+                    "Class"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Attendance"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Unauthorized"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Homeroom class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Class not found"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
                                     ]
                                 }
                             }
@@ -4067,9 +4208,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Student profile not found"
-                                            ]
+                                            "const": "Student profile not found"
                                         }
                                     },
                                     "required": [
@@ -4113,9 +4252,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -4159,9 +4296,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -4299,9 +4434,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Homeroom class not found"
-                                            ]
+                                            "const": "Homeroom class not found"
                                         }
                                     },
                                     "required": [
@@ -4345,9 +4478,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -4551,9 +4682,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Class not found"
-                                            ]
+                                            "const": "Class not found"
                                         }
                                     },
                                     "required": [
@@ -4718,9 +4847,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Device removed"
-                                            ]
+                                            "const": "Device removed"
                                         }
                                     },
                                     "required": [
@@ -4782,7 +4909,10 @@
                                                     "maxLength": 255
                                                 },
                                                 "username": {
-                                                    "type": "string",
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
                                                     "maxLength": 50
                                                 },
                                                 "email": {
@@ -4800,7 +4930,10 @@
                                                     "minLength": 6
                                                 },
                                                 "nip": {
-                                                    "type": "number"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "phone": {
                                                     "type": [
@@ -4828,12 +4961,36 @@
                                                         "null"
                                                     ],
                                                     "maxLength": 100
+                                                },
+                                                "jabatan": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "enum": [
+                                                        "Guru",
+                                                        "Waka",
+                                                        "Kapro",
+                                                        "Wali Kelas"
+                                                    ]
+                                                },
+                                                "bidang": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 100
+                                                },
+                                                "konsentrasi_keahlian": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 100
                                                 }
                                             },
                                             "required": [
-                                                "name",
-                                                "username",
-                                                "nip"
+                                                "name"
                                             ]
                                         },
                                         "minItems": 1
@@ -4858,10 +5015,7 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
                                             "type": "integer"
@@ -4873,16 +5027,11 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "row": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
+                                                            "type": "integer"
                                                         },
                                                         "column": {
                                                             "type": "string",
-                                                            "enum": [
-                                                                "system"
-                                                            ]
+                                                            "const": "system"
                                                         },
                                                         "message": {
                                                             "type": "string"
@@ -4921,16 +5070,10 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "errors": {
                                             "type": "array",
@@ -4963,10 +5106,7 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
                                             "type": "integer",
@@ -4999,16 +5139,11 @@
                                                         "type": "object",
                                                         "properties": {
                                                             "row": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
-                                                                ]
+                                                                "type": "integer"
                                                             },
                                                             "column": {
                                                                 "type": "string",
-                                                                "enum": [
-                                                                    "file"
-                                                                ]
+                                                                "const": "file"
                                                             },
                                                             "message": {
                                                                 "type": "string"
@@ -5047,94 +5182,15 @@
                     "Import"
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
                                 "properties": {
                                     "items": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "name": {
-                                                    "type": "string",
-                                                    "maxLength": 255
-                                                },
-                                                "username": {
-                                                    "type": "string",
-                                                    "maxLength": 50
-                                                },
-                                                "email": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "format": "email"
-                                                },
-                                                "password": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "nisn": {
-                                                    "type": "number"
-                                                },
-                                                "nis": {
-                                                    "type": "string"
-                                                },
-                                                "gender": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "L",
-                                                        "P"
-                                                    ]
-                                                },
-                                                "address": {
-                                                    "type": "string"
-                                                },
-                                                "class_id": {
-                                                    "type": "integer"
-                                                },
-                                                "is_class_officer": {
-                                                    "type": [
-                                                        "boolean",
-                                                        "null"
-                                                    ]
-                                                },
-                                                "phone": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 30
-                                                },
-                                                "contact": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ],
-                                                    "maxLength": 50
-                                                }
-                                            },
-                                            "required": [
-                                                "name",
-                                                "username",
-                                                "nisn",
-                                                "nis",
-                                                "gender",
-                                                "address",
-                                                "class_id"
-                                            ]
-                                        },
-                                        "minItems": 1
+                                        "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "items"
-                                ]
+                                }
                             }
                         }
                     }
@@ -5151,10 +5207,7 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
                                             "type": "integer"
@@ -5166,16 +5219,11 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "row": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
+                                                            "type": "integer"
                                                         },
                                                         "column": {
                                                             "type": "string",
-                                                            "enum": [
-                                                                "system"
-                                                            ]
+                                                            "const": "system"
                                                         },
                                                         "message": {
                                                             "type": "string"
@@ -5214,16 +5262,10 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "errors": {
                                             "type": "array",
@@ -5250,78 +5292,90 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "total_rows": {
-                                            "type": "integer"
-                                        },
-                                        "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
-                                        },
-                                        "failed_count": {
-                                            "type": "integer",
-                                            "description": "Transaction will abort, so 0 success"
-                                        },
-                                        "errors": {
-                                            "type": "array",
-                                            "items": {
-                                                "anyOf": [
-                                                    {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "row": {
-                                                                "type": "string"
-                                                            },
-                                                            "column": {
-                                                                "type": "string"
-                                                            },
-                                                            "message": {
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "row",
-                                                            "column",
-                                                            "message"
-                                                        ]
-                                                    },
-                                                    {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "row": {
-                                                                "type": "integer",
-                                                                "enum": [
-                                                                    0
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "total_rows": {
+                                                    "type": "integer"
+                                                },
+                                                "success_count": {
+                                                    "type": "integer"
+                                                },
+                                                "failed_count": {
+                                                    "type": "integer",
+                                                    "description": "Transaction will abort, so 0 success"
+                                                },
+                                                "errors": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
                                                                 ]
                                                             },
-                                                            "column": {
-                                                                "type": "string",
-                                                                "enum": [
-                                                                    "file"
+                                                            {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "row": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "column": {
+                                                                        "type": "string",
+                                                                        "const": "file"
+                                                                    },
+                                                                    "message": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "row",
+                                                                    "column",
+                                                                    "message"
                                                                 ]
-                                                            },
-                                                            "message": {
-                                                                "type": "string"
                                                             }
-                                                        },
-                                                        "required": [
-                                                            "row",
-                                                            "column",
-                                                            "message"
                                                         ]
                                                     }
-                                                ]
-                                            }
+                                                }
+                                            },
+                                            "required": [
+                                                "total_rows",
+                                                "success_count",
+                                                "failed_count",
+                                                "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "success": {
+                                                    "type": "boolean"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Maksimal 500 data siswa dapat diimpor sekaligus."
+                                                }
+                                            },
+                                            "required": [
+                                                "success",
+                                                "message"
+                                            ]
                                         }
-                                    },
-                                    "required": [
-                                        "total_rows",
-                                        "success_count",
-                                        "failed_count",
-                                        "errors"
                                     ]
                                 }
                             }
@@ -5397,10 +5451,7 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
                                             "type": "integer"
@@ -5412,16 +5463,11 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "row": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
+                                                            "type": "integer"
                                                         },
                                                         "column": {
                                                             "type": "string",
-                                                            "enum": [
-                                                                "system"
-                                                            ]
+                                                            "const": "system"
                                                         },
                                                         "message": {
                                                             "type": "string"
@@ -5460,16 +5506,10 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "errors": {
                                             "type": "array",
@@ -5504,10 +5544,7 @@
                                                     "type": "integer"
                                                 },
                                                 "success_count": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "failed_count": {
                                                     "type": "integer"
@@ -5524,15 +5561,11 @@
                                                                     },
                                                                     "column": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "grade/label/major"
-                                                                        ]
+                                                                        "const": "grade/label/major"
                                                                     },
                                                                     "message": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "Kombinasi grade, label, dan jurusan duplikat dalam file."
-                                                                        ]
+                                                                        "const": "Kombinasi grade, label, dan jurusan duplikat dalam file."
                                                                     }
                                                                 },
                                                                 "required": [
@@ -5549,15 +5582,11 @@
                                                                     },
                                                                     "column": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "grade/label/major"
-                                                                        ]
+                                                                        "const": "grade/label/major"
                                                                     },
                                                                     "message": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "Kelas sudah ada di database."
-                                                                        ]
+                                                                        "const": "Kelas sudah ada di database."
                                                                     }
                                                                 },
                                                                 "required": [
@@ -5584,10 +5613,7 @@
                                                     "type": "integer"
                                                 },
                                                 "success_count": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "failed_count": {
                                                     "type": "integer",
@@ -5620,16 +5646,11 @@
                                                                 "type": "object",
                                                                 "properties": {
                                                                     "row": {
-                                                                        "type": "integer",
-                                                                        "enum": [
-                                                                            0
-                                                                        ]
+                                                                        "type": "integer"
                                                                     },
                                                                     "column": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "file"
-                                                                        ]
+                                                                        "const": "file"
                                                                     },
                                                                     "message": {
                                                                         "type": "string"
@@ -5670,72 +5691,15 @@
                     "Import"
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
                                 "type": "object",
                                 "properties": {
                                     "items": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "properties": {
-                                                "class_id": {
-                                                    "type": "integer"
-                                                },
-                                                "semester": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "ganjil",
-                                                        "genap"
-                                                    ]
-                                                },
-                                                "year": {
-                                                    "type": "string"
-                                                },
-                                                "day": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "senin",
-                                                        "selasa",
-                                                        "rabu",
-                                                        "kamis",
-                                                        "jumat",
-                                                        "sabtu",
-                                                        "minggu"
-                                                    ]
-                                                },
-                                                "start_time": {
-                                                    "type": "string"
-                                                },
-                                                "end_time": {
-                                                    "type": "string"
-                                                },
-                                                "subject_id": {
-                                                    "type": "integer"
-                                                },
-                                                "teacher_profile_id": {
-                                                    "type": "integer"
-                                                }
-                                            },
-                                            "required": [
-                                                "class_id",
-                                                "semester",
-                                                "year",
-                                                "day",
-                                                "start_time",
-                                                "end_time",
-                                                "subject_id",
-                                                "teacher_profile_id"
-                                            ]
-                                        },
-                                        "minItems": 1
+                                        "type": "string"
                                     }
-                                },
-                                "required": [
-                                    "items"
-                                ]
+                                }
                             }
                         }
                     }
@@ -5752,10 +5716,7 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
                                             "type": "integer"
@@ -5768,16 +5729,11 @@
                                                     "type": "object",
                                                     "properties": {
                                                         "row": {
-                                                            "type": "integer",
-                                                            "enum": [
-                                                                0
-                                                            ]
+                                                            "type": "integer"
                                                         },
                                                         "column": {
                                                             "type": "string",
-                                                            "enum": [
-                                                                "system/collision"
-                                                            ]
+                                                            "const": "system/collision"
                                                         },
                                                         "message": {
                                                             "type": "string"
@@ -5816,16 +5772,10 @@
                                             "type": "integer"
                                         },
                                         "success_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "failed_count": {
-                                            "type": "integer",
-                                            "enum": [
-                                                0
-                                            ]
+                                            "type": "integer"
                                         },
                                         "errors": {
                                             "type": "array",
@@ -5860,10 +5810,7 @@
                                                     "type": "integer"
                                                 },
                                                 "success_count": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "failed_count": {
                                                     "type": "integer"
@@ -5880,15 +5827,11 @@
                                                                     },
                                                                     "column": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "start_time/end_time"
-                                                                        ]
+                                                                        "const": "start_time/end_time"
                                                                     },
                                                                     "message": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "Waktu mulai harus lebih awal dari waktu selesai."
-                                                                        ]
+                                                                        "const": "Waktu mulai harus lebih awal dari waktu selesai."
                                                                     }
                                                                 },
                                                                 "required": [
@@ -5905,9 +5848,7 @@
                                                                     },
                                                                     "column": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "schedule"
-                                                                        ]
+                                                                        "const": "schedule"
                                                                     },
                                                                     "message": {
                                                                         "type": "string"
@@ -5937,10 +5878,7 @@
                                                     "type": "integer"
                                                 },
                                                 "success_count": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "failed_count": {
                                                     "type": "integer",
@@ -5973,16 +5911,11 @@
                                                                 "type": "object",
                                                                 "properties": {
                                                                     "row": {
-                                                                        "type": "integer",
-                                                                        "enum": [
-                                                                            0
-                                                                        ]
+                                                                        "type": "integer"
                                                                     },
                                                                     "column": {
                                                                         "type": "string",
-                                                                        "enum": [
-                                                                            "file"
-                                                                        ]
+                                                                        "const": "file"
                                                                     },
                                                                     "message": {
                                                                         "type": "string"
@@ -6003,6 +5936,17 @@
                                                 "success_count",
                                                 "failed_count",
                                                 "errors"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
                                             ]
                                         }
                                     ]
@@ -6219,9 +6163,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
-                                            ]
+                                            "const": "Data tidak dapat dihapus karena masih terelasi dengan data lain"
                                         }
                                     },
                                     "required": [
@@ -6240,9 +6182,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -6880,9 +6820,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "QR revoked"
-                                            ]
+                                            "const": "QR revoked"
                                         }
                                     },
                                     "required": [
@@ -7130,9 +7068,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -7323,27 +7259,6 @@
                     }
                 ],
                 "responses": {
-                    "409": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string",
-                                            "enum": [
-                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "message"
-                                    ]
-                                }
-                            }
-                        }
-                    },
                     "200": {
                         "description": "",
                         "content": {
@@ -7353,9 +7268,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Schedule deleted successfully"
-                                            ]
+                                            "const": "Schedule deleted successfully"
                                         }
                                     },
                                     "required": [
@@ -7487,6 +7400,52 @@
                 }
             }
         },
+        "/classes/{class}/schedules/active": {
+            "get": {
+                "operationId": "schedule.byClass",
+                "description": "Retrieve the active schedule and its details for a specific class.",
+                "summary": "Get Active Schedule for a Class",
+                "tags": [
+                    "Schedule"
+                ],
+                "parameters": [
+                    {
+                        "name": "class",
+                        "in": "path",
+                        "required": true,
+                        "description": "The class ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ClassSchedule"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/teachers/{teacher}/schedules": {
             "get": {
                 "operationId": "schedule.byTeacher",
@@ -7545,9 +7504,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -7578,6 +7535,23 @@
                                             "properties": {
                                                 "status": {
                                                     "type": "string",
+                                                    "const": "no_schedule"
+                                                },
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "No active schedule found"
+                                                }
+                                            },
+                                            "required": [
+                                                "status",
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "status": {
+                                                    "type": "string",
                                                     "enum": [
                                                         "no_schedule",
                                                         "success"
@@ -7595,9 +7569,6 @@
                                                     "items": {
                                                         "type": "object",
                                                         "properties": {
-                                                            "id": {
-                                                                "type": "integer"
-                                                            },
                                                             "day": {
                                                                 "type": "string"
                                                             },
@@ -7628,45 +7599,15 @@
                                                                     "string",
                                                                     "null"
                                                                 ]
-                                                            },
-                                                            "teacher": {
-                                                                "type": [
-                                                                    "object",
-                                                                    "null"
-                                                                ],
-                                                                "properties": {
-                                                                    "nip": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "name": {
-                                                                        "anyOf": [
-                                                                            {
-                                                                                "type": "string"
-                                                                            },
-                                                                            {
-                                                                                "type": "string",
-                                                                                "enum": [
-                                                                                    "Guru"
-                                                                                ]
-                                                                            }
-                                                                        ]
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "nip",
-                                                                    "name"
-                                                                ]
                                                             }
                                                         },
                                                         "required": [
-                                                            "id",
                                                             "day",
                                                             "start_time",
                                                             "end_time",
                                                             "class",
                                                             "subject",
-                                                            "room",
-                                                            "teacher"
+                                                            "room"
                                                         ]
                                                     }
                                                 }
@@ -7687,35 +7628,15 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "No active schedule found"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Profile not found"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "message"
-                                            ]
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Profile not found"
                                         }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }
@@ -7744,9 +7665,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -7910,9 +7829,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Profile not found"
-                                            ]
+                                            "const": "Profile not found"
                                         }
                                     },
                                     "required": [
@@ -8143,9 +8060,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -8346,9 +8261,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -8407,9 +8320,7 @@
                                     "properties": {
                                         "status": {
                                             "type": "string",
-                                            "enum": [
-                                                "success"
-                                            ]
+                                            "const": "success"
                                         },
                                         "data": {
                                             "type": "string"
@@ -8454,15 +8365,11 @@
                                     "properties": {
                                         "status": {
                                             "type": "string",
-                                            "enum": [
-                                                "success"
-                                            ]
+                                            "const": "success"
                                         },
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Settings updated successfully"
-                                            ]
+                                            "const": "Settings updated successfully"
                                         },
                                         "data": {
                                             "type": "string"
@@ -8539,15 +8446,11 @@
                                     "properties": {
                                         "status": {
                                             "type": "string",
-                                            "enum": [
-                                                "success"
-                                            ]
+                                            "const": "success"
                                         },
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Settings updated successfully"
-                                            ]
+                                            "const": "Settings updated successfully"
                                         }
                                     },
                                     "required": [
@@ -8624,7 +8527,7 @@
         },
         "/students": {
             "get": {
-                "operationId": "students.index",
+                "operationId": "student.index",
                 "description": "Retrieve a list of all students with filtering options.",
                 "summary": "List Students",
                 "tags": [
@@ -8632,41 +8535,57 @@
                 ],
                 "parameters": [
                     {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
                         "name": "nisn",
                         "in": "query",
                         "schema": {
-                            "type": "string"
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 20
                         }
                     },
                     {
                         "name": "class_id",
                         "in": "query",
                         "schema": {
-                            "type": "integer",
-                            "default": 0
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
                         }
                     },
                     {
                         "name": "major_id",
                         "in": "query",
                         "schema": {
-                            "type": "integer",
-                            "default": 0
-                        }
-                    },
-                    {
-                        "name": "search",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
                         }
                     },
                     {
                         "name": "per_page",
                         "in": "query",
                         "schema": {
-                            "type": "integer",
-                            "default": 10
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": -1,
+                            "maximum": 1000
                         }
                     }
                 ],
@@ -8691,6 +8610,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -8763,6 +8685,43 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/StudentResource"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error\n\nAn error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "example": "Anda tidak memiliki akses untuk melihat data siswa ini."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "description": "Error overview.",
+                                                    "example": "Akses ditolak."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -8855,9 +8814,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
-                                            ]
+                                            "const": "Data tidak dapat dihapus karena masih terelasi dengan data lain"
                                         }
                                     },
                                     "required": [
@@ -8876,9 +8833,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -8897,7 +8852,7 @@
                 }
             }
         },
-        "/students/{student}/attendance": {
+        "/students/{identifier}/attendance": {
             "get": {
                 "operationId": "student.attendanceHistory",
                 "description": "Retrieve the attendance history for a specific student.",
@@ -8907,12 +8862,11 @@
                 ],
                 "parameters": [
                     {
-                        "name": "student",
+                        "name": "identifier",
                         "in": "path",
                         "required": true,
-                        "description": "The student ID",
                         "schema": {
-                            "type": "integer"
+                            "type": "string"
                         }
                     },
                     {
@@ -8944,9 +8898,6 @@
                                 }
                             }
                         }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -9118,9 +9069,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -9308,9 +9257,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Leave permission created successfully"
-                                            ]
+                                            "const": "Leave permission created successfully"
                                         },
                                         "permission": {
                                             "$ref": "#/components/schemas/StudentLeavePermission"
@@ -9336,9 +9283,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized - You do not teach this class"
-                                            ]
+                                            "const": "Unauthorized - You do not teach this class"
                                         }
                                     },
                                     "required": [
@@ -9357,9 +9302,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -9465,9 +9408,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Leave permission updated"
-                                            ]
+                                            "const": "Leave permission updated"
                                         },
                                         "permission": {
                                             "type": "string"
@@ -9522,9 +9463,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Student marked as returned"
-                                            ]
+                                            "const": "Student marked as returned"
                                         },
                                         "permission": {
                                             "type": "string"
@@ -9549,9 +9488,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "enum": [
-                                                        "Cannot mark return for full day permission"
-                                                    ]
+                                                    "const": "Cannot mark return for full day permission"
                                                 }
                                             },
                                             "required": [
@@ -9563,9 +9500,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "enum": [
-                                                        "Permission is not active"
-                                                    ]
+                                                    "const": "Permission is not active"
                                                 }
                                             },
                                             "required": [
@@ -9615,9 +9550,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Student marked as absent for missed schedules"
-                                            ]
+                                            "const": "Student marked as absent for missed schedules"
                                         },
                                         "permission": {
                                             "anyOf": [
@@ -9647,9 +9580,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Permission is not active"
-                                            ]
+                                            "const": "Permission is not active"
                                         }
                                     },
                                     "required": [
@@ -9697,9 +9628,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Leave permission cancelled"
-                                            ]
+                                            "const": "Leave permission cancelled"
                                         },
                                         "permission": {
                                             "anyOf": [
@@ -9729,9 +9658,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Permission is not active"
-                                            ]
+                                            "const": "Permission is not active"
                                         }
                                     },
                                     "required": [
@@ -9989,9 +9916,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -10017,6 +9942,31 @@
                 "summary": "Get Students Requiring Follow-up",
                 "tags": [
                     "Teacher"
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": -1,
+                            "maximum": 1000
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -10046,9 +9996,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -10057,6 +10005,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -10074,11 +10025,41 @@
                 ],
                 "parameters": [
                     {
+                        "name": "search",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "Guru",
+                                "Wali Kelas",
+                                "Staff"
+                            ]
+                        }
+                    },
+                    {
                         "name": "per_page",
                         "in": "query",
                         "schema": {
-                            "type": "integer",
-                            "default": 10
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": -1,
+                            "maximum": 1000
                         }
                     }
                 ],
@@ -10103,6 +10084,9 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -10247,9 +10231,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Image deleted"
-                                            ]
+                                            "const": "Image deleted"
                                         }
                                     },
                                     "required": [
@@ -10474,9 +10456,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Data tidak dapat dihapus karena masih terelasi dengan data lain"
-                                            ]
+                                            "const": "Data tidak dapat dihapus karena masih terelasi dengan data lain"
                                         }
                                     },
                                     "required": [
@@ -10495,9 +10475,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -10552,9 +10530,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -10598,9 +10574,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Homeroom not found"
-                                            ]
+                                            "const": "Homeroom not found"
                                         }
                                     },
                                     "required": [
@@ -10647,9 +10621,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Homeroom not found"
-                                            ]
+                                            "const": "Homeroom not found"
                                         }
                                     },
                                     "required": [
@@ -10683,9 +10655,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Internal Server Error"
-                                            ]
+                                            "const": "Internal Server Error"
                                         },
                                         "error": {
                                             "type": "string"
@@ -10721,9 +10691,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Homeroom not found"
-                                            ]
+                                            "const": "Homeroom not found"
                                         }
                                     },
                                     "required": [
@@ -10768,9 +10736,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Homeroom not found"
-                                            ]
+                                            "const": "Homeroom not found"
                                         }
                                     },
                                     "required": [
@@ -10817,9 +10783,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Homeroom not found"
-                                            ]
+                                            "const": "Homeroom not found"
                                         }
                                     },
                                     "required": [
@@ -10942,40 +10906,22 @@
                                             "type": "object",
                                             "properties": {
                                                 "present": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "late": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "sick": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "izin": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "absent": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "on_leave": {
-                                                    "type": "integer",
-                                                    "enum": [
-                                                        0
-                                                    ]
+                                                    "type": "integer"
                                                 },
                                                 "total_students": {
                                                     "type": "integer",
@@ -11168,9 +11114,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized - You do not teach this schedule"
-                                            ]
+                                            "const": "Unauthorized - You do not teach this schedule"
                                         }
                                     },
                                     "required": [
@@ -11326,9 +11270,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -11448,9 +11390,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -11552,9 +11492,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Leave permission granted"
-                                            ]
+                                            "const": "Leave permission granted"
                                         },
                                         "leave_permission": {
                                             "$ref": "#/components/schemas/StudentLeavePermission"
@@ -11594,9 +11532,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -11644,9 +11580,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Student marked as returned"
-                                            ]
+                                            "const": "Student marked as returned"
                                         },
                                         "leave_permission": {
                                             "type": "string"
@@ -11669,9 +11603,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Leave permission is not active"
-                                            ]
+                                            "const": "Leave permission is not active"
                                         }
                                     },
                                     "required": [
@@ -11692,9 +11624,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "enum": [
-                                                        "Unauthorized - You do not teach this class"
-                                                    ]
+                                                    "const": "Unauthorized - You do not teach this class"
                                                 }
                                             },
                                             "required": [
@@ -11706,9 +11636,7 @@
                                             "properties": {
                                                 "message": {
                                                     "type": "string",
-                                                    "enum": [
-                                                        "Unauthorized"
-                                                    ]
+                                                    "const": "Unauthorized"
                                                 }
                                             },
                                             "required": [
@@ -11758,9 +11686,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Student marked as absent (alpha) for missed schedules"
-                                            ]
+                                            "const": "Student marked as absent (alpha) for missed schedules"
                                         },
                                         "leave_permission": {
                                             "anyOf": [
@@ -11790,9 +11716,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Leave permission is not active"
-                                            ]
+                                            "const": "Leave permission is not active"
                                         }
                                     },
                                     "required": [
@@ -11811,9 +11735,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -11988,9 +11910,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Unauthorized"
-                                            ]
+                                            "const": "Unauthorized"
                                         }
                                     },
                                     "required": [
@@ -12145,9 +12065,7 @@
                                                 "properties": {
                                                     "day": {
                                                         "type": "integer",
-                                                        "enum": [
-                                                            1
-                                                        ]
+                                                        "const": 1
                                                     },
                                                     "status": {
                                                         "type": "string",
@@ -12183,9 +12101,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Teacher profile not found"
-                                            ]
+                                            "const": "Teacher profile not found"
                                         }
                                     },
                                     "required": [
@@ -12383,9 +12299,7 @@
                                     "properties": {
                                         "message": {
                                             "type": "string",
-                                            "enum": [
-                                                "Deleted"
-                                            ]
+                                            "const": "Deleted"
                                         }
                                     },
                                     "required": [
@@ -12397,415 +12311,6 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/wa/send-text": {
-            "post": {
-                "operationId": "whatsApp.sendText",
-                "description": "Send a text message via WhatsApp to a specific number.",
-                "summary": "Send WhatsApp Text Message",
-                "tags": [
-                    "WhatsApp"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "to": {
-                                        "type": "string",
-                                        "maxLength": 30
-                                    },
-                                    "message": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "to",
-                                    "message"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Failed to send message"
-                                                    ]
-                                                },
-                                                "error": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message",
-                                                "error"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "WhatsApp disabled"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Failed to send message"
-                                                    ]
-                                                },
-                                                "error": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message",
-                                                "error"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "WhatsApp disabled"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/wa/send-media": {
-            "post": {
-                "operationId": "whatsApp.sendMedia",
-                "description": "Send a media message (image, video, document) via WhatsApp.",
-                "summary": "Send WhatsApp Media Message",
-                "tags": [
-                    "WhatsApp"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "to": {
-                                        "type": "string",
-                                        "maxLength": 30
-                                    },
-                                    "mediaBase64": {
-                                        "type": "string"
-                                    },
-                                    "filename": {
-                                        "type": "string",
-                                        "maxLength": 200
-                                    },
-                                    "caption": {
-                                        "type": [
-                                            "string",
-                                            "null"
-                                        ]
-                                    }
-                                },
-                                "required": [
-                                    "to",
-                                    "mediaBase64",
-                                    "filename"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Failed to send media message"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "WhatsApp disabled"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "Failed to send media message"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "data": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "data"
-                                            ]
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "success": {
-                                                    "type": "boolean"
-                                                },
-                                                "message": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "WhatsApp disabled"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "success",
-                                                "message"
-                                            ]
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "$ref": "#/components/responses/ValidationException"
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
@@ -13203,8 +12708,12 @@
                     "label": {
                         "type": "string"
                     },
-                    "class_name": {
+                    "name": {
                         "type": "string"
+                    },
+                    "class_name": {
+                        "type": "string",
+                        "description": "Alias for frontend compatibility"
                     },
                     "major_id": {
                         "type": "string",
@@ -13247,6 +12756,7 @@
                     "id",
                     "grade",
                     "label",
+                    "name",
                     "class_name",
                     "major_id",
                     "major",
@@ -13341,6 +12851,12 @@
                             "null"
                         ]
                     },
+                    "homeroom_teacher_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -13359,6 +12875,7 @@
                     "updated_at",
                     "major_id",
                     "schedule_image_path",
+                    "homeroom_teacher_id",
                     "name",
                     "grade_roman"
                 ],
@@ -13926,7 +13443,7 @@
                         ]
                     },
                     "year": {
-                        "type": "integer"
+                        "type": "string"
                     },
                     "is_active": {
                         "type": "boolean"
@@ -13943,9 +13460,7 @@
                                         "Tuesday",
                                         "Wednesday",
                                         "Thursday",
-                                        "Friday",
-                                        "Saturday",
-                                        "Sunday"
+                                        "Friday"
                                     ]
                                 },
                                 "items": {
@@ -14158,7 +13673,10 @@
                         "maxLength": 255
                     },
                     "username": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 50
                     },
                     "email": {
@@ -14169,24 +13687,36 @@
                         "format": "email"
                     },
                     "password": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "minLength": 6
                     },
                     "nisn": {
                         "type": "string"
                     },
                     "nis": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "gender": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "enum": [
                             "L",
                             "P"
                         ]
                     },
                     "address": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "class_id": {
                         "type": "integer"
@@ -14221,12 +13751,7 @@
                 },
                 "required": [
                     "name",
-                    "username",
-                    "password",
                     "nisn",
-                    "nis",
-                    "gender",
-                    "address",
                     "class_id"
                 ],
                 "title": "StoreStudentRequest"
@@ -14255,7 +13780,10 @@
                         "maxLength": 255
                     },
                     "username": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 50
                     },
                     "email": {
@@ -14266,11 +13794,17 @@
                         "format": "email"
                     },
                     "password": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "minLength": 6
                     },
                     "nip": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "phone": {
                         "type": [
@@ -14334,10 +13868,7 @@
                     }
                 },
                 "required": [
-                    "name",
-                    "username",
-                    "password",
-                    "nip"
+                    "name"
                 ],
                 "title": "StoreTeacherRequest"
             },
@@ -14520,12 +14051,6 @@
                             "string",
                             "null"
                         ]
-                    },
-                    "major_id": {
-                        "type": [
-                            "integer",
-                            "null"
-                        ]
                     }
                 },
                 "required": [
@@ -14539,8 +14064,7 @@
                     "updated_at",
                     "class_id",
                     "is_class_officer",
-                    "parent_phone",
-                    "major_id"
+                    "parent_phone"
                 ],
                 "title": "StudentProfile"
             },
@@ -14587,8 +14111,7 @@
                         "type": "string"
                     },
                     "grade": {
-                        "type": "string",
-                        "description": "$grades = [\n'10' => 'X',\n'11' => 'XI',\n'12' => 'XII'\n];\nreturn $grades[$this->classRoom->grade] ?? $this->classRoom->grade;"
+                        "type": "string"
                     },
                     "is_class_officer": {
                         "type": "string"
@@ -14959,7 +14482,7 @@
                         ]
                     },
                     "year": {
-                        "type": "integer"
+                        "type": "string"
                     },
                     "is_active": {
                         "type": "boolean"
@@ -14976,9 +14499,7 @@
                                         "Tuesday",
                                         "Wednesday",
                                         "Thursday",
-                                        "Friday",
-                                        "Saturday",
-                                        "Sunday"
+                                        "Friday"
                                     ]
                                 },
                                 "items": {
@@ -15232,17 +14753,26 @@
                         "minLength": 6
                     },
                     "gender": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "enum": [
                             "L",
                             "P"
                         ]
                     },
                     "address": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "class_id": {
-                        "type": "integer"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "is_class_officer": {
                         "type": [
@@ -15276,10 +14806,16 @@
                         "description": "IGNORE ID SENDIRI"
                     },
                     "nis": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "username": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 50
                     }
                 },

@@ -33,6 +33,10 @@ class ClassController extends Controller
             });
         }
 
+        if ($request->boolean('available')) {
+            $query->whereDoesntHave('homeroomTeacher');
+        }
+
         return \App\Http\Resources\ClassResource::collection($query->paginate($perPage > 0 ? $perPage : 10))->response();
     }
 
@@ -54,13 +58,16 @@ class ClassController extends Controller
 
             if (isset($data['homeroom_teacher_id'])) {
                 \App\Models\TeacherProfile::where('id', $data['homeroom_teacher_id'])
-                    ->update(['homeroom_class_id' => $class->id]);
+                    ->update([
+                        'homeroom_class_id' => $class->id,
+                        'jabatan' => 'Wali Kelas',
+                    ]);
             }
 
             return $class;
         });
 
-        return response()->json($class, 201);
+        return response()->json($class->load(['major', 'homeroomTeacher.user']), 201);
     }
 
     /**
@@ -82,21 +89,29 @@ class ClassController extends Controller
     {
         $data = $request->validated();
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($class, $data) {
+        $oldHomeroomTeacherId = $class->homeroom_teacher_id;
+        $newHomeroomTeacherId = $data['homeroom_teacher_id'] ?? null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($class, $data, $oldHomeroomTeacherId, $newHomeroomTeacherId) {
             $class->update($data);
 
-            if (isset($data['homeroom_teacher_id'])) {
-                // Clear old homeroom if exists
-                \App\Models\TeacherProfile::where('homeroom_class_id', $class->id)
-                    ->update(['homeroom_class_id' => null]);
+            // Handle homeroom teacher assignment
+            if ($oldHomeroomTeacherId !== $newHomeroomTeacherId) {
+                // Clear old homeroom teacher
+                if ($oldHomeroomTeacherId) {
+                    \App\Models\TeacherProfile::where('id', $oldHomeroomTeacherId)
+                        ->update(['homeroom_class_id' => null, 'jabatan' => 'Guru']);
+                }
 
-                // Set new homeroom
-                \App\Models\TeacherProfile::where('id', $data['homeroom_teacher_id'])
-                    ->update(['homeroom_class_id' => $class->id]);
+                // Set new homeroom teacher
+                if ($newHomeroomTeacherId) {
+                    \App\Models\TeacherProfile::where('id', $newHomeroomTeacherId)
+                        ->update(['homeroom_class_id' => $class->id, 'jabatan' => 'Wali Kelas']);
+                }
             }
         });
 
-        return response()->json($class->load('homeroomTeacher.user'));
+        return response()->json($class->load(['major', 'homeroomTeacher.user']));
     }
 
     /**

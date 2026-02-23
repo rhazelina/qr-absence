@@ -37,5 +37,18 @@ export const authService = {
       body: JSON.stringify(credentials),
     });
     return handleResponse(response);
+  },
+
+  logout: async (): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    
+    // Clear local storage regardless of response
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    
+    return handleResponse(response);
   }
 };

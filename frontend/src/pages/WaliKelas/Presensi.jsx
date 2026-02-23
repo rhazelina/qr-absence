@@ -12,6 +12,10 @@ function Presensi() {
   const [sessionData, setSessionData] = useState(null);
   const [siswaList, setSiswaList] = useState([]);
   const [jadwalId, setJadwalId] = useState(null);
+  const [pulangStudents, setPulangStudents] = useState([]);
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideStudentIndex, setOverrideStudentIndex] = useState(null);
+  const [overrideNewStatus, setOverrideNewStatus] = useState(null);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -24,30 +28,69 @@ function Presensi() {
         }
       }
 
-      if (data) {
+        if (data) {
         setSessionData(data);
         const jId = data.jadwalId || data.id; // Support both
+        const editMode = data.isEdit || false;
         setJadwalId(jId);
 
         if (jId) {
             try {
                 const response = await apiService.getTeacherScheduleStudents(jId);
                 if (response.eligible_students) {
-                     const mappedStudents = response.eligible_students.map((student, index) => ({
+                     let mappedStudents = response.eligible_students.map((student, index) => ({
                       no: index + 1,
                       id: student.id,
                       nisn: student.nisn || '-',
                       nama: student.name,
-                      status: 'Hadir', // Default status for Wali Kelas input? Or should we check if already submitted?
-                      // If submitted, backend 'getTeacherScheduleStudents' might not return attendance status unless we call a different endpoint.
-                      // For now, default 'Hadir' as per previous logic.
+                      status: 'Hadir',
                       keterangan: '',
                       jamMasuk: null,
                       suratFile: null,
                       suratFileName: null,
                       wasTerlambat: false,
-                      dokumen: null
+                      documents: null,
+                      lastStatusToday: student.last_status_today,
+                      isPulang: student.last_status_today?.is_pulang || student.last_status_today?.status === 'return'
                     }));
+                    
+                    // Get students with Pulang status for preview
+                    const pulangStudents = mappedStudents.filter(s => s.isPulang);
+                    setPulangStudents(pulangStudents);
+                    
+                    // If edit mode, fetch existing attendance
+                    if (editMode) {
+                      try {
+                        const attendanceResponse = await apiService.get(`/attendance/schedules/${jId}`);
+                        if (attendanceResponse.data) {
+                          const attendanceMap = {};
+                          attendanceResponse.data.forEach(record => {
+                            attendanceMap[record.student_id] = {
+                              status: record.status,
+                              keterangan: record.notes,
+                              documents: record.documents
+                            };
+                          });
+                          
+                          mappedStudents.forEach(student => {
+                            if (attendanceMap[student.id]) {
+                              const att = attendanceMap[student.id];
+                              student.status = att.status === 'present' ? 'Hadir' : 
+                                              att.status === 'late' ? 'Terlambat' :
+                                              att.status === 'sick' ? 'Sakit' :
+                                              att.status === 'permission' ? 'Izin' :
+                                              att.status === 'alpha' ? 'Alfa' :
+                                              att.status === 'early_leave' ? 'Pulang' : 'Hadir';
+                              student.keterangan = att.keterangan || '';
+                              student.dokumen = att.documents;
+                            }
+                          });
+                        }
+                      } catch (attError) {
+                        console.error('Error fetching existing attendance:', attError);
+                      }
+                    }
+                    
                     setSiswaList(mappedStudents);
                 }
             } catch (err) {
@@ -133,6 +176,16 @@ function Presensi() {
   };
 
   const handleStatusChange = (index, newStatus) => {
+    const student = siswaList[index];
+    
+    // Check if student is already Pulang and show confirmation modal
+    if (student.isPulang) {
+      setOverrideStudentIndex(index);
+      setOverrideNewStatus(newStatus);
+      setShowOverrideModal(true);
+      return;
+    }
+    
     if (newStatus === 'Terlambat' || newStatus === 'Pulang') {
       setCurrentSiswaIndex(index);
       setKeteranganTipe(newStatus.toLowerCase());
@@ -208,7 +261,7 @@ function Presensi() {
 
     siswaList.forEach(siswa => {
       const status = siswa.status;
-      if (stats.hasOwnProperty(status)) {
+      if (Object.prototype.hasOwnProperty.call(stats, status)) {
         stats[status]++;
       }
     });
@@ -240,7 +293,24 @@ function Presensi() {
         // It does NOT have "alfa".
         // So I must map 'Alfa' -> 'alpha'.
         
-        await apiService.submitBulkAttendance(payload);
+        const response = await apiService.submitBulkAttendance(payload);
+
+        // Upload documents for students who have documents
+        if (response.results) {
+          for (const result of response.results) {
+            const student = siswaList.find(s => s.id === result.student_id);
+            if (student && student.dokumen && student.dokumen.file && student.dokumen.file instanceof File) {
+              try {
+                const docFormData = new FormData();
+                docFormData.append('file', student.dokumen.file);
+                docFormData.append('type', student.dokumen.jenis || 'surat_izin');
+                await apiService.uploadAttendanceDocument(result.id, docFormData);
+              } catch (docError) {
+                console.error('Error uploading document:', docError);
+              }
+            }
+          }
+        }
 
          alert(`Absensi berhasil disimpan!\n\nHadir: ${stats.Hadir}\nTerlambat: ${stats.Terlambat}\nSakit: ${stats.Sakit}\nIzin: ${stats.Izin}\nAlfa: ${stats.Alfa}\nPulang: ${stats.Pulang}`);
 
@@ -388,6 +458,37 @@ function Presensi() {
 
       {mode === 'input' && (
         <div className="presensi-table-wrapper">
+          {/* Pulang Preview Banner */}
+          {pulangStudents.length > 0 && (
+            <div style={{
+              background: '#dbeafe',
+              border: '1px solid #93c5fd',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px'
+            }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '600', color: '#1e40af', marginBottom: '4px' }}>
+                  {pulangStudents.length} siswa sudah PULANG hari ini
+                </div>
+                <div style={{ fontSize: '14px', color: '#1e3a8a' }}>
+                  {pulangStudents.slice(0, 3).map(s => s.nama).join(', ')}
+                  {pulangStudents.length > 3 && `, dan ${pulangStudents.length - 3} lainnya`}
+                </div>
+                <div style={{ fontSize: '12px', color: '#1e3a8a', marginTop: '4px', fontStyle: 'italic' }}>
+                  Tidak perlu input ulang - status readonly
+                </div>
+              </div>
+            </div>
+          )}
           <table className="presensi-table">
             <thead>
               <tr>
@@ -404,27 +505,45 @@ function Presensi() {
             </thead>
             <tbody>
               {siswaList.map((siswa, index) => (
-                <tr key={index}>
+                <tr key={index} style={siswa.isPulang ? { background: '#eff6ff' } : {}}>
                   <td>{siswa.no}.</td>
                   <td>{siswa.nisn}</td>
-                  <td>{siswa.nama}</td>
-                  <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Hadir'} onChange={() => handleStatusChange(index, 'Hadir')} />
+                  <td>
+                    {siswa.isPulang && (
+                      <span style={{
+                        background: '#1d4ed8',
+                        color: 'white',
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        marginRight: '8px',
+                        fontWeight: '600'
+                      }}>PULANG</span>
+                    )}
+                    {siswa.nama}
+                    {siswa.lastStatusToday && siswa.lastStatusToday.time && (
+                      <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>
+                        ({siswa.lastStatusToday.time})
+                      </span>
+                    )}
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Sakit'} onChange={() => handleStatusChange(index, 'Sakit')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Hadir'} onChange={() => handleStatusChange(index, 'Hadir')} disabled={siswa.isPulang} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Izin'} onChange={() => handleStatusChange(index, 'Izin')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Sakit'} onChange={() => handleStatusChange(index, 'Sakit')} disabled={siswa.isPulang} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Alfa'} onChange={() => handleStatusChange(index, 'Alfa')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Izin'} onChange={() => handleStatusChange(index, 'Izin')} disabled={siswa.isPulang} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Terlambat'} onChange={() => handleStatusChange(index, 'Terlambat')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Alfa'} onChange={() => handleStatusChange(index, 'Alfa')} disabled={siswa.isPulang} />
                   </td>
                   <td className="radio-cell">
-                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Pulang'} onChange={() => handleStatusChange(index, 'Pulang')} />
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Terlambat'} onChange={() => handleStatusChange(index, 'Terlambat')} disabled={siswa.isPulang} />
+                  </td>
+                  <td className="radio-cell">
+                    <input type="radio" name={`status-${index}`} checked={siswa.status === 'Pulang'} onChange={() => handleStatusChange(index, 'Pulang')} disabled={siswa.isPulang} />
                   </td>
                 </tr>
               ))}
@@ -707,6 +826,64 @@ function Presensi() {
               <button className="btn-download" onClick={handleDownloadSurat}>
                 📥 Unduh Surat
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI OVERRIDE PULANG */}
+      {showOverrideModal && (
+        <div className="modal-overlay" onClick={() => setShowOverrideModal(false)}>
+          <div className="modal-keterangan" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-keterangan-header">
+              <h2>⚠️ Ubah Status Pulang</h2>
+              <button className="close-btn" onClick={() => setShowOverrideModal(false)}>×</button>
+            </div>
+            <div className="keterangan-form">
+              <div className="siswa-info-box">
+                <strong>{siswaList[overrideStudentIndex]?.nama}</strong>
+                <span className="siswa-nisn">{siswaList[overrideStudentIndex]?.nisn}</span>
+              </div>
+              <div style={{ 
+                background: '#fef3c7', 
+                border: '1px solid #fcd34d', 
+                borderRadius: '8px', 
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '14px', color: '#92400e', marginBottom: '8px' }}>
+                  <strong>Siswa ini sudah tercatat PULANG</strong> pada jam {siswaList[overrideStudentIndex]?.lastStatusToday?.time}
+                  {siswaList[overrideStudentIndex]?.lastStatusToday?.reason && (
+                    <span> ({siswaList[overrideStudentIndex]?.lastStatusToday.reason})</span>
+                  )}
+                </div>
+                <div style={{ fontSize: '14px', color: '#b45309' }}>
+                  Apakah Anda yakin ingin mengubah status menjadi <strong>{overrideNewStatus}</strong>?
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button 
+                  className="btn-batal-keterangan" 
+                  onClick={() => setShowOverrideModal(false)}
+                >
+                  Batal
+                </button>
+                <button 
+                  className="btn-simpan-keterangan" 
+                  onClick={() => {
+                    const updated = [...siswaList];
+                    updated[overrideStudentIndex].status = overrideNewStatus;
+                    updated[overrideStudentIndex].isPulang = false;
+                    setSiswaList(updated);
+                    setShowOverrideModal(false);
+                    const newPulangStudents = updated.filter(s => s.isPulang);
+                    setPulangStudents(newPulangStudents);
+                  }}
+                  style={{ background: '#dc2626' }}
+                >
+                  Ya, Ubah Status
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -3,11 +3,13 @@
 .wadah-kehadiran {
   margin: 0 auto;
   max-width: 1200px;
-  
+
   /* FIX UTAMA */
-  padding-top: 1050px;                    /* Tinggi navbar 75px + margin 20px */
-  min-height: calc(100vh - 1000px);       /* Konsisten dengan padding-top */
-  
+  padding-top: 1050px;
+  /* Tinggi navbar 75px + margin 20px */
+  min-height: calc(100vh - 1000px);
+  /* Konsisten dengan padding-top */
+
   box-sizing: border-box;
   padding-left: 20px;
   padding-right: 20px;
@@ -29,7 +31,8 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding-top: 95px;                    /* SAMA dengan wadah-kehadiran */
+  padding-top: 95px;
+  /* SAMA dengan wadah-kehadiran */
   box-sizing: border-box;
 }
 
@@ -56,7 +59,7 @@
 .judul-halaman {
   font-size: 32px;
   font-weight: 700;
-  color: white;
+  color: rgb(0, 0, 0);
   margin-bottom: 8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   text-align: left;
@@ -399,23 +402,24 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+
   .wadah-kehadiran,
   .wadah-muat {
     padding-top: 75px;
   }
 
-  
+
   .tabel-data th,
   .tabel-data td {
     padding: 1.2rem 1.5rem;
   }
-  
+
   .lencana-jurusan {
     min-width: 80px;
     padding: 6px 12px;
     font-size: 0.9rem;
   }
-  
+
   .avatar-wali {
     width: 38px;
     height: 38px;
@@ -427,16 +431,16 @@
     display: block;
     overflow-x: hidden;
   }
-  
+
   .bingkai-tabel {
     overflow-x: hidden;
   }
-  
+
   .tabel-data th,
   .tabel-data td {
     white-space: normal;
   }
-  
+
   .nama-kelas,
   .nama-wali {
     font-size: 14px;
@@ -470,49 +474,49 @@
     display: table;
     width: 100%;
   }
-  
+
   .tabel-data th,
   .tabel-data td {
     padding: 12px 10px;
     font-size: 13px;
   }
-  
+
   .info-kelas {
     gap: 8px;
   }
-  
+
   .nama-kelas {
     font-size: 13px;
   }
-  
+
   .lencana-jurusan {
     min-width: 70px;
     padding: 5px 10px;
     font-size: 12px;
   }
-  
+
   .info-wali {
     gap: 8px;
   }
-  
+
   .avatar-wali {
     width: 34px;
     height: 34px;
   }
-  
+
   .avatar-wali i {
     font-size: 16px;
   }
-  
+
   .nama-wali {
     font-size: 13px;
   }
-  
+
   .tombol-lihat {
     width: 36px;
     height: 36px;
   }
-  
+
   .tombol-lihat i {
     font-size: 16px;
     align-items: center;
@@ -526,17 +530,18 @@
 }
 
 @media (max-width: 576px) {
+
   .tabel-data th:nth-child(3),
   .tabel-data td:nth-child(3) {
     display: none;
   }
-  
+
   .nama-kelas {
     max-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  
+
   .lencana-jurusan {
     display: none;
   }
@@ -547,6 +552,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

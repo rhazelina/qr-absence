@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import WalikelasLayout from "../../component/Walikelas/layoutwakel";
 import { User, ArrowLeft, Eye } from "lucide-react";
 import { Modal } from "../../component/Shared/Modal";
+import { attendanceService } from "../../services/attendanceService";
+import classService from "../../services/classService";
 
-type StatusKehadiran = "Izin" | "Sakit" | "Alfa";
+type StatusKehadiran = "Izin" | "Sakit" | "Alfa" | "Pulang";
 
 type RowKehadiran = {
   no: number;
@@ -14,6 +16,8 @@ type RowKehadiran = {
   status: StatusKehadiran;
   keterangan?: string;
   bukti?: string;
+  studentId?: string;
+  scheduleId?: string;
 };
 
 interface DaftarKetidakhadiranWaliKelasProps {
@@ -21,6 +25,7 @@ interface DaftarKetidakhadiranWaliKelasProps {
   currentPage?: string;
   onMenuClick?: (page: string, payload?: any) => void;
   onLogout?: () => void;
+  selectedStudentId?: string;
   siswaName?: string;
   siswaIdentitas?: string;
 }
@@ -30,47 +35,127 @@ export default function DaftarKetidakhadiranWaliKelas({
   currentPage = "daftar-ketidakhadiran-walikelas",
   onMenuClick = () => {},
   onLogout = () => {},
-  siswaName = "Muhammad Wito S.",
-  siswaIdentitas = "0918415784",
+  selectedStudentId,
+  siswaName,
+  siswaIdentitas,
 }: DaftarKetidakhadiranWaliKelasProps) {
-  const [rows] = useState<RowKehadiran[]>([
-    {
-      no: 1,
-      tanggal: "21-05-2025",
-      jam: "5-6",
-      mapel: "Matematika",
-      guru: "WIWIN WINANGSIH, S.Pd,M.Pd",
-      status: "Izin",
-      keterangan: "Izin tidak masuk karena ada keperluan keluarga",
-      bukti: "surat_izin.jpg",
-    },
-    {
-      no: 2,
-      tanggal: "22-05-2025",
-      jam: "3-4",
-      mapel: "Bahasa Inggris",
-      guru: "FAJAR NINGTYAS, S.Pd",
-      status: "Sakit",
-      keterangan: "Demam tinggi dan dokter menyarankan istirahat",
-      bukti: "surat_dokter.jpg",
-    },
-    {
-      no: 3,
-      tanggal: "23-05-2025",
-      jam: "1-2",
-      mapel: "MPKK",
-      guru: "RR. HENNING GRATYANIS ANGGRAENI, S.Pd",
-      status: "Alfa",
-    },
-    {
-      no: 4,
-      tanggal: "23-05-2025",
-      jam: "7-8",
-      mapel: "Bahasa Inggris",
-      guru: "FAJAR NINGTYAS, S.Pd",
-      status: "Alfa",
-    },
-  ]);
+  // Use props or fallback to values from API
+  const [studentName] = useState<string>(siswaName || '-');
+  const [studentNisn] = useState<string>(siswaIdentitas || '-');
+  
+  const [rows, setRows] = useState<RowKehadiran[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch class info and student absence data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Get homeroom class info
+        const classData = await classService.getMyClass();
+        const classId = classData.id;
+        // const className = classData.name || classData.class_name || 'Kelas Tidak Diketahui';
+        // setKelasInfo({ id: classId, namaKelas: className });
+        
+        // Get attendance records for this class
+        // If specific student is selected, filter by student
+        const params: any = {
+          from: '2024-01-01', // Get all records from beginning
+          to: new Date().toISOString().split('T')[0]
+        };
+        
+        if (selectedStudentId) {
+          params.student_id = selectedStudentId;
+        }
+        
+        const response = await attendanceService.getClassStudentsSummary(classId, params);
+        
+        if (response && Array.isArray(response)) {
+          // Filter only non-present statuses (Izin, Sakit, Alfa, Pulang)
+          const mappedRows: RowKehadiran[] = [];
+          
+          response.forEach((studentRecord: any) => {
+            const student = studentRecord.student;
+            const details = studentRecord.details || [];
+            
+            // Filter attendance records that are not "hadir" (present)
+            details.forEach((detail: any) => {
+              const status = detail.status?.toLowerCase();
+              if (status === 'permission' || status === 'izin') {
+                mappedRows.push({
+                  no: mappedRows.length + 1,
+                  tanggal: detail.date || '-',
+                  jam: detail.period || detail.jam_ke || '-',
+                  mapel: detail.subject?.name || detail.mataPelajaran || '-',
+                  guru: detail.teacher?.user?.name || detail.guru || '-',
+                  status: "Izin",
+                  keterangan: detail.reason || detail.keterangan || '-',
+                  bukti: detail.proof_url || detail.bukti || undefined,
+                  studentId: student?.id,
+                  scheduleId: detail.schedule_id
+                });
+              } else if (status === 'sick' || status === 'sakit') {
+                mappedRows.push({
+                  no: mappedRows.length + 1,
+                  tanggal: detail.date || '-',
+                  jam: detail.period || detail.jam_ke || '-',
+                  mapel: detail.subject?.name || detail.mataPelajaran || '-',
+                  guru: detail.teacher?.user?.name || detail.guru || '-',
+                  status: "Sakit",
+                  keterangan: detail.reason || detail.keterangan || '-',
+                  bukti: detail.proof_url || detail.bukti || undefined,
+                  studentId: student?.id,
+                  scheduleId: detail.schedule_id
+                });
+              } else if (status === 'alpha' || status === 'absent' || status === 'alfa') {
+                mappedRows.push({
+                  no: mappedRows.length + 1,
+                  tanggal: detail.date || '-',
+                  jam: detail.period || detail.jam_ke || '-',
+                  mapel: detail.subject?.name || detail.mataPelajaran || '-',
+                  guru: detail.teacher?.user?.name || detail.guru || '-',
+                  status: "Alfa",
+                  keterangan: detail.reason || detail.keterangan || '-',
+                  bukti: undefined,
+                  studentId: student?.id,
+                  scheduleId: detail.schedule_id
+                });
+              } else if (status === 'early_leave' || status === 'return' || status === 'pulang') {
+                mappedRows.push({
+                  no: mappedRows.length + 1,
+                  tanggal: detail.date || '-',
+                  jam: detail.period || detail.jam_ke || '-',
+                  mapel: detail.subject?.name || detail.mataPelajaran || '-',
+                  guru: detail.teacher?.user?.name || detail.guru || '-',
+                  status: "Pulang",
+                  keterangan: detail.reason || detail.keterangan || '-',
+                  bukti: undefined,
+                  studentId: student?.id,
+                  scheduleId: detail.schedule_id
+                });
+              }
+            });
+          });
+          
+          setRows(mappedRows);
+        } else {
+          setRows([]);
+        }
+      } catch (err: any) {
+        console.error('Error fetching absence data:', err);
+        setError(err.message || 'Gagal memuat data ketidakhadiran');
+        // Fallback to empty array on error
+        setRows([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [selectedStudentId]);
 
   const [selectedRecord, setSelectedRecord] = useState<RowKehadiran | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,6 +164,7 @@ export default function DaftarKetidakhadiranWaliKelas({
     izin: rows.filter((r) => r.status === "Izin").length,
     sakit: rows.filter((r) => r.status === "Sakit").length,
     tidakHadir: rows.filter((r) => r.status === "Alfa").length,
+    pulang: rows.filter((r) => r.status === "Pulang").length,
   }), [rows]);
 
   const handleBack = () => {
@@ -88,7 +174,8 @@ export default function DaftarKetidakhadiranWaliKelas({
   const COLORS = {
     IZIN: "#ACA40D",
     SAKIT: "#520C8F",
-    TIDAK_HADIR: "#D90000"
+    TIDAK_HADIR: "#D90000",
+    PULANG: "#2F85EB"
   };
 
   const handleStatusClick = (record: RowKehadiran, e: React.MouseEvent) => {
@@ -160,12 +247,39 @@ export default function DaftarKetidakhadiranWaliKelas({
         user={user}
         onLogout={onLogout}
       >
-        <div
-          style={{
+        {isLoading ? (
+          <div style={{
             display: "flex",
-            marginBottom: 24,
-          }}
-        >
+            justifyContent: "center",
+            alignItems: "center",
+            height: "200px",
+            fontSize: "18px",
+            fontWeight: 700,
+            color: "#062A4A"
+          }}>
+            Memuat data...
+          </div>
+        ) : error ? (
+          <div style={{
+            padding: "20px",
+            backgroundColor: "#FEF2F2",
+            borderRadius: "10px",
+            border: "2px solid #FECACA",
+            color: "#991B1B",
+            textAlign: "center",
+            marginBottom: "24px",
+            fontWeight: 700
+          }}>
+            {error}
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                display: "flex",
+                marginBottom: 24,
+              }}
+            >
           <button
             onClick={handleBack}
             style={{
@@ -224,9 +338,9 @@ export default function DaftarKetidakhadiranWaliKelas({
           >
             <User size={30} />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 20, fontWeight: 900 }}>{siswaName}</div>
-            <div style={{ fontSize: 15, opacity: 0.9, fontWeight: 600 }}>NISN: {siswaIdentitas}</div>
+            <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>{studentName}</div>
+            <div style={{ fontSize: 15, opacity: 0.9, fontWeight: 600 }}>NISN: {studentNisn}</div>
           </div>
         </div>
 
@@ -315,6 +429,32 @@ export default function DaftarKetidakhadiranWaliKelas({
               {stats.tidakHadir}
             </div>
           </div>
+
+          <div
+            style={{
+              backgroundColor: "#FFFFFF",
+              border: `2px solid ${COLORS.PULANG}`,
+              borderRadius: 10,
+              padding: "12px 24px",
+              textAlign: "center",
+              minWidth: 100,
+              flex: 1,
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#6B7280" }}>
+              Pulang
+            </div>
+            <div
+              style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: COLORS.PULANG,
+                marginTop: 4,
+              }}
+            >
+              {stats.pulang}
+            </div>
+          </div>
         </div>
 
         <div
@@ -401,6 +541,8 @@ export default function DaftarKetidakhadiranWaliKelas({
             {rows.length}
           </div>
         </div>
+        </>
+        )}
       </WalikelasLayout>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>

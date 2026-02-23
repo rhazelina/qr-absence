@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, BookOpen, X, QrCode, Eye, Clock } from 'lucide-react';
 import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
 import './PresensiKelas.css';
@@ -24,6 +25,7 @@ const getTimeRange = (period) => {
 };
 
 function PresensiKelas() {
+  const navigate = useNavigate();
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('qr'); // 'qr' or 'detail'
@@ -178,7 +180,7 @@ function PresensiKelas() {
         const relevantAttendance = detail.filter(a => a.schedule && a.schedule.id === schedule.id);
         
         const summary = {
-          present: relevantAttendance.filter(a => ['present', 'late'].includes(a.status)).length,
+          present: relevantAttendance.filter(a => a.status === 'present').length,
           late: relevantAttendance.filter(a => a.status === 'late').length,
           absent: relevantAttendance.filter(a => a.status === 'absent').length,
           students: relevantAttendance.map(a => ({
@@ -422,6 +424,32 @@ function PresensiKelas() {
                 <p className="qr-instruction">
                   Scan kode QR di atas menggunakan aplikasi Siswa
                 </p>
+                {qrToken && (
+                  <button
+                    onClick={() => {
+                      closeModal();
+                      navigate(`/pengurus-kelas/scan-result/${selectedSchedule.id}`, {
+                        state: { schedule: selectedSchedule }
+                      });
+                    }}
+                    style={{
+                      marginTop: '12px',
+                      padding: '10px 20px',
+                      background: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Eye size={18} />
+                    Lihat Hasil Scan
+                  </button>
+                )}
                 <p className="qr-timer">
                   QR Code ini aman dan hanya berlaku untuk sesi ini
                 </p>

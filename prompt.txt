@@ -1,0 +1,284 @@
+Tujuan:
+Verifikasi dan hasilkan rencana validasi (test-cases + acceptance criteria + pseudo-API + contoh data) untuk fitur presensi sekolah berbasis QR scan dan manual. Fokus utama: memastikan hanya Wali Kelas / Guru yang memiliki jadwal mengajar hari ini pada kelas tersebut bisa memulai proses presensi; mendukung scanning QR (camera) + manual; otomatis menandai siswa yang sudah pulang sebelumnya sehingga guru berikutnya tidak perlu input ulang; dua kondisi waktu (sesi pagi vs sesi setelahnya / saat ada anak pulang). Hasil akhir yang diharapkan: daftar test case runnable, skenario Gherkin, dan pseudo-responses API untuk tiap kasus.
+
+Konteks singkat (gunakan untuk setiap keputusan logika):
+• Ada peran: ADMIN, WAKA, WAKEL (Wali Kelas), PENGURUS KELAS, GURU, SISWA.
+• Semua user punya autentikasi: ADMIN (username+password), GURU/WAKA (kode guru + password), PENGURUS/SISWA (NISN).
+• Jadwal mengajar tersimpan (hari, jam ke, mata pelajaran, kelas, guru).
+• QR code dihasilkan oleh Pengurus Kelas untuk setiap jadwal/mata pelajaran; QR mengandung ID jadwal + kelas + tanggal + tanda tangan singkat (hash).
+• Presensi bisa lewat: (1) scan QR (camera live/webcam) → masuk ke mode input presensi, (2) manual input presensi (desktop/mobile).
+• Desktop: scan manual & live (bukan hanya “camera only”), wajib mengisi status untuk semua siswa sebelum menyimpan.
+• Mobile: bisa presensi manual juga, ada preview/popup ketika ada kondisi khusus.
+• Status kehadiran: Hadir, Terlambat (dengan jam), Izin (dgn alasan), Sakit (dgn alasan), Pulang (dgn jam + alasan + dokumen), Alfa.
+• Requirement khusus: Jika siswa sudah tercatat pulang pada sesi sebelumnya di hari yang sama, maka pada sesi selanjutnya siswa dianggap sudah pulang dan tampil otomatis (preview) di daftar guru berikutnya sebagai Pulang — guru selanjutnya tidak perlu input ulang.
+
+Instruksi ke LLM (apa yang harus dihasilkan)
+
+Validasi logika yang menjamin hanya guru/wali yang punya jadwal hari ini untuk KELAS tersebut boleh memulai presensi. Jelaskan aturan otorisasi (cek jadwal berdasarkan tanggal & jam).
+
+Jelaskan flow scanning QR (input QR → verifikasi tanda tangan & jadwal → buka halaman input presensi). Buat pseudo-API (endpoint, request, response contoh).
+
+Jelaskan mekanisme auto-preview “pulang”: aturan pengecekan histori kehadiran hari ini, prioritas status (Pulang > Hadir > Terlambat > Izin/Sakit > Alfa), dan contoh logika pseudo-code/SQL.
+
+Buat acceptance criteria terukur (pass/fail) untuk semua kebutuhan utama (scan, manual, preview pulang, Desktop rule “tidak bisa simpan bila belum semua siswa diisi”, dsb.).
+
+Sertakan 12–20 test cases yang mencakup happy path, edge cases, dan failure modes (offline, QR expired, guru tak terjadwal, double-scan, duplikat, network error, dsb.). Untuk tiap test case: precondition, langkah, expected result.
+
+Hasilkan skenario Gherkin (Given-When-Then) untuk setidaknya 8 skenario kritikal (scan sukses, scan guru tak terjadwal, siswa sudah pulang, duplikat scan, save blocked if incomplete on desktop, manual izin with attachment, dsb.).
+
+Berikan contoh JSON request/response untuk: QR-scan endpoint, save presensi endpoint, get-attendance-history endpoint.
+
+Beri rekomendasi UI messages & microcopy untuk kondisi error/sukses dan pesan preview (contoh: “Siswa X sudah tercatat PULANG pada 10:15 — tidak perlu presensi ulang”).
+
+Sertakan SQL/Query singkat atau pseudocode untuk pengecekan history dan aturan pengambilan status otomatis.
+
+Berikan checklist final (pass-fail) yang dapat dipakai oleh QA manual/automated sprint sign-off.
+
+Detail logika & aturan yang harus dipatuhi (tulis tegas)
+
+A. Otorisasi & Akses
+
+Saat user tekan “scan QR” atau input manual, server harus verifikasi: user.role ∈ {GURU, WAKEL, PENGURUS KELAS} dan ada jadwal hari ini (tanggal sama) yang mengaitkan user ke jadwal tersebut untuk kelas target. Jika tidak, tolak dengan kode 403 dan pesan jelas.
+
+B. Validasi QR
+
+QR payload minimal: { schedule_id, class_id, date, signature }. Signature diverifikasi di server agar QR tidak bisa dipalsukan. QR berlaku hanya untuk date yang tercantum (expired setelah tanggal tersebut) dan optional TTL (mis. 2 jam sebelum/sesudah jam pelajaran) tergantung kebijakan - sebutkan configurable parameter.
+
+C. Alur presensi setelah scan QR sukses
+
+Server verifikasi jadwal & otorisasi → respond 200 + data siswa list for class with last-known-status-today for each siswa.
+
+Client menampilkan daftar siswa: nomor, NISN, nama, foto, kolom status (default: Belum diisi).
+
+Jika histori hari ini menunjukkan Pulang untuk siswa tertentu → tampilkan status Pulang (auto) dengan badge & alasan jam/attachment; kolom tidak bisa diubah oleh guru (read-only) atau bisa diubah hanya setelah konfirmasi tambahan (sebutkan opsi).
+
+Guru dapat melakukan scan individual (jika fitur scan per siswa) atau pilih status untuk tiap siswa.
+
+Desktop: wajib semua siswa punya status sebelum tombol Simpan aktif. Jika belum lengkap → tombol disabled + tooltip.
+
+Mobile: boleh simpan meski belum lengkap (jika kebijakan) — tetapi buat flag partial_save=true dan QA/ADMIN harus diberi notifikasi. (Kalau kamu ingin selalu samakan, tetapkan rule yang diinginkan.)
+
+D. Aturan “double scan / sesi berikutnya”
+
+Jika pada sesi sebelumnya hari yang sama siswa dicatat Pulang, maka pada sesi berikutnya siswa otomatis tetap Pulang. Tampilkan preview di awal sesi: Siswa X — PULANG pada 10:15 (alasan: dijemput); jangan tampilkan di daftar input sebagai perlu tindakan.
+
+Jika siswa kembali ke sekolah (exception), perlu mekanisme manual override di admin/wakel dengan bukti; catat perubahan as audit trail.
+
+E. Conflict resolution
+
+Jika dua guru mencoba menyimpan presensi untuk jadwal/kelas yang sama bersamaan, gunakan optimistic locking di server (timestamp / version) dan berikan konflik 409 dengan opsi retry/merge.
+
+Contoh pseudo-API (masukkan ke output)
+
+POST /api/attendance/scan
+Request:
+
+{
+  "user_id": "guru_123",
+  "token": "auth-token",
+  "qr_payload": {
+    "schedule_id":"sch-20260224-7",
+    "class_id":"XI-A",
+    "date":"2026-02-24",
+    "signature":"..."
+  },
+  "client_time":"2026-02-24T07:05:00+07:00"
+}
+
+Response (200):
+
+{
+  "ok": true,
+  "schedule": { "id":"sch-20260224-7","subject":"Matematika","class":"XI-A","hour":2, "teacher_id":"guru_123" },
+  "students": [
+    { "student_id":"s001", "nisn":"12345", "name":"Asep", "photo":"...", "last_status_today": null },
+    { "student_id":"s002", "nisn":"12346", "name":"Budi", "photo":"...", "last_status_today": {"status":"Pulang","time":"2026-02-24T10:15:00+07:00","note":"dijemput","attachment_url":"..."}}
+  ],
+  "rules": { "require_all_filled_desktop": true }
+}
+
+POST /api/attendance/save
+Request:
+
+{
+  "user_id":"guru_123",
+  "schedule_id":"sch-20260224-7",
+  "date":"2026-02-24",
+  "entries":[
+    {"student_id":"s001","status":"Hadir"},
+    {"student_id":"s002","status":"Pulang","note":"Pulang jam 10:15","time":"2026-02-24T10:15:00+07:00"}
+  ]
+}
+
+Response (200) / (409 conflict) / (400 validation errors)
+
+GET /api/attendance/history?student_id=s002&date=2026-02-24 -> returns history for logic pulang detection.
+
+Contoh SQL / Pseudocode untuk auto-detect “Pulang”
+
+SQL (psuedo):
+
+SELECT status, recorded_at, note, attachment_url
+FROM attendance
+WHERE student_id = :student_id
+  AND date = :date
+ORDER BY recorded_at DESC
+LIMIT 1;
+
+Pseudo-logic:
+
+last = get_last_attendance(student, date)
+if last.status == "Pulang":
+    mark student as Pulang (readonly) in today's UI
+elif last.status in ["Izin","Sakit","Hadir","Telat"]:
+    allow normal input
+Acceptance criteria (harus measurable)
+
+Hanya guru/wali dengan jadwal hari ini dapat memulai presensi → tes: scan QR oleh guru tanpa jadwal → 403.
+
+QR palsu atau expired → 400 + pesan “QR tidak valid / kadaluarsa”.
+
+Setelah scan sukses, server mengirim daftar siswa + last_status_today; siswa dengan status Pulang muncul otomatis sebagai readonly.
+
+Desktop: tombol Simpan disabled sampai setiap siswa di daftar mempunyai status → tes: coba simpan saat ada satu siswa kosong → tombol disabled / 400.
+
+Mobile: jika kebijakan mengizinkan partial save, server menyimpan partial dengan flag partial=true; QA bisa men-generate rekap terpisah.
+
+Ketika dua guru submit serentak → salah satu request mendapat 409 dan instruksi merge/retry.
+
+Jika siswa pulang lalu pada sesi berikutnya ada scan, siswa tidak muncul sebagai perlu aksi; namun muncul di laporan rekap sebagai Pulang jam xx.
+
+Semua perubahan status tertulis dengan audit trail (user_id, timestamp, previous_status).
+
+Upload dokumen (surat izin/pulang) tersimpan & dapat di-zoom di UI detail.
+
+Test cases (contoh ringkas; hasilkan minimal 12 lengkap)
+
+Berikut format tiap test case: Nama, Precondition, Langkah, Expected result.
+
+Scan QR — guru terjadwal (happy path)
+
+Precond: guru punya jadwal hari ini; QR valid
+
+Langkah: guru scan → tampilan daftar siswa
+
+Expected: 200, daftar siswa dikembalikan, tombol input aktif
+
+Scan QR — guru tidak terjadwal
+
+Precond: guru tidak ada jadwal
+
+Expected: 403 + pesan Anda tidak terdaftar mengajar kelas ini pada hari ini
+
+Siswa sudah Pulang sebelumnya
+
+Precond: attendance record siswa status=Pulang pada jam 10:15 hari ini
+
+Expected: setelah scan, siswa tampil sebagai Pulang — 10:15 (readonly)
+
+Desktop: simpan ditolak jika ada siswa belum diisi
+
+Precond: ada 1 siswa tanpa status
+
+Expected: tombol simpan disabled or 400 on attempt
+
+Duplikat save / concurrency
+
+Precond: dua guru/process mencoba simpan pada record same schedule simultaneously
+
+Expected: satu berhasil, yang lain 409
+
+QR expired atau signature invalid
+
+Expected: 400 QR kadaluarsa atau tidak valid
+
+Manual Presensi: input Izin dengan attachment
+
+Expected: attachment tersimpan, status Izin muncul di rekap dan detail
+
+Siswa pulang lalu admin override (siswa kembali)
+
+Expected: admin dapat ubah status dengan audit trail; next teacher see updated status
+
+Network offline saat simpan (mobile)
+
+Expected: client menyimpan local cache & retry; server menerima on reconnect; QA flag delayed_sync=true
+
+Scan per-siswa (jika ada) — double-scan same student
+
+Expected: second scan ignored or flagged duplicate with toast Sudah tercatat
+
+Partial save allowed (mobile policy)
+
+Expected: server returns partial=true
+
+Report generation includes Pulang entries with timestamps & attachments
+
+Expected: export excel/pdf contain pulang timestamps
+
+(LLM yang kamu panggil: perintahkan untuk meng-expand setiap test case menjadi step-by-step test script.)
+
+Gherkin contoh (minimal 8 skenario)
+
+Contoh 1 — Scan sukses oleh guru terjadwal:
+
+Feature: Presensi lewat QR untuk guru
+
+Scenario: Guru terjadwal berhasil memulai presensi lewat QR
+  Given Guru "guru_123" memiliki jadwal mengajar untuk "XI-A" pada "2026-02-24" jam ke-2
+  And QR untuk schedule "sch-20260224-7" valid
+  When Guru scan QR
+  Then server returns 200 and daftar siswa untuk kelas "XI-A"
+  And siswa yang sudah tercatat "Pulang" hari ini ditandai sebagai Pulang (readonly)
+
+Contoh 2 — Guru tidak terjadwal:
+
+Scenario: Guru tanpa jadwal mencoba scan QR
+  Given Guru "guru_999" tidak ada jadwal untuk kelas "XI-A" hari ini
+  When guru scan QR untuk "XI-A"
+  Then server returns 403 with message "Anda tidak terdaftar mengajar kelas ini pada hari ini"
+
+Contoh 3 — Desktop tidak bisa simpan bila belum lengkap:
+
+Scenario: Desktop menahan penyimpanan bila ada siswa belum diisi status
+  Given daftar siswa berjumlah 30 dan 1 siswa belum diisi status
+  When guru menekan tombol Simpan
+  Then client blocks save and shows tooltip "Lengkapi semua status siswa sebelum menyimpan"
+
+(Lanjutkan minimal 5 skenario lain: duplikat save, QR expired, manual izin + upload, pulang detection, offline sync.)
+
+UI microcopy & messages (rekomendasi singkat)
+
+Success scan: Scan berhasil — memuat daftar siswa untuk Matematika (XI-A — jam 2).
+
+Unauthorized: Anda tidak terdaftar mengajar kelas ini hari ini.
+
+QR invalid/expired: QR tidak valid atau sudah kadaluarsa.
+
+Pulang preview: Siswa Budi — PULANG pada 10:15 (alasan: dijemput). Tidak perlu presensi ulang.
+
+Duplicate scan: Siswa sudah tercatat — aksi diabaikan.
+
+Save incomplete (desktop): Lengkapi status semua siswa sebelum menyimpan.
+
+Output yang harus LLM hasilkan (format)
+
+Minta LLM mengembalikan dalam format JSON berikut:
+
+{
+ "summary":"one-paragraph summary",
+ "acceptance_criteria":[ "...", ...],
+ "test_cases":[ { "id": "TC01", "title":"", "precond":"", "steps":["..."], "expected":"..." }, ... ],
+ "gherkin":[ "Feature...Scenario..." , ...],
+ "pseudo_api":[ {...}, ... ],
+ "sql_snippets":[ "..."],
+ "ui_messages":[ "..."],
+ "notes":[ "...any outstanding risks or recommendations..." ]
+}
+
+Catatan risiko & rekomendasi opsional (minta LLM to include)
+Audit trail mandatory for compliance.
+Consider TTL on QR and HMAC signature. 
+Define policy: mobile partial-save allowed? (jelaskan tradeoff).
+Add admin override flow for exceptional “siswa balik” cases.
+Suggest retention period for attachments (e.g., 1 tahun) dan storage rules.

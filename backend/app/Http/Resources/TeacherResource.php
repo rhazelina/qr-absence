@@ -41,7 +41,7 @@ class TeacherResource extends JsonResource
             }),
             'photo_url' => $this->user->photo_url ?? null,
             'schedule_image_path' => $this->schedule_image_path ?? 'schedules/defaults/default_schedule.jpg',
-            'schedule_image_url' => $this->schedule_image_path ? asset('storage/' . $this->schedule_image_path) : asset('storage/schedules/defaults/default_schedule.jpg'),
+            'schedule_image_url' => $this->schedule_image_path ? asset('storage/'.$this->schedule_image_path) : asset('storage/schedules/defaults/default_schedule.jpg'),
             'classes_count' => \App\Models\ClassSchedule::whereHas('dailySchedules.scheduleItems', function ($q) {
                 $q->where('teacher_id', $this->id);
             })->distinct('class_id')->count('class_id'),

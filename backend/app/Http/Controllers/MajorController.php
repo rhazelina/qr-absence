@@ -71,6 +71,7 @@ class MajorController extends Controller
     {
         try {
             $major->delete();
+
             return response()->json(['message' => 'Deleted']);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {

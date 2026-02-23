@@ -135,13 +135,18 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      const params = {
+      const params: Record<string, any> = {
         page: pageIndex,
         per_page: itemsPerPage,
         search: searchValue,
-        major_id: selectedJurusan || undefined,
-        class_id: selectedKelas || undefined
       };
+      
+      if (selectedJurusan) {
+        params.major_id = selectedJurusan;
+      }
+      if (selectedKelas) {
+        params.class_id = selectedKelas;
+      }
       
       const response = await studentService.getStudents(params as any);
       

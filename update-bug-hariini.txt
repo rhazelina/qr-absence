@@ -1,0 +1,47 @@
+
+ADMIN /  DATA SISWA
+SiswaAdmin.tsx:176 Error fetching students: Error: The class id field must be an integer. (and 1 more error)
+    at handleResponse (api.ts:34:11)
+    at async fetchStudents (SiswaAdmin.tsx:146:24)
+
+    GET http://localhost:8000/api/students?page=1&per_page=10&search=&major_id=undefined&class_id=undefined 422 (Unprocessable Content)
+
+    SiswaAdmin.tsx:398 Import failed: Error: API request failed
+    at handleResponse (api.ts:34:11)
+    at async handleCommitImport (SiswaAdmin.tsx:386:22)
+
+POST http://localhost:8000/api/import/siswa 422 (Unprocessable Content)
+
+UBAH DATA GURU / DETAIL GURU
+teacherService.ts:58  PUT http://localhost:8000/api/teachers/58 500 (Internal Server Error)
+Gagal menyimpan perubahan: SQLSTATE[HY000]: General error: 1 no such column: homeroom_teacher_id (Connection: sqlite, Database: /home/dexwip/projects/haris/finalasli/qr-absence/backend/database/database.sqlite, SQL: update "classes" set "homeroom_teacher_id" = ?, "updated_at" = 2026-02-24 00:33:31 where "id" = 64)
+
+
+KelasAdmin.tsx:359 Uncaught TypeError: Cannot read properties of null (reading 'toString')
+    at handleEditModal (KelasAdmin.tsx:359:32)
+    at onClick (KelasAdmin.tsx:653:42)
+
+
+PROFILE SEKOLAH 
+LOGO SEKOALH DAN MASKOT SEKOLAH SAAT DI REMOVE TIDAK TERUPDATE SELAYAKNYA DATA YANG SUDAH DI DELETE 
+
+
+WAKA STAFF 
+DETAIL KEHADIRAN GURU, NAMA GURU TIDAK MUNCUL DAN JUGA DENGAN KELASNYA?
+
+
+PENGURUS KELAS
+
+DAFTAR MAPEL 
+STATUS ' BELUM ADA WALI KELAS' JADI namanya bu trianna 
+DaftarMapel.tsx:61 Error: QR hanya bisa dibuat pada jam aktif atau 15 menit sebelumnya (13:00 - 15:00)
+    at handleResponse (api.ts:34:11)
+    at async handleGenerateQr (DaftarMapel.tsx:57:19)
+
+
+WALI KELAS 
+attendanceService.ts:123  GET http://localhost:8000/api/waka/classes/49/attendance-summary?from=2026-01-31&to=2026-02-27 403 (Forbidden)
+RekapKehadiranSiswa.tsx:173 Failed to fetch attendance summary Error: Forbidden for role teacher
+    at handleResponse (api.ts:29:11)
+    at async fetchSummary (RekapKehadiranSiswa.tsx:146:34)
+

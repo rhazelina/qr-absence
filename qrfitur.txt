@@ -1,0 +1,9 @@
+YANG RENDER QR UNTUK ABSENSI 
+http://localhost:5180/pengurus_kelas/dashboard
+
+YANG MENGGUNAKAN QR UNTUK ABSENSI
+http://localhost:5180/wakel/dashboard di bagian "Jadwal Kelas Anda"
+http://localhost:5180/guru/dashboard di bagian "Jadwal Hari Ini"
+
+Untuk yang qr untuk absensi ini nanti harusnya outputnya adalah camera only
+Dan hilangkan teks atau apapun yang ada tulsanya "MANUAL", " MODE : LIVE ATAU MODE : STATIC "

@@ -56,7 +56,32 @@ class ImportController extends Controller
     {
         $items = $request->input('items', []);
 
-        $validator = Validator::make($request->all(), [
+        // Limit import to prevent DoS
+        if (count($items) > 500) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Maksimal 500 data siswa dapat diimpor sekaligus.',
+            ], 422);
+        }
+
+        // Resolve class labels to IDs if necessary
+        $resolvedItems = [];
+        foreach ($items as $item) {
+            $resolved = $item;
+            if (isset($item['class_id']) && ! is_numeric($item['class_id'])) {
+                $class = \App\Models\Classes::where('label', $item['class_id'])
+                    ->orWhere('grade', $item['class_id']) // Fallback if grade is sent
+                    ->first();
+
+                if ($class) {
+                    $resolved['class_id'] = $class->id;
+                }
+            }
+            $resolvedItems[] = $resolved;
+        }
+        $items = $resolvedItems;
+
+        $validator = Validator::make(['items' => $items], [
             'items' => ['required', 'array', 'min:1'],
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.username' => ['nullable', 'string', 'max:50', 'distinct', 'unique:users,username'],
@@ -350,9 +375,9 @@ class ImportController extends Controller
             // Resolve class_name to class_id
             if (isset($item['class_name']) && empty($item['class_id'])) {
                 $class = \App\Models\Classes::where('name', $item['class_name'])->first();
-                if (!$class) {
+                if (! $class) {
                     return response()->json([
-                        'message' => "Kelas tidak ditemukan: {$item['class_name']}"
+                        'message' => "Kelas tidak ditemukan: {$item['class_name']}",
                     ], 422);
                 }
                 $resolved['class_id'] = $class->id;
@@ -361,9 +386,9 @@ class ImportController extends Controller
             // Resolve subject_name to subject_id
             if (isset($item['subject_name']) && empty($item['subject_id'])) {
                 $subject = \App\Models\Subject::where('name', $item['subject_name'])->first();
-                if (!$subject) {
+                if (! $subject) {
                     return response()->json([
-                        'message' => "Mata pelajaran tidak ditemukan: {$item['subject_name']}"
+                        'message' => "Mata pelajaran tidak ditemukan: {$item['subject_name']}",
                     ], 422);
                 }
                 $resolved['subject_id'] = $subject->id;
@@ -373,9 +398,9 @@ class ImportController extends Controller
             if (isset($item['teacher_nip']) && empty($item['teacher_profile_id'])) {
                 $teacher = \App\Models\TeacherProfile::where('kode_guru', $item['teacher_nip'])
                     ->orWhere('nip', $item['teacher_nip'])->first();
-                if (!$teacher) {
+                if (! $teacher) {
                     return response()->json([
-                        'message' => "Guru tidak ditemukan: {$item['teacher_nip']}"
+                        'message' => "Guru tidak ditemukan: {$item['teacher_nip']}",
                     ], 422);
                 }
                 $resolved['teacher_profile_id'] = $teacher->id;
@@ -396,10 +421,10 @@ class ImportController extends Controller
 
             // Add seconds to time if not present
             if (isset($item['start_time']) && strlen($item['start_time']) === 5) {
-                $resolved['start_time'] = $item['start_time'] . ':00';
+                $resolved['start_time'] = $item['start_time'].':00';
             }
             if (isset($item['end_time']) && strlen($item['end_time']) === 5) {
-                $resolved['end_time'] = $item['end_time'] . ':00';
+                $resolved['end_time'] = $item['end_time'].':00';
             }
 
             $resolvedItems[] = $resolved;

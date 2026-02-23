@@ -208,7 +208,10 @@ class ScheduleController extends Controller
                 ->first();
 
             if (! $schedule) {
-                return response()->json(['message' => 'No active schedule found'], 404);
+                return response()->json([
+                    'status' => 'no_schedule',
+                    'message' => 'No active schedule found',
+                ], 200);
             }
 
             return response()->json($schedule);
@@ -413,5 +416,28 @@ class ScheduleController extends Controller
         $lowercaseDay = strtolower($day);
 
         return $map[$lowercaseDay] ?? ucfirst($lowercaseDay);
+    }
+
+    /**
+     * Get Active Schedule for a Class
+     *
+     * Retrieve the active schedule and its details for a specific class.
+     */
+    public function byClass(Classes $class): JsonResponse
+    {
+        $activeSchedule = $class->classSchedules()
+            ->where('is_active', true)
+            ->with([
+                'dailySchedules.scheduleItems.subject',
+                'dailySchedules.scheduleItems.teacher.user',
+            ])
+            ->latest('id')
+            ->first();
+
+        if (! $activeSchedule) {
+            return response()->json(['message' => 'No active schedule found for this class'], 404);
+        }
+
+        return response()->json($activeSchedule);
     }
 }

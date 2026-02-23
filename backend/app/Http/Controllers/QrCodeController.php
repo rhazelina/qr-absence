@@ -73,17 +73,17 @@ class QrCodeController extends Controller
         }
 
         // --- HARD VALIDATIONS FOR BOTH ROLES ---
-        
+
         // Skip validations in demo mode
         $isDemoMode = config('app.demo_mode', false);
 
         // 1. Schedule must be active
-        if (!$isDemoMode && !$schedule->dailySchedule->classSchedule->is_active) {
+        if (! $isDemoMode && ! $schedule->dailySchedule->classSchedule->is_active) {
             abort(422, 'Jadwal pelajaran ini sudah tidak aktif (semester/tahun ajaran berlalu).');
         }
 
         // 2. Day must match (skip in demo mode)
-        if (!$isDemoMode) {
+        if (! $isDemoMode) {
             $today = strtolower(now()->format('l'));
             $scheduleDay = strtolower($schedule->dailySchedule->day);
             if ($scheduleDay !== $today) {
@@ -92,7 +92,7 @@ class QrCodeController extends Controller
         }
 
         // 3. Time must be active (skip in demo mode)
-        if (!$isDemoMode) {
+        if (! $isDemoMode) {
             $nowTime = now()->format('H:i:s');
             $startTimeAllowed = now()->setTimeFromTimeString($schedule->start_time)->subMinutes(15)->format('H:i:s');
             if ($nowTime < $startTimeAllowed || $nowTime > $schedule->end_time) {
@@ -101,7 +101,7 @@ class QrCodeController extends Controller
         }
 
         // 4. Must not be closed
-        if (!$isDemoMode) {
+        if (! $isDemoMode) {
             $isClosed = \App\Models\Attendance::where('schedule_id', $schedule->id)
                 ->whereDate('date', today())
                 ->where('source', 'system_close')
@@ -131,7 +131,6 @@ class QrCodeController extends Controller
                     return $existing;
                 }
                 $existing->update(['is_active' => false, 'status' => 'expired']);
-                dump('Controller Update Result:', $existing->toArray());
             }
 
             $uuid = Str::uuid()->toString();

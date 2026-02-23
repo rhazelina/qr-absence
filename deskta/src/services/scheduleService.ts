@@ -189,6 +189,14 @@ export const scheduleService = {
     return handleResponse(response);
   },
 
+  getScheduleByClass: async (classId: string | number): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/classes/${classId}/schedules/active`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   createSchedule: async (data: any): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/schedules`, {
       method: "POST",

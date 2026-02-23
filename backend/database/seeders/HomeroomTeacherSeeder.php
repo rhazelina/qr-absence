@@ -33,7 +33,7 @@ class HomeroomTeacherSeeder extends Seeder
         $user = User::updateOrCreate(
             ['username' => 'walikelas1'],
             [
-                'name' => 'ALIFAH DIANTEBES AINDRA, S.Pd',
+                'name' => 'Triana Ardiane S.pd',
                 'email' => 'walikelas1@example.com',
                 'password' => Hash::make('password123'),
                 'user_type' => 'teacher',

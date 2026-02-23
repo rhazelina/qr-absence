@@ -78,7 +78,7 @@ test('waka can view teachers daily attendance', function () {
     // For now, testing with basic admin.
 
     $response = $this->actingAs($this->admin)
-        ->getJson('/api/attendance/teachers/daily?date='.now()->toDateString());
+        ->getJson('/api/waka/attendance/teachers/daily?date='.now()->toDateString());
 
     $response->assertStatus(200)
         ->assertJsonFragment(['name' => $this->teacher->name])

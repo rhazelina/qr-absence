@@ -18,6 +18,7 @@ import Riwayat from './pages/Siswa/Riwayat';
 import DashboardKelas from './pages/PengurusKelas/DashboardKelas';
 import RiwayatKelas from './pages/PengurusKelas/RiwayatKelas';
 import PresensiKelas from './pages/PengurusKelas/PresensiKelas';
+import QrScanResult from './pages/PengurusKelas/QrScanResult';
 
 import DashboardWakel from './pages/WaliKelas/DashboardWakel';
 import Data from './pages/WaliKelas/Data';
@@ -85,6 +86,7 @@ function App() {
         <Route path="/pengurus-kelas/dashboard" element={<DashboardKelas />} />
         <Route path="/pengurus-kelas/riwayat" element={<RiwayatKelas />} />
         <Route path="/pengurus-kelas/presensi" element={<PresensiKelas />} />
+        <Route path="/pengurus-kelas/scan-result/:scheduleId" element={<QrScanResult />} />
 
         {/* Wali Kelas Routes */}
         <Route path="/walikelas/dashboard" element={<DashboardWakel />} />

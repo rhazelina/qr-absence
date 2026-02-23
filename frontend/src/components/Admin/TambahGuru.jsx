@@ -6,9 +6,11 @@ function TambahGuru({ isOpen, onClose, onSubmit, editData }) {
   const [formData, setFormData] = useState({
     namaGuru: '',
     kodeGuru: '',
+    email: '',
     role: '',
     mataPelajaran: ''
   });
+  const [errors, setErrors] = useState({});
 
   // Dummy data wali kelas tanpa pak bu
   const daftarWaliKelas = [
@@ -45,16 +47,59 @@ function TambahGuru({ isOpen, onClose, onSubmit, editData }) {
   }, [editData, isOpen]);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate Nama Guru
+    if (!formData.namaGuru.trim()) {
+      newErrors.namaGuru = 'Nama guru wajib diisi';
+    } else if (formData.namaGuru.length < 3) {
+      newErrors.namaGuru = 'Nama guru minimal 3 karakter';
+    }
+    
+    // Validate Kode Guru (NIP)
+    if (!formData.kodeGuru.trim()) {
+      newErrors.kodeGuru = 'Kode guru (NIP) wajib diisi';
+    } else if (!/^\d{18}$/.test(formData.kodeGuru)) {
+      newErrors.kodeGuru = 'NIP harus 18 digit angka';
+    }
+    
+    // Validate Email
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Format email tidak valid';
+    }
+    
+    // Validate Role
+    if (!formData.role) {
+      newErrors.role = 'Pilih status wali kelas';
+    }
+    
+    // Validate Mata Pelajaran
+    if (!formData.mataPelajaran) {
+      newErrors.mataPelajaran = 'Pilih mata pelajaran';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
-    setFormData({ namaGuru: '', kodeGuru: '', role: '', mataPelajaran: '' });
+    if (validateForm()) {
+      onSubmit(formData);
+      setFormData({ namaGuru: '', kodeGuru: '', email: '', role: '', mataPelajaran: '' });
+    }
   };
 
   if (!isOpen) return null;
@@ -75,16 +120,18 @@ function TambahGuru({ isOpen, onClose, onSubmit, editData }) {
               onChange={handleChange}
               required
             />
+            {errors.namaGuru && <span className="error-text">{errors.namaGuru}</span>}
           </div>
 
           <div className="input-group">
-            <label>Kode Guru</label>
+            <label>Kode Guru (NIP)</label>
             <input
               type="text"
               name="kodeGuru"
-              placeholder="Masukkan kode guru..."
+              placeholder="Masukkan 18 digit NIP..."
               value={formData.kodeGuru}
               onChange={handleChange}
+              maxLength={18}
               onKeyPress={(e) => {
                 if (!/[0-9]/.test(e.key)) {
                   e.preventDefault();
@@ -92,6 +139,19 @@ function TambahGuru({ isOpen, onClose, onSubmit, editData }) {
               }}
               required
             />
+            {errors.kodeGuru && <span className="error-text">{errors.kodeGuru}</span>}
+          </div>
+
+          <div className="input-group">
+            <label>Email (Opsional)</label>
+            <input
+              type="email"
+              name="email"
+              placeholder="contoh@email.com"
+              value={formData.email}
+              onChange={handleChange}
+            />
+            {errors.email && <span className="error-text">{errors.email}</span>}
           </div>
 
           <div className="input-group">
@@ -109,6 +169,7 @@ function TambahGuru({ isOpen, onClose, onSubmit, editData }) {
                 </option>
               ))}
             </select>
+            {errors.role && <span className="error-text">{errors.role}</span>}
           </div>
 
           <div className="input-group">
@@ -126,6 +187,7 @@ function TambahGuru({ isOpen, onClose, onSubmit, editData }) {
                 </option>
               ))}
             </select>
+            {errors.mataPelajaran && <span className="error-text">{errors.mataPelajaran}</span>}
           </div>
 
           <div className="form-buttons">

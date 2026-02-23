@@ -13,6 +13,7 @@ function DataGuru() {
   const [searchTerm, setSearchTerm] = useState('');
   const [teachers, setTeachers] = useState([]);
   const [availableClasses, setAvailableClasses] = useState([]);
+  const [kelasList, setKelasList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingTeacher, setEditingTeacher] = useState(null);
 
@@ -140,6 +141,23 @@ function DataGuru() {
     }
   };
 
+  // Load all classes for Wali Kelas assignment
+  const loadKelasList = async () => {
+    try {
+      const result = await apiService.getClasses({ per_page: 1000 });
+      if (result.data) {
+        setKelasList(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading classes:', error);
+    }
+  };
+
+  // Load classes on component mount
+  useEffect(() => {
+    loadKelasList();
+  }, []);
+
   // Filter & Search
   const getFilteredTeachers = () => {
     return teachers.filter(teacher => {
@@ -179,20 +197,25 @@ function DataGuru() {
 
     try {
       let teacherData = {
-        code: formData.kodeGuru,
+        kode_guru: formData.kodeGuru,
         name: formData.namaGuru,
-        role: formData.jabatan
+        jabatan: formData.jabatan
       };
 
       if (formData.jabatan === 'Guru') {
         teacherData.subject = formData.mataPelajaran;
       } else if (formData.jabatan === 'Waka') {
-        teacherData.waka_field = formData.bidangWaka;
+        teacherData.bidang = formData.bidangWaka;
       } else if (formData.jabatan === 'Kapro') {
-        teacherData.major_expertise = formData.konsentrasiKeahlian;
+        teacherData.konsentrasi_keahlian = formData.konsentrasiKeahlian;
       } else if (formData.jabatan === 'Wali Kelas') {
-        teacherData.grade = formData.kelas;
-        teacherData.major = formData.jurusan;
+        // Find the class_id based on grade and major
+        const classItem = kelasList.find(k => 
+          k.grade === formData.kelas && k.major_code === formData.jurusan
+        );
+        if (classItem) {
+          teacherData.homeroom_class_id = classItem.id;
+        }
       }
 
       if (editingTeacher) {

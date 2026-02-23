@@ -1,10 +1,11 @@
 <?php
 
-use App\Models\User;
 use App\Models\Classes;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+
 use function Pest\Laravel\actingAs;
 
 uses(RefreshDatabase::class);
@@ -16,7 +17,7 @@ test('admin can access students list', function () {
     $response = actingAs($admin)->getJson('/api/students');
 
     $response->assertStatus(200)
-             ->assertJsonPath('data.0.id', $student->id);
+        ->assertJsonPath('data.0.id', $student->id);
 });
 
 test('teacher can access students list and see homeroom students', function () {
@@ -33,8 +34,8 @@ test('teacher can access students list and see homeroom students', function () {
     $response = actingAs($teacherUser)->getJson('/api/students');
 
     $response->assertStatus(200)
-             ->assertJsonFragment(['id' => $homeroomStudent->id])
-             ->assertJsonMissing(['id' => $otherStudent->id]);
+        ->assertJsonFragment(['id' => $homeroomStudent->id])
+        ->assertJsonMissing(['id' => $otherStudent->id]);
 });
 
 test('student can access students list and see classmates', function () {
@@ -51,7 +52,6 @@ test('student can access students list and see classmates', function () {
     $response = actingAs($studentUser)->getJson('/api/students');
 
     $response->assertStatus(200)
-             ->assertJsonFragment(['id' => $classmate->id])
-             ->assertJsonMissing(['id' => $otherStudent->id]);
+        ->assertJsonFragment(['id' => $classmate->id])
+        ->assertJsonMissing(['id' => $otherStudent->id]);
 });
-

@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
 use App\Models\Classes;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -21,8 +21,8 @@ it('validates siswa import array correctly and returns formatted error schema', 
                 'gender' => 'L',
                 'address' => 'Jl. Test 1',
                 'class_id' => 999, // probably doesn't exist
-            ]
-        ]
+            ],
+        ],
     ]);
 
     $response->assertStatus(422)
@@ -31,15 +31,15 @@ it('validates siswa import array correctly and returns formatted error schema', 
             'success_count',
             'failed_count',
             'errors' => [
-                '*' => ['row', 'column', 'message']
-            ]
+                '*' => ['row', 'column', 'message'],
+            ],
         ]);
 
     $json = $response->json();
     expect($json['total_rows'])->toBe(1);
     expect($json['success_count'])->toBe(0);
     expect($json['failed_count'])->toBe(1);
-    
+
     // Check if error format is exact
     expect($json['errors'][0]['row'])->toBe(1);
     expect($json['errors'][0]['column'])->toBe('nisn');
@@ -58,16 +58,37 @@ it('successfully imports siswa with valid data', function () {
                 'gender' => 'L',
                 'address' => 'Jl. Test 1',
                 'class_id' => $kelas->id,
-            ]
-        ]
+            ],
+        ],
     ]);
 
     $response->assertStatus(201);
-    
+
     $json = $response->json();
     expect($json['success_count'])->toBe(1);
     expect($json['failed_count'])->toBe(0);
 
     $this->assertDatabaseHas('users', ['username' => 'johndoe_valid']);
     $this->assertDatabaseHas('student_profiles', ['nisn' => '9999999', 'class_id' => $kelas->id]);
+});
+
+it('successfully imports siswa with class label instead of ID', function () {
+    $kelas = Classes::factory()->create(['label' => 'XII RPL 2']);
+
+    $response = $this->actingAs($this->admin)->postJson('/api/import/siswa', [
+        'items' => [
+            [
+                'name' => 'John Label',
+                'username' => 'john_label',
+                'nisn' => '7777777',
+                'nis' => '66666',
+                'gender' => 'L',
+                'address' => 'Jl. Test 2',
+                'class_id' => 'XII RPL 2', // Label here
+            ],
+        ],
+    ]);
+
+    $response->assertStatus(201);
+    $this->assertDatabaseHas('student_profiles', ['nisn' => '7777777', 'class_id' => $kelas->id]);
 });

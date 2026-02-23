@@ -126,34 +126,34 @@ function KehadiranSiswaGuru({
       'sakit': 'sick',
       'izin': 'permission',
       'alfa': 'alpha',
-      'pulang': 'leave_early'
+      'pulang': 'leave_early',
+      'terlambat': 'late'
     };
 
     const backendStatus = statusMap[newStatus];
     if (!backendStatus) return;
 
     try {
-      const response = await attendanceService.manualAttendance({
-        schedule_id: schedule.id,
-        student_id: editingSiswa.id,
+      await attendanceService.manualAttendance({
+        schedule_id: Number(schedule.id),
+        student_id: Number(editingSiswa.id),
         status: backendStatus,
-        date: new Date().toISOString().split('T')[0], // Today YYYY-MM-DD
-        notes: editingSiswa.keterangan
+        date: new Date().toISOString().split('T')[0],
+        reason: editingSiswa.keterangan || undefined
       });
 
-      if (response) {
-        // Update local state
-        setSiswaList(prevList =>
-          prevList.map(s =>
-            s.id === editingSiswa.id ? { ...s, status: newStatus } : s
-          )
-        );
-        setEditingSiswa(null);
-        alert("Status berhasil diperbarui");
-      }
-    } catch (error) {
-      console.error("Error saving status:", error);
-      alert("Gagal memperbarui status");
+      // Only update state AFTER successful API response
+      setSiswaList(prevList =>
+        prevList.map(s =>
+          s.id === editingSiswa.id ? { ...s, status: newStatus } : s
+        )
+      );
+      setEditingSiswa(null);
+      alert("Status berhasil diperbarui");
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      alert(error.message || "Gagal memperbarui status");
+      // State is NOT updated on error - rollback is automatic
     }
   };
 

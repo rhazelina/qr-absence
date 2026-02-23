@@ -18,6 +18,14 @@ class StudentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'nisn' => ['nullable', 'string', 'max:20'],
+            'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'major_id' => ['nullable', 'integer', 'exists:majors,id'],
+            'per_page' => ['nullable', 'integer', 'min:-1', 'max:1000'],
+        ]);
+
         $query = StudentProfile::query()->with(['user', 'classRoom']);
 
         $user = $request->user();
@@ -125,9 +133,45 @@ class StudentController extends Controller
      *
      * Retrieve a specific student profile by ID.
      */
-    public function show(StudentProfile $student): JsonResponse
+    public function show(Request $request, StudentProfile $student): JsonResponse
     {
-        return response()->json(new \App\Http\Resources\StudentResource($student->load(['user', 'classRoom', 'attendances'])));
+        $user = $request->user();
+
+        // Admin can view any student
+        if ($user->user_type === 'admin') {
+            return response()->json(new \App\Http\Resources\StudentResource($student->load(['user', 'classRoom', 'attendances'])));
+        }
+
+        // Teacher can only view students in their classes
+        if ($user->user_type === 'teacher') {
+            $teacher = $user->teacherProfile;
+            if ($teacher && $teacher->homeroomClass) {
+                $allowedClassIds = [$teacher->homeroomClass->id];
+                // Also allow teachers to view students in any class they teach
+                $taughtClasses = \App\Models\Classes::whereHas('subjects.teachers', function ($q) use ($teacher) {
+                    $q->where('teacher_id', $teacher->id);
+                })->pluck('id')->toArray();
+                $allowedClassIds = array_merge($allowedClassIds, $taughtClasses);
+
+                if (! in_array($student->class_id, $allowedClassIds)) {
+                    abort(403, 'Anda tidak memiliki akses untuk melihat data siswa ini.');
+                }
+            }
+
+            return response()->json(new \App\Http\Resources\StudentResource($student->load(['user', 'classRoom'])));
+        }
+
+        // Student can only view their own data
+        if ($user->user_type === 'student') {
+            $studentProfile = $user->studentProfile;
+            if (! $studentProfile || $studentProfile->id !== $student->id) {
+                abort(403, 'Anda tidak memiliki akses untuk melihat data siswa ini.');
+            }
+
+            return response()->json(new \App\Http\Resources\StudentResource($student->load(['user', 'classRoom'])));
+        }
+
+        abort(403, 'Akses ditolak.');
     }
 
     /**
@@ -186,8 +230,13 @@ class StudentController extends Controller
      *
      * Retrieve the attendance history for a specific student.
      */
-    public function attendanceHistory(Request $request, StudentProfile $student): JsonResponse
+    public function attendanceHistory(Request $request, string $identifier): JsonResponse
     {
+        $student = StudentProfile::where('id', $identifier)
+            ->orWhere('nis', $identifier)
+            ->orWhere('nisn', $identifier)
+            ->firstOrFail();
+
         $query = $student->attendances()
             ->with(['schedule.class', 'schedule.teacher.user', 'schedule.subject']) // Added relations for detail view
             ->latest('date');

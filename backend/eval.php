@@ -1,22 +1,19 @@
 <?php
+
 require __DIR__.'/vendor/autoload.php';
 $app = require_once __DIR__.'/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\Classes;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\QrCodeController;
+use App\Models\Attendance;
+use App\Models\ClassSchedule;
+use App\Models\StudentProfile;
 use App\Models\Subject;
 use App\Models\TeacherProfile;
-use App\Models\StudentProfile;
-use App\Models\ClassSchedule;
-use App\Models\QrCode;
-use App\Models\Attendance;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use App\Http\Controllers\QrCodeController;
-use App\Http\Controllers\AttendanceController;
 use Illuminate\Http\Request;
-use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 $out = [];
 DB::beginTransaction();
@@ -31,11 +28,11 @@ try {
 
     // 3. Create Schedule for today
     $dayOfWeek = now()->format('l'); // e.g. 'Monday'
-    
+
     $classSchedule = ClassSchedule::firstOrCreate([
         'class_id' => $class->id,
         'semester' => 'ganjil',
-        'year' => '2024/2025' // mock year
+        'year' => '2024/2025', // mock year
     ], ['is_active' => true]);
 
     $dailySchedule = $classSchedule->dailySchedules()->firstOrCreate(['day' => $dayOfWeek]);
@@ -48,7 +45,7 @@ try {
         'teacher_id' => $teacher->id,
         'start_time' => $startTime,
         'end_time' => $endTime,
-        'room' => 'Lab Komputer'
+        'room' => 'Lab Komputer',
     ]);
 
     $out['step1'] = "Inject successful: Subject, ScheduleItem {$scheduleItem->id} for Teacher {$teacher->id} in Class {$class->name}";
@@ -57,10 +54,10 @@ try {
     $requestGenerate = Request::create('/api/qrcodes/generate', 'POST', [
         'schedule_id' => $scheduleItem->id,
         'type' => 'student',
-        'duration' => 60
+        'duration' => 60,
     ]);
     // Mock Auth
-    $requestGenerate->setUserResolver(function() use ($teacher) {
+    $requestGenerate->setUserResolver(function () use ($teacher) {
         return clone $teacher->user;
     });
 
@@ -68,16 +65,16 @@ try {
     $responseQr = $qrController->generate($requestGenerate);
     $qrData = json_decode($responseQr->getContent(), true);
 
-    $out['step2'] = "Generate QR successful: Token -> " . ($qrData['payload']['token'] ?? 'FAIL');
-    
+    $out['step2'] = 'Generate QR successful: Token -> '.($qrData['payload']['token'] ?? 'FAIL');
+
     // 5. Scan QR (Mocking Student Request)
     $requestScan = Request::create('/api/attendance/scan', 'POST', [
         'token' => $qrData['payload']['token'],
-        'latitude' => -6.2, 
-        'longitude' => 106.8
+        'latitude' => -6.2,
+        'longitude' => 106.8,
     ]);
     try {
-        $requestScan->setUserResolver(function() use ($student) {
+        $requestScan->setUserResolver(function () use ($student) {
             return clone $student->user; // Avoid caching issues
         });
 
@@ -87,7 +84,7 @@ try {
         $out['step3_scan1_status'] = $responseScan->getStatusCode();
         $out['step3_scan1'] = $scanData;
     } catch (\Exception $e) {
-        $out['step3_scan1_error'] = $e->getMessage() . "\n" . $e->getTraceAsString();
+        $out['step3_scan1_error'] = $e->getMessage()."\n".$e->getTraceAsString();
     }
 
     // 6. Scan Twice (Duplicate Check)
@@ -95,10 +92,10 @@ try {
         // Need a fresh request object because properties get accessed
         $requestScan2 = Request::create('/api/attendance/scan', 'POST', [
             'token' => $qrData['payload']['token'],
-            'latitude' => -6.2, 
-            'longitude' => 106.8
+            'latitude' => -6.2,
+            'longitude' => 106.8,
         ]);
-        $requestScan2->setUserResolver(function() use ($student) {
+        $requestScan2->setUserResolver(function () use ($student) {
             return clone $student->user;
         });
 
@@ -116,14 +113,13 @@ try {
         ->where('date', now()->toDateString())
         ->exists();
 
-    $out['step5_verification'] = $hasAttendance ? "Presence recorded successfully." : "Failed to find presence.";
+    $out['step5_verification'] = $hasAttendance ? 'Presence recorded successfully.' : 'Failed to find presence.';
 
 } catch (\Exception $e) {
-    $out['error'] = $e->getMessage() . ' at line ' . $e->getLine() . ' in ' . $e->getFile();
+    $out['error'] = $e->getMessage().' at line '.$e->getLine().' in '.$e->getFile();
 } finally {
     // Rollback so we don't mess up DB
     DB::rollBack();
 }
 
-echo json_encode($out, JSON_PRETTY_PRINT) . PHP_EOL;
-
+echo json_encode($out, JSON_PRETTY_PRINT).PHP_EOL;

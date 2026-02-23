@@ -7,8 +7,14 @@ const apiService = {
   async request(endpoint, options = {}) {
     const token = localStorage.getItem('token');
     const isFormDataBody = options.body instanceof FormData;
+    
+    // Detect device type
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const deviceType = isMobile ? 'mobile' : 'desktop';
+    
     const headers = {
       'Accept': 'application/json',
+      'X-Device-Type': deviceType,
       ...(token && { 'Authorization': `Bearer ${token}` }),
       ...(!isFormDataBody && { 'Content-Type': 'application/json' }),
       ...options.headers
@@ -206,13 +212,21 @@ const apiService = {
     return this.post(`/attendance/${attendanceId}/excuse`, data);
   },
 
+  uploadAttendanceDocument(attendanceId, formData) {
+    return this.post(`/attendance/${attendanceId}/document`, formData);
+  },
+
   getClasses(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
     return this.get(`/classes${query}`);
   },
 
-  getAvailableClasses() {
-    return this.get('/classes?available=true&per_page=1000');
+  getAvailableClasses(teacherId = null) {
+    let query = '?available=true&per_page=1000';
+    if (teacherId) {
+      query += `&exclude_teacher=${teacherId}`;
+    }
+    return this.get(`/classes${query}`);
   },
 
   getMajors(params) {

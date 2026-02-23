@@ -21,6 +21,7 @@ class TeacherScheduleDetailController extends Controller
     {
         $this->attendanceService = $attendanceService;
     }
+
     /**
      * Get Schedule Details
      *
@@ -70,6 +71,15 @@ class TeacherScheduleDetailController extends Controller
             ->get()
             ->keyBy('student_id');
 
+        // Get latest attendance status for each student TODAY (across all schedules) - for Pulang preview
+        $latestAttendancesToday = Attendance::where('attendee_type', 'student')
+            ->whereIn('student_id', $students->pluck('id'))
+            ->whereDate('date', $today)
+            ->orderBy('recorded_at', 'desc')
+            ->get()
+            ->groupBy('student_id')
+            ->map(fn ($records) => $records->first());
+
         // Calculate statistics
         $stats = [
             'present' => 0,
@@ -77,6 +87,7 @@ class TeacherScheduleDetailController extends Controller
             'sick' => 0,
             'izin' => 0,
             'absent' => 0,
+            'return' => 0,
             'on_leave' => 0, // Students currently on izin_pulang/dispensasi
             'total_students' => $students->count(),
         ];
@@ -144,6 +155,7 @@ class TeacherScheduleDetailController extends Controller
                     'checked_in_at' => $attendance->checked_in_at?->format('H:i'),
                     'reason' => $attendance->reason,
                 ] : null,
+                'last_status_today' => $this->formatLastStatus($latestAttendancesToday->get($student->id)),
             ];
         }
 
@@ -200,6 +212,15 @@ class TeacherScheduleDetailController extends Controller
             ->pluck('student_id')
             ->all();
 
+        // Get latest attendance status for each student TODAY - for Pulang preview
+        $latestAttendancesToday = Attendance::where('attendee_type', 'student')
+            ->whereIn('student_id', $students->pluck('id'))
+            ->whereDate('date', $today)
+            ->orderBy('recorded_at', 'desc')
+            ->get()
+            ->groupBy('student_id')
+            ->map(fn ($records) => $records->first());
+
         // Get temporary leaves that overlap with this schedule
         $temporaryLeaves = StudentLeavePermission::where('class_id', $class->id)
             ->where('date', $today)
@@ -235,6 +256,7 @@ class TeacherScheduleDetailController extends Controller
                 'name' => $student->user->name ?? 'N/A',
                 'nis' => $student->nis,
                 'nisn' => $student->nisn,
+                'last_status_today' => $this->formatLastStatus($latestAttendancesToday->get($student->id)),
             ];
         }
 
@@ -259,7 +281,10 @@ class TeacherScheduleDetailController extends Controller
         $user = $request->user();
         $teacher = $user->teacherProfile;
 
-        if (! $teacher || $schedule->teacher_id !== $teacher->id) {
+        $class = $schedule->dailySchedule->classSchedule->class;
+        $isHomeroom = $teacher->homeroom_class_id === $class->id;
+
+        if (! $teacher || ($schedule->teacher_id !== $teacher->id && ! $isHomeroom)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -331,7 +356,10 @@ class TeacherScheduleDetailController extends Controller
         $user = $request->user();
         $teacher = $user->teacherProfile;
 
-        if (! $teacher || $schedule->teacher_id !== $teacher->id) {
+        $class = $schedule->dailySchedule->classSchedule->class;
+        $isHomeroom = $teacher->homeroom_class_id === $class->id;
+
+        if (! $teacher || ($schedule->teacher_id !== $teacher->id && ! $isHomeroom)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -546,8 +574,6 @@ class TeacherScheduleDetailController extends Controller
         ]);
     }
 
-
-
     /**
      * Helper: Mark remaining schedules as izin (for izin pulang until end of school)
      */
@@ -626,8 +652,24 @@ class TeacherScheduleDetailController extends Controller
             'excused', 'izin' => 'Izin',
             'absent' => 'Alpha',
             'dinas' => 'Dinas',
+            'return' => 'Pulang',
             default => 'Belum Absen',
         };
+    }
+
+    private function formatLastStatus(?Attendance $attendance): ?array
+    {
+        if (! $attendance) {
+            return null;
+        }
+
+        return [
+            'status' => $attendance->status,
+            'status_label' => $this->getStatusLabel($attendance->status),
+            'time' => $attendance->checked_in_at?->format('H:i') ?? $attendance->recorded_at?->format('H:i'),
+            'reason' => $attendance->reason,
+            'is_pulang' => $attendance->status === 'return',
+        ];
     }
 
     private function getLeaveTypeLabel(string $type): string

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "electron/main.js",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port 5180 --strictPort",
     "electron:dev": "concurrently \"bun run dev\" \"wait-on -t 30000 http://127.0.0.1:5180 && ./node_modules/.bin/electron .\"",
@@ -58,13 +58,22 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "public/logo smk.png"
+    ],
+    "extraResources": [
+      {
+        "from": "public/logo smk.png",
+        "to": "assets/icon.png"
+      }
     ],
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "public/logo smk.png"
     },
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "icon": "public/logo smk.png"
     }
   }
 }

@@ -93,7 +93,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/absence-requests', [AbsenceRequestController::class, 'index']);
         Route::post('/absence-requests/{absenceRequest}/approve', [AbsenceRequestController::class, 'approve']);
         Route::post('/absence-requests/{absenceRequest}/reject', [AbsenceRequestController::class, 'reject']);
-        Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
+        Route::get('/waka/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
         Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
         Route::get('/waka/dashboard/summary', [DashboardController::class, 'wakaDashboard']);
 

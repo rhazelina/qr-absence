@@ -26,7 +26,7 @@ function JadwalSiswaEdit() {
   const [headerData, setHeaderData] = useState({
     class_id: '',
     year: '2024/2025',
-    semester: '1',
+    semester: 'ganjil',
     is_active: true,
   });
 
@@ -86,7 +86,7 @@ function JadwalSiswaEdit() {
       setHeaderData({
         class_id: scheduleData.class_id,
         year: scheduleData.year,
-        semester: scheduleData.semester,
+        semester: scheduleData.semester === '1' ? 'ganjil' : scheduleData.semester === '2' ? 'genap' : scheduleData.semester || 'ganjil',
         is_active: scheduleData.is_active,
       });
 
@@ -281,8 +281,8 @@ function JadwalSiswaEdit() {
                      <div className="jadwal-siswa-edit-group">
                         <label>Semester</label>
                         <select name="semester" value={headerData.semester} onChange={handleHeaderChange} className="edit-input">
-                           <option value="1">Ganjil</option>
-                           <option value="2">Genap</option>
+                           <option value="ganjil">Ganjil</option>
+                           <option value="genap">Genap</option>
                         </select>
                      </div>
                      <div className="jadwal-siswa-edit-group active-toggle">

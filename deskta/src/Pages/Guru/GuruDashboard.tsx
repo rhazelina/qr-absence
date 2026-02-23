@@ -10,6 +10,7 @@ import BookIcon from "../../assets/Icon/open-book.png";
 import EyeIcon from "../../assets/Icon/Eye.png";
 import QRCodeIcon from "../../assets/Icon/qr_code.png";
 import { JadwalModal } from "../../component/Shared/Form/Jadwal";
+import { Modal } from "../../component/Shared/Modal";
 import { MetodeGuru } from "../../component/Shared/Form/MetodeGuru";
 import { TidakBisaMengajar } from "../../component/Shared/Form/TidakBisaMengajar";
 
@@ -296,6 +297,10 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   const [currentDateStr, setCurrentDateStr] = useState("");
   const [currentTimeStr, setCurrentTimeStr] = useState("");
   const [iconStates, setIconStates] = useState<Record<string, "qr" | "eye">>({});
+  const [isScanning, setIsScanning] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
   // ========== EFFECTS ==========
   useEffect(() => {
@@ -373,20 +378,37 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
   // ========== SCHEDULE HANDLERS ==========
 
+  const handleGenerateQrForSchedule = async (schedule: ScheduleItem) => {
+    try {
+      setIsGeneratingQr(true);
+      const response = await attendanceService.generateQrCode(schedule.id, 'student');
+      
+      if (response && response.token) {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(response.token)}`;
+        setQrCode(qrUrl);
+        setSelectedSchedule(schedule);
+        setIsQrModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Error generating QR:', err);
+      alert(err.message || 'Gagal membuat QR Code');
+    } finally {
+      setIsGeneratingQr(false);
+    }
+  };
 
   const handleActionClick = (e: React.MouseEvent, schedule: ScheduleItem) => {
     e.stopPropagation();
     const currentState = iconStates[schedule.id] || "qr";
 
     if (currentState === "qr") {
-      // First click: Change to Eye and open QR Modal
+      // First click: Generate QR and show it
       setIconStates((prev) => ({ ...prev, [schedule.id]: "eye" }));
       setSelectedSchedule(schedule);
-      setActiveModal("metode");
+      handleGenerateQrForSchedule(schedule);
     } else {
-      // Second click: Change back to QR and navigate to Jadwal
+      // Second click: Change back to QR and navigate to view attendance
       setIconStates((prev) => ({ ...prev, [schedule.id]: "qr" }));
-
       setSelectedSchedule(schedule);
       setCurrentPage("kehadiran");
     }
@@ -429,14 +451,22 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   };
 
   const handleScanSuccess = async (text: string) => {
-    if (!selectedSchedule) return;
+    if (!selectedSchedule || isScanning) return;
+    
+    setIsScanning(true);
+    
     try {
       await attendanceService.scanStudent(text, selectedSchedule.id);
       alert("Berhasil mencatat kehadiran siswa!");
       setActiveModal(null);
       setCurrentPage("input-manual");
     } catch (error: any) {
-      alert(error.message || "Gagal mencatat kehadiran.");
+      const errorMessage = error.response?.status === 409 
+        ? "Siswa ini sudah melakukan absensi!"
+        : error.message || "Gagal mencatat kehadiran.";
+      alert(errorMessage);
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -879,6 +909,85 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
               onSubmit={handleSubmitTidakBisaMengajar}
               onPilihMetode={handlePilihMetodeDariTidakBisaMengajar}
             />
+
+            {/* QR Code Display Modal */}
+            <Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)}>
+              <div style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 24,
+                padding: 28,
+                maxWidth: 400,
+                width: "100%",
+                margin: "0 auto",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                textAlign: "center"
+              }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0, marginBottom: 8 }}>
+                  QR Code Absensi
+                </h2>
+                <p style={{ fontSize: 14, color: "#6B7280", marginTop: 0, marginBottom: 16 }}>
+                  {selectedSchedule?.subject} - {selectedSchedule?.className}
+                </p>
+                
+                <div style={{
+                  border: "1px dashed #D1D5DB",
+                  borderRadius: 16,
+                  padding: 20,
+                  marginBottom: 20,
+                  background: "#fff"
+                }}>
+                  {isGeneratingQr ? (
+                    <div style={{ padding: 40 }}>Membuat QR Code...</div>
+                  ) : qrCode ? (
+                    <img src={qrCode} alt="QR Code" style={{ width: 250, height: 250 }} />
+                  ) : (
+                    <div style={{ padding: 40 }}>Tidak ada QR</div>
+                  )}
+                </div>
+
+                <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
+                  QR Code berlaku selama 2 jam
+                </p>
+
+                <button
+                  onClick={() => {
+                    setIsQrModalOpen(false);
+                    setCurrentPage("input-manual");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px 24px",
+                    background: "#2563EB",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer"
+                  }}
+                >
+                  Mulai Presensi Manual
+                </button>
+
+                <button
+                  onClick={() => setIsQrModalOpen(false)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 24px",
+                    background: "#F3F4F6",
+                    color: "#374151",
+                    border: "none",
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    marginTop: 8
+                  }}
+                >
+                  Tutup
+                </button>
+              </div>
+            </Modal>
           </GuruLayout>
         );
     }

@@ -30,6 +30,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Demo Mode
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, demo mode bypasses certain validations for demonstration
+    | purposes, such as QR code time restrictions.
+    |
+    */
+
+    'demo_mode' => env('APP_DEMO_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Debug Mode
     |--------------------------------------------------------------------------
     |

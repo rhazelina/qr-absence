@@ -7,7 +7,6 @@ use App\Models\Attendance;
 use App\Models\Classes;
 use App\Models\Major;
 use App\Models\ScheduleItem;
-use App\Models\Schedule;
 use App\Models\Semester;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;

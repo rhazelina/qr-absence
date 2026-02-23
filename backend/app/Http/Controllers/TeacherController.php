@@ -20,7 +20,24 @@ class TeacherController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'role' => ['nullable', 'string', 'in:Guru,Wali Kelas,Staff'],
+            'per_page' => ['nullable', 'integer', 'min:-1', 'max:1000'],
+        ]);
+
         $query = TeacherProfile::query()->with(['user', 'homeroomClass']);
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->string('role'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })->orWhere('nis', 'like', "%{$search}%");
+        }
 
         $perPage = $request->integer('per_page', 10);
 
@@ -28,8 +45,6 @@ class TeacherController extends Controller
 
         return TeacherResource::collection($teachers)->response();
     }
-
-
 
     /**
      * Create Teacher
@@ -39,6 +54,12 @@ class TeacherController extends Controller
     public function store(\App\Http\Requests\StoreTeacherRequest $request): JsonResponse
     {
         $data = $request->validated();
+
+        // Auto-generate missing fields (order matters!)
+        $data['nip'] = $data['nip'] ?? ($data['kode_guru'] ?? null);
+        $data['username'] = $data['username'] ?? ($data['nip'] ?? null);
+        $data['password'] = $data['password'] ?? ($data['nip'] ?? 'password123');
+        $data['jabatan'] = $data['jabatan'] ?? 'Guru';
 
         $teacher = DB::transaction(function () use ($data) {
             $user = User::create([
@@ -85,7 +106,10 @@ class TeacherController extends Controller
     {
         $data = $request->validated();
 
-        DB::transaction(function () use ($data, $teacher): void {
+        $oldHomeroomClassId = $teacher->homeroom_class_id;
+        $newHomeroomClassId = $data['homeroom_class_id'] ?? null;
+
+        DB::transaction(function () use ($data, $teacher, $oldHomeroomClassId, $newHomeroomClassId): void {
             if (isset($data['name']) || isset($data['email']) || isset($data['password']) || isset($data['phone']) || isset($data['contact'])) {
                 $teacher->user->update([
                     'name' => $data['name'] ?? $teacher->user->name,
@@ -105,6 +129,20 @@ class TeacherController extends Controller
                 'konsentrasi_keahlian' => $data['konsentrasi_keahlian'] ?? $teacher->konsentrasi_keahlian,
                 'kode_guru' => $data['kode_guru'] ?? $teacher->kode_guru,
             ]);
+
+            // Sync class if homeroom changed
+            if ($oldHomeroomClassId !== $newHomeroomClassId) {
+                // Clear old class's homeroom_teacher_id
+                if ($oldHomeroomClassId) {
+                    \App\Models\Classes::where('id', $oldHomeroomClassId)
+                        ->update(['homeroom_teacher_id' => null]);
+                }
+                // Set new class's homeroom_teacher_id
+                if ($newHomeroomClassId) {
+                    \App\Models\Classes::where('id', $newHomeroomClassId)
+                        ->update(['homeroom_teacher_id' => $teacher->id]);
+                }
+            }
         });
 
         return response()->json($teacher->fresh()->load(['user', 'homeroomClass']));
@@ -119,6 +157,7 @@ class TeacherController extends Controller
     {
         try {
             $teacher->user()->delete();
+
             return response()->json(['message' => 'Deleted']);
         } catch (\Illuminate\Database\QueryException $e) {
             if ($e->errorInfo[1] == 1451 || $e->getCode() == 23000) {
@@ -373,6 +412,11 @@ class TeacherController extends Controller
      */
     public function getStudentsFollowUp(Request $request): JsonResponse
     {
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:-1', 'max:1000'],
+        ]);
+
         $user = $request->user();
         $teacher = $user->teacherProfile;
 

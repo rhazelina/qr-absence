@@ -301,7 +301,7 @@ export default function GuruAdmin({
       const payload: any = {
         name: formData.namaGuru,
         nip: formData.kodeGuru,
-        role: formData.role,
+        jabatan: formData.role, // Backend expects 'jabatan', not 'role'
         phone: formData.noTelp,
         email: formData.email || `${formData.kodeGuru}@deskta.com`,
         password: formData.password || 'password123',
@@ -315,7 +315,9 @@ export default function GuruAdmin({
           payload.homeroom_class_id = selectedClass.id;
         }
       } else if (formData.role === 'Staff') {
-        payload.waka_field = formData.keterangan;
+        payload.bidang = formData.keterangan; // Backend expects 'bidang', not 'waka_field'
+      } else if (formData.role === 'Waka') {
+        payload.bidang = formData.keterangan;
       }
 
       await teacherService.createTeacher(payload);
@@ -522,6 +524,23 @@ export default function GuruAdmin({
     }
   };
 
+  const handleExportExcel = () => {
+    const exportData = filteredData.map((guru, index) => ({
+      'No': index + 1,
+      'NIP/Kode': guru.nip,
+      'Nama Guru': guru.name,
+      'Email': guru.email || '',
+      'Peran': guru.role,
+      'Mata Pelajaran': guru.subject || '',
+      'Keterangan': guru.keterangan
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Guru');
+    XLSX.writeFile(wb, 'Data_Guru.xlsx');
+  };
+
   /* ===================== RENDER ===================== */
   return (
     <AdminLayout
@@ -572,6 +591,7 @@ export default function GuruAdmin({
              <button onClick={() => setIsEksporDropdownOpen(!isEksporDropdownOpen)} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0B1221', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileDown size={14}/> Ekspor</button>
              {isEksporDropdownOpen && (
                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 20 }}>
+                 <button onClick={() => { setIsEksporDropdownOpen(false); handleExportExcel(); }} style={{ padding: '8px 12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>Excel</button>
                  <button onClick={() => { setIsEksporDropdownOpen(false); handleExportPDF(); }} style={{ padding: '8px 12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>PDF</button>
                </div>
              )}

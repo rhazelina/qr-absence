@@ -11,6 +11,8 @@ function DashboardGuru() {
   const [currentDate, setCurrentDate] = useState('');
   const [currentFormattedDate, setCurrentFormattedDate] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [qrCode, setQrCode] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
   const sidebarOpen = true;
 
   // Data State
@@ -115,14 +117,14 @@ function DashboardGuru() {
       const date = now.getDate();
       const monthName = months[now.getMonth()];
       const year = now.getFullYear();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
 
       setCurrentDate(`${dayName}, ${date} ${monthName} ${year}`);
 
-      // Format untuk key storage
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const formattedDate = `${day}-${month}-${year} (${dayName})`;
-      setCurrentFormattedDate(formattedDate);
+      // Format untuk key storage dan API (ISO format YYYY-MM-DD)
+      const isoDate = `${year}-${month}-${day}`;
+      setCurrentFormattedDate(isoDate);
     };
 
     updateDateTime();
@@ -156,6 +158,33 @@ function DashboardGuru() {
         }
       });
     }
+  };
+
+  const handleGenerateQr = async (jadwal) => {
+    setQrLoading(true);
+    setSelectedSchedule(jadwal);
+    try {
+      const response = await apiService.generateClassQr({
+        schedule_id: jadwal.id,
+        type: 'student',
+        expires_in_minutes: 120
+      });
+      
+      if (response && response.token) {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(response.token)}`;
+        setQrCode(qrUrl);
+      }
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      alert('Gagal membuat QR Code. Silakan coba lagi.');
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleCloseQrModal = () => {
+    setQrCode(null);
+    setSelectedSchedule(null);
   };
 
   const handleLogout = () => {
@@ -279,7 +308,7 @@ function DashboardGuru() {
       </main>
 
       {/* MODAL - Detail Presensi */}
-      {selectedSchedule && (
+      {selectedSchedule && !qrCode && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div
             className="modal-absen-detail"
@@ -335,9 +364,77 @@ function DashboardGuru() {
                   : "Silakan mulai presensi untuk mencatat kehadiran siswa."}
               </p>
 
-              <button className="btn-mulai-absen-full" onClick={handleAbsensiSelesai}>
-                {completedAbsensi.has(selectedSchedule.id) ? 'Lihat/Edit Presensi' : 'Mulai Presensi'}
-              </button>
+              <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                <button className="btn-mulai-absen-full" onClick={handleAbsensiSelesai}>
+                  {completedAbsensi.has(selectedSchedule.id) ? 'Lihat/Edit Presensi' : 'Mulai Presensi'}
+                </button>
+                {!completedAbsensi.has(selectedSchedule.id) && (
+                  <button 
+                    className="btn-mulai-absen-full" 
+                    onClick={() => handleGenerateQr(selectedSchedule)}
+                    disabled={qrLoading}
+                    style={{ background: '#10b981' }}
+                  >
+                    {qrLoading ? 'Membuat QR...' : 'Buat QR Code'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL - QR Code Display */}
+      {qrCode && selectedSchedule && (
+        <div className="modal-overlay" onClick={handleCloseQrModal}>
+          <div className="modal-absen-detail" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-detail-header">
+              <div className="header-left">
+                <div className="header-icon" style={{ background: '#10b981' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                    <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM15 19h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2zM17 17h2v2h-2zM19 19h2v2h-2z" />
+                  </svg>
+                </div>
+                <h2>QR Code Absensi</h2>
+              </div>
+              <button className="header-close" onClick={handleCloseQrModal} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <div className="modal-detail-body" style={{ textAlign: 'center', padding: '30px 20px' }}>
+              <p style={{ marginBottom: '20px', color: '#666' }}>
+                {selectedSchedule.mataPelajaran} - {selectedSchedule.kelas}
+              </p>
+              
+              <div style={{ 
+                background: '#fff', 
+                padding: '20px', 
+                borderRadius: '12px', 
+                display: 'inline-block',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}>
+                <img src={qrCode} alt="QR Code" style={{ width: '250px', height: '250px' }} />
+              </div>
+
+              <p style={{ marginTop: '20px', color: '#888', fontSize: '14px' }}>
+                QR Code berlaku selama 2 jam
+              </p>
+
+              <div style={{ marginTop: '25px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button 
+                  className="btn-mulai-absen-full" 
+                  onClick={handleAbsensiSelesai}
+                  style={{ flex: 1 }}
+                >
+                  Mulai Presensi Manual
+                </button>
+                <button 
+                  className="btn-mulai-absen-full" 
+                  onClick={handleCloseQrModal}
+                  style={{ flex: 1, background: '#6b7280' }}
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>

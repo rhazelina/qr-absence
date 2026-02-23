@@ -243,6 +243,6 @@ it('allows homeroom teacher (wali kelas) to record bulk attendance for their cla
     $this->assertDatabaseHas('attendances', [
         'student_id' => $student2->studentProfile->id,
         'schedule_id' => $schedule->id,
-        'status' => 'alfa',
+        'status' => 'absent', // 'alfa' is normalized to 'absent'
     ]);
 });

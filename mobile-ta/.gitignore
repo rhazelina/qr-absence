@@ -1,0 +1,116 @@
+# Android/Gradle
+*.apk
+*.ap_
+*.dex
+*.class
+*.jar
+*.so
+*.aar
+bin/
+build/
+.gradle/
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+/captures
+.externalNativeBuild
+.cxx/
+/local.properties
+local.properties
+gradle-wrapper.jar
+
+# Android Studio
+.DS_Store
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/vcs.xml
+.idea/jsLibraryMappings.xml
+.idea/caches/
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/runConfigurations.xml
+.idea/shelf/
+
+# Kotlin
+.kotlin_module
+kotlin-build/
+
+# Lint
+lint-results.txt
+lint-results-debug.html
+lint-results-release.html
+
+# Laravel/PHP Backend
+vendor/
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+.env.local
+.env.*.local
+.env.backup
+storage/logs/
+storage/cache/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+bootstrap/cache/
+.php_cs.cache
+.php-cs-fixer.cache
+phpunit.result.cache
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+.npm
+
+# Temporary files
+*.tmp
+*.temp
+.~*
+
+# Build outputs
+dist/
+*.min.js
+*.min.css
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Testing
+test-results/
+.mocha.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Misc
+*.patch
+*.orig

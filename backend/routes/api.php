@@ -72,11 +72,11 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::middleware(['role:admin', 'admin-type:waka'])->group(function (): void {
         Route::post('/classes/{class}/schedules/bulk', [ScheduleController::class, 'bulkUpsert']);
         // Absence requests moved to shared group
-        Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
-        Route::get('/waka/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']); // Backward-compatible alias
+        Route::get('/waka/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
         Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
         Route::get('/waka/dashboard/summary', [DashboardController::class, 'wakaDashboard']);
         Route::get('/waka/classes/{class}/attendance-summary', [AttendanceController::class, 'wakaClassSummary']);
+        Route::get('/classes/{class}/schedules/active', [ScheduleController::class, 'byClass']);
         Route::get('/students/absences', [AttendanceController::class, 'studentsAbsences']);
         Route::get('/teachers/{teacher}/attendance-history', [AttendanceController::class, 'teacherAttendanceHistory']);
         Route::get('/waka/classes/{class}/attendance', [AttendanceController::class, 'classAttendanceByDate']);
@@ -100,7 +100,6 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/import/jadwal', [\App\Http\Controllers\ImportController::class, 'importJadwal']);
         Route::get('/students/{student}/attendance', [StudentController::class, 'attendanceHistory']);
         Route::apiResource('schedules', ScheduleController::class)->except(['index', 'show']);
-        Route::post('/classes/{class}/schedules/bulk', [ScheduleController::class, 'bulkUpsert']);
         Route::get('/teachers/{teacher}/schedules', [ScheduleController::class, 'byTeacher']);
         // Route::get('/classes/{class}/schedules', [ScheduleController::class, 'byClass']); // Moved to admin/teacher group
         Route::apiResource('school-years', SchoolYearController::class);
@@ -229,13 +228,18 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/absence-requests/{absenceRequest}/reject', [AbsenceRequestController::class, 'reject']);
     });
 
-    Route::middleware(['role:student,teacher', 'class-officer'])->group(function (): void {
+    Route::middleware('role:student,teacher')->group(function (): void {
         Route::prefix('me/class')->group(function () {
             Route::get('/', [ClassController::class, 'myClass']);
-            Route::get('/dashboard', [DashboardController::class, 'classDashboard']);
             Route::get('/schedules', [ClassController::class, 'myClassSchedules']);
-            Route::get('/attendance', [ClassController::class, 'myClassAttendance']);
             Route::get('/students', [ClassController::class, 'myClassStudents']);
+        });
+    });
+
+    Route::middleware(['role:student,teacher', 'class-officer'])->group(function (): void {
+        Route::prefix('me/class')->group(function () {
+            Route::get('/dashboard', [DashboardController::class, 'classDashboard']);
+            Route::get('/attendance', [ClassController::class, 'myClassAttendance']);
         });
     });
 

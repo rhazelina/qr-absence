@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import './DashboardWakel.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
 import apiService from '../../utils/api';
@@ -9,6 +10,8 @@ const DashboardWakel = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const scannerRef = useRef(null);
 
   const [waliKelas, setWaliKelas] = useState({
     nama: "",
@@ -117,6 +120,13 @@ const DashboardWakel = () => {
     return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
+  const formatDateISO = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handleIconClick = (jadwal) => {
     const isCompleted = completedAbsensi.has(jadwal.id);
 
@@ -131,10 +141,40 @@ const DashboardWakel = () => {
   const handleCloseModal = () => {
     setSelectedSchedule(null);
     setScanSuccess(false);
+    stopScanner();
   };
 
-  const handleScanSuccess = () => {
-    setScanSuccess(true);
+  const stopScanner = () => {
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(() => {});
+      scannerRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
+  const startScanner = () => {
+    setIsScanning(true);
+    
+    if (scannerRef.current) {
+      scannerRef.current.clear().catch(() => {});
+    }
+
+    scannerRef.current = new Html5QrcodeScanner(
+      "qr-reader",
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      false
+    );
+
+    scannerRef.current.render(
+      (decodedText) => {
+        console.log("QR Code scanned:", decodedText);
+        stopScanner();
+        setScanSuccess(true);
+      },
+      () => {
+        // Ignore scan errors
+      }
+    );
   };
 
   const handleMulaiAbsen = () => {
@@ -153,7 +193,7 @@ const DashboardWakel = () => {
       jamKe: selectedSchedule.jamKe,
       kelas: selectedSchedule.kelas,
       waktu: selectedSchedule.waktu,
-      tanggal: formatDate(currentTime),
+      tanggal: formatDateISO(currentTime),
       namaGuru: waliKelas.nama,
       nipGuru: waliKelas.nip,
       daftarSiswa: daftarSiswaYangDipilih,
@@ -360,9 +400,22 @@ const DashboardWakel = () => {
                     </div>
                   </div>
                 </div>
-                <button onClick={handleScanSuccess} className="btn-simulasi">
-                  Simulasi Scan Berhasil
-                </button>
+                {!isScanning && !scanSuccess ? (
+                  <button onClick={startScanner} className="btn-simulasi" style={{ background: '#0d2847' }}>
+                    Mulai Scan QR
+                  </button>
+                ) : isScanning ? (
+                  <div id="qr-reader" style={{ width: '100%' }}></div>
+                ) : null}
+
+                {scanSuccess && (
+                  <div style={{ textAlign: 'center', padding: '20px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#10b981" style={{ width: '64px', height: '64px', margin: '0 auto' }}>
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <p style={{ color: '#10b981', fontWeight: 'bold', marginTop: '10px' }}>QR Code Berhasil discan!</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

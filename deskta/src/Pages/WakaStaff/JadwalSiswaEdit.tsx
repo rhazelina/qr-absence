@@ -45,7 +45,7 @@ interface ScheduleDay {
 }
 
 const DAY_OPTIONS = [
-  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+  'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'
 ];
 
 const SEMESTER_OPTIONS = [
@@ -57,7 +57,7 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
   const isEditMode = !!id;
 
   const [headerData, setHeaderData] = useState<JadwalHeader>({
-    class_id: '',
+    class_id: id?.toString() || '',
     year: '2024/2025',
     semester: '1',
     is_active: true,
@@ -104,39 +104,45 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
   const fetchExistingSchedule = async () => {
     try {
       setLoading(true);
-      const data = await scheduleService.getSchedule(id);
+      const data = await scheduleService.getScheduleByClass(id);
 
-      setHeaderData({
-        class_id: data.class_id,
-        year: data.year,
-        semester: data.semester,
-        is_active: data.is_active,
-      });
+      if (data) {
+        setHeaderData({
+          class_id: data.class_id.toString(),
+          year: data.year,
+          semester: data.semester,
+          is_active: data.is_active,
+        });
 
-      // Map existing daily schedules and items
-      const mappedDays = data.daily_schedules.map((day: any) => ({
-        day: day.day,
-        items: day.schedule_items.map((item: any) => ({
-          subject_id: item.subject_id,
-          teacher_id: item.teacher_id,
-          start_time: item.start_time?.substring(0, 5),
-          end_time: item.end_time?.substring(0, 5),
-          room: item.room || ''
-        }))
-      }));
+        // Map existing daily schedules and items
+        const mappedDays = data.daily_schedules.map((day: any) => ({
+          day: day.day,
+          items: day.schedule_items.map((item: any) => ({
+            subject_id: item.subject_id.toString(),
+            teacher_id: item.teacher_id.toString(),
+            start_time: item.start_time?.substring(0, 5),
+            end_time: item.end_time?.substring(0, 5),
+            room: item.room || ''
+          }))
+        }));
 
-      setDays(mappedDays);
+        setDays(mappedDays);
 
-      // Fetch class instance for schedule image
-      if (data.class_id) {
-        const classList = await masterService.getClasses();
-        const currentClass = (classList.data || classList).find((c: any) => c.id === data.class_id);
-        if (currentClass?.schedule_image_url) {
-          setPreviewImage(currentClass.schedule_image_url);
+        // Fetch class instance for schedule image
+        if (data.class_id) {
+          const classList = await masterService.getClasses();
+          const currentClass = (classList.data || classList).find((c: any) => c.id === data.class_id);
+          if (currentClass?.schedule_image_url) {
+            setPreviewImage(`${currentClass.schedule_image_url}?t=${Date.now()}`);
+          }
         }
       }
-    } catch (error) {
-      console.error('Error fetching schedule:', error);
+    } catch (error: any) {
+      if (error.status === 404) {
+        console.log('No existing schedule for this class, starting fresh.');
+      } else {
+        console.error('Error fetching schedule:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -217,12 +223,8 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
     };
 
     try {
-      // 1. Digital Schedule Structure
-      if (isEditMode) {
-        await scheduleService.updateSchedule(id, payload);
-      } else {
-        await scheduleService.createSchedule(payload);
-      }
+      // 1. Digital Schedule Structure - Always use bulkUpsert for class-based schedules
+      await scheduleService.bulkUpsert(id, payload);
 
       // 2. Schedule Image (Optional)
       if (scheduleImage && headerData.class_id) {
@@ -256,7 +258,7 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
     return (
       <StaffLayout pageTitle="Loading..." currentPage="jadwal-kelas" onMenuClick={onMenuClick} user={user} onLogout={onLogout}>
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </StaffLayout>
     );
@@ -271,362 +273,359 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
       onLogout={onLogout}
       pageIcon={<Calendar size={24} />}
     >
-      <div className="min-h-screen bg-slate-50/50 pb-20">
-        <div className="px-4 max-w-7xl mx-auto pt-6">
-          {/* BREADCRUMB */}
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-6 overflow-x-auto whitespace-nowrap px-2">
-            <button
-              onClick={() => onMenuClick('dashboard')}
-              className="hover:text-emerald-600 transition-colors flex items-center gap-2"
-            >
-              <Home size={14} />
-              Dashboard
-            </button>
-            <ChevronRight size={10} />
-            <button
-              onClick={() => onMenuClick('jadwal-kelas')}
-              className="hover:text-emerald-600 transition-colors"
-            >
-              Jadwal Kelas
-            </button>
-            <ChevronRight size={10} />
-            <span className="text-emerald-600 font-bold">{isEditMode ? 'Ubah Struktur' : 'Buat Baru'}</span>
-          </div>
+      <div className="schedule-edit-container">
+        {/* BREADCRUMB */}
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-400 mb-6 overflow-x-auto whitespace-nowrap px-2">
+          <button
+            onClick={() => onMenuClick('dashboard')}
+            className="hover:text-blue-600 transition-colors flex items-center gap-2"
+          >
+            <Home size={14} />
+            Dashboard
+          </button>
+          <ChevronRight size={10} />
+          <button
+            onClick={() => onMenuClick('jadwal-kelas')}
+            className="hover:text-blue-600 transition-colors"
+          >
+            Jadwal Kelas
+          </button>
+          <ChevronRight size={10} />
+          <span className="text-blue-600 font-bold">{isEditMode ? 'Ubah Struktur' : 'Buat Baru'}</span>
+        </div>
 
-          {/* HEADER */}
-          <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8 mb-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="flex items-center gap-6">
-                <div className="p-5 bg-emerald-600 text-white rounded-[1.5rem] shadow-xl shadow-emerald-100">
-                  <Calendar size={32} />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-                    {isEditMode ? 'Edit Jadwal Kelas' : 'Buat Jadwal Baru'}
-                  </h1>
-                  <p className="text-slate-500 font-bold mt-1">Konfigurasi struktur jadwal digital dan visual</p>
-                </div>
+        {/* HEADER SECTION */}
+        <div className="schedule-edit-card mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="p-4 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100">
+                <Calendar size={28} />
               </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => onMenuClick('jadwal-kelas')}
-                  className="px-6 py-3 bg-white border-2 border-slate-100 rounded-2xl font-bold text-slate-600 flex items-center gap-3 hover:border-emerald-600 transition-all shadow-sm"
-                >
-                  <ArrowLeft size={18} className="text-emerald-600" />
-                  <span>Kembali</span>
-                </button>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {isEditMode ? 'Edit Jadwal Kelas' : 'Buat Jadwal Baru'}
+                </h1>
+                <p className="text-slate-500 font-medium mt-1">Konfigurasi struktur jadwal digital dan visual</p>
               </div>
             </div>
+
+            <button
+              onClick={() => onMenuClick('jadwal-kelas')}
+              className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg font-semibold text-slate-600 flex items-center gap-2 hover:border-blue-600 transition-all shadow-sm"
+            >
+              <ArrowLeft size={18} className="text-blue-600" />
+              <span>Kembali</span>
+            </button>
           </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 flex flex-col gap-8">
-              {/* INFORMATION CARD */}
-              <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-8 border-b border-slate-100 bg-slate-50/30">
-                  <h2 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                    <Settings2 className="text-emerald-600" size={24} /> Informasi Akademik
-                  </h2>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 flex flex-col gap-8">
+            {/* INFORMATION CARD */}
+            <div className="schedule-edit-card !p-0 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-3">
+                  <Settings2 className="text-blue-600" size={20} /> Informasi Akademik
+                </h2>
+              </div>
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Target Kelas</label>
+                  <select
+                    name="class_id"
+                    value={headerData.class_id}
+                    onChange={handleHeaderChange}
+                    className="premium-input premium-select"
+                    required
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {classes.map(c => (
+                      <option key={c.id} value={c.id}> {c.label}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-1">Target Kelas</label>
-                    <select
-                      name="class_id"
-                      value={headerData.class_id}
-                      onChange={handleHeaderChange}
-                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-emerald-600 transition-all outline-none appearance-none"
-                      required
-                    >
-                      <option value="">-- Pilih Kelas --</option>
-                      {classes.map(c => (
-                        <option key={c.id} value={c.id}>{c.grade} {c.label}</option>
-                      ))}
-                    </select>
-                  </div>
 
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-1">Tahun Ajaran</label>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Tahun Ajaran</label>
+                  <input
+                    type="text"
+                    name="year"
+                    value={headerData.year}
+                    onChange={handleHeaderChange}
+                    className="premium-input"
+                    placeholder="2024/2025"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider pl-1">Semester</label>
+                  <select
+                    name="semester"
+                    value={headerData.semester}
+                    onChange={handleHeaderChange}
+                    className="premium-input premium-select"
+                  >
+                    {SEMESTER_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center pt-4">
+                  <label className="relative inline-flex items-center cursor-pointer group">
                     <input
-                      type="text"
-                      name="year"
-                      value={headerData.year}
+                      type="checkbox"
+                      name="is_active"
+                      checked={headerData.is_active}
                       onChange={handleHeaderChange}
-                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-emerald-600 transition-all outline-none"
-                      placeholder="2024/2025"
+                      className="sr-only peer"
                     />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-slate-400 uppercase tracking-widest pl-1">Semester</label>
-                    <select
-                      name="semester"
-                      value={headerData.semester}
-                      onChange={handleHeaderChange}
-                      className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-700 focus:border-emerald-600 transition-all outline-none appearance-none"
-                    >
-                      {SEMESTER_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex items-center pt-4">
-                    <label className="relative inline-flex items-center cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        name="is_active"
-                        checked={headerData.is_active}
-                        onChange={handleHeaderChange}
-                        className="sr-only peer"
-                      />
-                      <div className="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
-                      <span className="ml-4 text-sm font-black text-slate-700 select-none group-hover:text-emerald-700 transition-colors uppercase tracking-wider">Set Sebagai Aktif</span>
-                    </label>
-                  </div>
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
+                    <span className="ml-3 text-sm font-bold text-slate-700 select-none group-hover:text-blue-600 transition-colors uppercase tracking-wider">Set Sebagai Aktif</span>
+                  </label>
                 </div>
               </div>
+            </div>
 
-              {/* DAYS SECTION */}
-              <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between px-2">
-                  <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                    Struktur Digital <span className="bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-full font-black">{days.length} HARI</span>
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={addDay}
-                    className="bg-slate-900 text-white px-6 py-3 rounded-2xl flex items-center gap-2 font-bold hover:bg-black transition-all shadow-lg shadow-slate-200"
-                  >
-                    <Plus size={18} /> Tambah Hari
-                  </button>
-                </div>
+            {/* DAYS SECTION */}
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-3">
+                  Struktur Digital <span className="bg-blue-100 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-bold">{days.length} HARI</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={addDay}
+                  className="btn-add-day"
+                >
+                  <Plus size={18} /> Tambah Hari
+                </button>
+              </div>
 
-                <div className="space-y-8">
-                  {days.map((day, dayIndex) => (
-                    <div key={dayIndex} className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden ring-1 ring-slate-50">
-                      <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="bg-white px-4 py-2 rounded-xl border-2 border-slate-100">
+              <div className="space-y-6">
+                {days.map((day, dayIndex) => (
+                  <div key={dayIndex} className="day-card">
+                    <div className="day-header">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                          <select
+                            value={day.day}
+                            onChange={(e) => updateDayId(dayIndex, e.target.value)}
+                            className="bg-transparent font-bold text-slate-900 outline-none cursor-pointer text-sm uppercase tracking-wider"
+                          >
+                            {DAY_OPTIONS.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <span className="text-xs font-semibold text-slate-400">{day.items.length} Pelajaran</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeDay(dayIndex)}
+                        className="btn-delete-item !text-slate-400 hover:!text-rose-500 hover:bg-rose-50"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+
+                    <div className="p-2">
+                      {day.items.map((item, itemIndex) => (
+                        <div key={itemIndex} className="schedule-item-row group">
+                          {/* TIME */}
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                              <Clock size={10} /> Alokasi Waktu
+                            </label>
+                            <div className="time-input-group">
+                              <input
+                                type="time"
+                                value={item.start_time}
+                                onChange={(e) => updateItem(dayIndex, itemIndex, 'start_time', e.target.value)}
+                                className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full"
+                              />
+                              <span className="text-slate-300">-</span>
+                              <input
+                                type="time"
+                                value={item.end_time}
+                                onChange={(e) => updateItem(dayIndex, itemIndex, 'end_time', e.target.value)}
+                                className="bg-transparent text-xs font-bold text-slate-800 outline-none w-full"
+                              />
+                            </div>
+                          </div>
+
+                          {/* SUBJECT */}
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                              <BookOpen size={10} /> Mapel
+                            </label>
                             <select
-                              value={day.day}
-                              onChange={(e) => updateDayId(dayIndex, e.target.value)}
-                              className="bg-transparent font-black text-slate-900 outline-none cursor-pointer text-sm uppercase tracking-widest"
+                              value={item.subject_id}
+                              onChange={(e) => updateItem(dayIndex, itemIndex, 'subject_id', e.target.value)}
+                              className="premium-input premium-select !py-2"
+                              required
                             >
-                              {DAY_OPTIONS.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
+                              <option value="">Mapel</option>
+                              {subjects.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
                               ))}
                             </select>
                           </div>
-                          <span className="text-xs font-bold text-slate-400">{day.items.length} Pelajaran Terdaftar</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeDay(dayIndex)}
-                          className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
 
-                      <div className="p-2">
-                        {day.items.map((item, itemIndex) => (
-                          <div key={itemIndex} className="p-6 border-b border-slate-50 last:border-0 grid grid-cols-1 md:grid-cols-12 gap-6 items-end group hover:bg-slate-50/50 transition-colors">
-                            {/* TIME */}
-                            <div className="md:col-span-3 space-y-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                <Clock size={10} /> Alokasi Waktu
-                              </label>
-                              <div className="flex items-center gap-2 bg-white border-2 border-slate-100 p-3 rounded-2xl">
-                                <input
-                                  type="time"
-                                  value={item.start_time}
-                                  onChange={(e) => updateItem(dayIndex, itemIndex, 'start_time', e.target.value)}
-                                  className="bg-transparent text-xs font-black text-slate-800 outline-none w-full"
-                                />
-                                <span className="text-slate-300">-</span>
-                                <input
-                                  type="time"
-                                  value={item.end_time}
-                                  onChange={(e) => updateItem(dayIndex, itemIndex, 'end_time', e.target.value)}
-                                  className="bg-transparent text-xs font-black text-slate-800 outline-none w-full"
-                                />
-                              </div>
-                            </div>
-
-                            {/* SUBJECT */}
-                            <div className="md:col-span-3 space-y-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                <BookOpen size={10} /> Mata Pelajaran
-                              </label>
-                              <select
-                                value={item.subject_id}
-                                onChange={(e) => updateItem(dayIndex, itemIndex, 'subject_id', e.target.value)}
-                                className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-black text-slate-800 focus:border-emerald-600 outline-none appearance-none"
-                                required
-                              >
-                                <option value="">Mapel</option>
-                                {subjects.map(s => (
-                                  <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* TEACHER */}
-                            <div className="md:col-span-3 space-y-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                <User size={10} /> Pengajar
-                              </label>
-                              <select
-                                value={item.teacher_id}
-                                onChange={(e) => updateItem(dayIndex, itemIndex, 'teacher_id', e.target.value)}
-                                className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-black text-slate-800 focus:border-emerald-600 outline-none appearance-none"
-                                required
-                              >
-                                <option value="">Guru</option>
-                                {teachers.map(t => (
-                                  <option key={t.id} value={t.id}>{t.user?.name || t.kode_guru}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* ROOM & ACTION */}
-                            <div className="md:col-span-3 flex items-center gap-3">
-                              <div className="flex-1 space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                  <MapPin size={10} /> Ruang
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Cth: A1"
-                                  value={item.room}
-                                  onChange={(e) => updateItem(dayIndex, itemIndex, 'room', e.target.value)}
-                                  className="w-full p-3 bg-white border-2 border-slate-100 rounded-2xl text-xs font-black text-slate-800 focus:border-emerald-600 outline-none"
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeItem(dayIndex, itemIndex)}
-                                className="p-3 text-slate-300 hover:text-rose-500 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
+                          {/* TEACHER */}
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                              <User size={10} /> Pengajar
+                            </label>
+                            <select
+                              value={item.teacher_id}
+                              onChange={(e) => updateItem(dayIndex, itemIndex, 'teacher_id', e.target.value)}
+                              className="premium-input premium-select !py-2"
+                              required
+                            >
+                              <option value="">Guru</option>
+                              {teachers.map(t => (
+                                <option key={t.id} value={t.id}>{t.user?.name || t.kode_guru}</option>
+                              ))}
+                            </select>
                           </div>
-                        ))}
 
-                        <div className="p-4">
-                          <button
-                            type="button"
-                            onClick={() => addItem(dayIndex)}
-                            className="w-full py-4 border-2 border-dashed border-slate-100 rounded-[1.5rem] flex items-center justify-center gap-3 text-slate-400 font-black text-sm hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all"
-                          >
-                            <Plus size={18} /> Tambah Jam Pelajaran
-                          </button>
+                          {/* ROOM & ACTION */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 space-y-2">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                <MapPin size={10} /> Ruang
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Cth: A1"
+                                value={item.room}
+                                onChange={(e) => updateItem(dayIndex, itemIndex, 'room', e.target.value)}
+                                className="premium-input !py-2"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(dayIndex, itemIndex)}
+                              className="btn-delete-item mt-5"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      ))}
 
-                  {days.length === 0 && (
-                    <div className="py-20 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center px-8">
-                      <div className="p-6 bg-slate-50 rounded-[1.5rem] text-slate-300 mb-6">
-                        <Calendar size={48} />
-                      </div>
-                      <h4 className="text-xl font-black text-slate-900 mb-2">Belum ada struktur digital</h4>
-                      <p className="text-slate-500 font-bold max-w-sm mb-8">Anda dapat menyusun jadwal digital agar sistem dapat melakukan sinkronisasi dengan presensi otomatis.</p>
-                      <button
-                        type="button"
-                        onClick={addDay}
-                        className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all"
-                      >
-                        Mulai Susun Struktur
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-1 flex flex-col gap-8">
-              {/* PREVIEW/UPLOAD CARD */}
-              <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden sticky top-6">
-                <div className="p-8 border-b border-slate-100 bg-slate-50/30">
-                  <h2 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                    <ImageIcon className="text-emerald-600" size={24} /> Visual Jadwal
-                  </h2>
-                </div>
-                <div className="p-8">
-                  <div className="mb-6 bg-emerald-50/50 p-6 rounded-[1.5rem] border border-emerald-100">
-                    <p className="text-xs font-bold text-emerald-800 leading-relaxed flex items-start gap-2">
-                      <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-                      <span>Unggah desain visual jadwal (JPG/PNG) untuk ditampilkan pada dashboard siswa di kelas ini.</span>
-                    </p>
-                  </div>
-
-                  <label className="group relative cursor-pointer block">
-                    {previewImage ? (
-                      <div className="relative rounded-[2rem] overflow-hidden border border-slate-200 shadow-xl ring-8 ring-white">
-                        <img src={previewImage} alt="Preview Jadwal" className="w-full h-auto object-cover max-h-[400px]" />
-                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white p-6 text-center backdrop-blur-sm">
-                          <Upload size={32} className="mb-4" />
-                          <span className="font-black text-lg uppercase tracking-wider">Ganti Visual</span>
-                          <p className="text-[10px] font-bold opacity-80 mt-2">UKURAN MAKSIMAL 5MB</p>
-                        </div>
+                      <div className="p-4">
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setScheduleImage(null);
-                            setPreviewImage(null);
-                          }}
-                          className="absolute top-4 right-4 p-2 bg-rose-500 text-white rounded-xl shadow-lg hover:bg-rose-600 transition-colors"
+                          onClick={() => addItem(dayIndex)}
+                          className="btn-add-item"
                         >
-                          <X size={16} />
+                          <Plus size={18} /> Tambah Jam Pelajaran
                         </button>
                       </div>
-                    ) : (
-                      <div className="aspect-[4/5] rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-8 text-center transition-all group-hover:bg-emerald-50/20 group-hover:border-emerald-300">
-                        <div className="w-20 h-20 bg-white rounded-3xl shadow-sm border border-slate-100 flex items-center justify-center mb-6 text-emerald-600">
-                          <ImageIcon size={32} />
-                        </div>
-                        <h4 className="text-slate-900 font-black text-lg mb-1">Unggah Desain</h4>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">JPG, PNG, GIF</p>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      onChange={handleFileChange}
-                      accept="image/*"
-                    />
-                  </label>
+                    </div>
+                  </div>
+                ))}
 
-                  <div className="mt-12 pt-10 border-t border-slate-100 space-y-4">
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-5 bg-emerald-600 text-white rounded-[1.5rem] font-black hover:bg-emerald-700 transition-all shadow-2xl shadow-emerald-200 flex items-center justify-center gap-3 disabled:opacity-50"
-                    >
-                      {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={24} />}
-                      <span>Simpan Konfigurasi</span>
-                    </button>
+                {days.length === 0 && (
+                  <div className="py-16 bg-white rounded-xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center px-8">
+                    <div className="p-5 bg-slate-50 rounded-2xl text-slate-300 mb-6">
+                      <Calendar size={40} />
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900 mb-2">Belum ada struktur digital</h4>
+                    <p className="text-slate-500 font-medium max-w-sm mb-8 text-sm">Anda dapat menyusun jadwal digital agar sistem dapat melakukan sinkronisasi dengan presensi otomatis.</p>
                     <button
                       type="button"
-                      onClick={() => onMenuClick('jadwal-kelas')}
-                      className="w-full py-4 text-slate-400 font-black hover:text-slate-600 transition-all uppercase tracking-widest text-xs"
+                      onClick={addDay}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all"
                     >
-                      Batalkan Perubahan
+                      Mulai Susun Struktur
                     </button>
                   </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1 flex flex-col gap-8">
+            {/* PREVIEW/UPLOAD CARD */}
+            <div className="schedule-edit-card !p-0 overflow-hidden sticky top-6">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-3">
+                  <ImageIcon className="text-blue-600" size={20} /> Visual Jadwal
+                </h2>
+              </div>
+              <div className="p-8">
+                <div className="mb-6 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-xs font-semibold text-blue-800 leading-relaxed flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+                    <span>Unggah desain visual jadwal (JPG/PNG) untuk ditampilkan pada dashboard siswa di kelas ini.</span>
+                  </p>
+                </div>
+
+                <label className="group relative cursor-pointer block">
+                  {previewImage ? (
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-lg ring-4 ring-white">
+                      <img src={previewImage} alt="Preview Jadwal" className="w-full h-auto object-cover max-h-[350px]" />
+                      <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center text-white p-6 text-center backdrop-blur-sm">
+                        <Upload size={28} className="mb-3" />
+                        <span className="font-bold text-base uppercase tracking-wider">Ganti Visual</span>
+                        <p className="text-[10px] font-medium opacity-80 mt-2">UKURAN MAKSIMAL 5MB</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setScheduleImage(null);
+                          setPreviewImage(null);
+                        }}
+                        className="absolute top-3 right-3 p-1.5 bg-rose-500 text-white rounded-lg shadow-lg hover:bg-rose-600 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="aspect-[4/5] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-8 text-center transition-all group-hover:bg-blue-50/20 group-hover:border-blue-300">
+                      <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-4 text-blue-600">
+                        <ImageIcon size={28} />
+                      </div>
+                      <h4 className="text-slate-900 font-bold text-base mb-1">Unggah Desain</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">JPG, PNG, GIF</p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                    accept="image/*"
+                  />
+                </label>
+
+                <div className="mt-10 pt-8 border-t border-slate-100 space-y-4">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-save-schedule w-full"
+                  >
+                    {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
+                    <span>Simpan Konfigurasi</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onMenuClick('jadwal-kelas')}
+                    className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition-all uppercase tracking-wider text-[10px] text-center"
+                  >
+                    Batalkan Perubahan
+                  </button>
                 </div>
               </div>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </StaffLayout>
+
   );
 }

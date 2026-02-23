@@ -1,20 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GuruLayout from '../../component/Guru/GuruLayout.tsx';
 import CalendarIcon from '../../assets/Icon/calender.png';
 import { Modal } from '../../component/Shared/Modal';
+import { attendanceService } from '../../services/attendanceService';
 
 interface InputManualGuruProps {
   user: { name: string; role: string };
   onLogout: () => void;
   currentPage: string;
   onMenuClick: (page: string) => void;
+  schedule?: {
+    id: string;
+    subject_name?: string;
+    class_name?: string;
+  };
 }
 
 interface Siswa {
   id: string;
   nisn: string;
   nama: string;
-  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'pulang';
+  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'terlambat' | 'pulang' | null;
   keterangan?: string;
 }
 
@@ -89,16 +95,68 @@ export default function InputManualGuru({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
 
-  const [siswaList, setSiswaList] = useState<Siswa[]>([
-    { id: '1', nisn: '0074182519', nama: 'Laura Lavida Loca', status: 'hadir' },
-    { id: '2', nisn: '0074320819', nama: 'Lely Sagita', status: 'hadir' },
-    { id: '3', nisn: '0078658367', nama: 'Maya Melinda', status: 'izin' },
-    { id: '4', nisn: '0079292238', nama: 'Moch Abyl Gustian', status: 'sakit' },
-    { id: '5', nisn: '0084421457', nama: 'Muhammad Aminullah', status: 'alfa' },
-    { id: '6', nisn: '0089104721', nama: 'Muhammad Azka Fadli Attaya', status: 'alfa' },
-    { id: '7', nisn: '0087917739', nama: 'Muhammad Hadi Firmansyah', status: 'pulang' },
-    { id: '8', nisn: '0074704843', nama: 'Muhammad Haris Maulana Saputra', status: 'pulang' },
-  ]);
+  const [siswaList, setSiswaList] = useState<Siswa[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch students from API
+  useEffect(() => {
+    fetchStudents();
+  }, [schedule?.id]);
+
+  const fetchStudents = async () => {
+    // If no schedule provided, try to fetch homeroom students for early attendance
+    if (!schedule?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // Try to get homeroom students
+        const response = await attendanceService.getMyHomeroomStudents();
+        
+        if (response && Array.isArray(response)) {
+          const mapped = response.map((student: any) => ({
+            id: String(student.id),
+            nisn: student.nisn || '-',
+            nama: student.name || student.user?.name || '-',
+            status: null as const
+          }));
+          setSiswaList(mapped);
+        } else {
+          // Fallback to empty array if no homeroom
+          setSiswaList([]);
+        }
+      } catch (err: any) {
+        console.error('Error fetching homeroom students:', err);
+        // Use empty array on error - allow manual entry
+        setSiswaList([]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await attendanceService.getScheduleStudents(schedule.id);
+      
+      if (response.eligible_students) {
+        const mapped = response.eligible_students.map((student: any, index: number) => ({
+          id: String(student.id),
+          nisn: student.nisn || '-',
+          nama: student.name,
+          status: null as const
+        }));
+        setSiswaList(mapped);
+      }
+    } catch (err: any) {
+      console.error('Error fetching students:', err);
+      setError(err.message || 'Gagal memuat data siswa');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,6 +170,7 @@ export default function InputManualGuru({
     pulang: '#2F85EB',
     alfa: '#D90000',
     sakit: '#520C8F',
+    terlambat: '#F59E0B',
   };
 
   const handleStatusChange = (id: string, status: Siswa['status']) => {
@@ -146,14 +205,47 @@ export default function InputManualGuru({
     setEditKeterangan('');
   };
 
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
+    if (!schedule?.id) {
+      alert('Pilih jadwal terlebih dahulu!');
+      return;
+    }
+
     const siswaWithStatus = siswaList.filter((s) => s.status !== null);
     if (siswaWithStatus.length === 0) {
       alert('Pilih status untuk minimal satu siswa!');
       return;
     }
-    alert(`Data kehadiran berhasil disimpan untuk ${siswaWithStatus.length} siswa!`);
-    onMenuClick('kehadiran');
+
+    // Validate all students have status
+    const belumStatus = siswaList.filter(s => s.status === null);
+    if (belumStatus.length > 0) {
+      alert(`Masih ada ${belumStatus.length} siswa belum memiliki status!`);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      
+      const items = siswaList.map(s => ({
+        student_id: Number(s.id),
+        status: s.status === 'alfa' ? 'alpha' : s.status,
+      }));
+
+      await attendanceService.submitBulkAttendance({
+        schedule_id: Number(schedule.id),
+        date: currentDate,
+        items
+      });
+
+      alert(`Data kehadiran berhasil disimpan untuk ${siswaList.length} siswa!`);
+      onMenuClick('kehadiran');
+    } catch (err: any) {
+      console.error('Error saving attendance:', err);
+      alert(err.message || 'Gagal menyimpan kehadiran');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Custom Status Renderer seperti di InputAbsenWaliKelas.tsx

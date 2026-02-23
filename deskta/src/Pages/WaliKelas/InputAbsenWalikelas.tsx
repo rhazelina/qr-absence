@@ -1,21 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import WalikelasLayout from '../../component/Walikelas/layoutwakel';
 
 import CalendarIcon from '../../assets/Icon/calender.png';
 import { Modal } from '../../component/Shared/Modal';
+import { attendanceService } from '../../services/attendanceService';
 
 interface InputAbsenWalikelasProps {
   user: { name: string; role: string };
   onLogout: () => void;
   currentPage: string;
   onMenuClick: (page: string) => void;
+  schedule?: {
+    id: string;
+    subject_name?: string;
+    class_name?: string;
+  };
 }
 
 interface Siswa {
   id: string;
   nisn: string;
   nama: string;
-  status: 'hadir' | 'sakit' | 'izin' | 'alpha' | 'pulang' | null;
+  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'terlambat' | 'pulang' | null;
   keterangan?: string;
 }
 
@@ -107,6 +113,7 @@ export function InputAbsenWalikelas({
   onLogout,
   currentPage,
   onMenuClick,
+  schedule,
 }: InputAbsenWalikelasProps) {
   const [selectedKelas] = useState('X Mekatronika 1');
   const [selectedMapel] = useState('Matematika (1-4)');
@@ -115,14 +122,56 @@ export function InputAbsenWalikelas({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
 
-  const [siswaList, setSiswaList] = useState<Siswa[]>([
-    { id: '1', nisn: '0074182519', nama: 'Laura Lavida Loca', status: null },
-    { id: '2', nisn: '0074320819', nama: 'Lely Sagita', status: null },
-    { id: '3', nisn: '0078658367', nama: 'Maya Melinda', status: null },
-    { id: '4', nisn: '0079292238', nama: 'Moch Abyl Gustian', status: null },
-    { id: '5', nisn: '0084421457', nama: 'Muhammad Aminullah', status: null },
-    { id: '6', nisn: '0089104721', nama: 'Muhammad Azka Fadli Attaya', status: null },
-  ]);
+  const [siswaList, setSiswaList] = useState<Siswa[]>([]);
+
+  // Fetch students from API
+  useEffect(() => {
+    fetchStudents();
+  }, [schedule?.id]);
+
+  const fetchStudents = async () => {
+    // If no schedule provided, try to fetch homeroom students for early attendance
+    if (!schedule?.id) {
+      try {
+        // Try to get homeroom students
+        const response = await attendanceService.getMyHomeroomStudents();
+        
+        if (response && Array.isArray(response)) {
+          const mapped: Siswa[] = response.map((student: any) => ({
+            id: String(student.id),
+            nisn: student.nisn || '-',
+            nama: student.name || student.user?.name || '-',
+            status: null
+          }));
+          setSiswaList(mapped);
+        } else {
+          // Fallback to empty array if no homeroom
+          setSiswaList([]);
+        }
+      } catch (err: any) {
+        console.error('Error fetching homeroom students:', err);
+        // Use empty array on error - allow manual entry
+        setSiswaList([]);
+      }
+      return;
+    }
+
+    try {
+      const response = await attendanceService.getScheduleStudents(schedule.id);
+      
+      if (response.eligible_students) {
+        const mapped: Siswa[] = response.eligible_students.map((student: any) => ({
+          id: String(student.id),
+          nisn: student.nisn || '-',
+          nama: student.name,
+          status: null
+        }));
+        setSiswaList(mapped);
+      }
+    } catch (err: any) {
+      console.error('Error fetching students:', err);
+    }
+  };
 
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -140,14 +189,44 @@ export function InputAbsenWalikelas({
     setIsModalOpen(true);
   };
 
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
+    if (!schedule?.id) {
+      alert('Pilih jadwal terlebih dahulu!');
+      return;
+    }
+
     const siswaWithStatus = siswaList.filter((s) => s.status !== null);
     if (siswaWithStatus.length === 0) {
       alert('Pilih status untuk minimal satu siswa!');
       return;
     }
-    alert(`Data kehadiran berhasil disimpan untuk ${siswaWithStatus.length} siswa!`);
-    onMenuClick('Beranda');
+
+    // Validate all students have status
+    const belumStatus = siswaList.filter(s => s.status === null);
+    if (belumStatus.length > 0) {
+      alert(`Masih ada ${belumStatus.length} siswa belum memiliki status!`);
+      return;
+    }
+
+    try {
+
+      const items = siswaList.map(s => ({
+        student_id: Number(s.id),
+        status: s.status === 'alfa' ? 'alpha' : (s.status as string),
+      }));
+
+      await attendanceService.submitBulkAttendance({
+        schedule_id: Number(schedule.id),
+        date: currentDate,
+        items
+      });
+
+      alert(`Data kehadiran berhasil disimpan untuk ${siswaList.length} siswa!`);
+      onMenuClick('Beranda');
+    } catch (err: any) {
+      console.error('Error saving attendance:', err);
+      alert(err.message || 'Gagal menyimpan kehadiran');
+    }
   };
 
   // Warna sesuai permintaan
@@ -155,14 +234,15 @@ export function InputAbsenWalikelas({
     hadir: '#1FA83D',
     izin: '#ACA40D',
     pulang: '#2F85EB',
-    alpha: '#D90000',
+    alfa: '#D90000',
     sakit: '#520C8F',
+    terlambat: '#F59E0B',
   };
 
   // Fungsi untuk mendapatkan teks status
   const getStatusText = (status: string) => {
     switch (status) {
-      case "alpha":
+      case "alfa":
         return "Siswa tidak hadir tanpa keterangan";
       case "izin":
         return "Siswa izin dengan keterangan";
@@ -183,12 +263,13 @@ export function InputAbsenWalikelas({
       return <span style={{ color: '#9CA3AF', fontSize: '12px' }}>-</span>;
     }
 
-    const statusConfig = {
+    const statusConfig: Record<string, { label: string; color: string; textColor: string }> = {
       hadir: { label: 'Hadir', color: statusColors.hadir, textColor: '#FFFFFF' },
       sakit: { label: 'Sakit', color: statusColors.sakit, textColor: '#FFFFFF' },
       izin: { label: 'Izin', color: statusColors.izin, textColor: '#FFFFFF' },
-      alpha: { label: 'Tidak Hadir', color: statusColors.alpha, textColor: '#FFFFFF' },
+      alfa: { label: 'Tidak Hadir', color: statusColors.alfa, textColor: '#FFFFFF' },
       pulang: { label: 'Pulang', color: statusColors.pulang, textColor: '#FFFFFF' },
+      terlambat: { label: 'Terlambat', color: statusColors.terlambat, textColor: '#FFFFFF' },
     };
 
     const config = statusConfig[siswa.status];
@@ -456,13 +537,13 @@ export function InputAbsenWalikelas({
                         <input 
                           type="radio" 
                           name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'alpha'} 
-                          onChange={() => handleStatusChange(siswa.id, 'alpha')} 
+                          checked={siswa.status === 'alfa'} 
+                          onChange={() => handleStatusChange(siswa.id, 'alfa')} 
                           style={{ 
                             width: '18px', 
                             height: '18px', 
                             cursor: 'pointer', 
-                            accentColor: statusColors.alpha,
+                            accentColor: statusColors.alfa,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
                           }} 
@@ -595,7 +676,7 @@ export function InputAbsenWalikelas({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {selectedSiswa.status === 'alpha' ? 'Tidak Hadir' : 
+                    {selectedSiswa.status === 'alfa' ? 'Tidak Hadir' : 
                      selectedSiswa.status === 'pulang' ? 'Pulang' : 
                      selectedSiswa.status.charAt(0).toUpperCase() + selectedSiswa.status.slice(1)}
                   </span>

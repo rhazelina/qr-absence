@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\ClassSchedule;
-use App\Models\DailySchedule;
 use App\Models\Qrcode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,7 +74,7 @@ it('generates new qr code if previous one is expired', function () {
     $uuid = \Illuminate\Support\Str::uuid()->toString();
     $signature = hash_hmac('sha256', $uuid, config('app.key'));
     $qr = Qrcode::create([
-        'token' => $uuid . '.' . $signature,
+        'token' => $uuid.'.'.$signature,
         'schedule_id' => $schedule->id,
         'type' => 'student',
         'status' => 'expired', // Provide status to satisfy DB schema

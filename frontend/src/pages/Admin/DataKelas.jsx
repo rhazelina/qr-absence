@@ -148,6 +148,9 @@ function DataKelas() {
   // Reset form when modal opens/closes
   useEffect(() => {
     if (isModalOpen) {
+      // Load teachers when modal opens
+      loadTeachers();
+      
       if (editData) {
         setFormData({
           namaKelas: editData.class_name,

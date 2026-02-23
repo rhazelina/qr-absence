@@ -8,6 +8,7 @@ function Tambah({ isOpen, onClose, onSubmit, editData, majors = [], classes = []
     nisn: '',
     class_id: ''
   });
+  const [errors, setErrors] = useState({});
 
   // Filter classes by selected major
   const selectedMajor = formData.class_id 
@@ -37,12 +38,40 @@ function Tambah({ isOpen, onClose, onSubmit, editData, majors = [], classes = []
       ...formData,
       [name]: value
     });
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.namaSiswa.trim()) {
+      newErrors.namaSiswa = 'Nama siswa wajib diisi';
+    } else if (formData.namaSiswa.length < 3) {
+      newErrors.namaSiswa = 'Nama siswa minimal 3 karakter';
+    }
+    
+    if (!formData.nisn.trim()) {
+      newErrors.nisn = 'NISN wajib diisi';
+    } else if (!/^\d{10}$/.test(formData.nisn)) {
+      newErrors.nisn = 'NISN harus 10 digit angka';
+    }
+    
+    if (!formData.class_id) {
+      newErrors.class_id = 'Pilih kelas';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
-    setFormData({ namaSiswa: '', nisn: '', class_id: '' });
+    if (validateForm()) {
+      onSubmit(formData);
+      setFormData({ namaSiswa: '', nisn: '', class_id: '' });
+    }
   };
 
   if (!isOpen) return null;
@@ -65,21 +94,24 @@ function Tambah({ isOpen, onClose, onSubmit, editData, majors = [], classes = []
               onChange={handleChange}
               required
             />
+            {errors.namaSiswa && <span className="error-text">{errors.namaSiswa}</span>}
           </div>
 
           <div className="input-group">
-            <label>NISN</label>
+            <label>NISN (10 Digit)</label>
             <input
               type="text"
               name="nisn"
-              placeholder="Masukkan NISN siswa..."
+              placeholder="Masukkan 10 digit NISN..."
               value={formData.nisn}
               onChange={handleChange}
+              maxLength={10}
               onKeyPress={(e) => {
                 if (!/[0-9]/.test(e.key)) e.preventDefault();
               }}
               required
             />
+            {errors.nisn && <span className="error-text">{errors.nisn}</span>}
           </div>
 
           <div className="input-group">
@@ -95,6 +127,7 @@ function Tambah({ isOpen, onClose, onSubmit, editData, majors = [], classes = []
                 <option key={cls.id} value={cls.id}>{cls.name}</option>
               ))}
             </select>
+            {errors.class_id && <span className="error-text">{errors.class_id}</span>}
           </div>
 
           <div className="form-buttons">

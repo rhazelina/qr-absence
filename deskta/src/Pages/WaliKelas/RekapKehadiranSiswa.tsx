@@ -140,10 +140,9 @@ export function RekapKehadiranSiswa({
             
 
             try {
-                // Try to use the Waka summary endpoint if accessible, or fallback to homeroom specific if exists
-                // Since there isn't a getMyHomeroomAttendanceSummary, we try getWakaClassAttendanceSummary first
-                // If it fails with 403, we might need a different approach, but let's try assuming role permissions allow it for own class
-                const response = await attendanceService.getWakaClassAttendanceSummary(kelasInfo.id, {
+                // Use the teacher-accessible endpoint /classes/{class}/students/attendance-summary
+                // This endpoint is accessible by teachers for their homeroom class
+                const response = await attendanceService.getClassStudentsSummary(kelasInfo.id, {
                     from: periodeMulai,
                     to: periodeSelesai
                 });
@@ -160,10 +159,10 @@ export function RekapKehadiranSiswa({
                             nisn: item.student?.nisn || '-',
                             namaSiswa: item.student?.user?.name || item.student?.name || '-',
                             hadir: hadirCount,
-                            izin: totals.permission || 0,
+                            izin: totals.permission || totals.izin || 0,
                             sakit: totals.sick || 0,
-                            alfa: totals.alpha || totals.absent || 0,
-                            pulang: 0, // Backend might not have 'pulang' count yet
+                            alfa: totals.alpha || totals.absent || totals.alfa || 0,
+                            pulang: totals.return || totals.leave_early || totals.pulang || 0,
                             status: item.student?.status === 'active' ? 'aktif' : 'non-aktif' // Adjust based on student status field
                         };
                     });

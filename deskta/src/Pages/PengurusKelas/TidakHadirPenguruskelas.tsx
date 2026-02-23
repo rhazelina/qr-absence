@@ -11,7 +11,7 @@ interface AbsensiRecord {
   jamPelajaran: string;
   mataPelajaran: string;
   guru: string;
-  status: "alfa" | "izin" | "sakit" | "hadir" | "pulang";
+  status: "alfa" | "alpha" | "izin" | "sakit" | "hadir" | "pulang";
   keterangan?: string; // Tambahan untuk izin/sakit/pulang
   namaSiswa?: string;
   nis?: string;
@@ -181,7 +181,7 @@ export default function TidakHadirPenguruskelas({
     const pulang = filteredData.filter((d) => d.status === "pulang").length;
     const izin = filteredData.filter((d) => d.status === "izin").length;
     const sakit = filteredData.filter((d) => d.status === "sakit").length;
-    const alfa = filteredData.filter((d) => d.status === "alfa").length;
+    const alfa = filteredData.filter((d) => d.status === "alfa" || d.status === "alpha").length;
 
     return { hadir, pulang, izin, sakit, alfa, total: filteredData.length };
   }, [filteredData]);
@@ -197,7 +197,7 @@ export default function TidakHadirPenguruskelas({
 
   // Custom Status Renderer dengan icon mata - SEMUA STATUS bisa diklik
   const StatusButton = ({ status, row }: { status: string; row: AbsensiRecord }) => {
-    let bgColor = "#D90000"; // MERAH - alfa
+    let bgColor = "#D90000"; // MERAH - Alfa
     let label = "Alfa";
     let textColor = "#FFFFFF";
 
@@ -299,7 +299,7 @@ export default function TidakHadirPenguruskelas({
   // Status filter options
   const statusOptions = [
     { label: "Semua Status", value: "semua" },
-    { label: "alfa", value: "alfa" },
+    { label: "Alfa", value: "alfa" },
     { label: "Izin/Sakit", value: "izin/sakit" },
     { label: "Pulang", value: "pulang" },
   ];
@@ -308,6 +308,7 @@ export default function TidakHadirPenguruskelas({
   const getStatusText = (status: string) => {
     switch (status) {
       case "alfa":
+      case "alpha":
         return "Siswa tidak hadir tanpa keterangan";
       case "izin":
         return "Siswa izin dengan keterangan";
@@ -325,7 +326,8 @@ export default function TidakHadirPenguruskelas({
   // Helper function untuk warna status
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "alfa": return "#D90000"; // MERAH - alfa
+      case "alfa":
+      case "alpha": return "#D90000"; // MERAH - Alfa
       case "izin": return "#ACA40D"; // KUNING - Izin
       case "sakit": return "#520C8F"; // UNGU - Sakit
       case "hadir": return "#1FA83D"; // HIJAU - Hadir
@@ -525,7 +527,7 @@ export default function TidakHadirPenguruskelas({
             }}
           >
             <TotalCard />
-            <SummaryCard label="alfa" value={summary.alfa} color="#D90000" />
+            <SummaryCard label="Alfa" value={summary.alfa} color="#D90000" />
             <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" />
             <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" />
             <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" />
@@ -783,7 +785,7 @@ export default function TidakHadirPenguruskelas({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {selectedRecord.status === "alfa" ? "alfa" :
+                    {(selectedRecord.status === "alfa" || selectedRecord.status === "alpha") ? "Alfa" :
                       selectedRecord.status === "sakit" ? "Sakit" :
                         selectedRecord.status === "izin" ? "Izin" :
                           selectedRecord.status === "hadir" ? "Hadir" :

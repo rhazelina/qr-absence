@@ -62,12 +62,12 @@ class NewScheduleSeeder extends Seeder
             'Tuesday' => [
                 ['mapel' => 'MPKK', 'guru' => 'Zulkifli Abdillah, S.Kom', 'jam_mulai' => 1, 'jam_selesai' => 4],
                 ['mapel' => 'MTK', 'guru' => 'Wiwin Winangsih, S.Pd', 'jam_mulai' => 5, 'jam_selesai' => 7],
-                ['mapel' => 'PAI', 'guru' => 'M', 'jam_mulai' => 8, 'jam_selesai' => 10], // Assuming 'M' is a name/placeholder
+                ['mapel' => 'PAI', 'guru' => 'Juzky S.Pd', 'jam_mulai' => 8, 'jam_selesai' => 10], // Assuming 'M' is a name/placeholder
             ],
             'Wednesday' => [
                 ['mapel' => 'B.Jawa', 'guru' => 'Moch. Bachrudin, S.Pd', 'jam_mulai' => 1, 'jam_selesai' => 2],
                 ['mapel' => 'B.Ing', 'guru' => 'Fajar Ningtyas, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 4],
-                ['mapel' => 'MPKK', 'guru' => 'Alfah Diantobes Aindra, S.Pd', 'jam_mulai' => 5, 'jam_selesai' => 10],
+                ['mapel' => 'MPKK', 'guru' => 'Triana Ardiane S.pd', 'jam_mulai' => 5, 'jam_selesai' => 10],
             ],
             'Thursday' => [
                 ['mapel' => 'MPP', 'guru' => 'Evi Irniyah, S.Pd', 'jam_mulai' => 1, 'jam_selesai' => 2],
@@ -78,7 +78,7 @@ class NewScheduleSeeder extends Seeder
             'Friday' => [
                 ['mapel' => 'MPKK', 'guru' => 'RR. Henning Gratyani Anggraeni, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 5],
                 ['mapel' => 'BI', 'guru' => 'Devi Arveni, S.Pd., Gr', 'jam_mulai' => 6, 'jam_selesai' => 8],
-                ['mapel' => 'MPKK', 'guru' => 'Alfah Diantobes Aindra, S.Pd', 'jam_mulai' => 9, 'jam_selesai' => 10],
+                ['mapel' => 'MPKK', 'guru' => 'Triana Ardiane S.pd', 'jam_mulai' => 9, 'jam_selesai' => 10],
             ],
         ];
 

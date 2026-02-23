@@ -145,9 +145,20 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         // Update stats
         setStats(data.statistik);
         
-        // Update charts
+        // Update charts - transform backend field names to frontend field names
         setDailyData(data.daily_stats || []);
-        setMonthlyData(data.trend || []);
+        
+        // Transform monthly trend data: backend uses present/absent/return, frontend expects hadir/tidak_hadir/pulang
+        const transformedTrend = (data.trend || []).map((item: any) => ({
+          month: item.month,
+          hadir: item.present ?? 0,      // backend: present -> frontend: hadir
+          tidak_hadir: item.absent ?? 0,   // backend: absent -> frontend: tidak_hadir
+          izin: item.izin ?? 0,            // backend: izin -> frontend: izin (same)
+          sakit: item.sick ?? 0,          // backend: sick -> frontend: sakit (same)
+          pulang: item.return ?? 0,        // backend: return -> frontend: pulang
+          alfa: item.absent ?? 0,         // backend: absent -> frontend: alfa (same as tidak_hadir)
+        }));
+        setMonthlyData(transformedTrend);
         
         // Update history info card
         const now = new Date();
@@ -499,6 +510,7 @@ function LinkStatsGrid({
     { id: "terlambat", label: "Terlambat", value: stats.terlambat?.toString() || "0", color: "#ACA40D", icon: "⏱" },
     { id: "izin", label: "Izin", value: (stats.izin || 0).toString(), color: "#520C8F", icon: "📋" },
     { id: "sakit", label: "Sakit", value: stats.sakit?.toString() || "0", color: "#D90000", icon: "🏥" },
+    { id: "alfa", label: "Alfa", value: stats.alpha?.toString() || "0", color: "#6B7280", icon: "❌" },
     { id: "pulang", label: "Pulang", value: stats.pulang?.toString() || "0", color: "#2F85EB", icon: "🚪" },
   ];
 

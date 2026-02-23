@@ -13,7 +13,7 @@ class WebScheduleController extends Controller
     {
         $query = ScheduleItem::query()->with([
             'teacher.user',
-            'dailySchedule.classSchedule.class'
+            'dailySchedule.classSchedule.class',
         ]);
 
         if ($request->user()->user_type === 'teacher') {

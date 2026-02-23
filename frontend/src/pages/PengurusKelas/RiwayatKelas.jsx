@@ -85,18 +85,27 @@ function Riwayat() {
         
         setAttendanceRecords(formattedRecords);
         
-        // Fetch stats from class dashboard for summary efficiency
-        const dashboardData = await apiService.getMyClassDashboard();
-        const summary = dashboardData.stats || {};
+        // Calculate stats from filtered records (matches selected date range)
+        const calculatedStats = {
+          hadir: 0,
+          terlambat: 0,
+          izin: 0,
+          sakit: 0,
+          alpha: 0,
+          pulang: 0
+        };
         
-        setStats({
-          hadir: summary.present || 0,
-          terlambat: summary.late || 0,
-          izin: summary.excused || 0,
-          sakit: summary.sick || 0,
-          alpha: summary.absent || 0,
-          pulang: summary.return || 0
+        formattedRecords.forEach(record => {
+          const status = record.status?.toLowerCase();
+          if (status === 'present' || status === 'hadir') calculatedStats.hadir++;
+          else if (status === 'late' || status === 'terlambat') calculatedStats.terlambat++;
+          else if (status === 'permission' || status === 'izin') calculatedStats.izin++;
+          else if (status === 'sick' || status === 'sakit') calculatedStats.sakit++;
+          else if (status === 'absent' || status === 'alpha' || status === 'alfa') calculatedStats.alpha++;
+          else if (status === 'early_leave' || status === 'pulang') calculatedStats.pulang++;
         });
+        
+        setStats(calculatedStats);
         
       } catch (error) {
         console.error('Error fetching attendance data:', error);

@@ -92,7 +92,7 @@ function JadwalSiswaShow() {
               </div>
               <div className="jadwal-siswa-show-title">
                 <h1>Jadwal Siswa</h1>
-                <p>Tahun Ajaran {schedule.year} - Semester {schedule.semester == 1 ? 'Ganjil' : 'Genap'}</p>
+                <p>Tahun Ajaran {schedule.year} - Semester {schedule.semester === 'ganjil' || schedule.semester === '1' ? 'Ganjil' : 'Genap'}</p>
               </div>
             </div>
 

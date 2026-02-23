@@ -127,7 +127,7 @@ export default function DaftarMapel() {
         <div style={{ lineHeight: 1.1 }}>
           <div style={{ fontWeight: 900, fontSize: 18 }}>{classInfo?.name || "-"}</div>
           <div style={{ fontWeight: 600, opacity: 0.9, marginTop: 4 }}>
-            {classInfo?.homeroom_teacher?.user?.name || "Belum ada Wali Kelas"}
+            {classInfo?.homeroom_teacher_name || "Belum ada Wali Kelas"}
           </div>
         </div>
       </div>

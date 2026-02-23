@@ -2,8 +2,6 @@
 
 use App\Models\Attendance;
 use App\Models\Classes;
-use App\Models\ClassSchedule;
-use App\Models\DailySchedule;
 use App\Models\Qrcode;
 use App\Models\ScheduleItem;
 use App\Models\SchoolYear;

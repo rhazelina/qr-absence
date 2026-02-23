@@ -27,7 +27,7 @@ class TeacherSeeder extends Seeder
                 'subject' => 'Produktif RPL',
             ],
             [
-                'name' => 'ALIFAH DIANTEBES AINDRA, S.Pd',
+                'name' => 'Triana Ardiane S.pd',
                 'jabatan' => 'Guru',
                 'subject' => 'MPKK',
             ],

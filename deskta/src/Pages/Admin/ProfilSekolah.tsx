@@ -67,6 +67,8 @@ export default function ProfilSekolah({
   const [maskotPreview, setMaskotPreview] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [maskotFile, setMaskotFile] = useState<File | null>(null);
+  const [logoDeleted, setLogoDeleted] = useState(false);
+  const [maskotDeleted, setMaskotDeleted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState('');
@@ -147,6 +149,10 @@ export default function ProfilSekolah({
     setIsEditMode(false);
     setLogoPreview('');
     setMaskotPreview('');
+    setLogoFile(null);
+    setMaskotFile(null);
+    setLogoDeleted(false);
+    setMaskotDeleted(false);
     setSuccessMessage('');
     setErrorMessage('');
   };
@@ -210,6 +216,7 @@ export default function ProfilSekolah({
     setEditFormData({ ...editFormData, logo_sekolah: '' });
     setLogoPreview('');
     setLogoFile(null);
+    setLogoDeleted(true);
 
     if (logoInputRef.current) {
       logoInputRef.current.value = '';
@@ -223,6 +230,7 @@ export default function ProfilSekolah({
     setEditFormData({ ...editFormData, maskot_sekolah: '' });
     setMaskotPreview('');
     setMaskotFile(null);
+    setMaskotDeleted(true);
 
     if (maskotInputRef.current) {
       maskotInputRef.current.value = '';
@@ -260,6 +268,12 @@ export default function ProfilSekolah({
       if (maskotFile) {
         payload.school_mascot = maskotFile;
       }
+      if (logoDeleted) {
+        payload.delete_school_logo = true;
+      }
+      if (maskotDeleted) {
+        payload.delete_school_mascot = true;
+      }
 
       await settingService.updateSettings(payload);
 
@@ -293,6 +307,8 @@ export default function ProfilSekolah({
       setMaskotPreview('');
       setLogoFile(null);
       setMaskotFile(null);
+      setLogoDeleted(false);
+      setMaskotDeleted(false);
       setErrorMessage('');
       setTimeout(() => setSuccessMessage(''), 3000);
 

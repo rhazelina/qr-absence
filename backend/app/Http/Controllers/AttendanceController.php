@@ -74,10 +74,16 @@ class AttendanceController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'], // Accept 'token' as per frontend, but treat as NISN
             'device_id' => ['nullable', 'integer'],
+            'schedule_id' => ['nullable', 'exists:schedule_items,id'],
         ]);
 
         try {
-            $result = $this->service->scanStudent($data['token'], $request->user(), $data['device_id'] ?? null);
+            $result = $this->service->scanStudent(
+                $data['token'],
+                $request->user(),
+                $data['device_id'] ?? null,
+                $data['schedule_id'] ?? null
+            );
 
             $response = [
                 'message' => $result['message'],
@@ -778,7 +784,7 @@ class AttendanceController extends Controller
             ->where('attendee_type', 'teacher')
             ->whereDate('date', $date)
             ->whereIn('teacher_id', $teacherIds)
-            ->with('schedule')
+            ->with(['schedule.dailySchedule.classSchedule.class', 'schedule.subject'])
             ->orderByDesc('checked_in_at')
             ->get()
             ->groupBy('teacher_id');
@@ -1259,8 +1265,29 @@ class AttendanceController extends Controller
         $schedule = ScheduleItem::findOrFail($data['schedule_id']);
         $this->authorizeSchedule($request, $schedule);
 
+        // Check device type - Desktop requires all students to have status
+        $deviceType = $request->header('X-Device-Type', 'desktop');
+        $isDesktop = strtolower($deviceType) !== 'mobile';
+
+        // Get all students in the class
+        $classId = $schedule->dailySchedule->classSchedule->class_id;
+        $totalStudents = \App\Models\StudentProfile::where('class_id', $classId)->count();
+        $submittedCount = count($data['items']);
+
+        // Desktop validation: all students must have status
+        if ($isDesktop && $submittedCount < $totalStudents) {
+            return response()->json([
+                'message' => 'Lengkapi semua status siswa sebelum menyimpan',
+                'partial_save' => false,
+                'missing_count' => $totalStudents - $submittedCount,
+                'total_students' => $totalStudents,
+                'submitted_count' => $submittedCount,
+            ], 400);
+        }
+
         $date = $data['date'];
         $results = [];
+        $isPartialSave = ! $isDesktop && $submittedCount < $totalStudents;
 
         DB::transaction(function () use ($data, $date, $schedule, &$results) {
             foreach ($data['items'] as $item) {
@@ -1287,11 +1314,16 @@ class AttendanceController extends Controller
         return response()->json([
             'message' => count($results).' data kehadiran berhasil disimpan',
             'data' => $results,
+            'partial_save' => $isPartialSave,
         ]);
     }
 
     public function markExcuse(Request $request, Attendance $attendance): JsonResponse
     {
+        if (! $attendance->schedule) {
+            abort(400, 'Jadwal tidak ditemukan untuk presensi ini.');
+        }
+
         if ($request->user()->user_type === 'teacher' && $attendance->schedule->teacher_id !== optional($request->user()->teacherProfile)->id) {
             abort(403, 'Tidak boleh mengubah presensi jadwal ini');
         }
@@ -1340,18 +1372,38 @@ class AttendanceController extends Controller
             abort(422, 'Harap sertakan minimal satu filter: schedule_id, class_id, from, atau to.');
         }
 
+        $user = $request->user();
         $query = Attendance::with(['student.user:id,name', 'teacher.user:id,name', 'schedule.class:id,name']);
 
         if ($request->filled('schedule_id')) {
             $schedule = ScheduleItem::findOrFail($request->integer('schedule_id'));
-            if ($request->user()->user_type === 'teacher' && $schedule->teacher_id !== optional($request->user()->teacherProfile)->id) {
+            if ($user->user_type === 'teacher' && $schedule->teacher_id !== optional($user->teacherProfile)->id) {
                 abort(403, 'Tidak boleh mengekspor jadwal ini');
             }
             $query->where('schedule_id', $schedule->id);
         }
 
         if ($request->filled('class_id')) {
-            $query->whereHas('schedule', fn ($q) => $q->where('class_id', $request->integer('class_id')));
+            $classId = $request->integer('class_id');
+
+            // Authorization check for class_id
+            if ($user->user_type === 'teacher') {
+                $teacher = $user->teacherProfile;
+                if ($teacher && $teacher->homeroomClass) {
+                    $allowedClassIds = [$teacher->homeroomClass->id];
+                    // Also allow teachers to export classes they teach
+                    $taughtClasses = \App\Models\Classes::whereHas('subjects.teachers', function ($q) use ($teacher) {
+                        $q->where('teacher_id', $teacher->id);
+                    })->pluck('id')->toArray();
+                    $allowedClassIds = array_merge($allowedClassIds, $taughtClasses);
+
+                    if (! in_array($classId, $allowedClassIds)) {
+                        abort(403, 'Anda tidak memiliki akses untuk mengekspor data kelas ini.');
+                    }
+                }
+            }
+
+            $query->whereHas('schedule', fn ($q) => $q->where('class_id', $classId));
         }
 
         if ($request->filled('from')) {
@@ -1402,11 +1454,36 @@ class AttendanceController extends Controller
             'date' => ['nullable', 'date'],
         ]);
 
+        $user = $request->user();
+        $classId = $request->class_id;
+
+        // Authorization check
+        if ($user->user_type === 'student') {
+            abort(403, 'Anda tidak memiliki akses untuk mengunduh laporan ini.');
+        }
+
+        if ($user->user_type === 'teacher') {
+            $teacher = $user->teacherProfile;
+            if ($teacher && $teacher->homeroomClass) {
+                $allowedClassIds = [$teacher->homeroomClass->id];
+                // Also allow teachers to view classes they teach
+                $taughtClasses = \App\Models\Classes::whereHas('subjects.teachers', function ($q) use ($teacher) {
+                    $q->where('teacher_id', $teacher->id);
+                })->pluck('id')->toArray();
+                $allowedClassIds = array_merge($allowedClassIds, $taughtClasses);
+
+                if ($classId && ! in_array($classId, $allowedClassIds)) {
+                    abort(403, 'Anda tidak memiliki akses untuk mengunduh laporan kelas ini.');
+                }
+            }
+        }
+
+        // Admin can download any class
         $query = Attendance::with(['student.user', 'schedule.class'])
             ->where('attendee_type', 'student');
 
-        if ($request->filled('class_id')) {
-            $query->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $request->class_id));
+        if ($classId) {
+            $query->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $classId));
         }
 
         if ($request->filled('date')) {

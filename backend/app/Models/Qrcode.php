@@ -42,6 +42,7 @@ class Qrcode extends Model
         if (is_string($expires)) {
             $expires = Carbon::parse($expires);
         }
+
         return $expires instanceof Carbon && $expires->isPast();
     }
 }

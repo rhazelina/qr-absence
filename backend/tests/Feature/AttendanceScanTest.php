@@ -50,7 +50,7 @@ class AttendanceScanTest extends TestCase
 
         $uuid = Str::uuid()->toString();
         $signature = hash_hmac('sha256', $uuid, config('app.key'));
-        $signedToken = $uuid . '.' . $signature;
+        $signedToken = $uuid.'.'.$signature;
 
         $this->qr = Qrcode::create([
             'token' => $signedToken,

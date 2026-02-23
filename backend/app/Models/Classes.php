@@ -25,11 +25,47 @@ class Classes extends Model
 
     public function getNameAttribute(): string
     {
-        return trim($this->label ?? '');
+        $label = trim($this->label ?? '');
+
+        // If label already looks like a full class name (contains letters), return as-is
+        // e.g., "XII RPL 2", "XI TKJ 1"
+        if (preg_match('/[A-Za-z]/', $label)) {
+            return $label;
+        }
+
+        // Otherwise, build the name from grade + major + label (number)
+        $parts = [];
+
+        // Add grade in roman numerals
+        $gradeMap = [
+            '10' => 'X',
+            '11' => 'XI',
+            '12' => 'XII',
+            'X' => 'X',
+            'XI' => 'XI',
+            'XII' => 'XII',
+        ];
+        $grade = (string) ($this->grade ?? '');
+        if (isset($gradeMap[$grade])) {
+            $parts[] = $gradeMap[$grade];
+        }
+
+        // Add major code
+        if ($this->major) {
+            $parts[] = $this->major->code;
+        }
+
+        // Add label (typically just a number like "1" or "2")
+        if ($label) {
+            $parts[] = $label;
+        }
+
+        return implode(' ', $parts);
     }
 
     public function getGradeRomanAttribute(): string
     {
+        $grade = (string) ($this->grade ?? '');
         $map = [
             '10' => 'X',
             '11' => 'XI',
@@ -39,7 +75,7 @@ class Classes extends Model
             'XII' => 'XII',
         ];
 
-        return $map[$this->grade] ?? $this->grade;
+        return $map[$grade] ?? $grade;
     }
 
     // Siswa untuk

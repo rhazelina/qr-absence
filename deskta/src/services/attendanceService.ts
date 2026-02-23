@@ -96,7 +96,7 @@ export const attendanceService = {
   },
 
   getTeachersDailyAttendance: async (date: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/attendance/teachers/daily?date=${date}`, {
+    const response = await fetch(`${API_BASE_URL}/waka/attendance/teachers/daily?date=${date}`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -130,9 +130,32 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
+  getClassStudentsSummary: async (classId: string, params?: any): Promise<any> => {
+    const query = new URLSearchParams(params).toString();
+    const response = await fetch(`${API_BASE_URL}/classes/${classId}/students/attendance-summary?${query}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+      },
+    });
+    return handleResponse(response);
+  },
+
   getMyHomeroomAttendance: async (params?: any): Promise<any> => {
     const query = new URLSearchParams(params).toString();
     const response = await fetch(`${API_BASE_URL}/me/homeroom/attendance?${query}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+      },
+    });
+    return handleResponse(response);
+  },
+
+  getMyHomeroomStudents: async (): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/me/homeroom/students`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -175,8 +198,28 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
-  manualAttendance: async (data: { schedule_id: string, student_id: string, status: string, date: string, notes?: string }): Promise<any> => {
+  manualAttendance: async (data: { schedule_id: number, student_id: number, status: string, date: string, reason?: string }): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/attendance/manual`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        attendee_type: 'student',
+        schedule_id: data.schedule_id,
+        student_id: data.student_id,
+        status: data.status,
+        date: data.date,
+        reason: data.reason || null
+      })
+    });
+    return handleResponse(response);
+  },
+
+  submitBulkAttendance: async (data: { schedule_id: number, date: string, items: Array<{ student_id: number, status: string, reason?: string }> }): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/attendance/bulk-manual`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -188,7 +231,22 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
-  updateAttendanceStatus: async (attendanceId: string, status: string, notes?: string): Promise<any> => {
+  uploadAttendanceDocument: async (attendanceId: number, file: File, type: string): Promise<any> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    
+    const response = await fetch(`${API_BASE_URL}/attendance/${attendanceId}/document`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: formData
+    });
+    return handleResponse(response);
+  },
+
+  updateAttendanceStatus: async (attendanceId: string, status: string, reason?: string): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/attendance/${attendanceId}`, {
       method: "PATCH",
       headers: {
@@ -196,7 +254,7 @@ export const attendanceService = {
         "Accept": "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ status, notes })
+      body: JSON.stringify({ status, reason: reason || null })
     });
     return handleResponse(response);
   }

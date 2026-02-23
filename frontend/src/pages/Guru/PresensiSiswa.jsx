@@ -19,6 +19,62 @@ function PresensiSiswa() {
   const tanggal = state.tanggal || '';
   const isEdit = state.isEdit || false;
 
+  const fetchStudents = async () => {
+    try {
+      const response = await apiService.getTeacherScheduleStudents(jadwalId);
+      
+      if (response.eligible_students) {
+        // Map eligible students to UI format
+        const mappedStudents = response.eligible_students.map((student, index) => ({
+          no: index + 1,
+          id: student.id,
+          nisn: student.nisn || '-',
+          nama: student.name,
+          status: '',
+          keterangan: null,
+          dokumen: null,
+          lastStatusToday: student.last_status_today, // For Pulang preview
+          isPulang: student.last_status_today?.is_pulang || student.last_status_today?.status === 'return'
+        }));
+        
+        // Get students with Pulang status for preview
+        const pulangStudents = mappedStudents.filter(s => s.isPulang);
+        setPulangStudents(pulangStudents);
+        
+        // If edit mode, fetch existing attendance
+        if (isEdit) {
+          try {
+            const attendanceResponse = await apiService.get(`/attendance/schedules/${jadwalId}`);
+            if (attendanceResponse.data) {
+              const attendanceMap = {};
+              attendanceResponse.data.forEach(record => {
+                attendanceMap[record.student_id] = {
+                  status: record.status,
+                  keterangan: record.notes,
+                  documents: record.documents
+                };
+              });
+              
+              mappedStudents.forEach(student => {
+                if (attendanceMap[student.id]) {
+                  student.status = attendanceMap[student.id].status;
+                  student.keterangan = attendanceMap[student.id].keterangan;
+                  student.dokumen = attendanceMap[student.id].documents;
+                }
+              });
+            }
+          } catch (attError) {
+            console.error('Error fetching existing attendance:', attError);
+          }
+        }
+        
+        setSiswaList(mappedStudents); 
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    }
+  };
+
   // Determine initial mode based on whether this is edit or new entry
   const [mode, setMode] = useState(isEdit ? 'view' : 'input');
   const [showKeteranganModal, setShowKeteranganModal] = useState(false);
@@ -47,41 +103,16 @@ function PresensiSiswa() {
 
   // ✅ Initialize siswa list - data akan dimuat dari dataManager
   const [siswaList, setSiswaList] = useState([]);
+  const [pulangStudents, setPulangStudents] = useState([]); // Students already marked Pulang today
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [overrideStudentIndex, setOverrideStudentIndex] = useState(null);
+  const [overrideNewStatus, setOverrideNewStatus] = useState(null);
 
   useEffect(() => {
     if (kelas && jadwalId && tanggal) {
       fetchStudents();
     }
-  }, [kelas, jadwalId, tanggal]);
-
-  const fetchStudents = async () => {
-    try {
-      const response = await apiService.getTeacherScheduleStudents(jadwalId);
-      
-      if (response.eligible_students) {
-        // Map eligible students to UI format
-        const mappedStudents = response.eligible_students.map((student, index) => ({
-          no: index + 1,
-          id: student.id,
-          nisn: student.nisn || '-',
-          nama: student.name, // API returns name in 'name' field
-          status: '', // Default empty status
-          keterangan: null,
-          dokumen: null
-        }));
-        
-        // If there are on_leave students, maybe we should show them as pre-filled?
-        // For now, let's just show eligible students as per requirement.
-        // We can append on_leave students if needed, but they are technically 'not present' for attendance marking purposes in this UI context usually.
-        // Let's stick to eligible students for now.
-        
-        setSiswaList(mappedStudents); 
-      }
-    } catch (error) {
-      console.error("Failed to fetch students:", error);
-      alert("Gagal memuat data siswa: " + error.message);
-    }
-  };
+  }, [kelas, jadwalId, tanggal, fetchStudents]);
 
   const getFileExtension = (filename) => {
     return filename.split('.').pop().toUpperCase();
@@ -108,6 +139,16 @@ function PresensiSiswa() {
   };
 
   const handleStatusChange = (index, newStatus) => {
+    const student = siswaList[index];
+    
+    // Check if student is already Pulang and show confirmation modal
+    if (student.isPulang) {
+      setOverrideStudentIndex(index);
+      setOverrideNewStatus(newStatus);
+      setShowOverrideModal(true);
+      return;
+    }
+    
     if (newStatus === 'terlambat' || newStatus === 'pulang') {
       setCurrentSiswaIndex(index);
       setKeteranganTipe(newStatus);
@@ -214,7 +255,24 @@ function PresensiSiswa() {
         }))
       };
 
-      await apiService.submitBulkAttendance(payload);
+      const response = await apiService.submitBulkAttendance(payload);
+      
+      // Upload documents for students who have documents
+      if (response.results) {
+        for (const result of response.results) {
+          const student = siswaList.find(s => s.id === result.student_id);
+          if (student && student.dokumen && student.dokumen.file && student.dokumen.file instanceof File) {
+            try {
+              const docFormData = new FormData();
+              docFormData.append('file', student.dokumen.file);
+              docFormData.append('type', student.dokumen.jenis || 'surat_izin');
+              await apiService.uploadAttendanceDocument(result.id, docFormData);
+            } catch (docError) {
+              console.error('Error uploading document:', docError);
+            }
+          }
+        }
+      }
       
       // Calculate stats for alert/summary (UI only)
       const stats = {
@@ -402,6 +460,37 @@ function PresensiSiswa() {
           {/* Mode Input Absensi */}
           {mode === 'input' && (
             <div className="presensi-table-wrapper">
+              {/* Pulang Preview Banner */}
+              {pulangStudents.length > 0 && (
+                <div style={{
+                  background: '#dbeafe',
+                  border: '1px solid #93c5fd',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '600', color: '#1e40af', marginBottom: '4px' }}>
+                      {pulangStudents.length} siswa sudah PULANG hari ini
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#1e3a8a' }}>
+                      {pulangStudents.slice(0, 3).map(s => s.nama).join(', ')}
+                      {pulangStudents.length > 3 && `, dan ${pulangStudents.length - 3} lainnya`}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#1e3a8a', marginTop: '4px', fontStyle: 'italic' }}>
+                      Tidak perlu input ulang - status readonly
+                    </div>
+                  </div>
+                </div>
+              )}
               <table className="presensi-table">
                 <thead>
                   <tr>
@@ -433,27 +522,81 @@ function PresensiSiswa() {
                     </tr>
                   ) : (
                     siswaList.map((siswa, index) => (
-                      <tr key={index}>
+                      <tr key={index} style={siswa.isPulang ? { background: '#eff6ff' } : {}}>
                     <td>{siswa.no}.</td>
                     <td>{siswa.nisn}</td>
-                    <td>{siswa.nama}</td>
-                    <td className="radio-cell">
-                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'hadir'} onChange={() => handleStatusChange(index, 'hadir')} />
+                    <td>
+                      {siswa.isPulang && (
+                        <span style={{
+                          background: '#1d4ed8',
+                          color: 'white',
+                          fontSize: '10px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          marginRight: '8px',
+                          fontWeight: '600'
+                        }}>PULANG</span>
+                      )}
+                      {siswa.nama}
+                      {siswa.lastStatusToday && siswa.lastStatusToday.time && (
+                        <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>
+                          ({siswa.lastStatusToday.time})
+                        </span>
+                      )}
                     </td>
                     <td className="radio-cell">
-                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'sakit'} onChange={() => handleStatusChange(index, 'sakit')} />
+                      <input 
+                        type="radio" 
+                        name={`status-${index}`} 
+                        checked={siswa.status === 'hadir'} 
+                        onChange={() => handleStatusChange(index, 'hadir')}
+                        disabled={siswa.isPulang}
+                      />
                     </td>
                     <td className="radio-cell">
-                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'izin'} onChange={() => handleStatusChange(index, 'izin')} />
+                      <input 
+                        type="radio" 
+                        name={`status-${index}`} 
+                        checked={siswa.status === 'sakit'} 
+                        onChange={() => handleStatusChange(index, 'sakit')}
+                        disabled={siswa.isPulang}
+                      />
                     </td>
                     <td className="radio-cell">
-                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'alfa'} onChange={() => handleStatusChange(index, 'alfa')} />
+                      <input 
+                        type="radio" 
+                        name={`status-${index}`} 
+                        checked={siswa.status === 'izin'} 
+                        onChange={() => handleStatusChange(index, 'izin')}
+                        disabled={siswa.isPulang}
+                      />
                     </td>
                     <td className="radio-cell">
-                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'terlambat'} onChange={() => handleStatusChange(index, 'terlambat')} />
+                      <input 
+                        type="radio" 
+                        name={`status-${index}`} 
+                        checked={siswa.status === 'alfa'} 
+                        onChange={() => handleStatusChange(index, 'alfa')}
+                        disabled={siswa.isPulang}
+                      />
                     </td>
                     <td className="radio-cell">
-                      <input type="radio" name={`status-${index}`} checked={siswa.status === 'pulang'} onChange={() => handleStatusChange(index, 'pulang')} />
+                      <input 
+                        type="radio" 
+                        name={`status-${index}`} 
+                        checked={siswa.status === 'terlambat'} 
+                        onChange={() => handleStatusChange(index, 'terlambat')}
+                        disabled={siswa.isPulang}
+                      />
+                    </td>
+                    <td className="radio-cell">
+                      <input 
+                        type="radio" 
+                        name={`status-${index}`} 
+                        checked={siswa.status === 'pulang'} 
+                        onChange={() => handleStatusChange(index, 'pulang')}
+                        disabled={siswa.isPulang}
+                      />
                     </td>
                       </tr>
                     ))
@@ -781,6 +924,65 @@ function PresensiSiswa() {
               <button className="btn-download" onClick={handleDownloadSurat}>
                 📥 Unduh Surat
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI OVERRIDE PULANG */}
+      {showOverrideModal && (
+        <div className="modal-overlay" onClick={() => setShowOverrideModal(false)}>
+          <div className="modal-keterangan" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-keterangan-header">
+              <h2>⚠️ Ubah Status Pulang</h2>
+              <button className="close-btn" onClick={() => setShowOverrideModal(false)}>×</button>
+            </div>
+            <div className="keterangan-form">
+              <div className="siswa-info-box">
+                <strong>{siswaList[overrideStudentIndex]?.nama}</strong>
+                <span className="siswa-nisn">{siswaList[overrideStudentIndex]?.nisn}</span>
+              </div>
+              <div style={{ 
+                background: '#fef3c7', 
+                border: '1px solid #fcd34d', 
+                borderRadius: '8px', 
+                padding: '16px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '14px', color: '#92400e', marginBottom: '8px' }}>
+                  <strong>Siswa ini sudah tercatat PULANG</strong> pada jam {siswaList[overrideStudentIndex]?.lastStatusToday?.time}
+                  {siswaList[overrideStudentIndex]?.lastStatusToday?.reason && (
+                    <span> ({siswaList[overrideStudentIndex]?.lastStatusToday.reason})</span>
+                  )}
+                </div>
+                <div style={{ fontSize: '14px', color: '#b45309' }}>
+                  Apakah Anda yakin ingin mengubah status menjadi <strong>{overrideNewStatus}</strong>?
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button 
+                  className="btn-batal-keterangan" 
+                  onClick={() => setShowOverrideModal(false)}
+                >
+                  Batal
+                </button>
+                <button 
+                  className="btn-simpan-keterangan" 
+                  onClick={() => {
+                    const updated = [...siswaList];
+                    updated[overrideStudentIndex].status = overrideNewStatus;
+                    updated[overrideStudentIndex].isPulang = false;
+                    setSiswaList(updated);
+                    setShowOverrideModal(false);
+                    // Update pulangStudents list
+                    const newPulangStudents = updated.filter(s => s.isPulang);
+                    setPulangStudents(newPulangStudents);
+                  }}
+                  style={{ background: '#dc2626' }}
+                >
+                  Ya, Ubah Status
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -86,7 +86,7 @@ test('waka can update class schedule', function () {
         ->putJson("/api/schedules/{$schedule->id}", $payload);
 
     $response->assertStatus(200)
-        ->assertJsonPath('year', 2026);
+        ->assertJsonPath('year', '2025/2026');
 
     $this->assertDatabaseHas('class_schedules', [
         'id' => $schedule->id,

@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\Classes;
-use App\Models\User;
 use App\Models\Major;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -33,8 +33,8 @@ it('FAILS when importing with missing mandatory fields (Simulation of Legacy Fro
             'success_count',
             'failed_count',
             'errors' => [
-                '*' => ['row', 'column', 'message']
-            ]
+                '*' => ['row', 'column', 'message'],
+            ],
         ]);
 });
 
@@ -63,7 +63,7 @@ it('SUCCEEDS when importing valid payload', function () {
     $response->assertStatus(201);
     $this->assertDatabaseHas('student_profiles', [
         'nisn' => '8888888888',
-        'class_id' => $class->id
+        'class_id' => $class->id,
     ]);
 });
 
