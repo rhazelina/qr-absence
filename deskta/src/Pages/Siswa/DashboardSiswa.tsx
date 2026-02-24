@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { scheduleService } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
 // import { classService } from "../../services/classService";
@@ -22,7 +22,6 @@ import {
   ArrowRight,
   TrendingUp,
   AlarmClock,
-  ImageIcon,
 } from "lucide-react";
 import {
   Chart as ChartJS,
@@ -401,9 +400,10 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                   </div>
                 </div>
               </div>
+              {/* </div> removed premature closing div */}
 
               {/* Schedule Image Section */}
-              {scheduleImageUrl && (
+              {/* {scheduleImageUrl && (
                 <div style={{
                   backgroundColor: "white",
                   borderRadius: "16px",
@@ -436,24 +436,24 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                     }}>
                       Jadwal Kelas
                     </h3>
-                  </div>
-                  <div style={{
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                    border: "1px solid #E5E7EB",
-                  }}>
-                    <img
-                      src={scheduleImageUrl}
-                      alt="Jadwal Kelas"
-                      style={{
-                        width: "100%",
-                        height: "auto",
-                        display: "block",
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
+                  </div> */}
+              {/* <div style={{
+              borderRadius: "12px",
+              overflow: "hidden",
+              border: "1px solid #E5E7EB",
+            }}>
+              <img
+                src={scheduleImageUrl}
+                alt="Jadwal Kelas"
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                }}
+              />
+            </div>
+          </div> */}
+
 
               {/* Stats Cards */}
               <div style={{
@@ -605,6 +605,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                   </div>
                 </div>
               </div>
+              {/* Added closing div for stats cards grid (460) */}
 
               {/* Today's Schedule Section */}
               <div style={{

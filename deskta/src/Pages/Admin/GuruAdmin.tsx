@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import AdminLayout from '../../component/Admin/AdminLayout';
 import { Button } from '../../component/Shared/Button';
 import { Select } from '../../component/Shared/Select';
-import { 
+import {
   MoreVertical,
   Trash2,
   Eye,
@@ -66,16 +66,16 @@ export default function GuruAdmin({
   const [selectedKeterangan, setSelectedKeterangan] = useState('');
   const [isEksporDropdownOpen, setIsEksporDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const [guruList, setGuruList] = useState<Guru[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
-  
+
   const [openActionId, setOpenActionId] = useState<string | null>(null);
-  
+
   // Pagination State
   const [pageIndex, setPageIndex] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -92,11 +92,11 @@ export default function GuruAdmin({
     email: '',
     password: ''
   });
-  
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [duplicateWarningMessage, setDuplicateWarningMessage] = useState('');
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ==================== FETCH DATA ====================
@@ -109,7 +109,7 @@ export default function GuruAdmin({
         per_page: itemsPerPage,
         search: searchValue
       });
-      
+
       const mappedGuru = response.data.map((t: any) => ({
         id: t.id.toString(),
         nip: t.nip,
@@ -121,16 +121,16 @@ export default function GuruAdmin({
         waka_field: t.waka_field,
         email: t.email,
         // Compute keterangan based on role
-        keterangan: t.role === 'Wali Kelas' && t.homeroom_class 
-          ? t.homeroom_class.name 
-          : t.role === 'Staff' ? (t.waka_field || '-') 
-          : (t.subject || '-'),
+        keterangan: t.role === 'Wali Kelas' && t.homeroom_class
+          ? t.homeroom_class.name
+          : t.role === 'Staff' ? (t.waka_field || '-')
+            : (t.subject || '-'),
         gender: 'Laki-Laki' // Default or fetch if available
       }));
 
       setGuruList(mappedGuru);
       setTotalPages(response.meta.last_page);
-      
+
     } catch (err: any) {
       console.error('Error fetching teachers:', err);
       setError('Gagal memuat data guru.');
@@ -216,12 +216,12 @@ export default function GuruAdmin({
   };
 
   const validateForm = () => {
-    const errors: {[key: string]: string} = {};
-    
+    const errors: { [key: string]: string } = {};
+
     if (!formData.namaGuru.trim()) {
       errors.namaGuru = 'Nama guru harus diisi';
     }
-    
+
     if (!formData.kodeGuru.trim()) {
       errors.kodeGuru = 'NIP/Kode guru harus diisi';
     }
@@ -229,15 +229,15 @@ export default function GuruAdmin({
     if (!formData.role) {
       errors.role = 'Peran harus dipilih';
     }
-    
+
     if (formData.role === 'Guru' && !formData.keterangan) {
       errors.keterangan = 'Mata pelajaran harus dipilih';
     }
-    
+
     if (formData.role === 'Wali Kelas' && !formData.waliKelasDari) {
       errors.waliKelasDari = 'Kelas harus dipilih';
     }
-    
+
     if (formData.role === 'Staff' && !formData.keterangan) {
       errors.keterangan = 'Bagian staff harus dipilih';
     }
@@ -277,7 +277,7 @@ export default function GuruAdmin({
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     // Check for Duplicate NIP (External warning)
@@ -306,7 +306,7 @@ export default function GuruAdmin({
         email: formData.email || `${formData.kodeGuru}@deskta.com`,
         password: formData.password || 'password123',
       };
-      
+
       if (formData.role === 'Guru') {
         payload.subject = formData.keterangan;
       } else if (formData.role === 'Wali Kelas') {
@@ -345,7 +345,7 @@ export default function GuruAdmin({
     { label: 'Laboratorium', value: 'Laboratorium' },
     { label: 'Keuangan', value: 'Keuangan' },
   ];
-  
+
   const kelasOptions = classes.map(c => c.name);
 
   const getFilteredKeteranganOptions = () => {
@@ -359,8 +359,8 @@ export default function GuruAdmin({
     const matchRole = selectedRole ? item.role === selectedRole : true;
     const matchKeterangan = selectedKeterangan ? (
       item.role === 'Wali Kelas' ? item.keterangan === selectedKeterangan :
-      item.role === 'Staff' ? item.keterangan === selectedKeterangan :
-      item.subject === selectedKeterangan
+        item.role === 'Staff' ? item.keterangan === selectedKeterangan :
+          item.subject === selectedKeterangan
     ) : true;
     return matchRole && matchKeterangan;
   });
@@ -410,7 +410,7 @@ export default function GuruAdmin({
         alert('Format file tidak didukung. Gunakan Excel atau CSV.');
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onload = async (evt) => {
         try {
@@ -440,9 +440,9 @@ export default function GuruAdmin({
           setLoading(true);
           const result = await teacherService.importTeachers(mappedItems);
           if (result.total_rows !== undefined) {
-             alert(`Berhasil mengimpor ${result.success_count} data guru dari total ${result.total_rows} baris.`);
+            alert(`Berhasil mengimpor ${result.success_count} data guru dari total ${result.total_rows} baris.`);
           } else {
-             alert(`Berhasil mengimpor data guru.`);
+            alert(`Berhasil mengimpor data guru.`);
           }
           fetchTeachers();
         } catch (error: any) {
@@ -556,45 +556,45 @@ export default function GuruAdmin({
       <img src={AwanBawahkanan} style={{ position: "fixed", bottom: 0, right: 0, width: 220, zIndex: 0, pointerEvents: "none" }} alt="cloud" />
 
       <div style={{
-          background: "rgba(255,255,255,0.85)", backdropFilter: "blur(6px)", borderRadius: 16, padding: '16px',
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)", border: "1px solid rgba(255,255,255,0.6)",
-          display: "flex", flexDirection: "column", gap: 14, position: "relative", zIndex: 1, minHeight: "70vh",
+        background: "rgba(255,255,255,0.85)", backdropFilter: "blur(6px)", borderRadius: 16, padding: '16px',
+        boxShadow: "0 10px 30px rgba(0,0,0,0.08)", border: "1px solid rgba(255,255,255,0.6)",
+        display: "flex", flexDirection: "column", gap: 14, position: "relative", zIndex: 1, minHeight: "70vh",
       }}>
-        
+
         {/* FILTERS & ACTIONS */}
         <div style={{ display: 'grid', gridTemplateColumns: '200px 200px 1fr auto auto auto auto', gap: '12px', alignItems: 'flex-end' }}>
           <Select label="Peran" value={selectedRole} onChange={(v) => { setSelectedRole(v); setSelectedKeterangan(''); }} options={roleOptions} placeholder="Semua" />
-          <Select 
+          <Select
             label={selectedRole === 'Guru' ? 'Mata Pelajaran' : selectedRole === 'Wali Kelas' ? 'Kelas' : 'Keterangan'}
-            value={selectedKeterangan} 
-            onChange={setSelectedKeterangan} 
-            options={getFilteredKeteranganOptions()} 
-            placeholder="Semua" 
+            value={selectedKeterangan}
+            onChange={setSelectedKeterangan}
+            options={getFilteredKeteranganOptions()}
+            placeholder="Semua"
           />
-          
+
           <div style={{ position: 'relative' }}>
             <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-            <input 
-              type="text" 
-              placeholder="Cari Guru..." 
+            <input
+              type="text"
+              placeholder="Cari Guru..."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               style={{ width: '100%', padding: '10px 10px 10px 36px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none' }}
             />
           </div>
-          
+
           <Button label="Tambahkan" onClick={handleTambahGuru} variant="primary" />
-          
-          <button onClick={handleDownloadFormatExcel} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#10B981', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Download size={14}/> Format Excel</button>
-          <button onClick={handleImport} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0B1221', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Upload size={14}/> Impor</button>
+
+          <button onClick={handleDownloadFormatExcel} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#10B981', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Download size={14} /> Format Excel</button>
+          <button onClick={handleImport} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0B1221', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Upload size={14} /> Impor</button>
           <div style={{ position: 'relative' }}>
-             <button onClick={() => setIsEksporDropdownOpen(!isEksporDropdownOpen)} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0B1221', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileDown size={14}/> Ekspor</button>
-             {isEksporDropdownOpen && (
-               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 20 }}>
-                 <button onClick={() => { setIsEksporDropdownOpen(false); handleExportExcel(); }} style={{ padding: '8px 12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>Excel</button>
-                 <button onClick={() => { setIsEksporDropdownOpen(false); handleExportPDF(); }} style={{ padding: '8px 12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>PDF</button>
-               </div>
-             )}
+            <button onClick={() => setIsEksporDropdownOpen(!isEksporDropdownOpen)} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0B1221', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><FileDown size={14} /> Ekspor</button>
+            {isEksporDropdownOpen && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'white', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 20 }}>
+                <button onClick={() => { setIsEksporDropdownOpen(false); handleExportExcel(); }} style={{ padding: '8px 12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>Excel</button>
+                <button onClick={() => { setIsEksporDropdownOpen(false); handleExportPDF(); }} style={{ padding: '8px 12px', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>PDF</button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -691,14 +691,14 @@ export default function GuruAdmin({
                 <button onClick={() => setShowDuplicateWarning(false)} style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer' }}><X size={14} /></button>
               </div>
             )}
-            
+
             <form onSubmit={handleSubmitForm} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label>Nama Guru</label>
                 <input type="text" name="namaGuru" value={formData.namaGuru} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
                 {formErrors.namaGuru && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.namaGuru}</span>}
               </div>
-              
+
               <div>
                 <label>NIP / Kode Guru</label>
                 <input type="text" name="kodeGuru" value={formData.kodeGuru} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
@@ -718,8 +718,8 @@ export default function GuruAdmin({
                 <div>
                   <label>Mata Pelajaran</label>
                   <select name="keterangan" value={formData.keterangan} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                     <option value="">Pilih Mapel</option>
-                     {mataPelajaranOptions.map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                    <option value="">Pilih Mapel</option>
+                    {mataPelajaranOptions.map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                   </select>
                 </div>
               )}
@@ -728,19 +728,19 @@ export default function GuruAdmin({
                 <div>
                   <label>Wali Kelas Dari</label>
                   <select name="waliKelasDari" value={formData.waliKelasDari} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                     <option value="">Pilih Kelas</option>
-                     {kelasOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    <option value="">Pilih Kelas</option>
+                    {kelasOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                   {formErrors.waliKelasDari && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.waliKelasDari}</span>}
                 </div>
               )}
 
-               {formData.role === 'Staff' && (
+              {formData.role === 'Staff' && (
                 <div>
                   <label>Bagian</label>
                   <select name="keterangan" value={formData.keterangan} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                     <option value="">Pilih Bagian</option>
-                     {bagianStaffOptions.map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                    <option value="">Pilih Bagian</option>
+                    {bagianStaffOptions.map(opt => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
                   </select>
                 </div>
               )}

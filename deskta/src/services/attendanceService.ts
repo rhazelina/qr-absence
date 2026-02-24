@@ -142,6 +142,18 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
+  getClassStudentsAbsences: async (classId: string, params?: any): Promise<any> => {
+    const query = new URLSearchParams(params).toString();
+    const response = await fetch(`${API_BASE_URL}/classes/${classId}/students/absences?${query}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+      },
+    });
+    return handleResponse(response);
+  },
+
   getMyHomeroomAttendance: async (params?: any): Promise<any> => {
     const query = new URLSearchParams(params).toString();
     const response = await fetch(`${API_BASE_URL}/me/homeroom/attendance?${query}`, {
@@ -235,7 +247,7 @@ export const attendanceService = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', type);
-    
+
     const response = await fetch(`${API_BASE_URL}/attendance/${attendanceId}/document`, {
       method: "POST",
       headers: {
@@ -255,6 +267,53 @@ export const attendanceService = {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ status, reason: reason || null })
+    });
+    return handleResponse(response);
+  },
+
+  createStudentLeave: async (scheduleId: string, studentId: string, data: { type: string, reason?: string, file?: File }): Promise<any> => {
+    const formData = new FormData();
+    formData.append('type', data.type);
+    if (data.reason) {
+      formData.append('reason', data.reason);
+    }
+    if (data.file) {
+      formData.append('attachment', data.file);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/me/schedules/${scheduleId}/students/${studentId}/leave`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+      },
+      body: formData
+    });
+    return handleResponse(response);
+  },
+
+  createLeavePermission: async (data: { student_id: string, type: string, start_time: string, end_time?: string, reason?: string, file?: File }): Promise<any> => {
+    const formData = new FormData();
+    formData.append('student_id', data.student_id);
+    formData.append('type', data.type);
+    formData.append('start_time', data.start_time);
+    if (data.end_time) {
+      formData.append('end_time', data.end_time);
+    }
+    if (data.reason) {
+      formData.append('reason', data.reason);
+    }
+    if (data.file) {
+      formData.append('attachment', data.file);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/leave-permissions`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+      },
+      body: formData
     });
     return handleResponse(response);
   }

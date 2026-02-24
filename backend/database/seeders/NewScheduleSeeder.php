@@ -54,31 +54,31 @@ class NewScheduleSeeder extends Seeder
 
         $jadwalData = [
             'Monday' => [
-                ['mapel' => 'PKN', 'guru' => 'Samadin, SAP', 'jam_mulai' => 1, 'jam_selesai' => 2],
+                ['mapel' => 'PKN', 'guru' => 'Samaodin, SAP', 'jam_mulai' => 1, 'jam_selesai' => 2],
                 ['mapel' => 'B.Ing', 'guru' => 'Fajar Ningtyas, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 4],
                 ['mapel' => 'MPP', 'guru' => 'Aang Noeraries Wahyudipasa, S.Si', 'jam_mulai' => 5, 'jam_selesai' => 6],
-                ['mapel' => 'MPKK', 'guru' => 'RR. Henning Gratyani Anggraeni, S.Pd', 'jam_mulai' => 7, 'jam_selesai' => 10],
+                ['mapel' => 'MPKK', 'guru' => 'RR. Henning Gratyanis Anggraeni, S.Pd', 'jam_mulai' => 7, 'jam_selesai' => 10],
             ],
             'Tuesday' => [
                 ['mapel' => 'MPKK', 'guru' => 'Zulkifli Abdillah, S.Kom', 'jam_mulai' => 1, 'jam_selesai' => 4],
-                ['mapel' => 'MTK', 'guru' => 'Wiwin Winangsih, S.Pd', 'jam_mulai' => 5, 'jam_selesai' => 7],
-                ['mapel' => 'PAI', 'guru' => 'Juzky S.Pd', 'jam_mulai' => 8, 'jam_selesai' => 10], // Assuming 'M' is a name/placeholder
+                ['mapel' => 'MTK', 'guru' => 'Wiwin Winangsih, S.Pd., M.Pd.', 'jam_mulai' => 5, 'jam_selesai' => 7],
+                ['mapel' => 'PAI', 'guru' => 'Zulul Muthomimah, S.Pdl', 'jam_mulai' => 8, 'jam_selesai' => 10],
             ],
             'Wednesday' => [
                 ['mapel' => 'B.Jawa', 'guru' => 'Moch. Bachrudin, S.Pd', 'jam_mulai' => 1, 'jam_selesai' => 2],
                 ['mapel' => 'B.Ing', 'guru' => 'Fajar Ningtyas, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 4],
-                ['mapel' => 'MPKK', 'guru' => 'Triana Ardiane S.pd', 'jam_mulai' => 5, 'jam_selesai' => 10],
+                ['mapel' => 'MPKK', 'guru' => 'Triana Ardiani, S.Pd', 'jam_mulai' => 5, 'jam_selesai' => 10],
             ],
             'Thursday' => [
-                ['mapel' => 'MPP', 'guru' => 'Evi Irniyah, S.Pd', 'jam_mulai' => 1, 'jam_selesai' => 2],
-                ['mapel' => 'PKDK', 'guru' => 'Adhi Bagus Pormana, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 6],
-                ['mapel' => 'BK', 'guru' => 'Roudhotul Husna Yani, S.Psi', 'jam_mulai' => 7, 'jam_selesai' => 7],
+                ['mapel' => 'MPP', 'guru' => 'Ewit Irniyah, S.Pd', 'jam_mulai' => 1, 'jam_selesai' => 2],
+                ['mapel' => 'PKDK', 'guru' => 'Adhi Bagus Permana, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 6],
+                ['mapel' => 'BK', 'guru' => 'Roudhatul Husna Yanif, S.Psi', 'jam_mulai' => 7, 'jam_selesai' => 7],
                 ['mapel' => 'MPKK', 'guru' => 'Zulkifli Abdillah, S.Kom', 'jam_mulai' => 8, 'jam_selesai' => 10],
             ],
             'Friday' => [
-                ['mapel' => 'MPKK', 'guru' => 'RR. Henning Gratyani Anggraeni, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 5],
-                ['mapel' => 'BI', 'guru' => 'Devi Arveni, S.Pd., Gr', 'jam_mulai' => 6, 'jam_selesai' => 8],
-                ['mapel' => 'MPKK', 'guru' => 'Triana Ardiane S.pd', 'jam_mulai' => 9, 'jam_selesai' => 10],
+                ['mapel' => 'MPKK', 'guru' => 'RR. Henning Gratyanis Anggraeni, S.Pd', 'jam_mulai' => 3, 'jam_selesai' => 5],
+                ['mapel' => 'BI', 'guru' => 'Devi Arveni, S.Pd, Gr', 'jam_mulai' => 6, 'jam_selesai' => 8],
+                ['mapel' => 'MPKK', 'guru' => 'Triana Ardiani, S.Pd', 'jam_mulai' => 9, 'jam_selesai' => 10],
             ],
         ];
 
@@ -92,23 +92,15 @@ class NewScheduleSeeder extends Seeder
                     ['code' => strtoupper(substr($item['mapel'], 0, 3)).'-'.rand(100, 999)]
                 );
 
-                // Find teacher by user name
-                $teacherUser = \App\Models\User::where('name', 'like', "%{$item['guru']}%")->first();
+                // Find teacher by user name (matching profiles, including admins who are teachers)
+                $teacherUser = \App\Models\User::whereHas('teacherProfile')
+                    ->where('name', 'like', "%{$item['guru']}%")
+                    ->first();
 
                 if ($teacherUser && $teacherUser->teacherProfile) {
                     $teacherId = $teacherUser->teacherProfile->id;
                 } else {
-                    // Create if not exists to avoid failure
-                    $user = \App\Models\User::factory()->create([
-                        'name' => $item['guru'],
-                        'email' => strtolower(str_replace([' ', ',', '.'], '', $item['guru'])).'@example.com',
-                        'user_type' => 'teacher',
-                    ]);
-                    $teacherProfile = TeacherProfile::factory()->create([
-                        'user_id' => $user->id,
-                        'subject' => $item['mapel'],
-                    ]);
-                    $teacherId = $teacherProfile->id;
+                    throw new \Exception("Teacher '{$item['guru']}' not found in database. Please check TeacherSeeder or datagurufix.txt.");
                 }
 
                 $startTime = $periodemap[$item['jam_mulai']][0] ?? '07:00';

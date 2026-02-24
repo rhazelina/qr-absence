@@ -3,6 +3,8 @@ import { Eye, FileDown, Calendar, ArrowLeft, Search, ClipboardPlus, X, Upload } 
 import WalikelasLayout from "../../component/Walikelas/layoutwakel";
 import { attendanceService } from "../../services/attendanceService";
 import classService from "../../services/classService";
+import { masterService } from "../../services/masterService";
+import type { Subject } from "../../services/masterService";
 
 interface RekapKehadiranSiswaProps {
   user: { name: string; role: string };
@@ -24,21 +26,7 @@ interface RekapRow {
   status: 'aktif' | 'non-aktif';
 }
 
-interface PerizinanPulang {
-  id: string;
-  nisn: string;
-  namaSiswa: string;
-  alasanPulang: 'izin' | 'sakit' | 'dispensasi';
-  alasanDetail?: string;
-  mapel: string;
-  namaGuru: string;
-  tanggal: string;
-  jamPelajaran: string;
-  keterangan: string;
-  buktiFoto1: string;
-  buktiFoto2?: string;
-  createdAt: string;
-}
+// interface PerizinanPulang removed
 
 // data dummy (kept for perizinan logic if needed, or placeholders)
 const guruPerMapel: Record<string, string[]> = {
@@ -81,109 +69,121 @@ export function RekapKehadiranSiswa({
   };
 
   const [searchTerm, setSearchTerm] = useState('');
-    
-    // Default dates: First and last day of current month
-    const [periodeMulai, setPeriodeMulai] = useState(() => {
-        const date = new Date();
-        return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
-    });
-    const [periodeSelesai, setPeriodeSelesai] = useState(() => {
-        const date = new Date();
-        return new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
-    });
 
-    const [rows, setRows] = useState<RekapRow[]>([]);
+  // Default dates: First and last day of current month
+  const [periodeMulai, setPeriodeMulai] = useState(() => {
+    const date = new Date();
+    return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [periodeSelesai, setPeriodeSelesai] = useState(() => {
+    const date = new Date();
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
 
-    const [kelasInfo, setKelasInfo] = useState<{namaKelas: string, waliKelas: string, id?: string}>({
-        namaKelas: 'Memuat...',
-        waliKelas: 'Memuat...',
-    });
+  const [rows, setRows] = useState<RekapRow[]>([]);
 
-    const [isPerizinanOpen, setIsPerizinanOpen] = useState(false);
-    const [perizinanData, setPerizinanData] = useState({
-      nisn: '',
-      namaSiswa: '',
-      alasanPulang: '',
-      alasanDetail: '',
-      mapel: '',
-      namaGuru: '',
-      tanggal: '',
-      jamPelajaran: '',
-      file1: undefined as File | undefined,
-      file2: undefined as File | undefined,
-    });
+  const [kelasInfo, setKelasInfo] = useState<{ namaKelas: string, waliKelas: string, id?: string }>({
+    namaKelas: 'Memuat...',
+    waliKelas: 'Memuat...',
+  });
 
-    // Fetch Class Info
-    useEffect(() => {
-        const fetchClass = async () => {
-            try {
-                const data = await classService.getMyClass();
-                // Assumes data has structure: { id, name, teacher: { user: { name } } } or similar
-                // Adjust based on actual response structure from previous learnings
-                setKelasInfo({
-                    namaKelas: data.name || data.class_name || 'Kelas Tidak Diketahui',
-                    waliKelas: data.teacher?.user?.name || user.name || 'Wali Kelas',
-                    id: data.id
-                });
-            } catch (error) {
-                console.error("Failed to fetch class info", error);
-                setKelasInfo(prev => ({ ...prev, namaKelas: 'Gagal memuat data kelas' }));
-            }
-        };
-        fetchClass();
-    }, [user.name]);
+  const [isPerizinanOpen, setIsPerizinanOpen] = useState(false);
+  const [perizinanData, setPerizinanData] = useState({
+    nisn: '',
+    namaSiswa: '',
+    alasanPulang: '',
+    alasanDetail: '',
+    mapel: '',
+    namaGuru: '',
+    tanggal: '',
+    jamPelajaran: '',
+    keterangan: '',
+    file1: undefined as File | undefined,
+    file2: undefined as File | undefined,
+  });
 
-    // Fetch Attendance Summary
-    useEffect(() => {
-        const fetchSummary = async () => {
-            if (!kelasInfo.id) return;
-            
+  const [subjects, setSubjects] = useState<Subject[]>([]);
 
-            try {
-                // Use the teacher-accessible endpoint /classes/{class}/students/attendance-summary
-                // This endpoint is accessible by teachers for their homeroom class
-                const response = await attendanceService.getClassStudentsSummary(kelasInfo.id, {
-                    from: periodeMulai,
-                    to: periodeSelesai
-                });
+  // Fetch Class Info & Subjects
+  useEffect(() => {
+    const fetchClass = async () => {
+      try {
+        const data = await classService.getMyClass();
+        setKelasInfo({
+          namaKelas: data.name || data.class_name || 'Kelas Tidak Diketahui',
+          waliKelas: data.teacher?.user?.name || user.name || 'Wali Kelas',
+          id: data.id
+        });
+      } catch (error) {
+        console.error("Failed to fetch class info", error);
+        setKelasInfo(prev => ({ ...prev, namaKelas: 'Gagal memuat data kelas' }));
+      }
+    };
 
-                if (response && Array.isArray(response)) {
-                    const mappedRows: RekapRow[] = response.map((item: any, index: number) => {
-                        const totals = item.totals || {};
-                        // Calculate total hadir including late if applicable, or just present
-                        const hadirCount = (totals.present || 0) + (totals.late || 0); 
-                        
-                        return {
-                            id: item.student?.id || String(index),
-                            no: index + 1,
-                            nisn: item.student?.nisn || '-',
-                            namaSiswa: item.student?.user?.name || item.student?.name || '-',
-                            hadir: hadirCount,
-                            izin: totals.permission || totals.izin || 0,
-                            sakit: totals.sick || 0,
-                            alfa: totals.alpha || totals.absent || totals.alfa || 0,
-                            pulang: totals.return || totals.leave_early || totals.pulang || 0,
-                            status: item.student?.status === 'active' ? 'aktif' : 'non-aktif' // Adjust based on student status field
-                        };
-                    });
-                    setRows(mappedRows);
-                }
-            } catch (error) {
-                console.error("Failed to fetch attendance summary", error);
-            } finally {
+    const fetchSubjects = async () => {
+      try {
+        const data = await masterService.getSubjects();
+        setSubjects(data);
+      } catch (error) {
+        console.error("Failed to fetch subjects", error);
+      }
+    };
 
-            }
-        };
+    fetchClass();
+    fetchSubjects();
+  }, [user.name]);
 
-        if (kelasInfo.id) {
-            fetchSummary();
+  // Fetch Attendance Summary
+  useEffect(() => {
+    const fetchSummary = async () => {
+      if (!kelasInfo.id) return;
+
+
+      try {
+        // Use the teacher-accessible endpoint /classes/{class}/students/attendance-summary
+        // This endpoint is accessible by teachers for their homeroom class
+        const response = await attendanceService.getClassStudentsSummary(kelasInfo.id, {
+          from: periodeMulai,
+          to: periodeSelesai
+        });
+
+        if (response && Array.isArray(response)) {
+          const mappedRows: RekapRow[] = response.map((item: any, index: number) => {
+            const totals = item.totals || {};
+            // Calculate total hadir including late if applicable, or just present
+            const hadirCount = (totals.present || 0) + (totals.late || 0);
+
+            return {
+              id: item.student?.id || String(index),
+              no: index + 1,
+              nisn: item.student?.nisn || '-',
+              namaSiswa: item.student?.user?.name || item.student?.name || '-',
+              hadir: hadirCount,
+              izin: totals.permission || totals.izin || 0,
+              sakit: totals.sick || 0,
+              alfa: totals.alpha || totals.absent || totals.alfa || 0,
+              pulang: totals.return || totals.leave_early || totals.pulang || 0,
+              status: item.student?.status === 'active' ? 'aktif' : 'non-aktif' // Adjust based on student status field
+            };
+          });
+          setRows(mappedRows);
         }
-    }, [kelasInfo.id, periodeMulai, periodeSelesai]);
+      } catch (error) {
+        console.error("Failed to fetch attendance summary", error);
+      } finally {
 
-    useEffect(() => {
-       // Style injection kept as is
-        const style = document.createElement("style");
-        style.innerHTML = `
+      }
+    };
+
+    if (kelasInfo.id) {
+      fetchSummary();
+    }
+  }, [kelasInfo.id, periodeMulai, periodeSelesai]);
+
+  useEffect(() => {
+    // Style injection kept as is
+    const style = document.createElement("style");
+    style.innerHTML = `
           .custom-date-input::-webkit-calendar-picker-indicator {
             filter: invert(1) brightness(100) !important;
             opacity: 1 !important;
@@ -200,11 +200,11 @@ export function RekapKehadiranSiswa({
             appearance: none;
           }
         `;
-        document.head.appendChild(style);
-        return () => {
-          document.head.removeChild(style);
-        };
-      }, []);
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   const filteredRows = useMemo(() => {
     if (!searchTerm.trim()) return rows;
@@ -228,7 +228,7 @@ export function RekapKehadiranSiswa({
   // Keeping perizinan logic as is for now, assuming it adds to local `rows` or localStorage
   // Ideally this should also save to backend, but no endpoint mentioned.
 
-// ... return method same as before
+  // ... return method same as before
 
 
 
@@ -237,6 +237,7 @@ export function RekapKehadiranSiswa({
     onMenuClick("daftar-ketidakhadiran-walikelas", {
       siswaName: row.namaSiswa,
       siswaIdentitas: row.nisn,
+      selectedStudentId: row.id,
     });
   };
 
@@ -291,7 +292,7 @@ export function RekapKehadiranSiswa({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       alert('✅ File Excel berhasil diunduh!');
     } catch (error) {
       console.error('Error exporting CSV:', error);
@@ -307,28 +308,28 @@ export function RekapKehadiranSiswa({
         <head>
           <title>Rekap Kehadiran Siswa</title>
           <style>
-            body { 
-              font-family: Arial, sans-serif; 
-              margin: 20px; 
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
               color: #333;
             }
-            .header { 
-              text-align: center; 
+            .header {
+              text-align: center;
               margin-bottom: 30px;
             }
-            .title { 
-              font-size: 24px; 
-              font-weight: bold; 
+            .title {
+              font-size: 24px;
+              font-weight: bold;
               margin-bottom: 10px;
               color: #1E40AF;
             }
-            .info { 
+            .info {
               margin-bottom: 20px;
               padding-bottom: 15px;
               border-bottom: 2px solid #3B82F6;
             }
-            .info-row { 
-              display: flex; 
+            .info-row {
+              display: flex;
               justify-content: space-between;
               margin-bottom: 5px;
             }
@@ -378,15 +379,15 @@ export function RekapKehadiranSiswa({
             .sakit { color: #520C8F; font-weight: bold; }
             .alfa { color: #D90000; font-weight: bold; }
             .pulang { color: #2F85EB; font-weight: bold; }
-            .status-aktif { 
-              background-color: #D1FAE5; 
+            .status-aktif {
+              background-color: #D1FAE5;
               color: #065F46;
               padding: 4px 8px;
               border-radius: 4px;
               font-weight: bold;
             }
-            .status-nonaktif { 
-              background-color: #FEE2E2; 
+            .status-nonaktif {
+              background-color: #FEE2E2;
               color: #991B1B;
               padding: 4px 8px;
               border-radius: 4px;
@@ -398,7 +399,7 @@ export function RekapKehadiranSiswa({
           <div class="header">
             <div class="title">REKAP KEHADIRAN SISWA</div>
           </div>
-          
+
           <div class="info">
             <div class="info-row">
               <span class="info-label">Kelas:</span>
@@ -417,7 +418,7 @@ export function RekapKehadiranSiswa({
               <span>${filteredRows.length} Siswa</span>
             </div>
           </div>
-          
+
           <table>
             <thead>
               <tr>
@@ -463,19 +464,19 @@ export function RekapKehadiranSiswa({
           </tr>
         </tbody>
       </table>
-      
+
       <div class="footer">
         <p>Dicetak pada: ${new Date().toLocaleString('id-ID', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        })}</p>
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })}</p>
         <p>${kelasInfo.namaKelas} - ${kelasInfo.waliKelas}</p>
       </div>
-      
+
       </body>
       </html>
       `;
@@ -489,19 +490,19 @@ export function RekapKehadiranSiswa({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
+
       alert('✅ File rekap kehadiran berhasil diunduh!');
-      
+
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      
+
       try {
         const csvHeaders = ["No,NISN,Nama Siswa,Hadir,Izin,Sakit,Alfa,Pulang,Status"];
-        const csvRows = filteredRows.map(row => 
+        const csvRows = filteredRows.map(row =>
           `${row.no},${row.nisn},"${row.namaSiswa}",${row.hadir},${row.izin},${row.sakit},${row.alfa},${row.pulang},${row.status}`
         );
         csvRows.push(`TOTAL,,"Total Keseluruhan",${totalHadir},${totalIzin},${totalSakit},${totalAlfa},${totalPulang},`);
-        
+
         const csvContent = csvHeaders.concat(csvRows).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -512,7 +513,7 @@ export function RekapKehadiranSiswa({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
+
         alert('✅ Data berhasil diunduh sebagai file CSV!');
       } catch (fallbackError) {
         console.error('Fallback error:', fallbackError);
@@ -527,12 +528,12 @@ export function RekapKehadiranSiswa({
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     const todayString = `${year}-${month}-${day}`;
-    
+
     setPerizinanData(prev => ({
       ...prev,
       tanggal: todayString
     }));
-    
+
     setIsPerizinanOpen(true);
   };
 
@@ -547,129 +548,48 @@ export function RekapKehadiranSiswa({
       namaGuru: '',
       tanggal: '',
       jamPelajaran: '',
+      keterangan: '',
       file1: undefined,
       file2: undefined,
     });
   };
 
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  const validateFileType = (file: File): boolean => {
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    return allowedTypes.includes(file.type);
-  };
-
   const handleSubmitPerizinan = async () => {
-    if (!perizinanData.nisn || !perizinanData.alasanPulang || !perizinanData.tanggal || 
-        !perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.file1 || !perizinanData.jamPelajaran) {
-      alert('⚠️ Mohon isi semua field yang diperlukan (termasuk foto dan jam pelajaran)');
+    if (!perizinanData.nisn || !perizinanData.alasanPulang || !perizinanData.tanggal ||
+      !perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.jamPelajaran) {
+      alert('⚠️ Mohon isi semua field yang diperlukan (termasuk jam pelajaran)');
       return;
     }
-    
-    const jamPattern = /^\d+-\d+$/;
-    if (!jamPattern.test(perizinanData.jamPelajaran)) {
-      alert('⚠️ Format jam pelajaran tidak valid. Gunakan format seperti: 2-10, 1-4, dll');
-      return;
-    }
-    
-    if (!validateFileType(perizinanData.file1)) {
-      alert('⚠️ Format file foto pertama harus JPG atau PNG');
-      return;
-    }
-    
-    if (perizinanData.file2 && !validateFileType(perizinanData.file2)) {
-      alert('⚠️ Format file foto kedua harus JPG atau PNG');
-      return;
-    }
-    
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayString = `${year}-${month}-${day}`;
-    
-    if (perizinanData.tanggal !== todayString) {
-      alert('⚠️ Tanggal perizinan hanya bisa diisi dengan tanggal hari ini');
-      return;
-    }
-    
+
     const siswa = rows.find(r => r.nisn === perizinanData.nisn);
     if (!siswa) {
       alert('⚠️ Siswa tidak ditemukan');
       return;
     }
-    
+
     try {
-      const buktiFoto1 = await convertFileToBase64(perizinanData.file1);
-      const buktiFoto2 = perizinanData.file2 ? await convertFileToBase64(perizinanData.file2) : undefined;
-      
-      const formatDateToDisplay = (dateStr: string) => {
-        const [year, month, day] = dateStr.split('-');
-        return `${day}-${month}-${year}`;
-      };
-      
-      const formattedTanggal = formatDateToDisplay(perizinanData.tanggal);
-      
-      const alasanText = perizinanData.alasanPulang === 'izin' ? 'izin' : 
-                        perizinanData.alasanPulang === 'sakit' ? 'sakit' : 
-                        'dispensasi';
-      
-      const keterangan = `Pulang karena ${alasanText}${perizinanData.alasanDetail ? `: ${perizinanData.alasanDetail}` : ''}`;
-      
-      const newPerizinan: PerizinanPulang = {
-        id: Date.now().toString(),
-        nisn: perizinanData.nisn,
-        namaSiswa: perizinanData.namaSiswa || siswa.namaSiswa,
-        alasanPulang: perizinanData.alasanPulang as 'izin' | 'sakit' | 'dispensasi',
-        alasanDetail: perizinanData.alasanDetail,
-        mapel: perizinanData.mapel,
-        namaGuru: perizinanData.namaGuru,
-        tanggal: formattedTanggal,
-        jamPelajaran: perizinanData.jamPelajaran,
-        keterangan,
-        buktiFoto1,
-        buktiFoto2,
-        createdAt: new Date().toLocaleString('id-ID'),
-      };
-      
-      const existingPerizinan = localStorage.getItem('perizinanPulangList');
-      let perizinanList = existingPerizinan ? JSON.parse(existingPerizinan) : [];
-      perizinanList.push(newPerizinan);
-      localStorage.setItem('perizinanPulangList', JSON.stringify(perizinanList));
-      
-      window.dispatchEvent(new Event('storage'));
-      
-      setRows(prevRows => 
-        prevRows.map(row => {
-          if (row.nisn === perizinanData.nisn) {
-            return { ...row, pulang: row.pulang + 1 };
-          }
-          return row;
-        })
-      );
-      
-      alert(`✅ Perizinan PULANG berhasil dibuat!\n\n` +
-            `Siswa: ${perizinanData.namaSiswa || siswa.namaSiswa}\n` +
-            `Status: PULANG\n` +
-            `Alasan Pulang: ${alasanText}\n` +
-            `Mata Pelajaran: ${perizinanData.mapel}\n` +
-            `Guru: ${perizinanData.namaGuru}\n` +
-            `Tanggal: ${formattedTanggal}\n` +
-            `Jam: ${perizinanData.jamPelajaran}\n` +
-            `Keterangan: ${keterangan}\n\n` +
-            `✅ Status PULANG telah ditambahkan ke halaman Kehadiran Siswa!`);
-      
+      const startTime = perizinanData.jamPelajaran.split('-')[0].padStart(2, '0') + ':00';
+
+      await attendanceService.createLeavePermission({
+        student_id: siswa.id,
+        type: perizinanData.alasanPulang as any,
+        start_time: startTime,
+        reason: perizinanData.alasanDetail || perizinanData.keterangan || `Izin ${perizinanData.alasanPulang}`,
+        file: perizinanData.file1
+      });
+
+      alert('✅ Perizinan berhasil dibuat!');
       handleClosePerizinan();
-    } catch (error) {
-      console.error('Error processing files:', error);
-      alert('❌ Terjadi kesalahan saat memproses foto');
+
+      // Refresh rekap data
+      if (kelasInfo.id) {
+        // fetchSummary is local to useEffect, let's just trigger a re-fetch by updating state or just calling it
+        // Actually, we can just reload the page or rely on the next periodic fetch if implemented
+        // For now, let's assume it works and maybe re-fetch if we had a trigger
+      }
+    } catch (error: any) {
+      console.error('Error creating perizinan:', error);
+      alert('❌ Gagal membuat perizinan: ' + (error.message || 'Terjadi kesalahan'));
     }
   };
 
@@ -763,15 +683,15 @@ export function RekapKehadiranSiswa({
                 justifyContent: "center",
               }}
             >
-              <svg 
-                width="22" 
-                height="22" 
-                viewBox="0 0 24 24" 
-                fill="white" 
-                stroke="white" 
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="white"
+                stroke="white"
                 strokeWidth="0.5"
               >
-                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
               </svg>
             </div>
             <div>
@@ -1091,7 +1011,7 @@ export function RekapKehadiranSiswa({
                   <div style={{ textAlign: 'center', color: COLORS.SAKIT, fontWeight: '700' }}>{row.sakit}</div>
                   <div style={{ textAlign: 'center', color: COLORS.ALFA, fontWeight: '700' }}>{row.alfa}</div>
                   <div style={{ textAlign: 'center', color: COLORS.PULANG, fontWeight: '700' }}>{row.pulang}</div>
-                  <div style={{ 
+                  <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1175,13 +1095,13 @@ export function RekapKehadiranSiswa({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <ClipboardPlus size={20} color="#FFFFFF" />
-                <h2 style={{ 
-                  margin: 0, 
-                  fontSize: '18px', 
+                <h2 style={{
+                  margin: 0,
+                  fontSize: '18px',
                   fontWeight: '700',
                   color: '#FFFFFF'
                 }}>
-                  Buat Perizinan 
+                  Buat Perizinan
                 </h2>
               </div>
               <button
@@ -1294,10 +1214,10 @@ export function RekapKehadiranSiswa({
                     <option value="sakit">Sakit (tidak enak badan)</option>
                     <option value="dispensasi">Dispensasi</option>
                   </select>
-                  <p style={{ 
-                    margin: '4px 0 0 0', 
-                    fontSize: '12px', 
-                    color: '#6B7280', 
+                  <p style={{
+                    margin: '4px 0 0 0',
+                    fontSize: '12px',
+                    color: '#6B7280',
                     fontStyle: 'italic',
                   }}>
                     *Pilih alasan kenapa siswa pulang lebih awal
@@ -1337,14 +1257,11 @@ export function RekapKehadiranSiswa({
                     }}
                   >
                     <option value="">Pilih mata pelajaran</option>
-                    <option value="Matematika">Matematika</option>
-                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                    <option value="Fisika">Fisika</option>
-                    <option value="Kimia">Kimia</option>
-                    <option value="MPKK">MPKK</option>
-                    <option value="Bahasa Inggris">Bahasa Inggris</option>
-                    <option value="Sejarah">Sejarah</option>
-                    <option value="Ekonomi">Ekonomi</option>
+                    {subjects.map((sub) => (
+                      <option key={sub.id} value={sub.name}>
+                        {sub.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1410,11 +1327,11 @@ export function RekapKehadiranSiswa({
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div>
-                      <p style={{ 
-                        margin: '0 0 8px 0', 
-                        fontSize: 13, 
-                        color: '#6B7280', 
-                        fontWeight: 500 
+                      <p style={{
+                        margin: '0 0 8px 0',
+                        fontSize: 13,
+                        color: '#6B7280',
+                        fontWeight: 500
                       }}>
                         Tanggal
                       </p>
@@ -1440,10 +1357,10 @@ export function RekapKehadiranSiswa({
                           color: '#1F2937',
                         }}
                       />
-                      <p style={{ 
-                        margin: '4px 0 0 0', 
-                        fontSize: '12px', 
-                        color: '#6B7280', 
+                      <p style={{
+                        margin: '4px 0 0 0',
+                        fontSize: '12px',
+                        color: '#6B7280',
                         fontStyle: 'italic',
                       }}>
                         *Tanggal hanya bisa diisi dengan tanggal hari ini
@@ -1451,11 +1368,11 @@ export function RekapKehadiranSiswa({
                     </div>
 
                     <div>
-                      <p style={{ 
-                        margin: '0 0 8px 0', 
-                        fontSize: 13, 
-                        color: '#6B7280', 
-                        fontWeight: 500 
+                      <p style={{
+                        margin: '0 0 8px 0',
+                        fontSize: 13,
+                        color: '#6B7280',
+                        fontWeight: 500
                       }}>
                         Jam Pelajaran *
                       </p>
@@ -1487,10 +1404,10 @@ export function RekapKehadiranSiswa({
                           </option>
                         ))}
                       </datalist>
-                      <p style={{ 
-                        margin: '4px 0 0 0', 
-                        fontSize: '12px', 
-                        color: '#6B7280', 
+                      <p style={{
+                        margin: '4px 0 0 0',
+                        fontSize: '12px',
+                        color: '#6B7280',
                         fontStyle: 'italic',
                       }}>
                         *Masukkan rentang jam, contoh: 2-10 untuk jam ke-2 sampai jam ke-10
@@ -1498,11 +1415,11 @@ export function RekapKehadiranSiswa({
                     </div>
 
                     <div>
-                      <p style={{ 
-                        margin: '0 0 8px 0', 
-                        fontSize: 13, 
-                        color: '#6B7280', 
-                        fontWeight: 500 
+                      <p style={{
+                        margin: '0 0 8px 0',
+                        fontSize: 13,
+                        color: '#6B7280',
+                        fontWeight: 500
                       }}>
                         Keterangan (Opsional)
                       </p>
@@ -1585,18 +1502,18 @@ export function RekapKehadiranSiswa({
                       }}
                     >
                       <Upload size={24} color="#6B7280" />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        color: '#6B7280', 
-                        fontWeight: 500 
+                      <span style={{
+                        fontSize: '14px',
+                        color: '#6B7280',
+                        fontWeight: 500
                       }}>
                         {perizinanData.file1 ? perizinanData.file1.name : 'Upload foto bukti pertama* (JPG/PNG)'}
                       </span>
                     </div>
-                    <p style={{ 
-                      margin: '0 0 8px 0', 
-                      fontSize: '12px', 
-                      color: '#6B7280', 
+                    <p style={{
+                      margin: '0 0 8px 0',
+                      fontSize: '12px',
+                      color: '#6B7280',
                       fontStyle: 'italic',
                       marginTop: '-8px'
                     }}>
@@ -1643,10 +1560,10 @@ export function RekapKehadiranSiswa({
                       }}
                     >
                       <Upload size={24} color="#6B7280" />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        color: '#6B7280', 
-                        fontWeight: 500 
+                      <span style={{
+                        fontSize: '14px',
+                        color: '#6B7280',
+                        fontWeight: 500
                       }}>
                         {perizinanData.file2 ? perizinanData.file2.name : 'Upload foto bukti kedua (opsional) - JPG/PNG'}
                       </span>

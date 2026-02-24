@@ -19,7 +19,7 @@ class SchoolSettingSeeder extends Seeder
             'school_headmaster' => 'SUMIJAH, S.Pd., M.Si',
             'school_headmaster_nip' => '97002101998022009',
             'school_address' => 'Jl. Perusahaan No.20',
-            'village' => 'Tanjungtirto',
+            'village' => 'Tunjungtirto',
             'district' => 'Singosari',
             'city' => 'Kab. Malang',
             'province' => 'Jawa Timur',

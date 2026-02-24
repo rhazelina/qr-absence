@@ -11,16 +11,18 @@ class WakaSeeder extends Seeder
 {
     public function run(): void
     {
-        $user = User::updateOrCreate(
-            ['username' => 'waka1'],
-            [
-                'name' => 'ZULKIFLI ABDILLAH, S.Kom',
-                'email' => 'waka@example.com',
-                'password' => Hash::make('password123'),
-                'user_type' => 'admin',
-                'active' => true,
-            ]
-        );
+        $wakaName = 'Wiwin Winangsih, S.Pd., M.Pd.';
+        $user = User::where('name', $wakaName)->first();
+
+        if (!$user) {
+            throw new \Exception("Teacher '$wakaName' not found. Please run TeacherSeeder first.");
+        }
+
+        // Update to admin type and set specific username
+        $user->update([
+            'username' => 'waka1',
+            'user_type' => 'admin',
+        ]);
 
         AdminProfile::updateOrCreate(
             ['user_id' => $user->id],

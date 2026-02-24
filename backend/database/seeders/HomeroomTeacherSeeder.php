@@ -29,23 +29,20 @@ class HomeroomTeacherSeeder extends Seeder
             ]
         );
 
-        // Buat user wali kelas
-        $user = User::updateOrCreate(
-            ['username' => 'walikelas1'],
-            [
-                'name' => 'Triana Ardiane S.pd',
-                'email' => 'walikelas1@example.com',
-                'password' => Hash::make('password123'),
-                'user_type' => 'teacher',
-                'active' => true,
-            ]
-        );
+        // Cari user wali kelas berdasarkan nama (agar sinkron dengan TeacherSeeder)
+        $teacherName = 'Triana Ardiani, S.Pd';
+        $user = User::where('name', $teacherName)->first();
+
+        if (!$user) {
+            throw new \Exception("Teacher '$teacherName' not found. Please run TeacherSeeder first.");
+        }
+
+        // Update username jika diperlukan untuk tetap walikelas1
+        $user->update(['username' => 'walikelas1']);
 
         TeacherProfile::updateOrCreate(
             ['user_id' => $user->id],
             [
-                'nip' => 'NIP-001',
-                'subject' => 'Matematika',
                 'homeroom_class_id' => $class->id, // Set as homeroom teacher
             ]
         );

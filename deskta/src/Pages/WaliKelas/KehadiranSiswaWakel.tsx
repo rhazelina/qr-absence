@@ -50,7 +50,7 @@ export function KehadiranSiswaWakel({
   onMenuClick,
 }: KehadiranSiswaWakelProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [selectedMapel, setSelectedMapel] = useState('all');
+  const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState('');
@@ -87,9 +87,9 @@ export function KehadiranSiswaWakel({
       // The backend endpoint myHomeroomAttendance uses 'from' and 'to' or just filters by date if we pass it? 
       // Checking endpoint: myHomeroomAttendance filters by 'from', 'to', 'status'.
       // If we want daily attendance, we should pass from=DATE & to=DATE.
-      
+
       const dateToFetch = selectedDate || formatDateForBackend(new Date());
-      
+
       const response = await attendanceService.getMyHomeroomAttendance({
         from: dateToFetch,
         to: dateToFetch
@@ -98,7 +98,7 @@ export function KehadiranSiswaWakel({
       // Response is array of Attendance objects
       // We need to map to KehadiranRow
       // Attendance object: { id, status, date, time, student: { user: { name }, nisn }, schedule: { subject: { name }, teacher: { user: { name } } } }
-      
+
       const mappedRows: KehadiranRow[] = response.map((item: any) => ({
         id: String(item.id),
         nisn: item.student?.nisn || '-',
@@ -107,12 +107,12 @@ export function KehadiranSiswaWakel({
         namaGuru: item.schedule?.teacher?.user?.name || '-',
         tanggal: formatDateDisplay(item.date), // Convert YYYY-MM-DD to DD-MM-YYYY
         status: item.status.toLowerCase() as StatusType,
-        keterangan: item.notes || item.attachment_path ? 'Ada Lampiran' : '-', 
-        jamPelajaran: `${item.schedule?.start_time?.substring(0,5)} - ${item.schedule?.end_time?.substring(0,5)}`,
+        keterangan: item.notes || item.attachment_path ? 'Ada Lampiran' : '-',
+        jamPelajaran: `${item.schedule?.start_time?.substring(0, 5)} - ${item.schedule?.end_time?.substring(0, 5)}`,
         waktuHadir: item.created_at ? new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-',
         buktiFoto1: item.attachment_path ? item.attachment_path : undefined, // Assuming attachment_path is relative or needs URL mapping. Ideally backend returns full URL or we handle it.
       }));
-      
+
       setRows(mappedRows);
     } catch (error) {
       console.error("Failed to fetch attendance:", error);
@@ -125,11 +125,11 @@ export function KehadiranSiswaWakel({
     if (kelasInfoData) {
       fetchAttendance();
     }
-  }, [kelasInfoData, fetchAttendance]); 
+  }, [kelasInfoData, fetchAttendance]);
 
   // Format Helper
   const formatDateDisplay = (dateString: string) => {
-    if(!dateString) return '-';
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
   };
@@ -137,7 +137,7 @@ export function KehadiranSiswaWakel({
   const formatDateForBackend = (date: Date) => {
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
   };
-  
+
   const kelasInfo = {
     namaKelas: kelasInfoData ? kelasInfoData.name : 'Memuat...',
     tanggal: selectedDate ? formatDateDisplay(selectedDate) : formattedDate,
@@ -155,7 +155,7 @@ export function KehadiranSiswaWakel({
     };
   }, []);
   */
- useEffect(() => {
+  useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => {
@@ -163,32 +163,59 @@ export function KehadiranSiswaWakel({
     };
   }, []);
 
-  const mapelOptions = useMemo(() => {
-    const mapelSet = new Set(
+  const subjectOptions = useMemo(() => {
+    const defaultSubjects = [
+      { label: 'Pendidikan Agama dan Budi Pekerti', value: 'Pendidikan Agama dan Budi Pekerti' },
+      { label: 'Pendidikan Pancasila dan Kewarganegaraan', value: 'Pendidikan Pancasila dan Kewarganegaraan' },
+      { label: 'Bahasa Indonesia', value: 'Bahasa Indonesia' },
+      { label: 'Bahasa Inggris', value: 'Bahasa Inggris' },
+      { label: 'Matematika', value: 'Matematika' },
+      { label: 'Sejarah Indonesia', value: 'Sejarah Indonesia' },
+      { label: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', value: 'Pendidikan Jasmani, Olahraga, dan Kesehatan' },
+      { label: 'Seni Budaya', value: 'Seni Budaya' },
+      { label: 'Informatika', value: 'Informatika' },
+      { label: 'Projek Ilmu Pengetahuan Alam dan Sosial', value: 'Projek Ilmu Pengetahuan Alam dan Sosial' },
+      { label: 'Dasar-dasar Program Kejurusan', value: 'Dasar-dasar Program Kejurusan' },
+      { label: 'Projek Kreatif dan Kewirausahaan', value: 'Projek Kreatif dan Kewirausahaan' },
+      { label: 'Muatan Lokal / Bahasa Daerah', value: 'Muatan Lokal / Bahasa Daerah' },
+      { label: 'Bimbingan Konseling', value: 'Bimbingan Konseling' },
+      { label: 'Projek Penguatan Profil Pelajar Pancasila', value: 'Projek Penguatan Profil Pelajar Pancasila' },
+    ];
+
+    const currentMapelSet = new Set(
       rows.map((r) => r.mataPelajaran).filter((v) => v && v !== '-')
     );
-    return [
+
+    // Combine default subjects and any others found in rows
+    const options = [
       { label: 'Semua Mata Pelajaran', value: 'all' },
-      ...Array.from(mapelSet).map((mapel) => ({
-        label: mapel,
-        value: mapel,
-      })),
+      ...defaultSubjects
     ];
+
+    // Add subjects from rows that aren't in defaults
+    const defaultLabels = new Set(defaultSubjects.map(s => s.label));
+    Array.from(currentMapelSet).forEach(mapel => {
+      if (!defaultLabels.has(mapel)) {
+        options.push({ label: mapel, value: mapel });
+      }
+    });
+
+    return options;
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    let filtered = selectedMapel === 'all' 
-      ? rows 
-      : rows.filter((r) => r.mataPelajaran === selectedMapel);
-    
+    let filtered = selectedSubject === 'all'
+      ? rows
+      : rows.filter((r) => r.mataPelajaran === selectedSubject);
+
     if (selectedDate) {
       filtered = filtered.filter((r) => r.tanggal === formatDateDisplay(selectedDate));
     }
-    
+
     return filtered.map((row) => ({
       ...row,
     }));
-  }, [rows, selectedMapel, selectedDate]);
+  }, [rows, selectedSubject, selectedDate]);
 
   const totalHadir = filteredRows.filter((r) => r.status === 'hadir').length;
   const totalIzin = filteredRows.filter((r) => r.status === 'izin').length;
@@ -201,7 +228,7 @@ export function KehadiranSiswaWakel({
   const getMinMaxDateForFilter = () => {
     const startYear = 2026;
     const maxYear = 2030;
-    
+
     return {
       minDate: `${startYear}-01-01`,
       maxDate: `${maxYear}-12-31`
@@ -218,11 +245,11 @@ export function KehadiranSiswaWakel({
   const StatusButton = ({ status, siswa }: { status: StatusType; siswa: KehadiranRow }) => {
     const color = STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#1FA83D';
     const label = status === 'alfa' ? 'Alfa' :
-                  status === 'sakit' ? 'Sakit' :
-                  status === 'izin' ? 'Izin' :
-                  status === 'hadir' ? 'Hadir' :
-                  'Pulang';
-    
+      status === 'sakit' ? 'Sakit' :
+        status === 'izin' ? 'Izin' :
+          status === 'hadir' ? 'Hadir' :
+            'Pulang';
+
     return (
       <div
         onClick={() => handleStatusClick(siswa)}
@@ -261,10 +288,9 @@ export function KehadiranSiswaWakel({
       </div>
     );
   };
-
-
-
-
+  const handleLihatRekap = () => {
+    onMenuClick('rekap-kehadiran-siswa');
+  };
 
   const [editingRow, setEditingRow] = useState<KehadiranRow | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -291,25 +317,25 @@ export function KehadiranSiswaWakel({
 
   const handleSubmitEdit = () => {
     if (!editingRow) return;
-    
+
     setIsSubmitting(true);
-    
+
     if ((editStatus === 'pulang' || editStatus === 'izin' || editStatus === 'sakit') && !editKeterangan.trim()) {
       alert(`⚠️ Mohon isi keterangan untuk status ${editStatus}`);
       setIsSubmitting(false);
       return;
     }
-    
+
     setTimeout(() => {
       setRows((prev) =>
         prev.map((r) =>
-          r.id === editingRow.id 
-            ? { 
-                ...r, 
-                status: editStatus,
-                keterangan: editKeterangan.trim(),
-                waktuHadir: editStatus === 'hadir' ? '07:30 WIB' : undefined
-              } 
+          r.id === editingRow.id
+            ? {
+              ...r,
+              status: editStatus,
+              keterangan: editKeterangan.trim(),
+              waktuHadir: editStatus === 'hadir' ? '07:30 WIB' : undefined
+            }
             : r
         )
       );
@@ -368,7 +394,7 @@ export function KehadiranSiswaWakel({
       user={user}
       onLogout={onLogout}
     >
-      <div style={{ 
+      <div style={{
         position: 'relative',
         minHeight: '100%',
         backgroundColor: '#FFFFFF',
@@ -443,7 +469,7 @@ export function KehadiranSiswaWakel({
                 <ChevronDown size={14} color="#FFFFFF" />
               </button>
             </div>
-            
+
             <div style={{
               backgroundColor: '#0F172A',
               color: 'white',
@@ -470,7 +496,8 @@ export function KehadiranSiswaWakel({
 
               <BookOpen size={24} color="#FFFFFF" />
               <div style={{ zIndex: 1 }}>
-                <div style={{ fontSize: '16px', fontWeight: '700' }}>{kelasInfo.namaKelas}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700' }}>12 REKAYASA PERANGKAT LUNAK 2</div>
+                {/* <div style={{ fontSize: '16px', fontWeight: '700' }}>{kelasInfo.namaKelas}</div> */}
                 <div style={{ fontSize: '13px', opacity: 0.8 }}>Semua Mata Pelajaran</div>
               </div>
             </div>
@@ -483,17 +510,17 @@ export function KehadiranSiswaWakel({
             flex: 1,
             minWidth: isMobile ? '100%' : 'auto',
           }}>
-            <div style={{ 
-              display: 'flex', 
-              gap: '10px', 
+            <div style={{
+              display: 'flex',
+              gap: '10px',
               flexWrap: 'wrap',
               justifyContent: isMobile ? 'flex-start' : 'flex-end',
             }}>
               <button
-                  onClick={() => {
-                   fetchAttendance(); // Refresh button
-                   // handleLihatRekap();
-                  }}
+                onClick={() => {
+                  // fetchAttendance(); // Refresh button
+                  handleLihatRekap();
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -513,7 +540,7 @@ export function KehadiranSiswaWakel({
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
               >
                 <FileText size={15} />
-                <span>Refresh</span>
+                <span>Lihat Rekap</span>
               </button>
             </div>
 
@@ -539,7 +566,7 @@ export function KehadiranSiswaWakel({
                 <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: '500', marginBottom: '2px' }}>Hadir</span>
                 <span style={{ fontSize: '20px', color: '#1FA83D', fontWeight: '700' }}>{totalHadir}</span>
               </div>
-              
+
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -549,7 +576,7 @@ export function KehadiranSiswaWakel({
                 <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: '500', marginBottom: '2px' }}>Izin</span>
                 <span style={{ fontSize: '20px', color: '#ACA40D', fontWeight: '700' }}>{totalIzin}</span>
               </div>
-              
+
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -559,7 +586,7 @@ export function KehadiranSiswaWakel({
                 <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: '500', marginBottom: '2px' }}>Sakit</span>
                 <span style={{ fontSize: '20px', color: '#520C8F', fontWeight: '700' }}>{totalSakit}</span>
               </div>
-              
+
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -569,7 +596,7 @@ export function KehadiranSiswaWakel({
                 <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: '500', marginBottom: '2px' }}>Alfa</span>
                 <span style={{ fontSize: '20px', color: '#D90000', fontWeight: '700' }}>{totalAlfa}</span>
               </div>
-              
+
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -611,9 +638,9 @@ export function KehadiranSiswaWakel({
             </span>
             <div style={{ width: '200px' }}>
               <Select
-                value={selectedMapel}
-                onChange={(val) => setSelectedMapel(val)}
-                options={mapelOptions}
+                value={selectedSubject}
+                onChange={(val) => setSelectedSubject(val)}
+                options={subjectOptions}
                 placeholder="Pilih mata pelajaran"
               />
             </div>
@@ -656,12 +683,12 @@ export function KehadiranSiswaWakel({
               ))}
             </tbody>
           </table>
-          
+
           {filteredRows.length === 0 && (
-            <div style={{ 
-              padding: '40px 20px', 
-              textAlign: 'center', 
-              backgroundColor: '#F9FAFB', 
+            <div style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+              backgroundColor: '#F9FAFB',
               borderRadius: '8px',
               borderTop: '1px solid #E5E7EB'
             }}>
@@ -754,17 +781,17 @@ export function KehadiranSiswaWakel({
                   backgroundColor: '#FFFFFF',
                 }}
               />
-              <p style={{ 
-                margin: '4px 0 0 0', 
-                fontSize: '11px', 
-                color: '#6B7280', 
-                fontStyle: 'italic' 
+              <p style={{
+                margin: '4px 0 0 0',
+                fontSize: '11px',
+                color: '#6B7280',
+                fontStyle: 'italic'
               }}>
               </p>
             </div>
 
-            <div style={{ 
-              display: 'flex', 
+            <div style={{
+              display: 'flex',
               justifyContent: 'flex-end',
               gap: '10px',
               marginTop: '20px',
@@ -831,7 +858,7 @@ export function KehadiranSiswaWakel({
                   {editingRow.namaSiswa}
                 </p>
               </div>
-              
+
               <div>
                 <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6B7280' }}>
                   Mata Pelajaran
@@ -840,7 +867,7 @@ export function KehadiranSiswaWakel({
                   {editingRow.mataPelajaran}
                 </p>
               </div>
-              
+
               <div>
                 <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6B7280' }}>
                   Tanggal
@@ -851,7 +878,7 @@ export function KehadiranSiswaWakel({
               </div>
             </>
           )}
-          
+
           <div>
             <p
               style={{
@@ -871,7 +898,7 @@ export function KehadiranSiswaWakel({
               placeholder="Pilih status kehadiran"
             />
           </div>
-          
+
           {(editStatus === 'pulang' || editStatus === 'izin' || editStatus === 'sakit') && (
             <div>
               <p

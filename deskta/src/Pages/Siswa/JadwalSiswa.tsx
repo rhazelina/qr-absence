@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import SiswaLayout from "../../component/Siswa/SiswaLayout";
 import { scheduleService } from "../../services/scheduleService";
 import { authService } from "../../services/authService";
+import jadwalimg from "../../assets/Icon/DummyJadwal.png"
 
 type SiswaPage = "dashboard" | "jadwal-anda" | "notifikasi";
 
@@ -109,10 +110,32 @@ export default function JadwalSiswa({
                                 fontWeight: 500,
                             }}
                         >
-                            Wali Kelas: {profile?.student_profile?.class?.homeroom_teacher?.user?.name || "Belum ditentukan"}
+                            {/* Wali Kelas: {profile?.student_profile?.class?.homeroom_teacher?.user?.name || "Belum ditentukan"} */}
+                            Wali Kelas: Triana Ardiane S.Pd
                         </div>
                     </div>
                 </div>
+
+                {/* Embbed gambar jadwal for fallback */}
+                <div style={{
+                    background: "#FFFFFF",
+                    borderRadius: 12,
+                    padding: 16,
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
+                }}>
+                    <img
+                        // src={profile?.student_profile?.class?.schedule_image || "https://api.deskta.com/storage/schedules/defaults/default_schedule.jpg"}
+                        src={jadwalimg}
+                        alt="Jadwal Pelajaran"
+                        style={{
+                            width: "100%",
+                            borderRadius: 8,
+                            display: "block"
+                        }}
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                </div>
+
 
                 {loading ? (
                     <div style={{ textAlign: "center", padding: 20 }}>Memuat jadwal...</div>
@@ -192,6 +215,6 @@ export default function JadwalSiswa({
                     </div>
                 )}
             </div>
-        </SiswaLayout>
+        </SiswaLayout >
     );
 }

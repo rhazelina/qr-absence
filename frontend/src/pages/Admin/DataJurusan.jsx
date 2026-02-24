@@ -14,7 +14,9 @@ function DataJurusan() {
 
   const [formData, setFormData] = useState({
     kodeJurusan: '',
-    namaJurusan: ''
+    namaJurusan: '',
+    programKeahlian: '',
+    bidangKeahlian: ''
   });
   const [errors, setErrors] = useState({});
 
@@ -43,12 +45,16 @@ function DataJurusan() {
         setFormData({
           id: editData.id,
           kodeJurusan: editData.kodeJurusan || editData.code,
-          namaJurusan: editData.namaJurusan || editData.name
+          namaJurusan: editData.namaJurusan || editData.name,
+          programKeahlian: editData.programKeahlian || '',
+          bidangKeahlian: editData.bidangKeahlian || ''
         });
       } else {
         setFormData({
           kodeJurusan: '',
-          namaJurusan: ''
+          namaJurusan: '',
+          programKeahlian: '',
+          bidangKeahlian: ''
         });
       }
       setErrors({});
@@ -100,6 +106,14 @@ function DataJurusan() {
       newErrors.namaJurusan = `Jurusan "${formData.namaJurusan}" sudah terdaftar`;
     }
 
+    if (!formData.programKeahlian.trim()) {
+      newErrors.programKeahlian = 'Program keahlian harus diisi';
+    }
+
+    if (!formData.bidangKeahlian.trim()) {
+      newErrors.bidangKeahlian = 'Bidang keahlian harus diisi';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -112,6 +126,8 @@ function DataJurusan() {
       const payload = {
         code: formData.kodeJurusan.trim().toUpperCase(),
         name: formData.namaJurusan.trim(),
+        programKeahlian: formData.programKeahlian.trim(),
+        bidangKeahlian: formData.bidangKeahlian.trim(),
         category: 'Umum' // Default category
       };
 
@@ -137,6 +153,8 @@ function DataJurusan() {
       const payload = {
         code: formData.kodeJurusan.trim().toUpperCase(),
         name: formData.namaJurusan.trim(),
+        programKeahlian: formData.programKeahlian.trim(),
+        bidangKeahlian: formData.bidangKeahlian.trim(),
         category: editData.category || 'Umum'
       };
 
@@ -185,8 +203,12 @@ function DataJurusan() {
   const filteredJurusans = jurusans.filter(jurusan => {
     const nama = jurusan.namaJurusan || jurusan.name || '';
     const kode = jurusan.kodeJurusan || jurusan.code || '';
+    const program = jurusan.programKeahlian || '';
+    const bidang = jurusan.bidangKeahlian || '';
     return nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      kode.toLowerCase().includes(searchTerm.toLowerCase());
+      kode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      program.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bidang.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const handleResetSearch = () => {
@@ -290,7 +312,7 @@ function DataJurusan() {
           <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
             <input
               type="text"
-              placeholder="Cari berdasarkan kode atau nama jurusan..."
+              placeholder="Cari berdasarkan kode, nama jurusan, atau program keahlian..."
               className="jurusan-search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -330,14 +352,16 @@ function DataJurusan() {
             <tr>
               <th>No</th>
               <th>Kode Konsentrasi Keahlian</th>
-              <th>Nama Konsentrasi Keahlian</th>
+              <th>Konsentrasi Keahlian</th>
+              <th>Program Keahlian</th>
+              <th>Bidang Keahlian</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
             {filteredJurusans.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                   {searchTerm
                     ? 'Tidak ada data yang sesuai dengan pencarian'
                     : 'Belum ada data konsentrasi keahlian'}
@@ -349,6 +373,8 @@ function DataJurusan() {
                   <td style={{ fontWeight: '700' }}>{index + 1}</td>
                   <td><strong>{jurusan.kodeJurusan || jurusan.code}</strong></td>
                   <td>{jurusan.namaJurusan || jurusan.name}</td>
+                  <td>{jurusan.programKeahlian}</td>
+                  <td>{jurusan.bidangKeahlian}</td>
                   <td className="jurusan-aksi-cell">
                     <button
                       className="jurusan-aksi jurusan-edit"
@@ -434,7 +460,7 @@ function DataJurusan() {
               </div>
 
               <div className="jurusan-form-group">
-                <label>Nama Konsentrasi Keahlian <span className="jurusan-required">*</span></label>
+                <label>Konsentrasi Keahlian <span className="jurusan-required">*</span></label>
                 <input
                   type="text"
                   name="namaJurusan"
@@ -462,6 +488,72 @@ function DataJurusan() {
                       <line x1="12" y1="8" x2="12.01" y2="8"></line>
                     </svg>
                     Nama lengkap konsentrasi keahlian
+                  </small>
+                )}
+              </div>
+
+              <div className="jurusan-form-group">
+                <label>Program Keahlian <span className="jurusan-required">*</span></label>
+                <input
+                  type="text"
+                  name="programKeahlian"
+                  value={formData.programKeahlian}
+                  onChange={handleChange}
+                  placeholder="Contoh: Teknologi Informasi"
+                  className={errors.programKeahlian ? 'jurusan-error' : ''}
+                  disabled={saving}
+                />
+                {errors.programKeahlian && <span className="jurusan-error-message">{errors.programKeahlian}</span>}
+                {!errors.programKeahlian && (
+                  <small className="jurusan-helper-text">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ marginRight: '5px', verticalAlign: 'middle' }}
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Nama program keahlian yang menaungi konsentrasi ini
+                  </small>
+                )}
+              </div>
+
+              <div className="jurusan-form-group">
+                <label>Bidang Keahlian <span className="jurusan-required">*</span></label>
+                <input
+                  type="text"
+                  name="bidangKeahlian"
+                  value={formData.bidangKeahlian}
+                  onChange={handleChange}
+                  placeholder="Contoh: Teknologi Informasi dan Komunikasi"
+                  className={errors.bidangKeahlian ? 'jurusan-error' : ''}
+                  disabled={saving}
+                />
+                {errors.bidangKeahlian && <span className="jurusan-error-message">{errors.bidangKeahlian}</span>}
+                {!errors.bidangKeahlian && (
+                  <small className="jurusan-helper-text">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      style={{ marginRight: '5px', verticalAlign: 'middle' }}
+                    >
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="16" x2="12" y2="12"></line>
+                      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Nama bidang keahlian yang menaungi program keahlian ini
                   </small>
                 )}
               </div>

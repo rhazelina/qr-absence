@@ -6,78 +6,47 @@ use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class TeacherSeeder extends Seeder
 {
     public function run(): void
     {
-        // Daftar Guru diambil dari Jadwal XII RPL 1 & 2
-        $teachers = [
-            [
-                'name' => 'DEVI ARVENI, S.Pd., Gr.',
-                'jabatan' => 'Wali Kelas',
-                'subject' => 'Bahasa Indonesia',
-                'grade' => 'XII',
-                'major' => 'RPL',
-            ],
-            [
-                'name' => 'ZULKIFLI ABDILLAH, S.Kom',
-                'jabatan' => 'Kapro',
-                'konsentrasi_keahlian' => 'Rekayasa Perangkat Lunak',
-                'subject' => 'Produktif RPL',
-            ],
-            [
-                'name' => 'Triana Ardiane S.pd',
-                'jabatan' => 'Guru',
-                'subject' => 'MPKK',
-            ],
-            [
-                'name' => 'SAMAODIN, SAP',
-                'jabatan' => 'Guru',
-                'subject' => 'PPKN',
-            ],
-            [
-                'name' => 'FAJAR NINGTYAS, S.Pd',
-                'jabatan' => 'Guru',
-                'subject' => 'Bahasa Inggris',
-            ],
-            [
-                'name' => 'WIWIN WINANGSIH, S.Pd',
-                'jabatan' => 'Waka',
-                'bidang' => 'Waka Kurikulum',
-                'subject' => 'Matematika',
-            ],
-            [
-                'name' => 'MOCH. BACHRUDIN, S.Pd',
-                'jabatan' => 'Guru',
-                'subject' => 'Bahasa Jawa',
-            ],
-            [
-                'name' => 'EWIT IRNIYAH, S.Pd',
-                'jabatan' => 'Guru',
-                'subject' => 'MPP',
-            ],
-            [
-                'name' => 'ADHI BAGUS PERMANA, S.Pd',
-                'jabatan' => 'Guru',
-                'subject' => 'PKDK',
-            ],
-            [
-                'name' => 'ROUDHOTUL HUSNA YANIF, S.Psi',
-                'jabatan' => 'Guru',
-                'subject' => 'BK',
-            ],
-        ];
+        // Clean up old teacher data to ensure a clean slate
+        TeacherProfile::query()->delete();
+        User::where('user_type', 'teacher')->delete();
 
-        foreach ($teachers as $index => $teacherData) {
-            $username = 'guru'.($index + 1);
-            $email = $username.'@sekolah.sch.id';
+        $filePath = base_path('datagurufix.txt');
+        if (!file_exists($filePath)) {
+            $this->command->error("File $filePath not found!");
+            return;
+        }
+
+        $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        // Remove duplicates from the file lines but maintain order
+        $teachers = array_values(array_unique(array_map('trim', $lines)));
+
+        foreach ($teachers as $index => $name) {
+            if ($name === '.') continue; // Skip dot if any
+
+            // Generate username from name (slugified)
+            $cleanName = preg_replace('/[^a-zA-Z0-9\s]/', '', $name);
+            $parts = explode(' ', strtolower($cleanName));
+            $username = (count($parts) > 1) ? $parts[0].'.'.$parts[1] : $parts[0];
+            
+            // Handle username uniqueness
+            $originalUsername = $username;
+            $counter = 1;
+            while (User::where('username', $username)->where('name', '!=', $name)->exists()) {
+                $username = $originalUsername . $counter;
+                $counter++;
+            }
 
             $user = User::updateOrCreate(
-                ['username' => $username],
+                ['name' => $name],
                 [
-                    'name' => $teacherData['name'],
-                    'email' => $email,
+                    'username' => $username,
+                    'email' => $username.'@sekolah.sch.id',
                     'password' => Hash::make('password123'),
                     'user_type' => 'teacher',
                     'active' => true,
@@ -87,13 +56,13 @@ class TeacherSeeder extends Seeder
             TeacherProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'nip' => 'NIP-'.str_pad($index + 1, 4, '0', STR_PAD_LEFT),
-                    'jabatan' => $teacherData['jabatan'] ?? 'Guru',
-                    'bidang' => $teacherData['bidang'] ?? null,
-                    'konsentrasi_keahlian' => $teacherData['konsentrasi_keahlian'] ?? null,
-                    'subject' => $teacherData['subject'] ?? null,
+                    'nip' => 'NIP-' . str_pad($index + 1, 4, '0', STR_PAD_LEFT),
+                    'jabatan' => 'Guru',
+                    'kode_guru' => strtoupper(substr(Str::slug($name), 0, 3)) . str_pad($index + 1, 3, '0', STR_PAD_LEFT),
                 ]
             );
         }
+
+        $this->command->info("Seeded " . count($teachers) . " unique teachers.");
     }
 }

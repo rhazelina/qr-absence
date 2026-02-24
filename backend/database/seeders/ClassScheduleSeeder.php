@@ -185,10 +185,10 @@ class ClassScheduleSeeder extends Seeder
         // 2. Mappings / Fuzzy
         if (! $user) {
             $map = [
-                'Evi Intiyah, S.Pd' => 'EWIT IRNIYAH, S.Pd',
-                'Roudhotul Husna Yanti, S.Psi' => 'ROUDHOTUL HUSNA YANIF, S.Psi',
-                'Devi Arvini, S.Pd., Gr' => 'DEVI ARVENI, S.Pd., Gr.',
-                'Alfah Diantobes Aindra, S.Pd' => 'Triana Ardiane S.pd',
+                'Evi Irniyah, S.Pd' => 'Ewit Irniyah, S.Pd',
+                'Roudhotul Husna Yanti, S.Psi' => 'Roudhatul Husna Yanif, S.Psi',
+                'Devi Arvini, S.Pd., Gr' => 'Devi Arveni, S.Pd, Gr',
+                'Alfah Diantobes Aindra, S.Pd' => 'Alifah Diantebes Aindra, S.Pd',
             ];
 
             if (isset($map[$name])) {

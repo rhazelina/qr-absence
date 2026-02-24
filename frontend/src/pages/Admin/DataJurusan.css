@@ -432,11 +432,11 @@
 /* Responsive */
 @media (max-width: 768px) {
   .jurusan-container {
-    padding: 100px 15px 20px;
+    padding: var(--web-page-pad-top) 15px 20px;
   }
 
   .jurusan-page-title {
-    font-size: 36px;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
   }
 
   .jurusan-table-wrapper {
