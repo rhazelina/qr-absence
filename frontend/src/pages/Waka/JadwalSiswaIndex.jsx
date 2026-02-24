@@ -296,9 +296,8 @@ function JadwalSiswaIndex() {
               <thead>
                 <tr>
                   <th>No</th>
-                  <th>Hari & Jam</th>
-                  <th>Mata Pelajaran</th>
-                  <th>Guru</th>
+                  <th>Kompetensi Keahlian</th>
+                  <th>Wali Kelas</th>
                   <th>Kelas</th>
                   <th>Aksi</th>
                 </tr>
@@ -310,12 +309,12 @@ function JadwalSiswaIndex() {
                     <tr key={schedule.id}>
                       <td>{index + 1}</td>
                       <td>
-                        <span className="day-badge">{schedule.day}</span>
-                        <div className="time-text">{schedule.start_time} - {schedule.end_time}</div>
+                        <span className="jadwal-siswa-index-badge-blue">
+                          {schedule.class?.major?.name || schedule.class?.major_name || schedule.class?.department || '-'}
+                        </span>
                       </td>
-                      <td><div className="subject-name">{schedule.subject?.name || schedule.subject_name || '-'}</div></td>
-                      <td>{schedule.teacher_profile?.user?.name || schedule.teacher_name || '-'}</td>
-                      <td><span className="jadwal-siswa-index-badge-blue">{schedule.class?.name || '-'}</span></td>
+                      <td>{schedule.class?.homeroom_teacher?.user?.name || schedule.class?.teacher_name || '-'}</td>
+                      <td>{schedule.class?.name || '-'}</td>
                       <td>
                         <div className="jadwal-siswa-index-action">
                           <button className="jadwal-siswa-index-btn-view" onClick={(e) => handleView(e, schedule.id)} title="Lihat Detail">

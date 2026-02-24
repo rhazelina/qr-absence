@@ -129,7 +129,7 @@ export default function JadwalKelasStaff({
             // Update local state with new image URL
             setKelasData(prev => prev.map(item => 
                 item.id === row.id 
-                ? { ...item, schedule_image_url: response.url } 
+                ? { ...item, schedule_image_url: `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}` } 
                 : item
             ));
         } catch (error) {

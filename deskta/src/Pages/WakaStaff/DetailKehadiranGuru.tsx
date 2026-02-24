@@ -25,6 +25,7 @@ interface DetailKehadiranGuruProps {
   currentPage: string;
   onMenuClick: (page: string) => void;
   onBack?: () => void;
+  teacherId?: string;
   guruName?: string;
 }
 
@@ -34,6 +35,7 @@ export default function DetailKehadiranGuru({
   onMenuClick,
   onLogout,
   onBack,
+  teacherId,
   guruName,
 }: DetailKehadiranGuruProps) {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +44,8 @@ export default function DetailKehadiranGuru({
 
   // Try to get teacher info from state or fallback
   const initialGuruName = location.state?.guruName || guruName || "Nama Guru";
+  const resolvedTeacherId =
+    location.state?.teacherId || location.state?.guruId || teacherId || id;
   const [currentGuruName, setCurrentGuruName] = useState(initialGuruName);
   
   const [rows, setRows] = useState<RowKehadiran[]>([]);
@@ -78,10 +82,20 @@ export default function DetailKehadiranGuru({
   const [selectedDetail, setSelectedDetail] = useState<RowKehadiran | null>(null);
 
   useEffect(() => {
-    if (id) {
-      fetchData(id);
+    const fallbackName = location.state?.guruName || guruName;
+    if (fallbackName) {
+      setCurrentGuruName(fallbackName);
     }
-  }, [id, startDate, endDate]);
+  }, [location.state?.guruName, guruName]);
+
+  useEffect(() => {
+    if (resolvedTeacherId) {
+      fetchData(String(resolvedTeacherId));
+    } else {
+      setRows([]);
+      setLoading(false);
+    }
+  }, [resolvedTeacherId, startDate, endDate]);
 
   const fetchData = async (teacherId: string) => {
     setLoading(true);
@@ -95,7 +109,10 @@ export default function DetailKehadiranGuru({
       const teacher = historyResponse.teacher;
       
       if (teacher) {
-        setCurrentGuruName(teacher.user?.name || teacher.name || currentGuruName);
+        const fetchedGuruName = teacher.user?.name || teacher.name;
+        if (fetchedGuruName) {
+          setCurrentGuruName(fetchedGuruName);
+        }
       }
 
       const timeSlots = timeSlotsResponse.data || [];

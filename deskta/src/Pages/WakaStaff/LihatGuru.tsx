@@ -1,4 +1,5 @@
 // src/Pages/WakaStaff/LihatGuru.tsx
+import { useState } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { User } from "lucide-react";
@@ -24,6 +25,12 @@ export default function LihatGuru({
   jadwalImage,
   onBack,
 }: Props) {
+  const [imageError, setImageError] = useState(false);
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
   return (
     <StaffLayout
       pageTitle="Jadwal Guru"
@@ -77,7 +84,7 @@ export default function LihatGuru({
 
         <div style={{ background: "#FFFFFF", borderRadius: 14, padding: 16 }}>
           <img
-            src={jadwalImage || DummyJadwal}
+            src={imageError || !jadwalImage ? DummyJadwal : `${jadwalImage}${jadwalImage.includes('?') ? '&' : '?'}t=${Date.now()}`}
             alt="Jadwal Guru"
             style={{
               width: "100%",
@@ -85,6 +92,7 @@ export default function LihatGuru({
               margin: "0 auto",
               display: "block",
             }}
+            onError={handleImageError}
           />
         </div>
       </div>

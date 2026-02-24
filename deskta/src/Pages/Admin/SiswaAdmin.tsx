@@ -164,7 +164,9 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         phone: s.parent_phone,
         address: s.address,
         email: s.email,
-        username: s.username
+        username: s.username,
+        tahunMulai: s.start_year || '2025',
+        tahunAkhir: s.end_year || '2026'
       }));
 
       setStudents(mappedStudents);
@@ -190,14 +192,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   // Validation
   const validateField = (name: string, value: string) => {
     let error = '';
-    if (name === 'namaSiswa' && !value.trim()) error = 'Nama Siswa wajib diisi';
-    if (name === 'nisn' && !value.trim()) error = 'NISN wajib diisi';
-    if (name === 'nisn' && value && !/^\d+$/.test(value)) error = 'NISN harus berupa angka';
-    if (name === 'nis' && !value.trim()) error = 'NIS wajib diisi';
-    if (name === 'username' && !value.trim()) error = 'Username wajib diisi';
-    // Password required only for new students
-    if (name === 'password' && !editingId && !value.trim()) error = 'Password wajib diisi';
-    if (name === 'address' && !value.trim()) error = 'Alamat wajib diisi';
+    if (name === 'noTelp' && value && !/^\d+$/.test(value)) error = 'No. Telepon harus berupa angka';
+    if (name === 'noTelp' && value && value.length > 15) error = 'No. Telepon maksimal 15 digit';
     if (name === 'jurusanId' && !value) error = 'Jurusan wajib dipilih';
     if (name === 'kelas' && !value) error = 'Kelas wajib dipilih';
     
@@ -209,10 +205,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     const errors: {[key: string]: string} = {};
     if (!formData.namaSiswa.trim()) errors.namaSiswa = 'Nama Siswa wajib diisi';
     if (!formData.nisn.trim()) errors.nisn = 'NISN wajib diisi';
-    if (!formData.nis.trim()) errors.nis = 'NIS wajib diisi';
-    if (!formData.username.trim()) errors.username = 'Username wajib diisi';
-    if (!editingId && !formData.password.trim()) errors.password = 'Password wajib diisi';
-    if (!formData.address.trim()) errors.address = 'Alamat wajib diisi';
+    if (formData.noTelp && !/^\d+$/.test(formData.noTelp)) errors.noTelp = 'No. Telepon harus berupa angka';
+    if (formData.noTelp && formData.noTelp.length > 15) errors.noTelp = 'No. Telepon maksimal 15 digit';
     if (!formData.jurusanId) errors.jurusanId = 'Jurusan wajib dipilih';
     if (!formData.kelas) errors.kelas = 'Kelas wajib dipilih';
     
@@ -473,7 +467,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
               <th>No</th>
               <th>Nama Siswa</th>
               <th>NISN</th>
-              <th>Konsentrasi Keahlian</th>
+              <th>Kode Konsentrasi Keahlian</th>
               <th>Tingkatan Kelas</th>
               <th>Jenis Kelamin</th>
             </tr>
@@ -761,7 +755,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
               marginBottom: '4px',
             }}
           >
-            Cari siswa
+            Cari Siswa
           </label>
           <div
             style={{
@@ -782,7 +776,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             />
             <input
               type="text"
-              placeholder="Cari nama atau NISN..."
+              placeholder="Cari Siswa..."
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               style={{
@@ -872,8 +866,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                             minWidth: 180, zIndex: 10, overflow: 'hidden', border: '1px solid #E2E8F0',
                             textAlign: 'left'
                           }}>
-                            <button onClick={() => handleEdit(siswa)} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#0F172A', fontSize: '14px' }}>
-                              <Edit size={16} /> Edit
+                            <button onClick={() => { if (onNavigateToDetail) onNavigateToDetail(siswa.id); }} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#0F172A', fontSize: '14px' }}>
+                              <FileDown size={16} /> Detail
                             </button>
                             <button onClick={() => handleDeleteSiswa(siswa.id)} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#DC2626', fontSize: '14px' }}>
                               <Trash2 size={16} /> Hapus
@@ -960,67 +954,49 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '18px', overflowY: 'auto' }}>
               <form onSubmit={handleSubmitForm}>
                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Nama Siswa *</label>
-                       <input type="text" value={formData.namaSiswa} onChange={e => { setFormData({...formData, namaSiswa: e.target.value}); validateField('namaSiswa', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                       {formErrors.namaSiswa && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.namaSiswa}</p>}
-                    </div>
-                    
-                    <div>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NISN *</label>
-                       <input type="text" value={formData.nisn} onChange={e => { setFormData({...formData, nisn: e.target.value}); validateField('nisn', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    </div>
+                     <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Nama Siswa *</label>
+                        <input type="text" value={formData.namaSiswa} onChange={e => { setFormData({...formData, namaSiswa: e.target.value}); validateField('namaSiswa', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                        {formErrors.namaSiswa && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.namaSiswa}</p>}
+                     </div>
 
-                    <div>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NIS *</label>
-                       <input type="text" value={formData.nis} onChange={e => { setFormData({...formData, nis: e.target.value}); validateField('nis', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    </div>
+                     <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NISN *</label>
+                        <input type="text" value={formData.nisn} onChange={e => { setFormData({...formData, nisn: e.target.value}); validateField('nisn', e.target.value) }} placeholder="10 digit NISN" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                        {formErrors.nisn && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.nisn}</p>}
+                     </div>
 
-                    <div>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Jenis Kelamin *</label>
-                       <select value={formData.jenisKelamin} onChange={e => setFormData({...formData, jenisKelamin: e.target.value as 'L'|'P'})} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                          <option value="L">Laki-Laki</option>
-                          <option value="P">Perempuan</option>
-                       </select>
-                    </div>
-                    
-                    <div>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>No. Telepon</label>
-                       <input type="text" value={formData.noTelp} onChange={e => setFormData({...formData, noTelp: e.target.value})} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    </div>
+                     <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Jenis Kelamin *</label>
+                        <select value={formData.jenisKelamin} onChange={e => setFormData({...formData, jenisKelamin: e.target.value as 'L'|'P'})} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                           <option value="L">Laki-Laki</option>
+                           <option value="P">Perempuan</option>
+                        </select>
+                     </div>
 
-                    <div>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
-                       <select value={formData.jurusanId} onChange={e => { setFormData({...formData, jurusanId: e.target.value}); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                          <option value="">Pilih</option>
-                          {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                       </select>
-                    </div>
+                     <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>No. Telepon</label>
+                        <input type="text" value={formData.noTelp} onChange={e => { setFormData({...formData, noTelp: e.target.value}); validateField('noTelp', e.target.value) }} placeholder="Maks 15 digit" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                        {formErrors.noTelp && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.noTelp}</p>}
+                     </div>
 
-                    <div>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
-                       <select value={formData.kelas} onChange={e => { setFormData({...formData, kelas: e.target.value}); validateField('kelas', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                          <option value="">Pilih</option>
-                          {kelasOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                       </select>
-                    </div>
+                     <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
+                        <select value={formData.jurusanId} onChange={e => { setFormData({...formData, jurusanId: e.target.value}); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                           <option value="">Pilih</option>
+                           {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        {formErrors.jurusanId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.jurusanId}</p>}
+                     </div>
 
-                    <div style={{ gridColumn: '1 / -1' }}>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Username *</label>
-                       <input type="text" value={formData.username} onChange={e => { setFormData({...formData, username: e.target.value}); validateField('username', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    </div>
-
-                    {!editingId && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Password *</label>
-                       <input type="password" value={formData.password} onChange={e => { setFormData({...formData, password: e.target.value}); validateField('password', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    </div>
-                    )}
-
-                    <div style={{ gridColumn: '1 / -1' }}>
-                       <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Alamat *</label>
-                       <textarea value={formData.address} onChange={e => { setFormData({...formData, address: e.target.value}); validateField('address', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px', minHeight: '60px' }} />
-                    </div>
+                     <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
+                        <select value={formData.kelas} onChange={e => { setFormData({...formData, kelas: e.target.value}); validateField('kelas', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                           <option value="">Pilih</option>
+                           {kelasOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        {formErrors.kelas && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.kelas}</p>}
+                     </div>
 
                  </div>
                  

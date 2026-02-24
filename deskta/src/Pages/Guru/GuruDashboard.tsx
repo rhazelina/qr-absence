@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { scheduleService } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
+import { authService } from "../../services/authService";
+import { teacherService } from "../../services/teacherService";
 import GuruLayout from "../../component/Guru/GuruLayout";
 import DetailJadwalGuru from "./DetailJadwalGuru";
 import InputAbsenGuru from "./InputManualGuru";
@@ -286,6 +288,8 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   );
 
   const [todaySchedule, setTodaySchedule] = useState<ScheduleItem[]>([]);
+  const [tomorrowSchedule, setTomorrowSchedule] = useState<ScheduleItem[]>([]);
+  const [teacherProfile, setTeacherProfile] = useState<any>(null);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -301,6 +305,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
+  const [isScheduleImageModalOpen, setIsScheduleImageModalOpen] = useState(false);
 
   // ========== EFFECTS ==========
   useEffect(() => {
@@ -325,7 +330,8 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
       setIsMobile(window.innerWidth < BREAKPOINTS.mobile);
     window.addEventListener("resize", handleResize);
 
-    // Fetch Schedule
+    // Fetch Teacher Profile and Schedule
+    fetchTeacherProfile();
     fetchSchedule();
 
     return () => {
@@ -333,6 +339,19 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
+
+  const fetchTeacherProfile = async () => {
+    try {
+      const response = await authService.me();
+      // Ensure we have the teacher profile with schedule image
+      if (response && response.user_type === 'teacher') {
+        const detail = await teacherService.getTeacherById(response.id.toString());
+        setTeacherProfile(detail);
+      }
+    } catch (error) {
+      console.error("Error fetching teacher profile:", error);
+    }
+  };
 
   const fetchSchedule = async () => {
     setLoadingSchedule(true);
@@ -342,11 +361,15 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
       // Filter for today
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const todayIndex = new Date().getDay();
+      const now = new Date();
+      const todayIndex = now.getDay();
+      const tomorrowIndex = (todayIndex + 1) % 7;
+      
       const todayName = days[todayIndex];
+      const tomorrowName = days[tomorrowIndex];
 
-      const filtered = items
-        .filter((item: any) => item.day === todayName)
+      const mapItems = (dayName: string) => items
+        .filter((item: any) => item.day === dayName)
         .map((item: any) => ({
           id: item.id.toString(),
           subject: item.subject,
@@ -358,7 +381,8 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
           room: item.room
         }));
 
-      setTodaySchedule(filtered);
+      setTodaySchedule(mapItems(todayName));
+      setTomorrowSchedule(mapItems(tomorrowName));
     } catch (error) {
       console.error("Error fetching schedule:", error);
     } finally {
@@ -714,8 +738,31 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                       Total Mengajar Hari Ini
                     </div>
                   </div>
-                  <div style={styles.totalBadge(isMobile)}>
-                    {todaySchedule.length} Kelas
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <div style={{ ...styles.totalBadge(isMobile), flex: 1 }}>
+                      {todaySchedule.length} Kelas
+                    </div>
+                    <button 
+                      disabled={!teacherProfile?.schedule_image_url}
+                      onClick={() => setIsScheduleImageModalOpen(true)}
+                      style={{
+                        backgroundColor: teacherProfile?.schedule_image_url ? "#FFFFFF" : "#9CA3AF",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        fontSize: isMobile ? "13px" : "14px",
+                        fontWeight: 700,
+                        color: "#0B2948",
+                        cursor: teacherProfile?.schedule_image_url ? "pointer" : "not-allowed",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        border: "none",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <img src={EyeIcon} alt="" style={{ width: 16, height: 16 }} />
+                      Jadwal
+                    </button>
                   </div>
                 </div>
               </div>
@@ -862,9 +909,113 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                   })
                 )}
               </div>
+
+              {/* ========== TOMORROW SCHEDULE ========== */}
+              {tomorrowSchedule.length > 0 && (
+                <>
+                  <div style={{ ...styles.titleSection(isMobile), marginTop: 32, backgroundColor: "#374151" }}>Jadwal Besok</div>
+                  <div style={styles.scheduleGrid(isMobile)}>
+                    {tomorrowSchedule.map((schedule) => (
+                      <div
+                        key={`tomorrow-${schedule.id}`}
+                        style={{ ...styles.scheduleCard(isMobile), opacity: 0.85, backgroundColor: "#F9FAFB" }}
+                      >
+                        <div style={{ ...styles.bookIconWrapper(isMobile), background: "linear-gradient(135deg, #6B7280 0%, #374151 100%)" }}>
+                          <img
+                            src={BookIcon}
+                            alt="Book"
+                            style={{
+                              width: isMobile ? "18px" : "20px",
+                              height: isMobile ? "18px" : "20px",
+                              objectFit: "contain",
+                              filter: "brightness(0) invert(1)",
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: isMobile ? "15px" : "16px",
+                              fontWeight: 700,
+                              color: "#111827",
+                              marginBottom: 4,
+                            }}
+                          >
+                            {schedule.subject}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: isMobile ? "12px" : "13px",
+                              color: "#6B7280",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {schedule.jam} <br />
+                            Ruang: {schedule.room || "-"}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            flex: 1,
+                            textAlign: "left",
+                            paddingLeft: "24px",
+                            display: isMobile ? "none" : "block",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: isMobile ? "14px" : "15px",
+                              fontWeight: 700,
+                              color: "#111827",
+                            }}
+                          >
+                            {schedule.className}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ========== MODALS ========== */}
+
+            {/* Modal Lihat Jadwal Image */}
+            <Modal 
+              isOpen={isScheduleImageModalOpen} 
+              onClose={() => setIsScheduleImageModalOpen(false)}
+            >
+              <div style={{ padding: 20, textAlign: "center" }}>
+                <h3 style={{ marginBottom: 16, fontSize: 18, fontWeight: 800, color: "#0B2948" }}>Jadwal Saya</h3>
+                {teacherProfile?.schedule_image_url ? (
+                  <img 
+                    src={teacherProfile.schedule_image_url} 
+                    alt="Jadwal Guru" 
+                    style={{ maxWidth: "100%", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                  />
+                ) : (
+                  <div style={{ padding: 40, color: "#6B7280" }}>Jadwal belum diunggah</div>
+                )}
+                <button 
+                  onClick={() => setIsScheduleImageModalOpen(false)}
+                  style={{
+                    marginTop: 20,
+                    padding: "10px 24px",
+                    backgroundColor: "#0B2948",
+                    color: "white",
+                    borderRadius: 8,
+                    border: "none",
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Tutup
+                </button>
+              </div>
+            </Modal>
 
             <JadwalModal
               isOpen={activeModal === "schedule"}

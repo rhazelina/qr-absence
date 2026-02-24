@@ -4,6 +4,7 @@ export interface Major {
   id: number;
   code: string;
   name: string;
+  department?: string;
   category?: string;
 }
 
@@ -106,6 +107,16 @@ export const masterService = {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data)
+    });
+    return handleResponse(response);
+  },
+
+  getAvailableHomeroomTeachers: async (classId?: number) => {
+    const url = classId 
+      ? `${API_BASE_URL}/available-homeroom-teachers?class_id=${classId}`
+      : `${API_BASE_URL}/available-homeroom-teachers`;
+    const response = await fetch(url, {
+      headers: getHeaders()
     });
     return handleResponse(response);
   }

@@ -18,6 +18,11 @@ class UpdateMajorRequest extends FormRequest
         return [
             'code' => ['sometimes', 'string', 'max:20', 'unique:majors,code,'.$majorId],
             'name' => ['sometimes', 'string', 'max:100'],
+            'department' => ['nullable', 'string', 'max:100'],
+            'program_keahlian' => ['nullable', 'string', 'max:100'],
+            'programKeahlian' => ['nullable', 'string', 'max:100'],
+            'bidang_keahlian' => ['nullable', 'string', 'max:100'],
+            'bidangKeahlian' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', 'max:100'],
         ];
     }

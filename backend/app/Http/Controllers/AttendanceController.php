@@ -1324,8 +1324,14 @@ class AttendanceController extends Controller
             abort(400, 'Jadwal tidak ditemukan untuk presensi ini.');
         }
 
-        if ($request->user()->user_type === 'teacher' && $attendance->schedule->teacher_id !== optional($request->user()->teacherProfile)->id) {
-            abort(403, 'Tidak boleh mengubah presensi jadwal ini');
+        if ($request->user()->user_type === 'teacher') {
+            $teacher = $request->user()->teacherProfile;
+            $isScheduleTeacher = $attendance->schedule->teacher_id === ($teacher->id ?? null);
+            $isHomeroomTeacher = $attendance->student && $teacher && $attendance->student->class_id === $teacher->homeroom_class_id;
+
+            if (! $isScheduleTeacher && ! $isHomeroomTeacher) {
+                abort(403, 'Anda tidak memiliki hak untuk mengubah presensi ini.');
+            }
         }
 
         // Input Normalization

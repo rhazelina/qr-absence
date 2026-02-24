@@ -185,7 +185,7 @@ class TeacherController extends Controller
         $path = $request->file('file')->store('schedules/teachers', 'public');
         $teacher->update(['schedule_image_path' => $path]);
 
-        return response()->json(['url' => asset('storage/'.$path)]);
+        return response()->json(['url' => Storage::disk('public')->url($path)]);
     }
 
     /**
@@ -549,5 +549,25 @@ class TeacherController extends Controller
         }
 
         return response()->json($absenceRequest, 201);
+    }
+
+    /**
+     * Get available homeroom teachers
+     *
+     * Retrieve teachers who are not currently assigned to a class, or the current homeroom teacher for a given class.
+     */
+    public function availableHomeroomTeachers(Request $request): JsonResponse
+    {
+        $classId = $request->integer('class_id');
+
+        $query = TeacherProfile::query()->with('user')
+            ->where(function ($q) use ($classId) {
+                $q->whereNull('homeroom_class_id');
+                if ($classId) {
+                    $q->orWhere('homeroom_class_id', $classId);
+                }
+            });
+
+        return TeacherResource::collection($query->orderBy('id', 'desc')->get())->response();
     }
 }

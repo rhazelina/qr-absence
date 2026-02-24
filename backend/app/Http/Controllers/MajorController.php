@@ -33,6 +33,14 @@ class MajorController extends Controller
     {
         $data = $request->validated();
 
+        // Map camelCase to snake_case for database
+        if (isset($data['programKeahlian'])) {
+            $data['program_keahlian'] = $data['programKeahlian'];
+        }
+        if (isset($data['bidangKeahlian'])) {
+            $data['bidang_keahlian'] = $data['bidangKeahlian'];
+        }
+
         $major = Major::create($data);
 
         return response()->json($major, 201);
@@ -56,6 +64,14 @@ class MajorController extends Controller
     public function update(UpdateMajorRequest $request, Major $major): JsonResponse
     {
         $data = $request->validated();
+
+        // Map camelCase to snake_case for database
+        if (isset($data['programKeahlian'])) {
+            $data['program_keahlian'] = $data['programKeahlian'];
+        }
+        if (isset($data['bidangKeahlian'])) {
+            $data['bidang_keahlian'] = $data['bidangKeahlian'];
+        }
 
         $major->update($data);
 

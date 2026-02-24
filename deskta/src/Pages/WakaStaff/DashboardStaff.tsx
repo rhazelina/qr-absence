@@ -101,6 +101,8 @@ const cardStyle: React.CSSProperties = {
 export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) {
   const [currentPage, setCurrentPage] = useState<WakaPage>("dashboard");
   const [selectedGuru, setSelectedGuru] = useState<string | null>(null);
+  const [selectedKehadiranGuruId, setSelectedKehadiranGuruId] = useState<string | null>(null);
+  const [selectedKehadiranGuruName, setSelectedKehadiranGuruName] = useState<string | null>(null);
   const [selectedKelas, setSelectedKelas] = useState<string | null>(null);
   const [selectedKelasId, setSelectedKelasId] = useState<string | null>(null);
   const [selectedKelasInfo, setSelectedKelasInfo] = useState<{
@@ -308,7 +310,9 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <KehadiranGuru
             {...commonProps}
-            onNavigateToDetail={() => {
+            onNavigateToDetail={(guruId: string, guruName: string) => {
+              setSelectedKehadiranGuruId(guruId);
+              setSelectedKehadiranGuruName(guruName);
               handleMenuClick("detail-kehadiran-guru");
             }}
           />
@@ -318,6 +322,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <DetailKehadiranGuru
             {...commonProps}
+            teacherId={selectedKehadiranGuruId || undefined}
+            guruName={selectedKehadiranGuruName || undefined}
             onBack={() => handleMenuClick("kehadiran-guru")}
           />
         );

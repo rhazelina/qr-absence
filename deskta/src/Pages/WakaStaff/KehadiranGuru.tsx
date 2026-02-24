@@ -311,6 +311,7 @@ export default function KehadiranGuru({
             border: "1px solid #D1D5DB",
             fontWeight: 600,
             fontSize: 14,
+            color: "#ffffff",
             cursor: "pointer",
           }}
         />

@@ -108,12 +108,11 @@ export default function LihatKelas({
                 src={DummyJadwal}
                 alt="Jadwal Kelas"
                 style={{ width: "100%", maxWidth: 1200, display: "block" }}
-                onError={handleImageError}
               />
             </div>
           ) : (
             <img
-              src={jadwalImage}
+              src={`${jadwalImage}${jadwalImage.includes('?') ? '&' : '?'}t=${Date.now()}`}
               alt="Jadwal Kelas"
               style={{
                 width: "100%",

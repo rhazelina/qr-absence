@@ -82,7 +82,8 @@ class ScheduleController extends Controller
     public function show(ClassSchedule $schedule): JsonResponse
     {
         return response()->json($schedule->load([
-            'class',
+            'class.homeroomTeacher.user',
+            'class.major',
             'dailySchedules.scheduleItems.subject',
             'dailySchedules.scheduleItems.teacher.user',
         ]));

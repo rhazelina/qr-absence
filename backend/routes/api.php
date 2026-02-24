@@ -114,6 +114,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/settings', [SettingController::class, 'update']);
         Route::get('/admin/summary', [DashboardController::class, 'adminSummary']);
         Route::get('/attendance/summary', [DashboardController::class, 'attendanceSummary']);
+        Route::get('/available-homeroom-teachers', [TeacherController::class, 'availableHomeroomTeachers']);
         Route::post('/admin/data/sync', [\App\Http\Controllers\AdminDataController::class, 'sync']);
     });
 

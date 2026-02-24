@@ -13,6 +13,9 @@ class Major extends Model
     protected $fillable = [
         'code',
         'name',
+        'department',
+        'program_keahlian',
+        'bidang_keahlian',
         'category',
     ];
 

@@ -322,7 +322,7 @@ export default function KehadiranSiswaRekap() {
                            <td className="px-4 py-4 text-center text-orange-600 font-black">{item.totals?.return || 0}</td>
                            <td className="px-6 py-4 text-right">
                               <button 
-                                onClick={() => fetchStudentDetail(item)}
+                                onClick={(e) => { e.stopPropagation(); fetchStudentDetail(item); }}
                                 className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
                               >
                                  <FaEye />

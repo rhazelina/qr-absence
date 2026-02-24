@@ -2,7 +2,6 @@
   animation: fadeIn .3s ease;
   padding: var(--web-page-pad-top) var(--web-page-pad-x) clamp(28px, 4vw, 48px);
   min-height: 100vh;
-  max-width: var(--web-content-max);
   margin: 0 auto;
 }
 
@@ -12,8 +11,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #6b7280;
   font-size: 1.2rem;
+  font-weight: 700;
 }
 
 /* ================= BREADCRUMB ================= */
@@ -41,6 +41,7 @@
   padding: 1.8rem;
   color: white;
   margin-bottom: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 /* HEADER TOP */
@@ -54,102 +55,103 @@
 
 .jadwal-guru-show-header-left {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: center;
 }
 
 .jadwal-guru-show-icon {
-  background: rgba(255,255,255,.2);
-  padding: 0.8rem;
-  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, .2);
+  padding: 1.2rem;
+  border-radius: 1rem;
   font-size: 2.5rem;
-  width: 5rem;
-  height: 5rem;
-  padding-left: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .jadwal-guru-show-title h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 800;
 }
 
 .jadwal-guru-show-title p {
-  color: #dbeafe;
-  opacity: 1;
+  opacity: .9;
   margin-top: .25rem;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 /* INFO GRID */
 .jadwal-guru-show-header-info {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  margin-top: 2rem;
 }
 
 .jadwal-guru-show-info-box {
-  background: rgba(255,255,255,.1);
-  padding: 1rem 1.25rem;
-  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, .1);
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .jadwal-guru-show-info-box span {
-  font-size: 0.87rem;
-  color: #dbeafe !important;
-  opacity: 1;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: .7;
   display: block;
-  margin-bottom: .25rem;
+  margin-bottom: .5rem;
+  font-weight: 700;
 }
 
 .jadwal-guru-show-info-box strong {
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #ffffff !important;
 }
 
 /* HEADER ACTION */
-.jadwal-guru-show-header-action {
-  display: flex;
-  flex-direction: column;
-  gap: .75rem;
-}
-
-/* ================= BUTTON ================= */
-
 .jadwal-guru-show-btn-back {
-  background: rgba(255,255,255,.2);
+  background: rgba(255, 255, 255, .2);
   padding: .75rem 1.5rem;
-  border-radius: .6rem;
+  border-radius: .75rem;
   color: white;
   display: flex;
   align-items: center;
   gap: .5rem;
-  justify-content: center;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.jadwal-guru-show-btn-back:hover {
+  background: rgba(255, 255, 255, .3);
 }
 
 /* ================= CARD ================= */
 .jadwal-guru-show-card {
   background: white;
-  border-radius: 1rem;
+  border-radius: 1.5rem;
   overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
 }
 
 .jadwal-guru-show-card-header {
-  padding: 1.7rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .jadwal-guru-show-card-header h2 {
-  font-size: 1.6rem;
-  font-weight: bold;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #111827;
   display: flex;
   align-items: center;
-  gap: .6rem;
-  color: rgb(31 41 55 / var(--tw-text-opacity, 1));
 }
 
 .jadwal-guru-show-card-header p {
-  font-size: .9rem;
+  font-size: .87rem;
   color: #6b7280;
   margin-top: .25rem;
 }
@@ -159,71 +161,52 @@
 }
 
 /* ================= IMAGE ================= */
+.jadwal-guru-show-image-wrapper {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.jadwal-guru-show-image-wrapper:hover {
+  transform: scale(1.01);
+}
+
 .jadwal-guru-show-image-wrapper img {
   width: 100%;
-  border-radius: 1rem;
-  cursor: pointer;
-  color: black;
-  font-size: 0.9rem;
-}
-
-/* ================= ACTION ================= */
-.jadwal-guru-show-action {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-.jadwal-guru-show-btn-delete {
-  background: #ef4444;
-  padding: .75rem 1.5rem;
-  border-radius: .6rem;
-  color: white;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  justify-content: center;
-}
-
-.jadwal-guru-show-btn-download {
-  background: #22c55e;
-  padding: .75rem 1.5rem;
-  border-radius: .6rem;
-  color: white;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  justify-content: center;
+  display: block;
 }
 
 /* ================= EMPTY ================= */
 .jadwal-guru-show-empty {
   text-align: center;
-  padding: 3rem;
-  color: #6b7280;
+  padding: 4rem 2rem;
+  color: #9ca3af;
 }
 
-.jadwal-guru-show-empty i {
-  font-size: 3rem;
-  margin-bottom: .75rem;
+.jadwal-guru-show-empty h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
 }
 
 /* ================= FULLSCREEN ================= */
 .jadwal-guru-show-fullscreen {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.9);
+  background: rgba(0, 0, 0, .9);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 1000;
+  padding: 2rem;
 }
 
 .jadwal-guru-show-fullscreen img {
-  max-width: 90%;
-  max-height: 90%;
+  object-fit: contain;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 .jadwal-guru-show-fullscreen-close {
@@ -231,10 +214,15 @@
   top: 1.5rem;
   right: 1.5rem;
   color: white;
-  font-size: 2rem;
+  font-size: 2.5rem;
   background: none;
   border: none;
   cursor: pointer;
+  transition: color 0.2s;
+}
+
+.jadwal-guru-show-fullscreen-close:hover {
+  color: #ef4444;
 }
 
 /* ================= ANIMATION ================= */
@@ -243,12 +231,9 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.jadwal-guru-show-empty svg {
-    font-size: 3rem;
 }

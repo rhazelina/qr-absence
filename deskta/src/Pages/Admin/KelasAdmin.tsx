@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AdminLayout from "../../component/Admin/AdminLayout";
 import { Button } from "../../component/Shared/Button";
 import AWANKIRI from "../../assets/Icon/AWANKIRI.png";
 import AwanBawahkanan from "../../assets/Icon/AwanBawahkanan.png";
-import { MoreVertical, Edit, Trash2, X, Upload, Download } from "lucide-react";
-import * as XLSX from "xlsx";
+import { MoreVertical, Edit, Trash2, X } from "lucide-react";
 import { masterService, type ClassRoom, type Major } from "../../services/masterService";
 import { teacherService, type Teacher } from "../../services/teacherService";
 
@@ -46,10 +45,7 @@ export default function KelasAdmin({
   const [validationError, setValidationError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Import State
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importErrors, setImportErrors] = useState<any>(null);
+  // Import State removed
   
   // Form state
   const [formData, setFormData] = useState({
@@ -82,25 +78,21 @@ export default function KelasAdmin({
     }
   };
 
-  // Daftar wali kelas yang sudah digunakan (ID nya)
-  const usedWaliKelasIds = useMemo(() => {
-    return new Set(kelasList.map(k => k.homeroom_teacher_id).filter(Boolean));
-  }, [kelasList]);
+  // Wali kelas yang TERSEDIA (fetching via API now)
+  const [availableTeachers, setAvailableTeachers] = useState<Teacher[]>([]);
+  const [isFetchingTeachers, setIsFetchingTeachers] = useState(false);
 
-  // Wali kelas yang TERSEDIA untuk mode TAMBAH (yang belum dipakai)
-  const availableTeachers = useMemo(() => {
-    return teachers.filter(t => !usedWaliKelasIds.has(Number(t.id)));
-  }, [teachers, usedWaliKelasIds]);
-
-  // Wali kelas yang TERSEDIA untuk mode EDIT
-  const availableTeachersForEdit = useMemo(() => {
-    if (!editingKelas) return availableTeachers;
-    const currentTeacher = teachers.find(t => t.name === editingKelas.homeroom_teacher_name);
-    if (currentTeacher && !availableTeachers.find(t => Number(t.id) === Number(currentTeacher.id))) {
-      return [...availableTeachers, currentTeacher];
+  const fetchAvailableTeachers = async (classId?: number) => {
+    setIsFetchingTeachers(true);
+    try {
+      const data = await masterService.getAvailableHomeroomTeachers(classId);
+      setAvailableTeachers(Array.isArray(data) ? data : (data.data || []));
+    } catch (error) {
+      console.error("Failed to fetch available teachers:", error);
+    } finally {
+      setIsFetchingTeachers(false);
     }
-    return availableTeachers;
-  }, [availableTeachers, editingKelas, teachers]);
+  };
 
   // Konsentrasi options for filter
   const konsentrasiKeahlianOptions = useMemo(() => {
@@ -111,8 +103,8 @@ export default function KelasAdmin({
   const stats = useMemo(() => ({
     totalKelas: kelasList.length,
     totalGuru: teachers.length,
-    totalWaliKelas: usedWaliKelasIds.size,
-  }), [kelasList.length, teachers.length, usedWaliKelasIds.size]);
+    totalWaliKelas: new Set(kelasList.map(k => k.homeroom_teacher_id).filter(Boolean)).size,
+  }), [kelasList, teachers.length]);
 
   /* ===================== VALIDASI ===================== */
   const validateKelasData = (data: any, isEditMode: boolean, excludeId?: number): { isValid: boolean; message: string } => {
@@ -250,95 +242,7 @@ export default function KelasAdmin({
     }
   };
 
-  // Download Template
-  const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'Tingkat (X/XI/XII)': '',
-        'Jurusan': '',
-        'Label': '',
-        'NIP Wali Kelas': ''
-      }
-    ];
-
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Format Data Kelas');
-
-    worksheet['!cols'] = [
-      { wch: 20 },
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 25 }
-    ];
-
-    const fileName = 'Format_Data_Kelas.xlsx';
-    XLSX.writeFile(workbook, fileName);
-    alert('Format Excel berhasil diunduh!');
-  };
-
-  // Import from Excel
-  const handleImportFromExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        setIsLoading(true);
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<any>(worksheet, { defval: '' });
-
-        if (jsonData.length === 0) {
-          alert('File Excel kosong!');
-          setIsLoading(false);
-          return;
-        }
-
-        const jurusanMap: Record<string, number> = {};
-        majors.forEach(m => jurusanMap[m.name] = m.id);
-
-        const teacherMap: Record<string, any> = {};
-        teachers.forEach(t => teacherMap[t.nip] = t.id);
-
-        const importedClasses = jsonData.map(row => ({
-          grade: String(row['Tingkat (X/XI/XII)'] || '').trim(),
-          label: String(row['Label'] || '').trim(),
-          major_id: jurusanMap[String(row['Jurusan'] || '').trim()] || null,
-          homeroom_teacher_id: teacherMap[String(row['NIP Wali Kelas'] || '').trim()] || null
-        }));
-
-        try {
-          const result = await masterService.importClasses({ items: importedClasses });
-          alert(`Sukses mengimpor ${result.success_count} data kelas!`);
-          await fetchInitialData();
-          event.target.value = ''; // Reset file input
-        } catch (error: any) {
-           if (error.errors && Array.isArray(error.errors)) {
-            setImportErrors({
-              total: error.total_rows,
-              success: error.success_count,
-              failed: error.failed_count,
-              details: error.errors
-            });
-            setIsImportModalOpen(true);
-          } else {
-            alert('Gagal mengimpor data kelas. Pastikan format file sesuai template.');
-          }
-        }
-      } catch (error) {
-        console.error('Error reading excel file:', error);
-        alert('Gagal membaca file Excel!');
-      } finally {
-        setIsLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
+  // Import/Export logic removed
 
   const handleOpenModal = () => {
     setEditingKelas(null);
@@ -349,6 +253,7 @@ export default function KelasAdmin({
       homeroom_teacher_id: "",
     });
     setValidationError("");
+    fetchAvailableTeachers();
     setIsModalOpen(true);
   };
 
@@ -362,6 +267,7 @@ export default function KelasAdmin({
     });
     setValidationError("");
     setOpenActionId(null);
+    fetchAvailableTeachers(kelas.id);
     setIsModalOpen(true);
   };
 
@@ -464,25 +370,6 @@ export default function KelasAdmin({
           </div>
 
           <div style={{ ...buttonContainerStyle, display: 'flex', gap: '8px' }}>
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              accept=".xlsx, .xls"
-              onChange={handleImportFromExcel}
-            />
-            <Button 
-              label="Import"
-              icon={<Upload size={16} />}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ ...buttonStyle, backgroundColor: '#10b981' }}
-            />
-            <Button 
-              label="Format"
-              icon={<Download size={16} />}
-              onClick={handleDownloadTemplate}
-              style={{ ...buttonStyle, backgroundColor: '#64748b' }}
-            />
             <Button 
               label="Tambahkan" 
               onClick={handleOpenModal}
@@ -789,7 +676,7 @@ export default function KelasAdmin({
                   name="label"
                   value={formData.label}
                   onChange={(e) => setFormData({...formData, label: e.target.value})}
-                  placeholder="Contoh: A, B, atau 1, 2"
+                  placeholder="Contoh: 1, 2, 3 atau A, B, C"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -937,38 +824,41 @@ export default function KelasAdmin({
                     fontWeight: '700',
                   }}>*</span>
                 </label>
-                <select
-                  value={formData.homeroom_teacher_id}
-                  onChange={(e) => setFormData({...formData, homeroom_teacher_id: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                    backgroundColor: '#f8fafc',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.backgroundColor = '#ffffff';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Pilih Wali Kelas</option>
-                  {(editingKelas ? availableTeachersForEdit : availableTeachers).map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                  ))}
-                </select>
+                  <select
+                    value={formData.homeroom_teacher_id}
+                    onChange={(e) => setFormData({...formData, homeroom_teacher_id: e.target.value})}
+                    disabled={isFetchingTeachers}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                      cursor: isFetchingTeachers ? 'not-allowed' : 'pointer',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                      backgroundColor: isFetchingTeachers ? '#f1f5f9' : '#f8fafc',
+                      transition: 'all 0.2s ease',
+                    }}
+                    onFocus={(e) => {
+                      if (!isFetchingTeachers) {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.backgroundColor = '#ffffff';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                      }
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.backgroundColor = isFetchingTeachers ? '#f1f5f9' : '#f8fafc';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <option value="">{isFetchingTeachers ? 'Memuat guru...' : 'Pilih Wali Kelas'}</option>
+                    {availableTeachers.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
               </div>
 
               {/* Error Message */}
@@ -1058,78 +948,7 @@ export default function KelasAdmin({
         </div>
       )}
 
-      {/* Import Error Modal */}
-      {isImportModalOpen && importErrors && (
-        <div style={modalOverlayStyle}>
-          <div style={modalContentStyle}>
-            <div style={modalHeaderStyle}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: 0, color: '#1e293b' }}>
-                Hasil Import Kelas
-              </h2>
-              <button
-                onClick={() => setIsImportModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div style={{ marginTop: '20px', flex: 1, overflowY: 'auto' }}>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '12px',
-                marginBottom: '20px'
-              }}>
-                <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Total Baris</div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#0f172a' }}>{importErrors.total}</div>
-                </div>
-                <div style={{ backgroundColor: '#dcfce7', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#166534', marginBottom: '4px' }}>Berhasil</div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#15803d' }}>{importErrors.success}</div>
-                </div>
-                <div style={{ backgroundColor: '#fee2e2', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '4px' }}>Gagal</div>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#b91c1c' }}>{importErrors.failed}</div>
-                </div>
-              </div>
-
-              {importErrors.details && importErrors.details.length > 0 && (
-                <div>
-                  <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#334155', marginBottom: '12px' }}>
-                    Detail Error:
-                  </h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {importErrors.details.map((err: any, idx: number) => (
-                      <div key={idx} style={importErrorDetailStyle}>
-                        <span style={{ fontWeight: '600', color: '#ef4444' }}>Baris {err.row}:</span> {err.message}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setIsImportModalOpen(false)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Import logic removed */}
     </AdminLayout>
   );
 }
@@ -1341,46 +1160,6 @@ const bgRight: React.CSSProperties = {
   width: 220,
   zIndex: 0,
   opacity: 0.9,
-};
-
-const modalOverlayStyle: React.CSSProperties = {
-  position: 'fixed' as 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0,0,0,0.5)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 1000,
-};
-
-const modalContentStyle: React.CSSProperties = {
-  backgroundColor: 'white',
-  padding: '20px',
-  borderRadius: '8px',
-  width: '90%',
-  maxWidth: '600px',
-  maxHeight: '80vh',
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const modalHeaderStyle: React.CSSProperties = {
-  borderBottom: '1px solid #e2e8f0',
-  paddingBottom: '15px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-};
-
-const importErrorDetailStyle: React.CSSProperties = {
-  padding: '12px',
-  border: '1px solid #e2e8f0',
-  borderRadius: '6px',
-  backgroundColor: '#f8fafc',
-  fontSize: '14px',
 };
 
 if (typeof document !== 'undefined') {

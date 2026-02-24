@@ -90,7 +90,7 @@ export default function JadwalGuruStaff({
             // If response has url:
             if (response.url) {
                  setGuruData(prev => prev.map(item => 
-                    item.id === row.id ? { ...item, scheduleImage: response.url } : item
+                    item.id === row.id ? { ...item, scheduleImage: `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}` } : item
                  ));
             } else {
                 fetchTeachers(); // Refresh to be sure

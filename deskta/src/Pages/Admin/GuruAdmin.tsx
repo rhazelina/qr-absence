@@ -190,8 +190,8 @@ export default function GuruAdmin({
 
     if (field === 'noTelp') {
       if (value && value.trim()) {
-        if (!/^08\d{9,11}$/.test(value)) {
-          newErrors.noTelp = 'Nomor telepon harus valid (08xxxxxxxxxx)';
+        if (!/^08\d{8,13}$/.test(value)) {
+          newErrors.noTelp = 'Nomor telepon harus valid (08xxxxxxxxxxxx)';
         } else {
           delete newErrors.noTelp;
         }
@@ -200,17 +200,7 @@ export default function GuruAdmin({
       }
     }
 
-    if (field === 'email') {
-      if (value && value.trim()) {
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.email = 'Email tidak valid';
-        } else {
-          delete newErrors.email;
-        }
-      } else {
-        delete newErrors.email;
-      }
-    }
+
 
     setFormErrors(newErrors);
   };
@@ -747,17 +737,18 @@ export default function GuruAdmin({
 
               <div>
                 <label>Nomor Telepon</label>
-                <input type="text" name="noTelp" value={formData.noTelp} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
-              </div>
-
-              <div>
-                <label>Email (untuk Login)</label>
-                <input type="email" name="email" value={formData.email} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
-              </div>
-
-              <div>
-                <label>Password (Default: password123)</label>
-                <input type="password" name="password" value={formData.password} onChange={handleInputChange} placeholder="Kosongkan untuk default" style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <input 
+                  type="text" 
+                  name="noTelp" 
+                  value={formData.noTelp} 
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 15);
+                    setFormData(prev => ({ ...prev, noTelp: val }));
+                    validateField('noTelp', val);
+                  }} 
+                  placeholder="08xxxxxxxxxxxx"
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} 
+                />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>

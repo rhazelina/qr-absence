@@ -32,7 +32,7 @@ import {
 const statusConfig = {
   present: { label: 'Hadir', bg: 'bg-green-100 text-green-700 border-green-200', dot: 'bg-green-500', icon: <FaCheckCircle />, color: "#1FA83D" },
   late: { label: 'Terlambat', bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: 'bg-yellow-500', icon: <FaClock />, color: "#d8bf1a" },
-  excused: { label: 'Izin', bg: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500', icon: <FaInfoCircle />, color: "#ECE10A" }, // Match CSS
+  excused: { label: 'Izin', bg: 'bg-blue-100 text-blue-700 border-blue-200', dot: 'bg-blue-500', icon: <FaInfoCircle />, color: "#ECE10A" },
   sick: { label: 'Sakit', bg: 'bg-purple-100 text-purple-700 border-purple-200', dot: 'bg-purple-500', icon: <FaHeartbeat />, color: "#9A0898" },
   absent: { label: 'Alfa', bg: 'bg-red-100 text-red-700 border-red-200', dot: 'bg-red-500', icon: <FaRegTimesCircle />, color: "#D90000" },
   return: { label: 'Pulang', bg: 'bg-gray-100 text-gray-700 border-gray-200', dot: 'bg-gray-500', icon: <FaSignOutAlt />, color: "#FF5F1A" }
@@ -163,11 +163,6 @@ function KehadiranSiswaShow() {
                           <FaUserTie className="text-blue-500" />
                           {kelas?.homeroom_teacher?.user?.name || 'Wali Kelas Tidak Set'}
                        </span>
-                       <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
-                       <span className="flex items-center gap-2 text-gray-500 font-bold">
-                          <FaMapMarkerAlt className="text-red-500" />
-                          {kelas?.room?.name || 'Ruangan -'}
-                       </span>
                     </div>
                  </div>
               </div>
@@ -251,13 +246,12 @@ function KehadiranSiswaShow() {
                             <tr className="bg-white">
                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Siswa</th>
                                <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                               <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Waktu</th>
                                <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Aksi</th>
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-gray-50">
                             {item.attendances.map((att, attIdx) => {
-                               const config = statusConfig[att.status.toLowerCase()] || statusConfig.present;
+                               const config = statusConfig[att.status.toLowerCase()] || statusConfig.absent;
                                return (
                                   <tr key={attIdx} className="hover:bg-gray-50/50 transition-colors">
                                      <td className="px-6 py-4">
@@ -276,9 +270,6 @@ function KehadiranSiswaShow() {
                                            {config.icon}
                                            {config.label}
                                         </div>
-                                     </td>
-                                     <td className="px-6 py-4">
-                                        <span className="text-sm font-bold text-gray-700">{att.time || '-'}</span>
                                      </td>
                                      <td className="px-6 py-4 text-right">
                                         <button 
@@ -304,8 +295,8 @@ function KehadiranSiswaShow() {
              </div>
              <h3 className="text-2xl font-black text-gray-800 mb-2">Belum Ada Data</h3>
              <p className="text-gray-500 font-medium max-w-sm mx-auto">
-               Tidak ada jadwal atau rekaman kehadiran pada tanggal {selectedDate}
-               {selectedSubject !== 'all' ? ' untuk mata pelajaran terpilih' : ''}
+                Tidak ada jadwal atau rekaman kehadiran pada tanggal {selectedDate}
+                {selectedSubject !== 'all' ? ' untuk mata pelajaran terpilih' : ''}
              </p>
              <button 
                 onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
@@ -397,8 +388,8 @@ function KehadiranSiswaShow() {
                  </div>
 
                  <button 
-                   onClick={() => setShowDetailModal(false)}
-                   className="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-blue-600 transition-all shadow-lg"
+                  onClick={() => setShowDetailModal(false)}
+                  className="w-full mt-8 py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-blue-600 transition-all shadow-lg"
                  >
                     Tutup Detail
                  </button>

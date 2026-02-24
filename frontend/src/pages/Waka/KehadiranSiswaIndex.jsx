@@ -147,20 +147,7 @@ function KehadiranSiswaIndex() {
 
         <div className="kartu-filter">
           <div className="susunan-filter">
-            <div className="kelompok-filter">
-              <label className="label-filter">
-                <FaSearch /> Pencarian
-              </label>
-              <div className="pembungkus-pilih">
-                <input
-                  type="text"
-                  className="pilih-filter"
-                  placeholder="Cari kelas, jurusan, atau wali kelas..."
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                />
-              </div>
-            </div>
+
 
             <div className="kelompok-filter">
               <label className="label-filter">

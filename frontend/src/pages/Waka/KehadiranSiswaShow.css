@@ -1,73 +1,68 @@
 .kehadiran-siswa-show-root {
-  background: transparent;
+    background: transparent;
 }
 
 .kehadiran-siswa-show-container {
-  width: min(100%, var(--web-content-max));
-  margin: 0 auto;
-  padding-top: var(--web-page-pad-top);
-  padding-left: var(--web-page-pad-x);
-  padding-right: var(--web-page-pad-x);
-  padding-bottom: clamp(28px, 4vw, 48px);
+    width: min(100%, var(--web-content-max));
+    margin: 0 auto;
+    padding-top: var(--web-page-pad-top);
+    padding-left: var(--web-page-pad-x);
+    padding-right: var(--web-page-pad-x);
+    padding-bottom: clamp(28px, 4vw, 48px);
 }
 
 .kehadiran-siswa-show-container::-webkit-scrollbar {
-  height: 4px;
+    height: 4px;
 }
 
 .kehadiran-siswa-show-container::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 
 .kehadiran-siswa-show-container::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
+    background: #e2e8f0;
+    border-radius: 10px;
 }
 
 .kehadiran-siswa-subject-select,
 .kehadiran-siswa-date-input {
-  min-width: 220px;
+    min-width: 220px;
 }
 
 .kehadiran-siswa-date-input::-webkit-calendar-picker-indicator {
-  background: transparent;
-  bottom: 0;
-  color: transparent;
-  cursor: pointer;
-  height: auto;
-  left: 0;
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: auto;
+    cursor: pointer;
+    padding: 4px;
+    filter: invert(0.4);
 }
 
 .kehadiran-siswa-show-container table tr {
-  transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease;
 }
 
 .kehadiran-siswa-show-container .bg-white.rounded-\[2rem\] {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .animate-modal-in {
-  animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: modalIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 @media (max-width: 768px) {
-  .kehadiran-siswa-subject-select,
-  .kehadiran-siswa-date-input {
-    min-width: 190px;
-  }
+
+    .kehadiran-siswa-subject-select,
+    .kehadiran-siswa-date-input {
+        min-width: 190px;
+    }
 }

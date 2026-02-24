@@ -27,27 +27,18 @@ class Classes extends Model
     {
         $label = trim($this->label ?? '');
 
-        // If label already looks like a full class name (contains letters), return as-is
-        // e.g., "XII RPL 2", "XI TKJ 1"
+        // Now that labels are numeric (e.g. "10 RPL 1"), we can return as-is
+        // but if it's just a number like "1", we still want to build it.
         if (preg_match('/[A-Za-z]/', $label)) {
             return $label;
         }
 
-        // Otherwise, build the name from grade + major + label (number)
         $parts = [];
 
-        // Add grade in roman numerals
-        $gradeMap = [
-            '10' => 'X',
-            '11' => 'XI',
-            '12' => 'XII',
-            'X' => 'X',
-            'XI' => 'XI',
-            'XII' => 'XII',
-        ];
+        // Add grade
         $grade = (string) ($this->grade ?? '');
-        if (isset($gradeMap[$grade])) {
-            $parts[] = $gradeMap[$grade];
+        if ($grade) {
+            $parts[] = $grade;
         }
 
         // Add major code
@@ -56,7 +47,7 @@ class Classes extends Model
         }
 
         // Add label (typically just a number like "1" or "2")
-        if ($label) {
+        if ($label && $label !== $grade) {
             $parts[] = $label;
         }
 
@@ -65,17 +56,9 @@ class Classes extends Model
 
     public function getGradeRomanAttribute(): string
     {
-        $grade = (string) ($this->grade ?? '');
-        $map = [
-            '10' => 'X',
-            '11' => 'XI',
-            '12' => 'XII',
-            'X' => 'X',
-            'XI' => 'XI',
-            'XII' => 'XII',
-        ];
-
-        return $map[$grade] ?? $grade;
+        // This attribute name is kept for backward compatibility with frontend
+        // but it now returns the numeric grade as requested.
+        return (string) ($this->grade ?? '');
     }
 
     // Siswa untuk

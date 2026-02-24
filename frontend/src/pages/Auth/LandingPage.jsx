@@ -20,27 +20,31 @@ const LandingPage = () => {
     const savedLogo = localStorage.getItem('logoSekolah');
     const savedMaskot = localStorage.getItem('maskotSekolah');
     const savedProfile = localStorage.getItem('profileSekolah');
+    const schoolProfile = localStorage.getItem('schoolProfile');
     
-    if (savedLogo) {
-      setLogo(savedLogo);
-    }
-    
-    // Hanya set maskot jika ada di localStorage
-    if (savedMaskot) {
-      setMaskot(savedMaskot);
-    }
-    
-    if (savedProfile) {
+    // Check schoolProfile first (newer format)
+    if (schoolProfile) {
       try {
-        const profileData = JSON.parse(savedProfile);
-        if (profileData.judulAplikasi) {
-          setJudulAplikasi(profileData.judulAplikasi);
-        }
-        if (profileData.namaSekolah) {
-          setNamaSekolah(profileData.namaSekolah);
-        }
+        const profileData = JSON.parse(schoolProfile);
+        if (profileData.logoUrl) setLogo(profileData.logoUrl);
+        if (profileData.mascotUrl) setMaskot(profileData.mascotUrl);
+        if (profileData.judulAplikasi) setJudulAplikasi(profileData.judulAplikasi);
+        if (profileData.namaSekolah) setNamaSekolah(profileData.namaSekolah);
       } catch (error) {
-        console.error('Error loading profile:', error);
+        console.error('Error parsing schoolProfile:', error);
+      }
+    } else {
+      // Fallback to individual keys
+      if (savedLogo) setLogo(savedLogo);
+      if (savedMaskot) setMaskot(savedMaskot);
+      if (savedProfile) {
+        try {
+          const profileData = JSON.parse(savedProfile);
+          if (profileData.judulAplikasi) setJudulAplikasi(profileData.judulAplikasi);
+          if (profileData.namaSekolah) setNamaSekolah(profileData.namaSekolah);
+        } catch (error) {
+          console.error('Error parsing profileSekolah:', error);
+        }
       }
     }
   }, []);

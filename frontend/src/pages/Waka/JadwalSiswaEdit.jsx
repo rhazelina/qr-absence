@@ -45,7 +45,7 @@ function JadwalSiswaEdit() {
   const [imageError, setImageError] = useState('');
 
   const dayOptions = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'
+    'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
   ];
   const totalSessions = days.reduce((count, day) => count + day.items.length, 0);
 
@@ -159,7 +159,7 @@ function JadwalSiswaEdit() {
     reader.readAsDataURL(file);
   };
 
-  const addDay = () => setDays([...days, { day: 'Monday', items: [] }]);
+  const addDay = () => setDays([...days, { day: 'Senin', items: [] }]);
   const removeDay = (idx) => {
     if (!window.confirm('Hapus hari ini?')) return;
     const newDays = [...days];
@@ -297,8 +297,8 @@ function JadwalSiswaEdit() {
                   {/* DIGITAL STRUCTURE */}
                   <div className="digital-structure-section">
                      <div className="section-header">
-                        <h3><FaClock /> Struktur Harian</h3>
-                        <button type="button" onClick={addDay} className="btn-add-day"><FaPlus /> Tambah Hari</button>
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><FaClock className="text-blue-600" /> Struktur Harian</h3>
+                        <button type="button" onClick={addDay} className="btn-add-day bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm hover:shadow-md"><FaPlus /> Tambah Hari</button>
                      </div>
 
                      {days.map((day, dIdx) => (
@@ -337,7 +337,7 @@ function JadwalSiswaEdit() {
                                     <button type="button" onClick={() => removeItem(dIdx, iIdx)} className="btn-remove-item"><FaTrash /></button>
                                  </div>
                               ))}
-                              <button type="button" onClick={() => addItem(dIdx)} className="btn-add-item"><FaPlus /> Tambah Sesi</button>
+                              <button type="button" onClick={() => addItem(dIdx)} className="btn-add-item mt-4 w-full border-2 border-dashed border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-500 py-3 rounded-xl flex items-center justify-center gap-2 transition-all"><FaPlus /> Tambah Sesi</button>
                            </div>
                         </div>
                      ))}

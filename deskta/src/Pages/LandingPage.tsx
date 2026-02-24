@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HalamanUtama from '../assets/Icon/HalamanUtama.png';
+import DefaultMascot from '../assets/Icon/Inorasi.png';
 import { settingService } from '../services/settingService';
 
 // ==================== INTERFACE DEFINITIONS ====================
@@ -18,7 +19,7 @@ interface SchoolData {
 const DEFAULT_LANDING_DATA: SchoolData = {
   nama_sekolah: 'SMKN 2 SINGOSARI',
   logo_sekolah: null,
-  maskot_sekolah: null,
+  maskot_sekolah: DefaultMascot,
 };
 
 const ROLES = [
@@ -49,7 +50,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
         setSchoolData({
           nama_sekolah: settings.school_name || DEFAULT_LANDING_DATA.nama_sekolah,
           logo_sekolah: settings.school_logo_url || null,
-          maskot_sekolah: settings.school_mascot_url || null,
+          maskot_sekolah: settings.school_mascot_url || DefaultMascot,
         });
       } catch (error) {
         console.error('Error fetching school data:', error);
@@ -60,7 +61,7 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
           setSchoolData({
             nama_sekolah: parsedData.nama_sekolah || DEFAULT_LANDING_DATA.nama_sekolah,
             logo_sekolah: parsedData.logo_sekolah || null,
-            maskot_sekolah: parsedData.maskot_sekolah || null,
+            maskot_sekolah: parsedData.maskot_sekolah || DefaultMascot,
           });
         }
       }

@@ -1,7 +1,3 @@
-.jadwal-guru-edit-root {
-  background: transparent;
-}
-
 .jadwal-guru-edit-container {
   width: min(100%, var(--web-content-max));
   margin: 0 auto;
@@ -9,4 +5,128 @@
   padding-left: var(--web-page-pad-x);
   padding-right: var(--web-page-pad-x);
   padding-bottom: clamp(28px, 4vw, 48px);
+}
+
+.jadwal-guru-edit-header {
+  background: #fff;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.jadwal-guru-edit-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.jadwal-guru-edit-subtitle {
+  color: #6b7280;
+  margin-top: 0.5rem;
+  font-size: 0.87rem;
+  font-weight: 500;
+}
+
+.jadwal-guru-edit-back {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 10px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.jadwal-guru-edit-back:hover {
+  background: #e5e7eb;
+}
+
+.jadwal-guru-edit-card {
+  background: #fff;
+  padding: 2.5rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
+}
+
+.jadwal-guru-edit-group {
+  margin-bottom: 1.5rem;
+}
+
+.jadwal-guru-edit-group label {
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: block;
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.jadwal-guru-edit-group input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #f3f4f6;
+  border-radius: 12px;
+  background-color: #f9fafb;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.jadwal-guru-edit-group input:focus {
+  border-color: #3b82f6;
+  background-color: #fff;
+}
+
+.jadwal-guru-edit-upload {
+  border: 2px dashed #e5e7eb;
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: 1.5rem;
+  margin-bottom: 24px;
+  background: #fcfcfc;
+}
+
+.jadwal-guru-edit-actions {
+  display: flex;
+  gap: 16px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 24px;
+}
+
+.jadwal-guru-edit-actions button {
+  flex: 2;
+  padding: 16px;
+  color: white;
+  border-radius: 12px;
+  border: none;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jadwal-guru-edit-cancel {
+  flex: 1;
+  background: #f3f4f6;
+  color: #4b5563;
+  text-align: center;
+  padding: 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

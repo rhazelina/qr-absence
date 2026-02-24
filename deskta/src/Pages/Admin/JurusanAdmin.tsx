@@ -20,7 +20,6 @@ interface KonsentrasiKeahlianAdminProps {
   onMenuClick: (page: string) => void;
 }
 
-/* ===================== DUMMY DATA REMOVED ===================== */
 
 /* ===================== COMPONENT ===================== */
 export default function KonsentrasiKeahlianAdmin({
@@ -36,7 +35,7 @@ export default function KonsentrasiKeahlianAdmin({
   const [editingKonsentrasiKeahlian, setEditingKonsentrasiKeahlian] = useState<Major | null>(null);
   const [openActionId, setOpenActionId] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState({ name: "", code: "", category: "" });
+  const [formData, setFormData] = useState({ name: "", code: "", department: "", category: "" });
   const [errorMessage, setErrorMessage] = useState("");
 
   /* ===================== FETCH DATA ===================== */
@@ -60,7 +59,9 @@ export default function KonsentrasiKeahlianAdmin({
   const filteredData = konsentrasiKeahlianList.filter(
     (k) =>
       k.code.toLowerCase().includes(searchValue.toLowerCase()) ||
-      k.name.toLowerCase().includes(searchValue.toLowerCase())
+      k.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+      (k.department || "").toLowerCase().includes(searchValue.toLowerCase()) ||
+      (k.category || "").toLowerCase().includes(searchValue.toLowerCase())
   );
 
   /* ===================== VALIDASI UNIK ===================== */
@@ -93,6 +94,7 @@ export default function KonsentrasiKeahlianAdmin({
     setFormData({
       name: konsentrasi.name,
       code: konsentrasi.code,
+      department: konsentrasi.department || "",
       category: konsentrasi.category || ""
     });
     setShowPopup(true);
@@ -103,7 +105,7 @@ export default function KonsentrasiKeahlianAdmin({
   const handleTambahKonsentrasi = () => {
     setEditingKonsentrasiKeahlian(null);
     setIsEditMode(false);
-    setFormData({ name: "", code: "", category: "" });
+    setFormData({ name: "", code: "", department: "", category: "" });
     setShowPopup(true);
     setErrorMessage("");
   };
@@ -112,8 +114,8 @@ export default function KonsentrasiKeahlianAdmin({
     e.preventDefault();
     
     // Validasi input
-    if (!formData.name.trim() || !formData.code.trim() || !formData.category.trim()) {
-      setErrorMessage("Nama, kode, dan kategori harus diisi");
+    if (!formData.name.trim() || !formData.code.trim() || !formData.department.trim() || !formData.category.trim()) {
+      setErrorMessage("Nama, kode, bidang keahlian, dan program keahlian harus diisi");
       return;
     }
 
@@ -169,7 +171,7 @@ export default function KonsentrasiKeahlianAdmin({
     setShowPopup(false);
     setEditingKonsentrasiKeahlian(null);
     setIsEditMode(false);
-    setFormData({ name: "", code: "", category: "" });
+    setFormData({ name: "", code: "", department: "", category: "" });
     setErrorMessage("");
   };
 
@@ -191,6 +193,7 @@ export default function KonsentrasiKeahlianAdmin({
       setFormData({
         name: editingKonsentrasiKeahlian.name,
         code: editingKonsentrasiKeahlian.code,
+        department: editingKonsentrasiKeahlian.department || "",
         category: editingKonsentrasiKeahlian.category || ""
       });
     }
@@ -303,7 +306,7 @@ export default function KonsentrasiKeahlianAdmin({
             </div>
              <div>
               <div style={{ fontSize: "28px", fontWeight: "700", color: "#1F2937", lineHeight: "1.2" }}>
-                {new Set(konsentrasiKeahlianList.map(k => k.category)).size}
+                {new Set(konsentrasiKeahlianList.map(k => k.department || k.category)).size}
               </div>
               <div style={{ fontSize: "14px", color: "#6B7280", fontWeight: "500" }}>Total Bidang</div>
             </div>
@@ -377,7 +380,15 @@ export default function KonsentrasiKeahlianAdmin({
                   fontWeight: '600',
                   color: '#374151',
                   borderRight: '1px solid #E5E7EB',
-                }}>Bidang/Kategori</th>
+                }}>Bidang Keahlian</th>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  borderRight: '1px solid #E5E7EB',
+                }}>Program Keahlian</th>
                 <th style={{
                   padding: '12px 16px',
                   textAlign: 'center',
@@ -390,13 +401,13 @@ export default function KonsentrasiKeahlianAdmin({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                  <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
                     Memuat data...
                   </td>
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
+                  <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
                     Tidak ada data ditemukan
                   </td>
                 </tr>
@@ -434,6 +445,13 @@ export default function KonsentrasiKeahlianAdmin({
                       textAlign: 'center',
                       borderRight: '1px solid #E5E7EB',
                     }}>{row.name}</td>
+                    <td style={{
+                      padding: '12px 16px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      textAlign: 'center',
+                      borderRight: '1px solid #E5E7EB',
+                    }}>{row.department || '-'}</td>
                     <td style={{
                       padding: '12px 16px',
                       fontSize: '13px',
@@ -566,17 +584,32 @@ export default function KonsentrasiKeahlianAdmin({
                   </div>
                 </div>
 
-                {/* Kategori */}
+                {/* Bidang Keahlian */}
                 <div style={formGroupStyle}>
                   <label style={labelStyle}>
-                    Bidang/Kategori<span style={requiredStarStyle}>*</span>
+                    Bidang Keahlian<span style={requiredStarStyle}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleFormChange}
+                    placeholder="Masukan bidang keahlian"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Program Keahlian */}
+                <div style={formGroupStyle}>
+                  <label style={labelStyle}>
+                    Program Keahlian<span style={requiredStarStyle}>*</span>
                   </label>
                   <input
                     type="text"
                     name="category"
                     value={formData.category}
                     onChange={handleFormChange}
-                    placeholder="Masukan bidang atau kategori"
+                    placeholder="Masukan program keahlian"
                     style={inputStyle}
                   />
                 </div>

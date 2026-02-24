@@ -148,7 +148,7 @@ class ClassController extends Controller
         $path = $request->file('file')->store('schedules/classes', 'public');
         $class->update(['schedule_image_path' => $path]);
 
-        return response()->json(['url' => asset('storage/'.$path)]);
+        return response()->json(['url' => Storage::disk('public')->url($path)]);
     }
 
     /**

@@ -17,7 +17,7 @@ const dummyDataService = {
       kepalaSekolah: 'SUMIJAH, S.Pd., M,Si',
       nipKepalaSekolah: '97002101998022009',
       jalan: 'Jl. Perusahaan No.20, Tanjungtirto',
-      kelurahan: 'Tanjungtirto',
+      kelurahan: 'Tunjungtirto',
       kecamatan: 'Singosari',
       kabupatenKota: 'Kab. Malang',
       provinsi: 'Jawa Timur',
