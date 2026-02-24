@@ -5,6 +5,7 @@ import TidakHadirPenguruskelas from "./TidakHadirPenguruskelas";
 import JadwalPengurus from "./JadwalPengurus";
 import { dashboardService } from "../../services/dashboardService";
 import { scheduleService } from "../../services/scheduleService";
+import { settingService } from "../../services/settingService";
 // import openBook from "../../assets/Icon/open-book.png";
 import INO from "../../assets/Icon/INO.png";
 import RASI from "../../assets/Icon/RASI.png";
@@ -50,6 +51,7 @@ interface ScheduleItem {
   id: string;
   mapel: string;
   guru: string;
+  day: string;
   start: string;
   end: string;
 }
@@ -67,11 +69,35 @@ interface DashboardPengurusKelasProps {
   onLogout: () => void;
 }
 
-// Mapping ID pengurus kelas ke nama removed - using profile data
+const normalizeDayName = (day?: string) => {
+  if (!day) return "";
+  const key = day.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    monday: "monday",
+    senin: "monday",
+    tuesday: "tuesday",
+    selasa: "tuesday",
+    wednesday: "wednesday",
+    rabu: "wednesday",
+    thursday: "thursday",
+    kamis: "thursday",
+    friday: "friday",
+    jumat: "friday",
+    "jum'at": "friday",
+    saturday: "saturday",
+    sabtu: "saturday",
+    sunday: "sunday",
+    minggu: "sunday",
+  };
+  return aliases[key] || key;
+};
 
-// Utility functions removed
-
-// Dummy data removed - fetched from API
+const toHourMinute = (time?: string) => (time ? time.substring(0, 5) : "--:--");
+const toTimeLabel = (time?: string) => {
+  if (!time) return "--:--";
+  if (time.length >= 8) return time.substring(0, 8);
+  return `${time.substring(0, 5)}:00`;
+};
 
 export default function DashboardPengurusKelas({
   user,
@@ -89,6 +115,10 @@ export default function DashboardPengurusKelas({
     sakit: 0,
     alpha: 0,
     pulang: 0,
+  });
+  const [schoolHours, setSchoolHours] = useState({
+    start: "07:00:00",
+    end: "15:00:00",
   });
 
   // Use data directly from user object (synced in App.tsx)
@@ -145,9 +175,34 @@ export default function DashboardPengurusKelas({
     fetchData();
   }, []);
 
-  // Data Dummy 
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+
+  useEffect(() => {
+    const fetchSchoolHours = async () => {
+      try {
+        const syncData = await settingService.getSyncSettings();
+        const settings = syncData?.settings || {};
+        const start =
+          (settings.school_start_time as string | null) ||
+          (settings.start_time as string | null) ||
+          "07:00:00";
+        const end =
+          (settings.school_end_time as string | null) ||
+          (settings.end_time as string | null) ||
+          "15:00:00";
+
+        setSchoolHours({
+          start: toTimeLabel(start),
+          end: toTimeLabel(end),
+        });
+      } catch (error) {
+        console.error("Error fetching school hours:", error);
+      }
+    };
+
+    fetchSchoolHours();
+  }, []);
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -157,12 +212,16 @@ export default function DashboardPengurusKelas({
         if (response.items) {
           const mapped: ScheduleItem[] = response.items.map((item: any) => ({
             id: String(item.id),
-            mapel: item.subject,
-            guru: typeof item.teacher === 'object' ? item.teacher.name : (item.teacher || "-"),
-            start: item.start_time.substring(0, 5),
-            end: item.end_time.substring(0, 5),
+            mapel: item.subject || item.subject_name || "-",
+            guru: typeof item.teacher === "object" ? item.teacher.name : (item.teacher || "-"),
+            day: item.day || "",
+            start: toHourMinute(item.start_time),
+            end: toHourMinute(item.end_time),
           }));
-          setSchedules(mapped);
+          const todayKey = normalizeDayName(
+            new Date().toLocaleDateString("en-US", { weekday: "long" })
+          );
+          setSchedules(mapped.filter((item) => normalizeDayName(item.day) === todayKey));
         }
       } catch (error) {
         console.error("Error fetching schedules:", error);
@@ -189,7 +248,6 @@ export default function DashboardPengurusKelas({
     setCurrentPage("Beranda");
   };
 
-  // Dummy user info
   const userInfo = {
     name: displayName,
     id: displayNISN,
@@ -366,9 +424,9 @@ export default function DashboardPengurusKelas({
                     flexWrap: "wrap",
                   }}
                 >
-                  <TimePill label="07:00:00" />
+                  <TimePill label={schoolHours.start} />
                   <span style={{ fontWeight: 700, color: "#64748B" }}>—</span>
-                  <TimePill label="15:00:00" />
+                  <TimePill label={schoolHours.end} />
                 </div>
               </div>
 

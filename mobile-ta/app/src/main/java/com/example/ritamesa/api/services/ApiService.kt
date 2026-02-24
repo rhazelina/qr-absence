@@ -42,7 +42,7 @@ interface ApiService {
         @Query("end_date") endDate: String? = null
     ): Response<PaginatedResponse<AttendanceResource>>
 
-    @GET("attendance/teachers/daily")
+    @GET("waka/attendance/teachers/daily")
     suspend fun getDailyTeacherAttendance(
         @Query("date") date: String? = null
     ): Response<PaginatedResponse<DailyAttendanceData>>

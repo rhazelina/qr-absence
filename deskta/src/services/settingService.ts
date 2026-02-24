@@ -21,6 +21,12 @@ export interface PublicSettings {
   province: string | null;
 }
 
+export interface SyncSettingsResponse {
+  school_year?: unknown;
+  semester?: unknown;
+  settings?: Record<string, string | null>;
+}
+
 export const settingService = {
   getPublicSettings: async (): Promise<PublicSettings> => {
     const response = await fetch(`${API_BASE_URL}/settings/public`, {
@@ -34,6 +40,17 @@ export const settingService = {
 
   getSettings: async (): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/settings`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Accept': 'application/json'
+      },
+    });
+    return handleResponse(response);
+  },
+
+  getSyncSettings: async (): Promise<SyncSettingsResponse> => {
+    const response = await fetch(`${API_BASE_URL}/settings/sync`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,

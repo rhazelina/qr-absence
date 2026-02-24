@@ -141,12 +141,6 @@ class TindakLanjutGuruActivity : BaseNetworkActivity() {
         adapter.notifyDataSetChanged()
     }
 
-    // ============= DATA DUMMY SISWA RPL =============
-    private fun generateDummyDataRPL() {
-        allSiswaData.clear()
-        // Nama siswa RPL
-    }
-
     private fun determineBadgeInfo(alpha: Int, izin: Int, sakit: Int): Map<String, Any> {
         return when {
             alpha >= 1 -> mapOf(

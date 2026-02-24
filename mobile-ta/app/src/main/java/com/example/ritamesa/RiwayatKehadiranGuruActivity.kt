@@ -3,17 +3,15 @@ package com.example.ritamesa
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Collections
@@ -44,7 +42,6 @@ class RiwayatKehadiranGuruActivity : BaseNetworkActivity() {
     private var filterActive: String? = null
     private var dateFilterActive: Boolean = false
 
-    private val handler = Handler(Looper.getMainLooper())
     private var isLoading = false
     private var selectedDate = Calendar.getInstance()
 
@@ -71,6 +68,14 @@ class RiwayatKehadiranGuruActivity : BaseNetworkActivity() {
         setupCalendarButton()
         setupRecyclerView()
         setupFooterNavigation()
+        loadDataAsync()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!isLoading) {
+            loadDataAsync()
+        }
     }
 
     private fun initializeViews(): Boolean {
@@ -128,33 +133,20 @@ class RiwayatKehadiranGuruActivity : BaseNetworkActivity() {
 
     private fun applyDateFilter() {
         if (isLoading) return
-        isLoading = true
+        val dateFormat = SimpleDateFormat(DATE_FORMAT, Locale.getDefault())
+        val selectedDateStr = dateFormat.format(selectedDate.time)
 
-        Thread {
-            try {
-                val dateFormat = SimpleDateFormat(DATE_FORMAT, Locale.getDefault())
-                val selectedDateStr = dateFormat.format(selectedDate.time)
+        filteredData.clear()
+        filteredData.addAll(allData.filter {
+            (it["tanggal"] as? String ?: "").contains(selectedDateStr)
+        })
 
-                val tempFilteredData = allData.filter {
-                    (it["tanggal"] as? String ?: "").contains(selectedDateStr)
-                }
-
-                handler.post {
-                    filteredData.clear()
-                    filteredData.addAll(tempFilteredData)
-
-                    if (filterActive != null) {
-                        applyFilter(filterActive!!)
-                    } else {
-                        adapter.notifyDataSetChanged()
-                    }
-                    updateAngkaTombol()
-                    isLoading = false
-                }
-            } catch (e: Exception) {
-                handler.post { isLoading = false }
-            }
-        }.start()
+        if (filterActive != null) {
+            applyFilter(filterActive!!)
+        } else {
+            adapter.notifyDataSetChanged()
+        }
+        updateAngkaTombol()
     }
 
     private fun setupRecyclerView() {
@@ -194,34 +186,44 @@ class RiwayatKehadiranGuruActivity : BaseNetworkActivity() {
         btnAlpha.setOnClickListener { toggleFilter("alpha") }
     }
 
-    // ============= DATA DUMMY SESUAI GURU RPL =============
     private fun loadDataAsync() {
         isLoading = true
         lifecycleScope.launch {
             try {
-                val result = attendanceRepository.getDailyTeacherAttendance()
+                val result = attendanceRepository.getMyTeachingAttendance()
                 handleResult(result,
                     onSuccess = { attendanceRecords ->
                         allData.clear()
                         filteredData.clear()
                         
-                        // Transform attendance records to display format
                         attendanceRecords.forEachIndexed { index, record ->
+                            val statusType = toStatusType(record.status)
+                            val statusText = toStatusLabel(record.status, record.statusLabel)
+                            val mapel = record.schedule?.subjectName ?: "Kehadiran Guru"
+                            val kelas = buildTimeRange(record.schedule?.startTime, record.schedule?.endTime)
+                            val tanggalDisplay = buildTanggalDisplay(
+                                record.date ?: record.createdAt,
+                                record.checkedInAt ?: record.timestamp
+                            )
+                            val sortKey = buildSortKey(
+                                record.date ?: record.createdAt,
+                                record.checkedInAt ?: record.timestamp
+                            )
+
                             val mapOfRecord: MutableMap<String, Any> = mutableMapOf<String, Any>().apply {
                                 this["id"] = index
-                                this["mapel"] = record.teacherName ?: "-"
-                                this["kelas"] = record.nip ?: "-"
-                                this["status"] = record.status ?: "Hadir"
-                                this["tanggal"] = record.date ?: record.timestamp ?: "-"
-                                this["statusType"] = record.status?.lowercase() ?: "hadir"
+                                this["mapel"] = mapel
+                                this["kelas"] = kelas
+                                this["status"] = statusText
+                                this["tanggal"] = tanggalDisplay
+                                this["statusType"] = statusType
+                                this["sortKey"] = sortKey
                             }
                             allData.add(mapOfRecord)
                         }
 
-                        // Sort by newest first
-                        allData.sortByDescending { it["tanggal"] as? String ?: "" }
+                        allData.sortByDescending { it["sortKey"] as? String ?: "" }
 
-                        // Show today's data
                         val todayStr = SimpleDateFormat(DATE_FORMAT, Locale.getDefault()).format(Date())
                         filteredData.addAll(allData.filter {
                             (it["tanggal"] as? String ?: "").contains(todayStr)
@@ -243,94 +245,92 @@ class RiwayatKehadiranGuruActivity : BaseNetworkActivity() {
         }
     }
 
-    private fun loadDataAsyncOld() {
-        isLoading = true
+    private fun toStatusType(status: String?): String {
+        return when (status?.lowercase()) {
+            "present", "late", "return", "pulang" -> "hadir"
+            "sick" -> "sakit"
+            "permission", "excused", "izin" -> "izin"
+            "absent", "alpha" -> "alpha"
+            else -> "hadir"
+        }
+    }
 
-        Thread {
-            try {
-                allData.clear()
-                filteredData.clear()
+    private fun toStatusLabel(status: String?, statusLabel: String?): String {
+        if (!statusLabel.isNullOrBlank()) return statusLabel
+        return when (status?.lowercase()) {
+            "present" -> "Hadir Tepat Waktu"
+            "late" -> "Hadir Terlambat"
+            "sick" -> "Sakit"
+            "permission", "excused", "izin" -> "Izin"
+            "absent", "alpha" -> "Tanpa Keterangan"
+            "return", "pulang" -> "Pulang"
+            else -> "Belum Ada Status"
+        }
+    }
 
-                // KELAS: XII RPL 2, XII RPL 1, XI RPL 1, XI RPL 2, XI RPL 3, X RPL 1, X RPL 2
-                val kelasList = listOf(
-                    "XII RPL 2", "XII RPL 1",
-                    "XI RPL 1", "XI RPL 2", "XI RPL 3",
-                    "X RPL 1", "X RPL 2"
-                )
+    private fun buildTimeRange(start: String?, end: String?): String {
+        val cleanStart = start?.take(5).orEmpty()
+        val cleanEnd = end?.take(5).orEmpty()
+        if (cleanStart.isNotBlank() && cleanEnd.isNotBlank()) {
+            return "$cleanStart - $cleanEnd"
+        }
+        if (cleanStart.isNotBlank()) return cleanStart
+        return "-"
+    }
 
-                // MAPEL: MPKK, PKDK, MPP (untuk XI & XII), Informatika (hanya X)
-                val mapelKelasXII_XI = listOf("MPKK", "PKDK", "MPP")
-                val mapelKelasX = "Informatika"
+    private fun normalizeDate(rawDate: String?): String {
+        if (rawDate.isNullOrBlank()) return "-"
 
-                val calendar = Calendar.getInstance()
-                val dateFormat = SimpleDateFormat(DATE_FORMAT, Locale.getDefault())
+        val normalized = when {
+            rawDate.contains("T") -> rawDate.substring(0, 10)
+            rawDate.contains(" ") && rawDate.length >= 10 -> rawDate.substring(0, 10)
+            rawDate.length >= 10 -> rawDate.substring(0, 10)
+            else -> rawDate
+        }
 
-                // Data 7 hari terakhir
-                for (dayOffset in 0..6) {
-                    calendar.time = Date()
-                    calendar.add(Calendar.DAY_OF_YEAR, -dayOffset)
-                    val tanggal = dateFormat.format(calendar.time)
+        return try {
+            val input = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val output = SimpleDateFormat(DATE_FORMAT, Locale.getDefault())
+            output.format(input.parse(normalized) ?: return rawDate)
+        } catch (_: ParseException) {
+            rawDate
+        }
+    }
 
-                    repeat((3..5).random()) { entryIndex ->
-                        val kelas = kelasList[entryIndex % kelasList.size]
+    private fun normalizeTime(rawTime: String?): String {
+        if (rawTime.isNullOrBlank()) return ""
+        return when {
+            rawTime.contains("T") && rawTime.length >= 16 -> rawTime.substring(11, 16)
+            rawTime.contains(" ") && rawTime.length >= 16 -> rawTime.substring(11, 16)
+            rawTime.length >= 5 -> rawTime.take(5)
+            else -> ""
+        }
+    }
 
-                        // Tentukan mapel berdasarkan tingkat kelas
-                        val mapel = if (kelas.startsWith("X ")) {
-                            // Untuk kelas X, gunakan Informatika
-                            mapelKelasX
-                        } else {
-                            // Untuk kelas XI dan XII, rotasi mapel MPKK, PKDK, MPP
-                            mapelKelasXII_XI[(entryIndex + dayOffset) % mapelKelasXII_XI.size]
-                        }
+    private fun buildTanggalDisplay(rawDate: String?, rawTime: String?): String {
+        val displayDate = normalizeDate(rawDate)
+        val displayTime = normalizeTime(rawTime)
+        if (displayDate == "-") return "-"
+        return if (displayTime.isNotBlank()) "$displayDate $displayTime" else displayDate
+    }
 
-                        val statusRand = (1..100).random()
-                        val statusType = when {
-                            statusRand <= 70 -> "hadir"
-                            statusRand <= 80 -> "sakit"
-                            statusRand <= 90 -> "izin"
-                            else -> "alpha"
-                        }
-
-                        val statusText = when (statusType) {
-                            "hadir" -> if (entryIndex % 4 == 0) "Hadir Terlambat" else "Hadir Tepat Waktu"
-                            "sakit" -> "Tidak Bisa Mengajar (Sakit)"
-                            "izin" -> "Tidak Bisa Mengajar (Izin)"
-                            "alpha" -> "Tanpa Keterangan"
-                            else -> "Tidak Mengajar"
-                        }
-
-                        val jamList = listOf("07:30", "08:15", "09:00", "09:45", "10:30", "11:15")
-                        val jam = jamList[entryIndex % jamList.size]
-
-                        allData.add(mapOf(
-                            "id" to (dayOffset * 10 + entryIndex),
-                            "mapel" to mapel,
-                            "kelas" to kelas,
-                            "status" to statusText,
-                            "tanggal" to "$tanggal $jam",
-                            "statusType" to statusType
-                        ))
-                    }
-                }
-
-                // Urutkan terbaru
-                allData.sortByDescending { it["tanggal"] as? String ?: "" }
-
-                // Tampilkan hari ini
-                val todayStr = dateFormat.format(Date())
-                filteredData.addAll(allData.filter {
-                    (it["tanggal"] as? String ?: "").contains(todayStr)
-                })
-
-                handler.post {
-                    updateAngkaTombol()
-                    adapter.notifyDataSetChanged()
-                    isLoading = false
-                }
-            } catch (e: Exception) {
-                handler.post { isLoading = false }
-            }
-        }.start()
+    private fun buildSortKey(rawDate: String?, rawTime: String?): String {
+        val normalizedDate = when {
+            rawDate.isNullOrBlank() -> "0000-00-00"
+            rawDate.contains("T") -> rawDate.substring(0, 10)
+            rawDate.contains(" ") && rawDate.length >= 10 -> rawDate.substring(0, 10)
+            rawDate.length >= 10 -> rawDate.substring(0, 10)
+            else -> rawDate
+        }
+        val normalizedTime = when {
+            rawTime.isNullOrBlank() -> "00:00:00"
+            rawTime.contains("T") && rawTime.length >= 19 -> rawTime.substring(11, 19)
+            rawTime.contains(" ") && rawTime.length >= 19 -> rawTime.substring(11, 19)
+            rawTime.length >= 8 -> rawTime.take(8)
+            rawTime.length >= 5 -> "${rawTime.take(5)}:00"
+            else -> "00:00:00"
+        }
+        return "$normalizedDate $normalizedTime"
     }
 
     private fun toggleFilter(status: String) {

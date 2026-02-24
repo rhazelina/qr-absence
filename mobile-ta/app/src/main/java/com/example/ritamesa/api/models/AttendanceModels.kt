@@ -20,16 +20,27 @@ data class ScheduleInfo(
     val subjectName: String?,
     @SerializedName("class_name")
     val className: String?,
-    val date: String?
+    val date: String?,
+    @SerializedName("start_time")
+    val startTime: String?,
+    @SerializedName("end_time")
+    val endTime: String?
 )
 
 data class AttendanceResource(
     val id: Int?,
     val student: StudentInfo?,
     val schedule: ScheduleInfo?,
+    val date: String?,
     val status: String?,
+    @SerializedName("status_label")
+    val statusLabel: String?,
+    @SerializedName("checked_in_at")
+    val checkedInAt: String?,
     val timestamp: String?,
-    val reason: String?
+    val reason: String?,
+    @SerializedName("created_at")
+    val createdAt: String?
 )
 
 data class ScanAttendanceRequest(

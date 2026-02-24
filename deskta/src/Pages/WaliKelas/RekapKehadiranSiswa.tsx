@@ -3,6 +3,7 @@ import { Eye, FileDown, Calendar, ArrowLeft, Search, ClipboardPlus, X, Upload } 
 import WalikelasLayout from "../../component/Walikelas/layoutwakel";
 import { attendanceService } from "../../services/attendanceService";
 import classService from "../../services/classService";
+import { scheduleService } from "../../services/scheduleService";
 import { masterService } from "../../services/masterService";
 import type { Subject } from "../../services/masterService";
 
@@ -26,33 +27,25 @@ interface RekapRow {
   status: 'aktif' | 'non-aktif';
 }
 
-// interface PerizinanPulang removed
+interface HomeroomScheduleOption {
+  id: string;
+  mapel: string;
+  guru: string;
+  startTime: string;
+  endTime: string;
+}
 
-// data dummy (kept for perizinan logic if needed, or placeholders)
-const guruPerMapel: Record<string, string[]> = {
-  'Matematika': ['Solikhah S.pd', 'Budi Santoso S.pd', 'Dewi Lestari S.pd'],
-  'Bahasa Indonesia': ['Siti Aminah S.pd', 'Ahmad Fauzi S.pd'],
-  'Fisika': ['Dr. Bambang S.pd', 'Rina Kusuma S.pd'],
-  'Kimia': ['Arief Budiman S.pd', 'Lina Marlina S.pd'],
-  'MPKK': ['Tri Wahyuni S.pd', 'Eko Prasetyo S.pd', 'Yuni Astuti S.pd'],
-  'Bahasa Inggris': ['Sarah Johnson S.pd', 'David Brown S.pd'],
-  'Sejarah': ['Hendra Gunawan S.pd'],
-  'Ekonomi': ['Fitri Handayani S.pd', 'Rudi Hermawan S.pd'],
+interface TimeRangeOption {
+  value: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+}
+
+const toHHmm = (value?: string) => {
+  if (!value) return "";
+  return value.substring(0, 5);
 };
-
-const jamPelajaranOptions = [
-  '1-2', '1-3', '1-4', '1-5', '1-6', '1-7', '1-8', '1-9', '1-10', '1-11', '1-12',
-  '2-3', '2-4', '2-5', '2-6', '2-7', '2-8', '2-9', '2-10', '2-11', '2-12',
-  '3-4', '3-5', '3-6', '3-7', '3-8', '3-9', '3-10', '3-11', '3-12',
-  '4-5', '4-6', '4-7', '4-8', '4-9', '4-10', '4-11', '4-12',
-  '5-6', '5-7', '5-8', '5-9', '5-10', '5-11', '5-12',
-  '6-7', '6-8', '6-9', '6-10', '6-11', '6-12',
-  '7-8', '7-9', '7-10', '7-11', '7-12',
-  '8-9', '8-10', '8-11', '8-12',
-  '9-10', '9-11', '9-12',
-  '10-11', '10-12',
-  '11-12'
-];
 
 export function RekapKehadiranSiswa({
   user,
@@ -103,6 +96,9 @@ export function RekapKehadiranSiswa({
   });
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [homeroomSchedules, setHomeroomSchedules] = useState<HomeroomScheduleOption[]>([]);
+  const [teachersBySubject, setTeachersBySubject] = useState<Record<string, string[]>>({});
+  const [timeRangeOptions, setTimeRangeOptions] = useState<TimeRangeOption[]>([]);
 
   // Fetch Class Info & Subjects
   useEffect(() => {
@@ -129,8 +125,73 @@ export function RekapKehadiranSiswa({
       }
     };
 
+    const fetchHomeroomSchedules = async () => {
+      try {
+        const data = await scheduleService.getMyHomeroomSchedules();
+        const mapped: HomeroomScheduleOption[] = data.items
+          .map((item: any) => {
+            const mapel = item.subject?.name || item.subject_name || item.keterangan || "";
+            const guru = item.teacher?.user?.name || item.teacher?.name || "";
+            const startTime = toHHmm(item.start_time);
+            const endTime = toHHmm(item.end_time);
+
+            return {
+              id: String(item.id || `${mapel}-${startTime}-${endTime}`),
+              mapel,
+              guru,
+              startTime,
+              endTime,
+            };
+          })
+          .filter(
+            (item: HomeroomScheduleOption) =>
+              !!item.mapel && !!item.guru && !!item.startTime && !!item.endTime
+          );
+
+        setHomeroomSchedules(mapped);
+
+        const mapelGuruMap: Record<string, Set<string>> = {};
+        const timeOptionMap = new Map<string, TimeRangeOption>();
+
+        mapped.forEach((item) => {
+          if (!mapelGuruMap[item.mapel]) {
+            mapelGuruMap[item.mapel] = new Set<string>();
+          }
+          mapelGuruMap[item.mapel].add(item.guru);
+
+          const value = `${item.startTime}|${item.endTime}`;
+          if (!timeOptionMap.has(value)) {
+            timeOptionMap.set(value, {
+              value,
+              label: `${item.startTime} - ${item.endTime}`,
+              startTime: item.startTime,
+              endTime: item.endTime,
+            });
+          }
+        });
+
+        setTeachersBySubject(
+          Object.fromEntries(
+            Object.entries(mapelGuruMap).map(([mapel, teachers]) => [
+              mapel,
+              Array.from(teachers).sort((a, b) => a.localeCompare(b)),
+            ])
+          )
+        );
+
+        setTimeRangeOptions(
+          Array.from(timeOptionMap.values()).sort((a, b) =>
+            a.startTime.localeCompare(b.startTime)
+          )
+        );
+      } catch (error) {
+        console.error("Failed to fetch homeroom schedules", error);
+      }
+    };
+
     fetchClass();
     fetchSubjects();
+    fetchHomeroomSchedules();
   }, [user.name]);
 
   // Fetch Attendance Summary
@@ -170,8 +231,6 @@ export function RekapKehadiranSiswa({
         }
       } catch (error) {
         console.error("Failed to fetch attendance summary", error);
-      } finally {
-
       }
     };
 
@@ -215,12 +274,93 @@ export function RekapKehadiranSiswa({
     );
   }, [rows, searchTerm]);
 
+  const mapelOptions = useMemo(() => {
+    const fromSchedules = Array.from(new Set(homeroomSchedules.map((item) => item.mapel)));
+    if (fromSchedules.length > 0) return fromSchedules;
+    return subjects.map((subject) => subject.name);
+  }, [homeroomSchedules, subjects]);
+
+  const guruOptions = useMemo(() => {
+    return teachersBySubject[perizinanData.mapel] || [];
+  }, [teachersBySubject, perizinanData.mapel]);
+
   // ... rest of calculations
   const totalHadir = useMemo(() => filteredRows.reduce((sum, row) => sum + row.hadir, 0), [filteredRows]);
   const totalIzin = useMemo(() => filteredRows.reduce((sum, row) => sum + row.izin, 0), [filteredRows]);
   const totalSakit = useMemo(() => filteredRows.reduce((sum, row) => sum + row.sakit, 0), [filteredRows]);
   const totalAlfa = useMemo(() => filteredRows.reduce((sum, row) => sum + row.alfa, 0), [filteredRows]);
   const totalPulang = useMemo(() => filteredRows.reduce((sum, row) => sum + row.pulang, 0), [filteredRows]);
+
+  // const handleExportExcel = () => {
+  //   try {
+  //     const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Status"];
+  //     const rowsData = filteredRows.map((row) => [
+  //       row.no,
+  //       row.nisn,
+  //       row.namaSiswa,
+  //       row.hadir,
+  //       row.izin,
+  //       row.sakit,
+  //       row.alfa,
+  //       row.pulang,
+  //       row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'
+  //     ]);
+
+  //     rowsData.push([
+  //       'TOTAL',
+  //       '',
+  //       'Total Keseluruhan',
+  //       totalHadir,
+  //       totalIzin,
+  //       totalSakit,
+  //       totalAlfa,
+  //       totalPulang,
+  //       ''
+  //     ]);
+
+  //     exportService.exportToExcel(rowsData, headers, `rekap-kehadiran-kelas-${kelasInfo.namaKelas}-${periodeMulai}-sd-${periodeSelesai}.xlsx`);
+  //   } catch (error) {
+  //     console.error("Failed to export to Excel", error);
+  //   }
+  // };
+
+  // const handleExportPDF = () => {
+  //   try {
+  //     const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Status"];
+  //     const rowsData = filteredRows.map((row) => [
+  //       row.no,
+  //       row.nisn,
+  //       row.namaSiswa,
+  //       row.hadir,
+  //       row.izin,
+  //       row.sakit,
+  //       row.alfa,
+  //       row.pulang,
+  //       row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'
+  //     ]);
+
+  //     rowsData.push([
+  //       'TOTAL',
+  //       '',
+  //       'Total Keseluruhan',
+  //       totalHadir,
+  //       totalIzin,
+  //       totalSakit,
+  //       totalAlfa,
+  //       totalPulang,
+  //       ''
+  //     ]);
+
+  //     exportService.exportToPDF(rowsData, headers, `rekap-kehadiran-kelas-${kelasInfo.namaKelas}-${periodeMulai}-sd-${periodeSelesai}.pdf`, {
+  //       title: `Rekapitulasi Kehadiran Siswa`,
+  //       subtitle: `Kelas: ${kelasInfo.namaKelas} | Periode: ${formatDisplayDate(periodeMulai)} - ${formatDisplayDate(periodeSelesai)}`,
+  //       schoolName: "SMA NEGERI 1 CIAMIS"
+  //     });
+  //   } catch (error) {
+  //     console.error("Failed to export to PDF", error);
+  //   }
+  // };
+
 
   // ... existing handlers (handleViewDetail, handleBack, formatDisplayDate, handleExportExcel, handleExportPDF, etc.)
   // We keep them as is, they work with `rows`/`filteredRows`.
@@ -568,12 +708,20 @@ export function RekapKehadiranSiswa({
     }
 
     try {
-      const startTime = perizinanData.jamPelajaran.split('-')[0].padStart(2, '0') + ':00';
+      const selectedTimeRange = timeRangeOptions.find(
+        (option) => option.value === perizinanData.jamPelajaran
+      );
+
+      if (!selectedTimeRange) {
+        alert('⚠️ Jam pelajaran tidak valid, silakan pilih dari daftar yang tersedia');
+        return;
+      }
 
       await attendanceService.createLeavePermission({
         student_id: siswa.id,
         type: perizinanData.alasanPulang as any,
-        start_time: startTime,
+        start_time: selectedTimeRange.startTime,
+        end_time: selectedTimeRange.endTime,
         reason: perizinanData.alasanDetail || perizinanData.keterangan || `Izin ${perizinanData.alasanPulang}`,
         file: perizinanData.file1
       });
@@ -1257,9 +1405,9 @@ export function RekapKehadiranSiswa({
                     }}
                   >
                     <option value="">Pilih mata pelajaran</option>
-                    {subjects.map((sub) => (
-                      <option key={sub.id} value={sub.name}>
-                        {sub.name}
+                    {mapelOptions.map((mapel) => (
+                      <option key={mapel} value={mapel}>
+                        {mapel}
                       </option>
                     ))}
                   </select>
@@ -1303,7 +1451,7 @@ export function RekapKehadiranSiswa({
                     ) : (
                       <>
                         <option value="">Pilih guru</option>
-                        {guruPerMapel[perizinanData.mapel]?.map((guru) => (
+                        {guruOptions.map((guru) => (
                           <option key={guru} value={guru}>
                             {guru}
                           </option>
@@ -1376,8 +1524,7 @@ export function RekapKehadiranSiswa({
                       }}>
                         Jam Pelajaran *
                       </p>
-                      <input
-                        type="text"
+                      <select
                         value={perizinanData.jamPelajaran}
                         onChange={(e) =>
                           setPerizinanData((prev) => ({
@@ -1385,8 +1532,6 @@ export function RekapKehadiranSiswa({
                             jamPelajaran: e.target.value,
                           }))
                         }
-                        list="jamPelajaranOptions"
-                        placeholder="Contoh: 2-10, 1-4, 5-8"
                         style={{
                           width: '100%',
                           padding: '12px 16px',
@@ -1395,22 +1540,23 @@ export function RekapKehadiranSiswa({
                           fontSize: '14px',
                           backgroundColor: '#FFFFFF',
                           color: '#1F2937',
+                          cursor: 'pointer',
                         }}
-                      />
-                      <datalist id="jamPelajaranOptions">
-                        {jamPelajaranOptions.map((jam) => (
-                          <option key={jam} value={jam}>
-                            Jam {jam}
+                      >
+                        <option value="">Pilih jam pelajaran</option>
+                        {timeRangeOptions.map((jam) => (
+                          <option key={jam.value} value={jam.value}>
+                            {jam.label}
                           </option>
                         ))}
-                      </datalist>
+                      </select>
                       <p style={{
                         margin: '4px 0 0 0',
                         fontSize: '12px',
                         color: '#6B7280',
                         fontStyle: 'italic',
                       }}>
-                        *Masukkan rentang jam, contoh: 2-10 untuk jam ke-2 sampai jam ke-10
+                        *Jam pelajaran diambil dari jadwal aktif kelas
                       </p>
                     </div>
 
