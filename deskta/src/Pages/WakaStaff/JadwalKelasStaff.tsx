@@ -124,12 +124,17 @@ export default function JadwalKelasStaff({
 
         try {
             const response = await classService.uploadScheduleImage(String(row.id), file);
+            console.log('UPLOAD SUCCESS RESPONSE:', response);
+            
+            const newImageUrl = `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+            console.log('NEW IMAGE URL SET TO:', newImageUrl);
+
             showNotification('success', 'Jadwal berhasil diupload');
             
             // Update local state with new image URL
             setKelasData(prev => prev.map(item => 
                 item.id === row.id 
-                ? { ...item, schedule_image_url: `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}` } 
+                ? { ...item, schedule_image_url: newImageUrl } 
                 : item
             ));
         } catch (error) {

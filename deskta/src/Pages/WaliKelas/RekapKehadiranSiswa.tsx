@@ -128,7 +128,11 @@ export function RekapKehadiranSiswa({
     const fetchHomeroomSchedules = async () => {
       try {
         const data = await scheduleService.getMyHomeroomSchedules();
-        const mapped: HomeroomScheduleOption[] = data.items
+        const rawItems = Array.isArray(data)
+          ? data
+          : (data?.items || data?.data || []);
+
+        const mapped: HomeroomScheduleOption[] = rawItems
           .map((item: any) => {
             const mapel = item.subject?.name || item.subject_name || item.keterangan || "";
             const guru = item.teacher?.user?.name || item.teacher?.name || "";

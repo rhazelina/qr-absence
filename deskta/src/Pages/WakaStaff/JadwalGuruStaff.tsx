@@ -84,15 +84,17 @@ export default function JadwalGuruStaff({
         try {
             setUploadingId(row.id);
             const response = await teacherService.uploadScheduleImage(row.id, file);
+            console.log('UPLOAD SUCCESS RESPONSE:', response);
             
             // Update local state with new image URL if returned, or just refresh
-            // The response usually contains the URL or we can assume success
-            // If response has url:
             if (response.url) {
+                 const newImageUrl = `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                 console.log('NEW IMAGE URL SET TO:', newImageUrl);
                  setGuruData(prev => prev.map(item => 
-                    item.id === row.id ? { ...item, scheduleImage: `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}` } : item
+                    item.id === row.id ? { ...item, scheduleImage: newImageUrl } : item
                  ));
             } else {
+                console.log('NO URL IN RESPONSE, REFRESHING TEACHERS');
                 fetchTeachers(); // Refresh to be sure
             }
             alert("Jadwal berhasil diunggah");

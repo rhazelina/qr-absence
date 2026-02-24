@@ -1,5 +1,5 @@
 // src/Pages/WakaStaff/LihatKelas.tsx
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { ArrowLeft } from "lucide-react";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
@@ -24,6 +24,10 @@ export default function LihatKelas({
   onBack,
 }: Props) {
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [jadwalImage]);
 
   const handleImageError = () => {
     setImageError(true);

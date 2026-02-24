@@ -178,14 +178,7 @@ export const scheduleService = {
       method: "GET",
       headers: getAuthHeaders(),
     });
-
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => ({} as any));
-      throw new Error(errorPayload?.message || "API request failed");
-    }
-
-    const payload = await response.json();
-    return normalizeScheduleResponse(payload);
+    return handleResponse(response);
   },
 
   getSchedule: async (id: string | number): Promise<any> => {

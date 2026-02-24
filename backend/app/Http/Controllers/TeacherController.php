@@ -185,7 +185,7 @@ class TeacherController extends Controller
         $path = $request->file('file')->store('schedules/teachers', 'public');
         $teacher->update(['schedule_image_path' => $path]);
 
-        return response()->json(['url' => Storage::disk('public')->url($path)]);
+        return response()->json(['url' => asset('storage/'.$path)]);
     }
 
     /**

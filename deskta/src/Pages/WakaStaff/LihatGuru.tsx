@@ -1,5 +1,5 @@
 // src/Pages/WakaStaff/LihatGuru.tsx
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { User } from "lucide-react";
@@ -26,6 +26,10 @@ export default function LihatGuru({
   onBack,
 }: Props) {
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [jadwalImage]);
 
   const handleImageError = () => {
     setImageError(true);
