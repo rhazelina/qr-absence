@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendance;
 use App\Models\Classes;
 use App\Models\ScheduleItem as Schedule;
 use App\Models\StudentLeavePermission;
@@ -108,6 +109,17 @@ class StudentLeavePermissionController extends Controller
         }
 
         $student = StudentProfile::findOrFail($data['student_id']);
+        $selectedSchedule = null;
+        if (! empty($data['schedule_id'])) {
+            $selectedSchedule = Schedule::query()
+                ->with('dailySchedule.classSchedule')
+                ->find($data['schedule_id']);
+
+            $scheduleClassId = $selectedSchedule?->dailySchedule?->classSchedule?->class_id;
+            if (! $selectedSchedule || (int) $scheduleClassId !== (int) $student->class_id) {
+                return response()->json(['message' => 'Jadwal tidak valid untuk kelas siswa ini'], 422);
+            }
+        }
 
         // Validate teacher has access to this student's class
         $hasAccess = Schedule::where('teacher_id', $teacher->id)
@@ -159,10 +171,26 @@ class StudentLeavePermissionController extends Controller
 
         // If full day, create attendance records
         if ($isFullDay) {
-            $this->attendanceService->createFullDayAttendance($student, $data['type'], $today, $data['reason'] ?? null);
+            $this->attendanceService->createFullDayAttendance($student, $data['type'], $today, $data['reason'] ?? null, $attachmentPath);
         } elseif (empty($data['end_time'])) {
             // If izin_pulang/dispensasi without end time, mark remaining schedules
-            $this->attendanceService->markRemainingAsIzin($student, $today, $data['start_time'], $data['reason'] ?? null);
+            $this->attendanceService->markRemainingAsIzin($student, $today, $data['start_time'], $data['reason'] ?? null, $attachmentPath);
+        } elseif ($selectedSchedule) {
+            Attendance::updateOrCreate(
+                [
+                    'attendee_type' => 'student',
+                    'student_id' => $student->id,
+                    'schedule_id' => $selectedSchedule->id,
+                    'date' => $today,
+                ],
+                [
+                    'status' => 'return',
+                    'reason' => $data['reason'] ?? 'Pulang lebih awal',
+                    'reason_file' => $attachmentPath,
+                    'checked_in_at' => Carbon::parse($today.' '.($data['end_time'] ?? $data['start_time'])),
+                    'source' => 'manual',
+                ]
+            );
         }
 
         return response()->json([

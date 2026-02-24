@@ -10,7 +10,8 @@ const classService = {
         "Accept": "application/json",
       }
     });
-    return handleResponse(response);
+    const payload = await handleResponse(response);
+    return payload?.data || payload;
   },
 
   uploadScheduleImage: async (classId: string, file: File) => {

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import './JadwalSiswaEdit.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import {
   FaSave,
@@ -14,7 +13,11 @@ import {
   FaClock,
   FaSpinner,
   FaImage,
-  FaCheckCircle
+  FaCheckCircle,
+  FaTimes,
+  FaListUl,
+  FaUserGraduate,
+  FaLayerGroup
 } from 'react-icons/fa';
 import apiService from '../../utils/api';
 
@@ -47,7 +50,26 @@ function JadwalSiswaEdit() {
   const dayOptions = [
     'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'
   ];
-  const totalSessions = days.reduce((count, day) => count + day.items.length, 0);
+
+  const engToIndo = {
+    'Monday': 'Senin',
+    'Tuesday': 'Selasa',
+    'Wednesday': 'Rabu',
+    'Thursday': 'Kamis',
+    'Friday': 'Jumat',
+    'Saturday': 'Sabtu',
+    'Sunday': 'Minggu'
+  };
+
+  const indoToEng = {
+    'Senin': 'Monday',
+    'Selasa': 'Tuesday',
+    'Rabu': 'Wednesday',
+    'Kamis': 'Thursday',
+    'Jumat': 'Friday',
+    'Sabtu': 'Saturday',
+    'Minggu': 'Sunday'
+  };
 
   useEffect(() => {
     fetchMasterData();
@@ -90,11 +112,11 @@ function JadwalSiswaEdit() {
         is_active: scheduleData.is_active,
       });
 
-      // Map existing daily schedules and items if available
       if (scheduleData.daily_schedules) {
         const mappedDays = scheduleData.daily_schedules.map(day => ({
-          day: day.day,
+          day: engToIndo[day.day] || day.day,
           items: (day.schedule_items || []).map(item => ({
+            id: item.id,
             subject_id: item.subject_id,
             teacher_id: item.teacher_id,
             start_time: item.start_time?.substring(0, 5),
@@ -103,18 +125,6 @@ function JadwalSiswaEdit() {
           }))
         }));
         setDays(mappedDays);
-      } else {
-        // Fallback for flat structure
-        setDays([{
-           day: scheduleData.day || 'Monday',
-           items: [{
-              subject_id: scheduleData.subject_id,
-              teacher_id: scheduleData.teacher_id,
-              start_time: scheduleData.start_time?.substring(0, 5),
-              end_time: scheduleData.end_time?.substring(0, 5),
-              room: scheduleData.room || ''
-           }]
-        }]);
       }
 
       const rawImg = scheduleData.image_url || scheduleData.class?.schedule_image_url;
@@ -203,16 +213,15 @@ function JadwalSiswaEdit() {
 
     setIsSubmitting(true);
     try {
-      // Bulk update/create
       if (isEditMode) {
          await apiService.put(`/schedules/${id}`, {
             ...headerData,
-            days: days
+            days: days.map(d => ({ ...d, day: indoToEng[d.day] || d.day }))
          });
       } else {
          await apiService.post('/schedules/bulk', {
             ...headerData,
-            days: days
+            days: days.map(d => ({ ...d, day: indoToEng[d.day] || d.day }))
          });
       }
 
@@ -233,145 +242,272 @@ function JadwalSiswaEdit() {
   };
 
   if (initialLoading) {
-    return <div className="jadwal-siswa-edit-loading"><FaSpinner className="animate-spin" /> Memuat data...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 text-blue-600">
+        <FaSpinner className="animate-spin text-4xl" />
+      </div>
+    );
   }
 
   return (
-    <div className="jadwal-siswa-edit-page">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <NavbarWaka />
 
-      <div className="jadwal-siswa-edit-root">
-         <div className="jadwal-siswa-edit-container">
-            {/* HEADER */}
-            <div className="jadwal-siswa-edit-header">
-               <div className="header-left">
-                  <h1 className="jadwal-siswa-edit-title">
-                     <FaCalendarAlt /> {isEditMode ? 'Edit Jadwal' : 'Tambah Jadwal'}
-                  </h1>
-                  <p className="jadwal-siswa-edit-subtitle">
-                     {isEditMode ? 'Ubah rincian jadwal yang sudah ada' : 'Buat jadwal pembelajaran baru'}
-                  </p>
-               </div>
-               <Link to="/waka/jadwal-siswa" className="jadwal-siswa-edit-back">
-                  <FaArrowLeft /> Kembali
-               </Link>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap">
+            <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <FaChevronRight className="text-[10px]" />
+            <Link to="/waka/jadwal-siswa" className="hover:text-blue-600 transition-colors">Jadwal Siswa</Link>
+            <FaChevronRight className="text-[10px]" />
+            <span className="text-blue-600 font-bold">{isEditMode ? 'Edit Jadwal' : 'Tambah Jadwal'}</span>
+        </div>
 
-            <form onSubmit={handleSubmit} className="jadwal-siswa-edit-content">
-               <div className="edit-main-card">
-                  <div className="jadwal-siswa-edit-group">
-                     <label>Pilih Kelas</label>
-                     <select 
-                        name="class_id" 
-                        value={headerData.class_id} 
-                        onChange={handleHeaderChange}
-                        required
-                        className="edit-input"
-                     >
-                        <option value="">-- Pilih Kelas --</option>
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                     </select>
+        <form onSubmit={handleSubmit}>
+          {/* HEADER SECTION */}
+          <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-8 mb-8">
+             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                <div className="flex items-center gap-6">
+                   <div className="p-5 bg-blue-600 text-white rounded-3xl shadow-xl shadow-blue-200">
+                      <FaCalendarAlt className="text-4xl" />
+                   </div>
+                   <div>
+                      <h1 className="text-3xl font-black text-gray-900 tracking-tight">{isEditMode ? 'Ubah Jadwal' : 'Jadwal Baru'}</h1>
+                      <p className="text-gray-500 font-bold mt-1">Konfigurasi jadwal pelajaran digital dan visual</p>
+                   </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                   <Link to="/waka/jadwal-siswa" className="px-6 py-3.5 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center gap-2">
+                      <FaArrowLeft />
+                      <span>Kembali</span>
+                   </Link>
+                   <button 
+                     type="submit"
+                     disabled={isSubmitting}
+                     className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                   >
+                      {isSubmitting ? <FaSpinner className="animate-spin" /> : <FaSave />}
+                      <span>{isEditMode ? 'Simpan' : 'Terbitkan'}</span>
+                   </button>
+                </div>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+             {/* LEFT: FORM INFO */}
+             <div className="lg:col-span-1 space-y-8">
+                <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                   <div className="p-6 bg-gray-50/50 border-b border-gray-100">
+                      <h3 className="font-black text-gray-900 flex items-center gap-2 uppercase tracking-wider text-sm">
+                         <FaDoorOpen className="text-blue-600" /> Informasi Kelas
+                      </h3>
+                   </div>
+                   <div className="p-8 space-y-6">
+                      <div>
+                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Pilih Kelas</label>
+                         <select 
+                            name="class_id"
+                            value={headerData.class_id}
+                            onChange={handleHeaderChange}
+                            required
+                            className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-500 focus:bg-white transition-all outline-none"
+                         >
+                            <option value="">-- Pilih Kelas --</option>
+                            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                         </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                         <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Tahun Ajaran</label>
+                            <input 
+                               type="text"
+                               name="year"
+                               value={headerData.year}
+                               onChange={handleHeaderChange}
+                               placeholder="2024/2025"
+                               className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-500 focus:bg-white transition-all outline-none"
+                            />
+                         </div>
+                         <div>
+                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Semester</label>
+                            <select 
+                               name="semester"
+                               value={headerData.semester}
+                               onChange={handleHeaderChange}
+                               className="w-full px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold text-gray-700 focus:border-blue-500 focus:bg-white transition-all outline-none"
+                            >
+                               <option value="ganjil">Ganjil</option>
+                               <option value="genap">Genap</option>
+                            </select>
+                         </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                         <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${headerData.is_active ? 'bg-green-500' : 'bg-gray-400'} text-white`}>
+                               <FaCheckCircle />
+                            </div>
+                            <span className="font-bold text-gray-700 uppercase tracking-wider text-xs">Jadwal Aktif</span>
+                         </div>
+                         <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                               type="checkbox" 
+                               name="is_active" 
+                               checked={headerData.is_active} 
+                               onChange={handleHeaderChange}
+                               className="sr-only peer" 
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                         </label>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                   <div className="p-6 bg-gray-50/50 border-b border-gray-100">
+                      <h3 className="font-black text-gray-900 flex items-center gap-2 uppercase tracking-wider text-sm">
+                         <FaImage className="text-blue-600" /> Preview Visual
+                      </h3>
+                   </div>
+                   <div className="p-8">
+                      <div 
+                        className="relative group aspect-[3/4] rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden cursor-pointer hover:border-blue-400 transition-all"
+                        onClick={() => document.getElementById('file-upload').click()}
+                      >
+                         {previewImage ? (
+                            <>
+                               <img src={previewImage} alt="Schedule Visual" className="w-full h-full object-cover" />
+                               <div className="absolute inset-0 bg-blue-600/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                  <div className="text-white text-center">
+                                     <FaPlus className="text-3xl mx-auto mb-2" />
+                                     <span className="font-black uppercase tracking-widest text-xs">Ganti Gambar</span>
+                                  </div>
+                               </div>
+                            </>
+                         ) : (
+                            <div className="text-center p-8">
+                               <FaImage className="text-5xl text-gray-200 mx-auto mb-4" />
+                               <p className="text-gray-400 font-bold text-sm">Klik untuk unggah jadwal gambar</p>
+                               <p className="text-[10px] text-gray-300 font-bold uppercase mt-2">Format: JPG, PNG (Maks 5MB)</p>
+                            </div>
+                         )}
+                         <input id="file-upload" type="file" onChange={handleFileChange} accept="image/*" className="hidden" />
+                      </div>
+                      {imageError && <p className="text-red-500 text-[10px] font-bold uppercase mt-3 text-center">*{imageError}</p>}
+                   </div>
+                </div>
+             </div>
+
+             {/* RIGHT: SCHEDULE STRUCTURE */}
+             <div className="lg:col-span-2 space-y-6">
+                <div className="flex items-center justify-between mb-2">
+                   <h2 className="text-xl font-black text-gray-900 flex items-center gap-3 uppercase tracking-tighter">
+                      <FaLayerGroup className="text-blue-600" /> Struktur Jadwal Harian
+                   </h2>
+                   <button 
+                     type="button" 
+                     onClick={addDay}
+                     className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200 text-sm"
+                   >
+                      <FaPlus /> <span>Tambah Hari</span>
+                   </button>
+                </div>
+
+                {days.length > 0 ? (
+                  days.map((day, dIdx) => (
+                    <div key={dIdx} className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-6">
+                       <div className="p-6 bg-gray-50/80 border-b border-gray-100 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center">
+                                <FaCalendarAlt />
+                             </div>
+                             <select 
+                               value={day.day} 
+                               onChange={(e) => updateDayId(dIdx, e.target.value)}
+                               className="bg-transparent border-none font-black text-gray-800 text-lg focus:ring-0 outline-none cursor-pointer p-0"
+                             >
+                                {dayOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                             </select>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => removeDay(dIdx)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                          >
+                             <FaTrash />
+                          </button>
+                       </div>
+                       
+                       <div className="p-8 space-y-4">
+                          {day.items.map((item, iIdx) => (
+                             <div key={iIdx} className="group relative flex flex-wrap md:flex-nowrap items-end gap-4 p-6 bg-gray-50/30 rounded-3xl border border-gray-100 hover:border-blue-200 transition-colors">
+                                <div className="w-full md:w-48">
+                                   <label className="text-[10px] font-black text-gray-400 mb-2 block uppercase tracking-widest">Waktu</label>
+                                   <div className="flex items-center gap-2 bg-white p-2 border border-gray-200 rounded-xl">
+                                      <input type="time" value={item.start_time} onChange={(e) => updateItem(dIdx, iIdx, 'start_time', e.target.value)} className="w-full border-none p-0 text-center font-bold text-gray-700 focus:ring-0 text-sm" />
+                                      <span className="text-gray-300 font-bold">-</span>
+                                      <input type="time" value={item.end_time} onChange={(e) => updateItem(dIdx, iIdx, 'end_time', e.target.value)} className="w-full border-none p-0 text-center font-bold text-gray-700 focus:ring-0 text-sm" />
+                                   </div>
+                                </div>
+
+                                <div className="flex-1 min-w-[200px]">
+                                   <label className="text-[10px] font-black text-gray-400 mb-2 block uppercase tracking-widest">Mata Pelajaran</label>
+                                   <select 
+                                      value={item.subject_id} 
+                                      onChange={(e) => updateItem(dIdx, iIdx, 'subject_id', e.target.value)}
+                                      required
+                                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-700 focus:border-blue-500 transition-all outline-none text-sm"
+                                   >
+                                      <option value="">Pilih Mata Pelajaran</option>
+                                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                   </select>
+                                </div>
+
+                                <div className="flex-1 min-w-[200px]">
+                                   <label className="text-[10px] font-black text-gray-400 mb-2 block uppercase tracking-widest">Guru Pengajar</label>
+                                   <select 
+                                      value={item.teacher_id} 
+                                      onChange={(e) => updateItem(dIdx, iIdx, 'teacher_id', e.target.value)}
+                                      required
+                                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-700 focus:border-blue-500 transition-all outline-none text-sm"
+                                   >
+                                      <option value="">Pilih Guru</option>
+                                      {teachers.map(t => <option key={t.id} value={t.id}>{t.user?.name || t.kode_guru}</option>)}
+                                   </select>
+                                </div>
+
+                                <button 
+                                  type="button" 
+                                  onClick={() => removeItem(dIdx, iIdx)}
+                                  className="p-3.5 bg-white text-red-500 border border-gray-200 rounded-xl hover:bg-red-500 hover:text-white hover:border-red-500 transition-all shadow-sm"
+                                >
+                                   <FaTrash />
+                                </button>
+                             </div>
+                          ))}
+                          
+                          <button 
+                            type="button" 
+                            onClick={() => addItem(dIdx)}
+                            className="w-full py-5 border-3 border-dashed border-gray-100 hover:border-blue-200 hover:bg-blue-50 text-gray-300 hover:text-blue-500 rounded-[2rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all mt-4"
+                          >
+                             <FaPlus className="text-lg" /> Tambah Sesi Pelajaran
+                          </button>
+                       </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-100 text-center">
+                     <FaListUl className="text-5xl text-gray-200 mx-auto mb-4" />
+                     <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Belum ada hari yang ditambahkan</p>
+                     <button type="button" onClick={addDay} className="mt-4 text-blue-600 font-black hover:underline">Ketuk di sini untuk memulai</button>
                   </div>
-
-                  <div className="edit-grid-3">
-                     <div className="jadwal-siswa-edit-group">
-                        <label>Tahun Ajaran</label>
-                        <input type="text" name="year" value={headerData.year} onChange={handleHeaderChange} placeholder="2024/2025" className="edit-input" />
-                     </div>
-                     <div className="jadwal-siswa-edit-group">
-                        <label>Semester</label>
-                        <select name="semester" value={headerData.semester} onChange={handleHeaderChange} className="edit-input">
-                           <option value="ganjil">Ganjil</option>
-                           <option value="genap">Genap</option>
-                        </select>
-                     </div>
-                     <div className="jadwal-siswa-edit-group active-toggle">
-                        <label>Status Aktif</label>
-                        <label className="switch">
-                           <input type="checkbox" name="is_active" checked={headerData.is_active} onChange={handleHeaderChange} />
-                           <span className="slider round"></span>
-                        </label>
-                     </div>
-                  </div>
-
-                  {/* DIGITAL STRUCTURE */}
-                  <div className="digital-structure-section">
-                     <div className="section-header">
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><FaClock className="text-blue-600" /> Struktur Harian</h3>
-                        <button type="button" onClick={addDay} className="btn-add-day bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm hover:shadow-md"><FaPlus /> Tambah Hari</button>
-                     </div>
-
-                     {days.map((day, dIdx) => (
-                        <div key={dIdx} className="day-card">
-                           <div className="day-header">
-                              <select value={day.day} onChange={(e) => updateDayId(dIdx, e.target.value)} className="day-select">
-                                 {dayOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                              </select>
-                              <button type="button" onClick={() => removeDay(dIdx)} className="btn-remove-day"><FaTrash /></button>
-                           </div>
-                           <div className="items-list">
-                              {day.items.map((item, iIdx) => (
-                                 <div key={iIdx} className="item-row">
-                                    <div className="item-field time-field">
-                                       <label>Waktu</label>
-                                       <div className="time-inputs">
-                                          <input type="time" value={item.start_time} onChange={(e) => updateItem(dIdx, iIdx, 'start_time', e.target.value)} />
-                                          <span>-</span>
-                                          <input type="time" value={item.end_time} onChange={(e) => updateItem(dIdx, iIdx, 'end_time', e.target.value)} />
-                                       </div>
-                                    </div>
-                                    <div className="item-field">
-                                       <label>Mapel</label>
-                                       <select value={item.subject_id} onChange={(e) => updateItem(dIdx, iIdx, 'subject_id', e.target.value)} required>
-                                          <option value="">Pilih Mapel</option>
-                                          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                       </select>
-                                    </div>
-                                    <div className="item-field">
-                                       <label>Guru</label>
-                                       <select value={item.teacher_id} onChange={(e) => updateItem(dIdx, iIdx, 'teacher_id', e.target.value)} required>
-                                          <option value="">Pilih Guru</option>
-                                          {teachers.map(t => <option key={t.id} value={t.id}>{t.user?.name || t.kode_guru}</option>)}
-                                       </select>
-                                    </div>
-                                    <button type="button" onClick={() => removeItem(dIdx, iIdx)} className="btn-remove-item"><FaTrash /></button>
-                                 </div>
-                              ))}
-                              <button type="button" onClick={() => addItem(dIdx)} className="btn-add-item mt-4 w-full border-2 border-dashed border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-500 py-3 rounded-xl flex items-center justify-center gap-2 transition-all"><FaPlus /> Tambah Sesi</button>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-
-                  {/* VISUAL SCHEDULE */}
-                  <div className="visual-schedule-section">
-                     <label><FaImage /> Gambar Jadwal (Opsional)</label>
-                     <div className="jadwal-siswa-edit-upload">
-                        {previewImage ? (
-                           <div className="image-preview-wrapper" onClick={() => document.getElementById('file-upload').click()}>
-                              <img src={previewImage} alt="Preview" />
-                              <div className="overlay"><FaPlus /> Ganti Gambar</div>
-                           </div>
-                        ) : (
-                           <label htmlFor="file-upload" className="upload-placeholder">
-                              <FaImage />
-                              <span>Klik untuk unggah gambar jadwal</span>
-                           </label>
-                        )}
-                        <input id="file-upload" type="file" onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
-                     </div>
-                     {imageError && <p className="error-text">*{imageError}</p>}
-                  </div>
-
-                  <div className="jadwal-siswa-edit-actions">
-                     <button type="submit" disabled={isSubmitting} className="btn-submit">
-                        {isSubmitting ? <FaSpinner className="animate-spin" /> : <FaSave />} {isEditMode ? 'Simpan Perubahan' : 'Terbitkan Jadwal'}
-                     </button>
-                     <Link to="/waka/jadwal-siswa" className="jadwal-siswa-edit-cancel">Batal</Link>
-                  </div>
-               </div>
-            </form>
-         </div>
+                )}
+             </div>
+          </div>
+        </form>
       </div>
     </div>
   );

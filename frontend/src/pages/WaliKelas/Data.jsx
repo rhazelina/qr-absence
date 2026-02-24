@@ -35,27 +35,30 @@ const Data = () => {
   const [studentList, setStudentList] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const isMounted = React.useRef(true);
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   // Fetch Data
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Get Homeroom Class Info (Indirectly via students or specific endpoint if needed)
-      // For now we get class info from the first student or separate endpoint if available.
-      // Actually teacher profile has homeroom class.
-      // Let's assume we can get class name from student list or another call.
-      // apiService.getHomeroomStudents() returns student list.
       const students = await apiService.getHomeroomStudents();
-
-      // 2. Get Today's Attendance
       const today = new Date().toISOString().split('T')[0];
       const attendance = await apiService.getHomeroomAttendance({
         from: today,
         to: today
       });
 
-      // 3. Map Data
+      if (!isMounted.current) {
+        return;
+      }
+
       const attendanceMap = {};
-      attendance.forEach(record => {
+      (attendance.data || attendance || []).forEach(record => {
         attendanceMap[record.student_id] = record;
       });
 
@@ -63,8 +66,8 @@ const Data = () => {
         const record = attendanceMap[student.id];
         return {
           id: student.id,
-          nisn: student.nis || student.nisn || '-',
-          nama: student.user.name,
+          nisn: student.nis || student.nisn || student.user?.username || '-',
+          nama: student.user?.name || 'Siswa',
           status: record ? record.status : 'Belum Absen', // Default status
           keterangan: record ? (record.remarks || '-') : '-',
           suratFile: null, // TODO: Fetch document if exists

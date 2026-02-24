@@ -203,8 +203,8 @@ function DataJurusan() {
   const filteredJurusans = jurusans.filter(jurusan => {
     const nama = jurusan.namaJurusan || jurusan.name || '';
     const kode = jurusan.kodeJurusan || jurusan.code || '';
-    const program = jurusan.programKeahlian || '';
-    const bidang = jurusan.bidangKeahlian || '';
+    const program = jurusan.program_keahlian || jurusan.programKeahlian || '';
+    const bidang = jurusan.bidang_keahlian || jurusan.bidangKeahlian || '';
     return nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       kode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       program.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -373,8 +373,8 @@ function DataJurusan() {
                   <td style={{ fontWeight: '700' }}>{index + 1}</td>
                   <td><strong>{jurusan.kodeJurusan || jurusan.code}</strong></td>
                   <td>{jurusan.namaJurusan || jurusan.name}</td>
-                  <td>{jurusan.programKeahlian}</td>
-                  <td>{jurusan.bidangKeahlian}</td>
+                  <td>{jurusan.program_keahlian || jurusan.programKeahlian || '-'}</td>
+                  <td>{jurusan.bidang_keahlian || jurusan.bidangKeahlian || '-'}</td>
                   <td className="jurusan-aksi-cell">
                     <button
                       className="jurusan-aksi jurusan-edit"

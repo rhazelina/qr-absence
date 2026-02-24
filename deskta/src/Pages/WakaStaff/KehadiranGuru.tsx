@@ -71,43 +71,54 @@ export default function KehadiranGuru({
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Parallel fetch
       const [timeSlotsResponse, dailyResponse] = await Promise.all([
         masterService.getTimeSlots(),
         attendanceService.getTeachersDailyAttendance(selectedTanggal)
       ]);
-      
-      // ... (rest of the logic remains the same)
-      const timeSlots: TimeSlot[] = timeSlotsResponse.data || [];
-      // Sort time slots by start_time
-      timeSlots.sort((a, b) => a.start_time.localeCompare(b.start_time));
-      
-      // Take first 10 slots or as many as exist
-      const relevantSlots = timeSlots.slice(0, 10);
 
-      const items = dailyResponse.items ? dailyResponse.items.data : []; // Paginated response usually has 'data'
+      const timeSlotPayload = Array.isArray(timeSlotsResponse?.data)
+        ? timeSlotsResponse.data
+        : (timeSlotsResponse?.data?.data || []);
+      const timeSlots: TimeSlot[] = [...timeSlotPayload].sort((a, b) =>
+        String(a.start_time).localeCompare(String(b.start_time))
+      );
+
+      const itemPayload = dailyResponse?.items;
+      const items = Array.isArray(itemPayload)
+        ? itemPayload
+        : (itemPayload?.data || []);
 
       const newRows: KehadiranGuruRow[] = items.map((item: any) => {
         const teacher = item.teacher;
         const attendances = item.attendances || [];
-        
-        // Initialize with "tidak-ada-jadwal"
+
+        // Fallback slot order from schedule start times when master time slots are unavailable.
+        const fallbackStartTimes = Array.from(
+          new Set<string>(
+            attendances
+              .map((att: any) => att?.schedule?.start_time as string | undefined)
+              .filter((startTime: string | undefined): startTime is string => Boolean(startTime))
+          )
+        ).sort((a, b) => a.localeCompare(b));
+
+        const fallbackSlots = fallbackStartTimes.map((start) => ({ start_time: start }));
+
+        const relevantSlots = (timeSlots.length > 0 ? timeSlots : fallbackSlots).slice(0, 10);
+
         const kehadiranJam: StatusType[] = Array(10).fill("tidak-ada-jadwal");
 
         attendances.forEach((att: any) => {
           if (att.schedule) {
-            // Find corresponding time slot index
             const slotIndex = relevantSlots.findIndex((slot) => slot.start_time === att.schedule.start_time);
-            
+
             if (slotIndex !== -1 && slotIndex < 10) {
-              // Map backend status to frontend StatusType
-              // Backend status: present, late, absent, sick, permission, alpha
               let status: StatusType = "tidak-hadir";
               if (att.status === "present") status = "hadir";
               else if (att.status === "late") status = "terlambat";
               else if (att.status === "sick") status = "sakit";
-              else if (att.status === "permission") status = "izin";
+              else if (att.status === "permission" || att.status === "izin" || att.status === "excused") status = "izin";
               else if (att.status === "alpha") status = "alpha";
+              else if (att.status === "return") status = "hadir";
               else if (att.status === "absent") status = "tidak-hadir";
 
               kehadiranJam[slotIndex] = status;
@@ -115,8 +126,6 @@ export default function KehadiranGuru({
           }
         });
 
-        // Determine "jadwal" text - maybe first class name found?
-        // Or if multiple, "Multiple Classes"
         let jadwalText = "-";
         const schedules = attendances.map((a: any) => a.schedule?.subject?.name || a.schedule?.keterangan).filter(Boolean);
         if (schedules.length > 0) {

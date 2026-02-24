@@ -101,9 +101,21 @@ const cardStyle: React.CSSProperties = {
 export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) {
   const [currentPage, setCurrentPage] = useState<WakaPage>("dashboard");
   const [selectedGuru, setSelectedGuru] = useState<string | null>(null);
+  const [selectedGuruDetail, setSelectedGuruDetail] = useState<{
+    namaGuru?: string;
+    noIdentitas?: string;
+    jadwalImage?: string;
+    guruId?: string;
+  } | null>(null);
   const [selectedKehadiranGuruId, setSelectedKehadiranGuruId] = useState<string | null>(null);
   const [selectedKehadiranGuruName, setSelectedKehadiranGuruName] = useState<string | null>(null);
   const [selectedKelas, setSelectedKelas] = useState<string | null>(null);
+  const [selectedKelasDetail, setSelectedKelasDetail] = useState<{
+    namaKelas?: string;
+    waliKelas?: string;
+    jadwalImage?: string;
+    kelasId?: string;
+  } | null>(null);
   const [selectedKelasId, setSelectedKelasId] = useState<string | null>(null);
   const [selectedKelasInfo, setSelectedKelasInfo] = useState<{
     namaKelas: string;
@@ -212,6 +224,30 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
 
   const handleMenuClick = (page: string, payload?: any) => {
     setCurrentPage(page as WakaPage);
+
+    if (page === "lihat-guru" && payload) {
+      setSelectedGuruDetail({
+        namaGuru: payload.namaGuru,
+        noIdentitas: payload.noIdentitas,
+        jadwalImage: payload.jadwalImage,
+        guruId: payload.guruId ? String(payload.guruId) : undefined,
+      });
+      if (payload.namaGuru) {
+        setSelectedGuru(String(payload.namaGuru));
+      }
+    }
+
+    if (page === "lihat-kelas" && payload) {
+      setSelectedKelasDetail({
+        namaKelas: payload.kelas,
+        waliKelas: payload.waliKelas,
+        jadwalImage: payload.jadwalImage,
+        kelasId: payload.kelasId ? String(payload.kelasId) : undefined,
+      });
+      if (payload.kelas) {
+        setSelectedKelas(String(payload.kelas));
+      }
+    }
     
     // Handle payload for ID setting
     if (payload?.kelasId) {
@@ -269,7 +305,9 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <DetailGuru
             {...commonProps}
-            namaGuru={selectedGuru || undefined}
+            namaGuru={selectedGuruDetail?.namaGuru || selectedGuru || undefined}
+            noIdentitas={selectedGuruDetail?.noIdentitas}
+            jadwalImage={selectedGuruDetail?.jadwalImage}
             onBack={() => handleMenuClick("jadwal-guru")}
           />
         );
@@ -278,7 +316,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <DetailKelas
             {...commonProps}
-            kelas={selectedKelas || undefined}
+            kelas={selectedKelasDetail?.namaKelas || selectedKelas || undefined}
+            jadwalImage={selectedKelasDetail?.jadwalImage}
             onBack={() => handleMenuClick("jadwal-kelas")}
           />
         );
@@ -299,7 +338,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <DetailSiswaStaff
             {...commonProps}
-            selectedKelas={selectedKelas || ""}
+            selectedKelas={selectedKelasInfo?.namaKelas || selectedKelasDetail?.namaKelas || selectedKelas || ""}
             kelasId={selectedKelasId || undefined}
             onBack={() => handleMenuClick("kehadiran-siswa")}
             onNavigateToRecap={() => handleMenuClick("rekap-kehadiran-siswa")}

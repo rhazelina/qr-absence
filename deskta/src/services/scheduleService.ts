@@ -20,6 +20,33 @@ export interface ScheduleResponse {
   raw?: any;
 }
 
+const DAY_ALIAS_MAP: Record<string, string> = {
+  monday: "Monday",
+  senin: "Monday",
+  tuesday: "Tuesday",
+  selasa: "Tuesday",
+  wednesday: "Wednesday",
+  rabu: "Wednesday",
+  thursday: "Thursday",
+  kamis: "Thursday",
+  friday: "Friday",
+  jumat: "Friday",
+  "jum'at": "Friday",
+  saturday: "Saturday",
+  sabtu: "Saturday",
+  sunday: "Sunday",
+  minggu: "Sunday",
+};
+
+export const normalizeScheduleDay = (day?: string): string => {
+  if (!day) return "Unknown";
+  const key = day.trim().toLowerCase();
+  return DAY_ALIAS_MAP[key] || day;
+};
+
+export const getTodayScheduleDay = (): string =>
+  normalizeScheduleDay(new Date().toLocaleDateString("en-US", { weekday: "long" }));
+
 const getAuthHeaders = () => ({
   "Authorization": `Bearer ${localStorage.getItem("token")}`,
   "Accept": "application/json",
@@ -31,7 +58,11 @@ const getCurrentRole = (): string | null => {
 
   try {
     const parsed = JSON.parse(rawUser);
-    return parsed?.role || null;
+    const role = String(parsed?.role || "").trim().toLowerCase();
+    if (!role) return null;
+    if (role === "pengurus-kelas") return "pengurus_kelas";
+    if (role === "wali_kelas" || role === "walikelas") return "wakel";
+    return role;
   } catch {
     return null;
   }
@@ -51,7 +82,7 @@ const normalizeItems = (items: any[], fallbackClassName = "-"): ScheduleItem[] =
   return items
     .map((item, index) => {
       const id = item.id ?? item.schedule_id ?? `${item.day || "Unknown"}-${item.start_time || "00:00"}-${index}`;
-      const day = item.day || item.daily_schedule?.day || item.dailySchedule?.day || "Unknown";
+      const day = normalizeScheduleDay(item.day || item.daily_schedule?.day || item.dailySchedule?.day || "Unknown");
       const subject = item.subject?.name || item.subject_name || item.subject || item.keterangan || "-";
       const className = item.class?.name || item.class_name || item.kelas?.name || item.class || fallbackClassName;
 
@@ -68,16 +99,18 @@ const normalizeItems = (items: any[], fallbackClassName = "-"): ScheduleItem[] =
     })
     .sort((a, b) => {
       const dayOrder: Record<string, number> = {
-        Monday: 1,
-        Tuesday: 2,
-        Wednesday: 3,
-        Thursday: 4,
-        Friday: 5,
-        Saturday: 6,
-        Sunday: 7,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6,
+        sunday: 7,
       };
 
-      const byDay = (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99);
+      const byDay =
+        (dayOrder[normalizeScheduleDay(a.day).toLowerCase()] || 99) -
+        (dayOrder[normalizeScheduleDay(b.day).toLowerCase()] || 99);
       if (byDay !== 0) return byDay;
 
       return (a.start_time || "").localeCompare(b.start_time || "");
@@ -178,7 +211,8 @@ export const scheduleService = {
       method: "GET",
       headers: getAuthHeaders(),
     });
-    return handleResponse(response);
+    const payload = await handleResponse(response);
+    return normalizeScheduleResponse(payload);
   },
 
   getSchedule: async (id: string | number): Promise<any> => {

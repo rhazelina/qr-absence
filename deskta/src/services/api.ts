@@ -30,8 +30,14 @@ export const handleResponse = async (response: Response) => {
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})); 
-    throw new Error(errorData.message || 'API request failed');
+    const errorData = await response.json().catch(() => ({}));
+    const error = new Error(errorData.message || 'API request failed') as Error & {
+      data?: any;
+      status?: number;
+    };
+    error.data = errorData;
+    error.status = response.status;
+    throw error;
   }
 
   // Handle empty responses

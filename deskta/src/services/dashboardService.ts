@@ -1,4 +1,5 @@
 import { API_BASE_URL, getHeaders, handleResponse } from './api';
+import type { TodayScheduleResponse, AttendanceStatsResponse } from '../types/dashboard';
 
 export const dashboardService = {
   getAdminSummary: async () => {
@@ -31,6 +32,20 @@ export const dashboardService = {
 
   getClassDashboard: async () => {
     const response = await fetch(`${API_BASE_URL}/me/class/dashboard`, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  getScheduleToday: async (): Promise<TodayScheduleResponse> => {
+    const response = await fetch(`${API_BASE_URL}/me/dashboard/schedule-today`, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  getAttendanceStats: async (): Promise<AttendanceStatsResponse> => {
+    const response = await fetch(`${API_BASE_URL}/me/dashboard/attendance-stats`, {
       headers: getHeaders()
     });
     return handleResponse(response);

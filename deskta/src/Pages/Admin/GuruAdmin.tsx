@@ -99,6 +99,62 @@ export default function GuruAdmin({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const normalizeText = (value: unknown) =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+
+  const normalizeKey = (value: unknown) =>
+    normalizeText(value).replace(/[^a-z0-9]/g, '');
+
+  const getRowValue = (row: Record<string, any>, aliases: string[]) => {
+    const aliasSet = new Set(aliases.map(normalizeKey));
+    for (const [key, value] of Object.entries(row)) {
+      if (!aliasSet.has(normalizeKey(key))) continue;
+      if (value === undefined || value === null) continue;
+      if (String(value).trim() === '') continue;
+      return value;
+    }
+    return '';
+  };
+
+  const normalizeImportRole = (rawRole: unknown): 'Guru' | 'Wali Kelas' | 'Waka' | 'Kapro' => {
+    const role = normalizeText(rawRole);
+    if (role === 'wali kelas' || role === 'walikelas' || role.includes('wali')) return 'Wali Kelas';
+    if (role === 'waka' || role === 'staff' || role.includes('wak')) return 'Waka';
+    if (role === 'kapro' || role === 'kaprog' || role === 'kaprodi') return 'Kapro';
+    return 'Guru';
+  };
+
+  const resolveHomeroomClassId = (rawClass: unknown) => {
+    const classText = String(rawClass ?? '').trim();
+    if (!classText) return null;
+
+    const byId = classes.find(c => c.id.toString() === classText);
+    if (byId) return byId.id;
+
+    const normalizedInput = normalizeText(classText);
+    const candidates = classes.filter(c => {
+      const className = normalizeText(c.name);
+      const classLabel = normalizeText(c.label);
+      const classGrade = normalizeText(c.grade);
+      return (
+        className === normalizedInput ||
+        classLabel === normalizedInput ||
+        classGrade === normalizedInput ||
+        className.includes(normalizedInput) ||
+        classLabel.includes(normalizedInput)
+      );
+    });
+
+    if (candidates.length > 0) {
+      return candidates[0].id;
+    }
+
+    return null;
+  };
+
   // ==================== FETCH DATA ====================
   const fetchTeachers = async () => {
     setLoading(true);
@@ -123,7 +179,7 @@ export default function GuruAdmin({
         // Compute keterangan based on role
         keterangan: t.role === 'Wali Kelas' && t.homeroom_class
           ? t.homeroom_class.name
-          : t.role === 'Staff' ? (t.waka_field || '-')
+          : (t.role === 'Staff' || t.role === 'Waka' || t.role === 'Kapro') ? (t.waka_field || '-')
             : (t.subject || '-'),
         gender: 'Laki-Laki' // Default or fetch if available
       }));
@@ -228,7 +284,7 @@ export default function GuruAdmin({
       errors.waliKelasDari = 'Kelas harus dipilih';
     }
 
-    if (formData.role === 'Staff' && !formData.keterangan) {
+    if ((formData.role === 'Staff' || formData.role === 'Waka' || formData.role === 'Kapro') && !formData.keterangan) {
       errors.keterangan = 'Bagian staff harus dipilih';
     }
 
@@ -304,10 +360,8 @@ export default function GuruAdmin({
         if (selectedClass) {
           payload.homeroom_class_id = selectedClass.id;
         }
-      } else if (formData.role === 'Staff') {
+      } else if (formData.role === 'Staff' || formData.role === 'Waka' || formData.role === 'Kapro') {
         payload.bidang = formData.keterangan; // Backend expects 'bidang', not 'waka_field'
-      } else if (formData.role === 'Waka') {
-        payload.bidang = formData.keterangan;
       }
 
       await teacherService.createTeacher(payload);
@@ -323,7 +377,8 @@ export default function GuruAdmin({
   const roleOptions = [
     { label: 'Guru', value: 'Guru' },
     { label: 'Wali Kelas', value: 'Wali Kelas' },
-    { label: 'Staff', value: 'Staff' },
+    { label: 'Waka', value: 'Waka' },
+    { label: 'Kapro', value: 'Kapro' },
   ];
 
   const mataPelajaranOptions = subjects.map(s => ({ label: s.name, value: s.name }));
@@ -341,7 +396,7 @@ export default function GuruAdmin({
   const getFilteredKeteranganOptions = () => {
     if (selectedRole === 'Guru') return mataPelajaranOptions;
     if (selectedRole === 'Wali Kelas') return kelasOptions.map(c => ({ label: c, value: c }));
-    if (selectedRole === 'Staff') return bagianStaffOptions;
+    if (selectedRole === 'Waka' || selectedRole === 'Kapro' || selectedRole === 'Staff') return bagianStaffOptions;
     return [];
   };
 
@@ -349,7 +404,7 @@ export default function GuruAdmin({
     const matchRole = selectedRole ? item.role === selectedRole : true;
     const matchKeterangan = selectedKeterangan ? (
       item.role === 'Wali Kelas' ? item.keterangan === selectedKeterangan :
-        item.role === 'Staff' ? item.keterangan === selectedKeterangan :
+        (item.role === 'Staff' || item.role === 'Waka' || item.role === 'Kapro') ? item.keterangan === selectedKeterangan :
           item.subject === selectedKeterangan
     ) : true;
     return matchRole && matchKeterangan;
@@ -380,12 +435,40 @@ export default function GuruAdmin({
 
   // ==================== DOWNLOAD FORMAT EXCEL ====================
   const handleDownloadFormatExcel = () => {
-    const link = document.createElement('a');
-    link.href = '/Template_Import_Data_Guru.xlsx'; // Ensure this file exists
-    link.download = 'Template_Import_Data_Guru.xlsx';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const format = [
+      {
+        'No': 1,
+        'NIP/Kode': '198811112012011001',
+        'Nama Guru': 'Budi Santoso',
+        'Email': 'budi.santoso@deskta.com',
+        'Peran': 'Guru',
+        'Mata Pelajaran': 'Matematika',
+        'Keterangan': 'Matematika'
+      },
+      {
+        'No': 2,
+        'NIP/Kode': '198907152013021002',
+        'Nama Guru': 'Siti Aminah',
+        'Email': 'siti.aminah@deskta.com',
+        'Peran': 'Wali Kelas',
+        'Mata Pelajaran': '',
+        'Keterangan': '11 RPL 1'
+      },
+      {
+        'No': 3,
+        'NIP/Kode': '197905062010011003',
+        'Nama Guru': 'Rina Wulandari',
+        'Email': 'rina.wulandari@deskta.com',
+        'Peran': 'Waka',
+        'Mata Pelajaran': '',
+        'Keterangan': 'Kurikulum'
+      },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(format);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Format Import Guru');
+    XLSX.writeFile(wb, 'Format_Import_Guru_Final.xlsx');
   };
 
   // ==================== IMPORT ====================
@@ -415,17 +498,48 @@ export default function GuruAdmin({
             return;
           }
 
-          const mappedItems = data.map(row => ({
-            name: row.Nama || row.name,
-            username: row.Username || row.username,
-            email: row.Email || row.email || null,
-            password: row.Password || row.password || 'password123',
-            nip: String(row.NIP || row.nip),
-            phone: row.Telepon || row.phone || null,
-            contact: row.Kontak || row.contact || null,
-            homeroom_class_id: row.WaliKelasID || row.homeroom_class_id || null,
-            subject: row.MataPelajaran || row.subject || null,
-          }));
+          const validationErrors: string[] = [];
+
+          const mappedItems = data.map((rawRow, index) => {
+            const row = rawRow as Record<string, any>;
+            const name = String(getRowValue(row, ['Nama Guru', 'Nama', 'name'])).trim();
+            const nip = String(getRowValue(row, ['NIP/Kode', 'NIP', 'Kode Guru', 'nip', 'kode_guru'])).trim();
+            const email = String(getRowValue(row, ['Email', 'email'])).trim();
+            const role = normalizeImportRole(getRowValue(row, ['Peran', 'Role', 'Jabatan', 'jabatan']));
+            const keterangan = String(getRowValue(row, ['Keterangan', 'keterangan'])).trim();
+            const mataPelajaran = String(getRowValue(row, ['Mata Pelajaran', 'MataPelajaran', 'Mapel', 'subject'])).trim();
+            const classRaw =
+              getRowValue(row, ['Wali Kelas Dari', 'Kelas', 'WaliKelasID', 'homeroom_class_id']) ||
+              (role === 'Wali Kelas' ? keterangan : '');
+            const homeroomClassId = resolveHomeroomClassId(classRaw);
+
+            if (!name) validationErrors.push(`Baris ${index + 2}: Nama Guru wajib diisi.`);
+            if (!nip) validationErrors.push(`Baris ${index + 2}: NIP/Kode wajib diisi.`);
+            if (role === 'Wali Kelas' && !homeroomClassId) {
+              validationErrors.push(`Baris ${index + 2}: Kelas wali (${String(classRaw || '').trim() || '-'}) tidak ditemukan.`);
+            }
+
+            return {
+              name,
+              nip,
+              kode_guru: nip || null,
+              username: String(getRowValue(row, ['Username', 'username'])).trim() || nip || null,
+              email: email || null,
+              password: String(getRowValue(row, ['Password', 'password'])).trim() || nip || 'password123',
+              phone: String(getRowValue(row, ['Telepon', 'No Telepon', 'No. Telepon', 'phone'])).trim() || null,
+              contact: String(getRowValue(row, ['Kontak', 'contact'])).trim() || null,
+              jabatan: role,
+              subject: role === 'Guru' ? (mataPelajaran || keterangan || null) : null,
+              homeroom_class_id: role === 'Wali Kelas' ? homeroomClassId : null,
+              bidang: role === 'Waka' || role === 'Kapro' ? (keterangan || null) : null,
+              konsentrasi_keahlian: String(getRowValue(row, ['Konsentrasi Keahlian', 'konsentrasi_keahlian'])).trim() || null,
+            };
+          });
+
+          if (validationErrors.length > 0) {
+            alert(`❌ Format import tidak valid:\n\n${validationErrors.slice(0, 10).join('\n')}${validationErrors.length > 10 ? `\n...dan ${validationErrors.length - 10} error lainnya.` : ''}`);
+            return;
+          }
 
           setLoading(true);
           const result = await teacherService.importTeachers(mappedItems);
@@ -616,8 +730,8 @@ export default function GuruAdmin({
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{
                           padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
-                          backgroundColor: guru.role === 'Wali Kelas' ? '#DBEAFE' : guru.role === 'Staff' ? '#F3E8FF' : '#DCFCE7',
-                          color: guru.role === 'Wali Kelas' ? '#1E40AF' : guru.role === 'Staff' ? '#6B21A8' : '#166534',
+                          backgroundColor: guru.role === 'Wali Kelas' ? '#DBEAFE' : (guru.role === 'Staff' || guru.role === 'Waka' || guru.role === 'Kapro') ? '#F3E8FF' : '#DCFCE7',
+                          color: guru.role === 'Wali Kelas' ? '#1E40AF' : (guru.role === 'Staff' || guru.role === 'Waka' || guru.role === 'Kapro') ? '#6B21A8' : '#166534',
                         }}>
                           {guru.role}
                         </span>
@@ -725,7 +839,7 @@ export default function GuruAdmin({
                 </div>
               )}
 
-              {formData.role === 'Staff' && (
+              {(formData.role === 'Staff' || formData.role === 'Waka' || formData.role === 'Kapro') && (
                 <div>
                   <label>Bagian</label>
                   <select name="keterangan" value={formData.keterangan} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>

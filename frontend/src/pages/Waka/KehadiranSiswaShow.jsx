@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import "./KehadiranSiswaShow.css";
+// import "./KehadiranSiswaShow.css";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
 import apiService from "../../utils/api";
 import {
@@ -139,7 +139,7 @@ function KehadiranSiswaShow() {
     <div className="kehadiran-siswa-show-root min-h-screen pb-12">
       <NavbarWaka />
 
-      <div className="kehadiran-siswa-show-container">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-8 pb-12">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-6 overflow-x-auto whitespace-nowrap pb-2">
             <Link to="/waka/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
@@ -190,29 +190,10 @@ function KehadiranSiswaShow() {
                        className="kehadiran-siswa-date-input pl-12 pr-4 py-3 bg-gray-50 border-2 border-transparent rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-700 cursor-pointer"
                        value={selectedDate}
                        onChange={(e) => setSelectedDate(e.target.value)}
+                       onClick={(e) => e.target.showPicker && e.target.showPicker()}
                     />
                  </div>
-                 <Link 
-                   to={`/waka/kehadiran-siswa/rekap?class_id=${id}`}
-                   className="flex items-center gap-2 px-6 py-3.5 bg-gray-900 text-white rounded-2xl font-bold hover:bg-blue-600 shadow-lg shadow-gray-900/10 hover:shadow-blue-600/20 transition-all"
-                 >
-                    <FaChartBar />
-                    <span>Rekap Bulanan</span>
-                 </Link>
               </div>
-           </div>
-
-           {/* STATS STRIP */}
-           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-10">
-              {Object.entries(statusConfig).map(([key, config]) => (
-                 <div key={key} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
-                    <div className="flex items-center gap-3 mb-1">
-                       <div className={`w-2 h-2 rounded-full ${config.dot}`} />
-                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{config.label}</span>
-                    </div>
-                    <p className="text-2xl font-black text-gray-900">{stats[key] || 0}</p>
-                 </div>
-              ))}
            </div>
         </div>
 
@@ -229,7 +210,7 @@ function KehadiranSiswaShow() {
                          <div>
                             <h3 className="font-bold text-gray-900">{item.schedule?.subject?.name}</h3>
                             <div className="flex items-center gap-3 text-xs text-gray-500 font-medium mt-1">
-                               <span className="flex items-center gap-1.5"><FaClock className="text-blue-400" /> {item.schedule?.start_time} - {item.schedule?.end_time}</span>
+                               <span className="flex items-center gap-1.5"><FaClock className="text-blue-400" /> {item.schedule?.start_time?.substring(0, 5)} - {item.schedule?.end_time?.substring(0, 5)}</span>
                                <span className="w-1 h-1 bg-gray-300 rounded-full" />
                                <span className="flex items-center gap-1.5"><FaUserTie className="text-blue-400" /> {item.schedule?.teacher?.user?.name}</span>
                             </div>

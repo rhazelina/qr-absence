@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbsenceRequestController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\Api\StudentDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DashboardController;
@@ -216,6 +217,10 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/me/devices', [DeviceController::class, 'store']);
         Route::post('/devices', [DeviceController::class, 'store']); // Consistent alias
         Route::delete('/me/devices/{device}', [DeviceController::class, 'destroy']);
+        
+        // New Dashboard Endpoints (DESKTA)
+        Route::get('/me/dashboard/schedule-today', [StudentDashboardController::class, 'scheduleToday']);
+        Route::get('/me/dashboard/attendance-stats', [StudentDashboardController::class, 'attendanceStats']);
     });
 
     Route::middleware('role:admin,teacher,student')->group(function (): void {

@@ -10,7 +10,7 @@ import { KehadiranSiswaWakel } from "./KehadiranSiswaWakel";
 import JadwalPengurus from "./JadwalPengurus";
 import { RekapKehadiranSiswa } from "./RekapKehadiranSiswa";
 import DaftarKetidakhadiranWaliKelas from "./DaftarKetidakhadiranWaliKelas";
-import { scheduleService } from "../../services/scheduleService";
+import { scheduleService, getTodayScheduleDay, normalizeScheduleDay } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
 
 // ==================== INTERFACES ====================
@@ -336,22 +336,18 @@ export default function DashboardWalliKelas({
   const fetchSchedules = async () => {
     setLoadingSchedule(true);
     try {
-      // must be fixed
       const response = await scheduleService.getMyHomeroomSchedules();
       if (response.items) {
-        // Filter for today
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const todayIndex = new Date().getDay();
-        const todayName = days[todayIndex];
+        const todayName = getTodayScheduleDay();
 
         const mappedSchedules = response.items
-          .filter((item: any) => item.day === todayName)
+          .filter((item: any) => normalizeScheduleDay(item.day) === todayName)
           .map((item: any) => ({
             id: String(item.id),
-            subject: item.subject,
-            className: item.class_name || item.class,
-            jurusan: item.major || '-',
-            jam: `${item.start_time} - ${item.end_time}`
+            subject: item.subject || item.subject_name || "-",
+            className: item.class_name || item.class || "-",
+            jurusan: item.major_name || item.major || '-',
+            jam: `${(item.start_time || '').substring(0, 5)} - ${(item.end_time || '').substring(0, 5)}`
           }));
         setSchedules(mappedSchedules);
       }

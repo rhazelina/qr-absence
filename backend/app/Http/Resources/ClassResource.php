@@ -23,7 +23,7 @@ class ClassResource extends JsonResource
             'major_id' => $this->major_id,
             'major' => $this->major?->code, // Direct major code like "RPL"
             'major_name' => $this->major?->name,
-            'homeroom_teacher_id' => $this->homeroom_teacher_id,
+            'homeroom_teacher_id' => $this->homeroomTeacher?->id,
             'homeroom_teacher_name' => $this->homeroomTeacher?->user?->name ?? 'Belum ditentukan',
             'schedule_image_url' => $this->schedule_image_path ? asset('storage/'.$this->schedule_image_path) : null,
             'created_at' => $this->created_at,

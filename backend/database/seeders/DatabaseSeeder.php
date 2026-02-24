@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             StudentSeeder::class,
             ClassOfficerSeeder::class,
             AttendanceSeeder::class,
+            WakaAttendancePresentationSeeder::class,
         ]);
     }
 }

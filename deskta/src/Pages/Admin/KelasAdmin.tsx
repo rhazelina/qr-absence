@@ -55,6 +55,33 @@ export default function KelasAdmin({
     homeroom_teacher_id: "",
   });
 
+  const normalizeClassRoom = (raw: any): ClassRoom => {
+    const majorId = Number(raw?.major_id || 0);
+    const grade = String(raw?.grade ?? "");
+    const label = String(raw?.label ?? "").trim();
+    const name = raw?.name || raw?.class_name || [grade, label].filter(Boolean).join(" ");
+    const homeroomTeacherId =
+      raw?.homeroom_teacher_id ??
+      raw?.homeroomTeacher?.id ??
+      raw?.homeroom_teacher?.id ??
+      undefined;
+
+    return {
+      id: Number(raw?.id || 0),
+      name: String(name || "-"),
+      label,
+      grade,
+      major_id: majorId,
+      major_name: raw?.major_name || raw?.major?.name || "",
+      homeroom_teacher_id: homeroomTeacherId ? Number(homeroomTeacherId) : undefined,
+      homeroom_teacher_name:
+        raw?.homeroom_teacher_name ||
+        raw?.homeroomTeacher?.user?.name ||
+        raw?.homeroom_teacher?.user?.name ||
+        "Belum ditentukan",
+    };
+  };
+
   /* ===================== FETCH DATA ===================== */
   useEffect(() => {
     fetchInitialData();
@@ -68,7 +95,8 @@ export default function KelasAdmin({
         masterService.getMajors(),
         teacherService.getTeachers()
       ]);
-      setKelasList(Array.isArray(dataClasses) ? dataClasses : (dataClasses.data || []));
+      const classesRaw = Array.isArray(dataClasses) ? dataClasses : (dataClasses?.data || []);
+      setKelasList((classesRaw || []).map(normalizeClassRoom));
       setMajors(Array.isArray(dataMajors) ? dataMajors : (dataMajors.data || []));
       setTeachers(Array.isArray(dataTeachers) ? dataTeachers : (dataTeachers.data || []));
     } catch (error) {
@@ -103,7 +131,11 @@ export default function KelasAdmin({
   const stats = useMemo(() => ({
     totalKelas: kelasList.length,
     totalGuru: teachers.length,
-    totalWaliKelas: new Set(kelasList.map(k => k.homeroom_teacher_id).filter(Boolean)).size,
+    totalWaliKelas: new Set(
+      kelasList
+        .map(k => k.homeroom_teacher_id || k.homeroom_teacher_name)
+        .filter((v) => Boolean(v) && v !== "Belum ditentukan")
+    ).size,
   }), [kelasList, teachers.length]);
 
   /* ===================== VALIDASI ===================== */
@@ -216,12 +248,10 @@ export default function KelasAdmin({
           grade: formData.grade,
           homeroom_teacher_id: parseInt(formData.homeroom_teacher_id)
         });
-        const mappedUpdated = {
-          ...updated,
-          major_name: updated.major_name || updated.major?.name || '',
-          homeroom_teacher_name: updated.homeroom_teacher_name || updated.homeroomTeacher?.user?.name || ''
-        };
+        const updatedRaw = (updated as any)?.data || updated;
+        const mappedUpdated = normalizeClassRoom(updatedRaw);
         setKelasList(prev => prev.map(k => k.id === editingKelas.id ? mappedUpdated : k));
+        await fetchInitialData();
         alert("✓ Kelas berhasil diperbarui!");
       } else {
         const newClass = await masterService.addClass({
@@ -230,7 +260,9 @@ export default function KelasAdmin({
           grade: formData.grade,
           homeroom_teacher_id: parseInt(formData.homeroom_teacher_id)
         });
-        setKelasList(prev => [...prev, newClass]);
+        const newClassRaw = (newClass as any)?.data || newClass;
+        setKelasList(prev => [...prev, normalizeClassRoom(newClassRaw)]);
+        await fetchInitialData();
         alert("✓ Kelas berhasil ditambahkan!");
       }
       handleCloseModal();
@@ -258,12 +290,13 @@ export default function KelasAdmin({
   };
 
   const handleEditModal = (kelas: ClassRoom) => {
+    const fallbackTeacherId = teachers.find((t) => t.name === kelas.homeroom_teacher_name)?.id?.toString() || "";
     setEditingKelas(kelas);
     setFormData({
       label: kelas.label,
       major_id: kelas.major_id?.toString() || "",
       grade: kelas.grade,
-      homeroom_teacher_id: kelas.homeroom_teacher_id?.toString() || "",
+      homeroom_teacher_id: kelas.homeroom_teacher_id?.toString() || fallbackTeacherId,
     });
     setValidationError("");
     setOpenActionId(null);

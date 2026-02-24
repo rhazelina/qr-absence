@@ -4,6 +4,7 @@ import WalikelasLayout from '../../component/Walikelas/layoutwakel';
 import CalendarIcon from '../../assets/Icon/calender.png';
 import { Modal } from '../../component/Shared/Modal';
 import { attendanceService } from '../../services/attendanceService';
+import classService from '../../services/classService';
 
 interface InputAbsenWalikelasProps {
   user: { name: string; role: string };
@@ -13,7 +14,9 @@ interface InputAbsenWalikelasProps {
   schedule?: {
     id: string;
     subject_name?: string;
+    subject?: string;
     class_name?: string;
+    className?: string;
   };
 }
 
@@ -115,19 +118,34 @@ export function InputAbsenWalikelas({
   onMenuClick,
   schedule,
 }: InputAbsenWalikelasProps) {
-  const [selectedKelas] = useState('X Mekatronika 1');
-  const [selectedMapel] = useState('Matematika (1-4)');
+  const [homeroomClassName, setHomeroomClassName] = useState("-");
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
 
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
+  const selectedKelas = schedule?.class_name || schedule?.className || homeroomClassName;
+  const selectedMapel = schedule?.subject_name || schedule?.subject || "Belum dipilih";
 
   // Fetch students from API
   useEffect(() => {
     fetchStudents();
   }, [schedule?.id]);
+
+  useEffect(() => {
+    const fetchClassInfo = async () => {
+      try {
+        const response = await classService.getMyClass();
+        const data = response?.data || response;
+        setHomeroomClassName(data?.class_name || data?.name || "-");
+      } catch (error) {
+        console.error("Error fetching class info:", error);
+      }
+    };
+
+    fetchClassInfo();
+  }, []);
 
   const fetchStudents = async () => {
     // If no schedule provided, try to fetch homeroom students for early attendance

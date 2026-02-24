@@ -14,9 +14,12 @@ export function CameraScanner({ onScanSuccess, onScanError }: CameraScannerProps
     const stopScanner = useCallback(async () => {
         if (scannerRef.current) {
             try {
-                const state = scannerRef.current.getState();
+                const scanner = scannerRef.current as any;
+                const state = scanner.getState();
                 if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
-                    await scannerRef.current.stop();
+                    if (typeof scanner.stop === "function") {
+                        await scanner.stop();
+                    }
                 }
             } catch (err) {
                 console.error('Error stopping scanner:', err);
@@ -43,9 +46,12 @@ export function CameraScanner({ onScanSuccess, onScanError }: CameraScannerProps
         const cleanup = async () => {
             if (scannerRef.current) {
                 try {
-                    const state = scannerRef.current.getState();
+                    const scanner = scannerRef.current as any;
+                    const state = scanner.getState();
                     if (state === Html5QrcodeScannerState.SCANNING) {
-                        await scannerRef.current.stop();
+                        if (typeof scanner.stop === "function") {
+                            await scanner.stop();
+                        }
                     }
                 } catch (e) {
                     // Ignore

@@ -2,18 +2,16 @@ import React, { useState, useEffect } from 'react';
 import './InputDispensasiModal.css';
 
 const InputDispensasiModal = ({ isOpen, onClose, onSuratUploaded, studentList = [] }) => {
-  const [daftarSiswa] = useState(studentList.length > 0 ? studentList : [
-    { nisn: '00601', nama: 'Andi Pratama' },
-    { nisn: '00602', nama: 'Siti Aisyah' },
-    { nisn: '00603', nama: 'Budi Santoso' },
-    { nisn: '00604', nama: 'Rina Lestari' },
-    { nisn: '00605', nama: 'Dewi Anggraini' },
-    { nisn: '00606', nama: 'Ahmad Rizki' },
-    { nisn: '00607', nama: 'Nur Halimah' },
-    { nisn: '00608', nama: 'Fajar Sidiq' },
-    { nisn: '00609', nama: 'Maya Sari' },
-    { nisn: '00610', nama: 'Rudi Hartono' }
-  ]);
+  const [daftarSiswa, setDaftarSiswa] = useState([]);
+
+  useEffect(() => {
+    if (studentList && studentList.length > 0) {
+      setDaftarSiswa(studentList.map(s => ({
+        nisn: s.nisn || s.id,
+        nama: s.nama || (s.user?.name)
+      })));
+    }
+  }, [studentList]);
 
   // Daftar jam pelajaran (Ke-1 sampai Ke-10)
   const jamPelajaran = [

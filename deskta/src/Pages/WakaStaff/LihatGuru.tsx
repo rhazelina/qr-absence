@@ -1,5 +1,5 @@
 // src/Pages/WakaStaff/LihatGuru.tsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { User } from "lucide-react";

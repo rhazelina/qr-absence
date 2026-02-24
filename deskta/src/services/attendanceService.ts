@@ -50,8 +50,9 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
-  getStudentSummary: async (): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/me/attendance/summary`, {
+  getStudentSummary: async (params?: { from?: string; to?: string; months?: number; group_by?: 'day' | 'week' | 'month' }): Promise<any> => {
+    const query = new URLSearchParams(params as any).toString();
+    const response = await fetch(`${API_BASE_URL}/me/attendance/summary${query ? `?${query}` : ''}`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("token")}`,
@@ -210,6 +211,22 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
+  scanQrToken: async (token: string, deviceId?: number): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/attendance/scan`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        device_id: deviceId,
+      }),
+    });
+    return handleResponse(response);
+  },
+
   manualAttendance: async (data: { schedule_id: number, student_id: number, status: string, date: string, reason?: string }): Promise<any> => {
     const response = await fetch(`${API_BASE_URL}/attendance/manual`, {
       method: "POST",
@@ -292,9 +309,12 @@ export const attendanceService = {
     return handleResponse(response);
   },
 
-  createLeavePermission: async (data: { student_id: string, type: string, start_time: string, end_time?: string, reason?: string, file?: File }): Promise<any> => {
+  createLeavePermission: async (data: { student_id: string, schedule_id?: string, type: string, start_time: string, end_time?: string, reason?: string, file?: File }): Promise<any> => {
     const formData = new FormData();
     formData.append('student_id', data.student_id);
+    if (data.schedule_id) {
+      formData.append('schedule_id', data.schedule_id);
+    }
     formData.append('type', data.type);
     formData.append('start_time', data.start_time);
     if (data.end_time) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import PengurusKelasLayout from "../../component/PengurusKelas/PengurusKelasLayout";
 
 import classService from "../../services/classService";
+import { scheduleService, normalizeScheduleDay } from "../../services/scheduleService";
 
 type PengurusKelasPage = "dashboard" | "jadwal-anda" | "notifikasi";
 
@@ -11,6 +12,17 @@ interface JadwalPengurusProps {
     onMenuClick: (page: string) => void;
     onLogout: () => void;
 }
+
+const SCHEDULE_TARGET_DAY = "Wednesday"; // Penyesuaian permintaan: gunakan jadwal Rabu
+const DAY_LABEL_ID: Record<string, string> = {
+    Monday: "Senin",
+    Tuesday: "Selasa",
+    Wednesday: "Rabu",
+    Thursday: "Kamis",
+    Friday: "Jumat",
+    Saturday: "Sabtu",
+    Sunday: "Minggu",
+};
 
 export default function JadwalPengurus({
     user,
@@ -23,12 +35,17 @@ export default function JadwalPengurus({
         waliKelas: "",
         scheduleImageUrl: null as string | null,
       });
+      const [todaySchedules, setTodaySchedules] = useState<any[]>([]);
+      const [effectiveScheduleDay] = useState<string>(normalizeScheduleDay(SCHEDULE_TARGET_DAY));
       const [loading, setLoading] = useState(true);
 
       useEffect(() => {
         const fetchClassInfo = async () => {
             try {
-                const response = await classService.getMyClass();
+                const [response, scheduleResponse] = await Promise.all([
+                    classService.getMyClass(),
+                    scheduleService.getMySchedule(),
+                ]);
                 const data = response; // Assuming response is the ClassResource object directly or data property
                 // ClassResource structure: { id, class_name, homeroom_teacher_name, schedule_image_url, ... }
                 // Adjust based on actual API response structure (usually { data: ... })
@@ -40,6 +57,18 @@ export default function JadwalPengurus({
                     waliKelas: classData.homeroom_teacher_name || "Belum ditentukan",
                     scheduleImageUrl: classData.schedule_image_url,
                 });
+
+                const mapped = (scheduleResponse.items || [])
+                    .filter((item: any) => normalizeScheduleDay(item.day) === effectiveScheduleDay)
+                    .map((item: any) => ({
+                        id: item.id,
+                        subject: item.subject || "-",
+                        teacher: typeof item.teacher === "object" ? item.teacher.name : (item.teacher || "Guru"),
+                        start_time: item.start_time || "",
+                        end_time: item.end_time || "",
+                        room: item.room || "-",
+                    }));
+                setTodaySchedules(mapped);
             } catch (error) {
                 console.error("Failed to fetch class info", error);
             } finally {
@@ -126,6 +155,62 @@ export default function JadwalPengurus({
                                 {kelasInfo.waliKelas}
                                 </div>
                             </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Jadwal mapel hari ini */}
+                <div
+                    style={{
+                        background: "#FFFFFF",
+                        borderRadius: 12,
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                        overflow: "hidden",
+                    }}
+                >
+                    <div style={{ padding: 16, borderBottom: "1px solid #E2E8F0" }}>
+                        <div style={{ fontWeight: 800, fontSize: 16, color: "#0F172A" }}>
+                            Jadwal Hari Ini ({DAY_LABEL_ID[effectiveScheduleDay] || effectiveScheduleDay})
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 13, color: "#64748B" }}>
+                            Data mapel mengikuti jadwal kelas aktif.
+                        </div>
+                    </div>
+                    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                        {loading ? (
+                            <div>Memuat jadwal mapel...</div>
+                        ) : todaySchedules.length === 0 ? (
+                            <div style={{ color: "#64748B", textAlign: "center", padding: "10px 0" }}>
+                                Tidak ada jadwal mapel untuk hari ini.
+                            </div>
+                        ) : (
+                            todaySchedules.map((item) => (
+                                <div
+                                    key={item.id}
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        padding: "12px 14px",
+                                        borderRadius: 10,
+                                        border: "1px solid #E2E8F0",
+                                        background: "#F8FAFC",
+                                    }}
+                                >
+                                    <div>
+                                        <div style={{ fontWeight: 700, color: "#0F172A", fontSize: 15 }}>{item.subject}</div>
+                                        <div style={{ marginTop: 4, color: "#64748B", fontSize: 13 }}>{item.teacher}</div>
+                                    </div>
+                                    <div style={{ textAlign: "right" }}>
+                                        <div style={{ fontWeight: 700, color: "#0F52BA", fontSize: 13 }}>
+                                            {item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}
+                                        </div>
+                                        <div style={{ marginTop: 4, color: "#64748B", fontSize: 12 }}>
+                                            Ruang: {item.room}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>

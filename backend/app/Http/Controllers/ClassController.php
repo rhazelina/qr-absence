@@ -88,30 +88,36 @@ class ClassController extends Controller
     public function update(UpdateClassRequest $request, Classes $class): JsonResponse
     {
         $data = $request->validated();
+        $hasHomeroomInput = array_key_exists('homeroom_teacher_id', $data);
+        $newHomeroomTeacherId = $hasHomeroomInput ? ($data['homeroom_teacher_id'] ?? null) : null;
 
-        $oldHomeroomTeacherId = $class->homeroom_teacher_id;
-        $newHomeroomTeacherId = $data['homeroom_teacher_id'] ?? null;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($class, $data, $hasHomeroomInput, $newHomeroomTeacherId): void {
+            $classData = $data;
+            unset($classData['homeroom_teacher_id']);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($class, $data, $oldHomeroomTeacherId, $newHomeroomTeacherId) {
-            $class->update($data);
+            if (! empty($classData)) {
+                $class->update($classData);
+            }
 
-            // Handle homeroom teacher assignment
-            if ($oldHomeroomTeacherId !== $newHomeroomTeacherId) {
-                // Clear old homeroom teacher
-                if ($oldHomeroomTeacherId) {
-                    \App\Models\TeacherProfile::where('id', $oldHomeroomTeacherId)
-                        ->update(['homeroom_class_id' => null, 'jabatan' => 'Guru']);
-                }
+            if (! $hasHomeroomInput) {
+                return;
+            }
 
-                // Set new homeroom teacher
-                if ($newHomeroomTeacherId) {
-                    \App\Models\TeacherProfile::where('id', $newHomeroomTeacherId)
-                        ->update(['homeroom_class_id' => $class->id, 'jabatan' => 'Wali Kelas']);
-                }
+            // Ensure one homeroom teacher per class by clearing every existing assignment
+            // on this class except the selected teacher.
+            $clearAssignedTeachers = \App\Models\TeacherProfile::where('homeroom_class_id', $class->id);
+            if ($newHomeroomTeacherId) {
+                $clearAssignedTeachers->where('id', '!=', $newHomeroomTeacherId);
+            }
+            $clearAssignedTeachers->update(['homeroom_class_id' => null, 'jabatan' => 'Guru']);
+
+            if ($newHomeroomTeacherId) {
+                \App\Models\TeacherProfile::where('id', $newHomeroomTeacherId)
+                    ->update(['homeroom_class_id' => $class->id, 'jabatan' => 'Wali Kelas']);
             }
         });
 
-        return response()->json($class->load(['major', 'homeroomTeacher.user']));
+        return response()->json($class->fresh()->load(['major', 'homeroomTeacher.user']));
     }
 
     /**
@@ -200,7 +206,9 @@ class ClassController extends Controller
                 return response()->json(['message' => 'Class not found'], 404);
             }
 
-            return response()->json($user->studentProfile->classRoom->load('major'));
+            return (new \App\Http\Resources\ClassResource(
+                $user->studentProfile->classRoom->load(['major', 'homeroomTeacher.user'])
+            ))->response();
         }
 
         if ($user->user_type === 'teacher') {
@@ -208,7 +216,9 @@ class ClassController extends Controller
                 return response()->json(['message' => 'Homeroom class not found'], 404);
             }
 
-            return response()->json($user->teacherProfile->homeroomClass->load('major'));
+            return (new \App\Http\Resources\ClassResource(
+                $user->teacherProfile->homeroomClass->load(['major', 'homeroomTeacher.user'])
+            ))->response();
         }
 
         return response()->json(['message' => 'Unauthorized'], 403);
@@ -343,7 +353,14 @@ class ClassController extends Controller
             $query->where('status', $request->status);
         }
 
-        return response()->json($query->with(['student.user', 'schedule.teacher.user'])->latest()->get());
+        return response()->json(
+            $query->with([
+                'student.user',
+                'schedule.teacher.user',
+                'schedule.subject',
+                'schedule.dailySchedule.classSchedule.class',
+            ])->latest()->get()
+        );
     }
 
     /**

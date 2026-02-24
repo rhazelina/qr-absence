@@ -149,7 +149,8 @@ export default function DetailKehadiranGuru({
         if (s === "present") status = "Hadir";
         else if (s === "late") status = "Terlambat";
         else if (s === "sick") status = "Sakit";
-        else if (s === "permission") status = "Izin";
+        else if (s === "permission" || s === "izin" || s === "excused") status = "Izin";
+        else if (s === "return") status = "Pulang";
         else if (s === "alpha") status = "Alfa";
         else if (s === "absent") status = "Tidak Hadir";
 

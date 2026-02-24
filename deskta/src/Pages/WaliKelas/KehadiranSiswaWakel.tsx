@@ -20,6 +20,15 @@ const STATUS_COLORS = {
 
 type StatusType = 'hadir' | 'izin' | 'sakit' | 'alfa' | 'pulang';
 
+const normalizeStatus = (status?: string): StatusType => {
+  const key = String(status || "").toLowerCase();
+  if (key === "present" || key === "late" || key === "hadir" || key === "terlambat") return "hadir";
+  if (key === "permission" || key === "excused" || key === "izin") return "izin";
+  if (key === "sick" || key === "sakit") return "sakit";
+  if (key === "return" || key === "pulang" || key === "early_leave") return "pulang";
+  return "alfa";
+};
+
 interface KehadiranRow {
   id: string;
   nisn: string;
@@ -103,11 +112,11 @@ export function KehadiranSiswaWakel({
         id: String(item.id),
         nisn: item.student?.nisn || '-',
         namaSiswa: item.student?.user?.name || '-',
-        mataPelajaran: item.schedule?.subject?.name || '-',
+        mataPelajaran: item.schedule?.subject?.name || item.schedule?.subject_name || item.schedule?.keterangan || '-',
         namaGuru: item.schedule?.teacher?.user?.name || '-',
         tanggal: formatDateDisplay(item.date), // Convert YYYY-MM-DD to DD-MM-YYYY
-        status: item.status.toLowerCase() as StatusType,
-        keterangan: item.notes || item.attachment_path ? 'Ada Lampiran' : '-',
+        status: normalizeStatus(item.status),
+        keterangan: (item.notes || item.attachment_path) ? 'Ada Lampiran' : '-',
         jamPelajaran: `${item.schedule?.start_time?.substring(0, 5)} - ${item.schedule?.end_time?.substring(0, 5)}`,
         waktuHadir: item.created_at ? new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB' : '-',
         buktiFoto1: item.attachment_path ? item.attachment_path : undefined, // Assuming attachment_path is relative or needs URL mapping. Ideally backend returns full URL or we handle it.
@@ -164,41 +173,14 @@ export function KehadiranSiswaWakel({
   }, []);
 
   const subjectOptions = useMemo(() => {
-    const defaultSubjects = [
-      { label: 'Pendidikan Agama dan Budi Pekerti', value: 'Pendidikan Agama dan Budi Pekerti' },
-      { label: 'Pendidikan Pancasila dan Kewarganegaraan', value: 'Pendidikan Pancasila dan Kewarganegaraan' },
-      { label: 'Bahasa Indonesia', value: 'Bahasa Indonesia' },
-      { label: 'Bahasa Inggris', value: 'Bahasa Inggris' },
-      { label: 'Matematika', value: 'Matematika' },
-      { label: 'Sejarah Indonesia', value: 'Sejarah Indonesia' },
-      { label: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', value: 'Pendidikan Jasmani, Olahraga, dan Kesehatan' },
-      { label: 'Seni Budaya', value: 'Seni Budaya' },
-      { label: 'Informatika', value: 'Informatika' },
-      { label: 'Projek Ilmu Pengetahuan Alam dan Sosial', value: 'Projek Ilmu Pengetahuan Alam dan Sosial' },
-      { label: 'Dasar-dasar Program Kejurusan', value: 'Dasar-dasar Program Kejurusan' },
-      { label: 'Projek Kreatif dan Kewirausahaan', value: 'Projek Kreatif dan Kewirausahaan' },
-      { label: 'Muatan Lokal / Bahasa Daerah', value: 'Muatan Lokal / Bahasa Daerah' },
-      { label: 'Bimbingan Konseling', value: 'Bimbingan Konseling' },
-      { label: 'Projek Penguatan Profil Pelajar Pancasila', value: 'Projek Penguatan Profil Pelajar Pancasila' },
-    ];
-
     const currentMapelSet = new Set(
       rows.map((r) => r.mataPelajaran).filter((v) => v && v !== '-')
     );
 
-    // Combine default subjects and any others found in rows
     const options = [
       { label: 'Semua Mata Pelajaran', value: 'all' },
-      ...defaultSubjects
+      ...Array.from(currentMapelSet).map((mapel) => ({ label: mapel, value: mapel })),
     ];
-
-    // Add subjects from rows that aren't in defaults
-    const defaultLabels = new Set(defaultSubjects.map(s => s.label));
-    Array.from(currentMapelSet).forEach(mapel => {
-      if (!defaultLabels.has(mapel)) {
-        options.push({ label: mapel, value: mapel });
-      }
-    });
 
     return options;
   }, [rows]);
@@ -496,8 +478,7 @@ export function KehadiranSiswaWakel({
 
               <BookOpen size={24} color="#FFFFFF" />
               <div style={{ zIndex: 1 }}>
-                <div style={{ fontSize: '16px', fontWeight: '700' }}>12 REKAYASA PERANGKAT LUNAK 2</div>
-                {/* <div style={{ fontSize: '16px', fontWeight: '700' }}>{kelasInfo.namaKelas}</div> */}
+                <div style={{ fontSize: '16px', fontWeight: '700' }}>{kelasInfo.namaKelas}</div>
                 <div style={{ fontSize: '13px', opacity: 0.8 }}>Semua Mata Pelajaran</div>
               </div>
             </div>

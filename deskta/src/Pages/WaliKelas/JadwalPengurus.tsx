@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import WalikelasLayout from '../../component/Walikelas/layoutwakel';
-import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
 import { User } from "lucide-react";
+import classService from '../../services/classService';
 
 interface JadwalPengurusProps {
     user: { name: string; role: string; phone: string };
@@ -23,12 +24,35 @@ export default function JadwalPengurus({
     jadwalImage,
     onBack,
 }: JadwalPengurusProps) {
-    // Data default jika tidak ada props
-    const kelasInfo = {
-        namaKelas: namaKelas || "XII RPL 2",
-        waliKelas: waliKelas || "Triana Ardiane S.pd",
-        jadwalImage: jadwalImage || DummyJadwal
-    };
+    const [kelasInfo, setKelasInfo] = useState({
+        namaKelas: namaKelas || "",
+        waliKelas: waliKelas || "",
+        jadwalImage: jadwalImage || "",
+    });
+
+    useEffect(() => {
+        const fetchClassInfo = async () => {
+            try {
+                const response = await classService.getMyClass();
+                const data = response?.data || response;
+
+                setKelasInfo({
+                    namaKelas: namaKelas || data?.class_name || data?.name || "Kelas Tidak Diketahui",
+                    waliKelas: waliKelas || data?.homeroom_teacher_name || "Belum ditentukan",
+                    jadwalImage: jadwalImage || data?.schedule_image_url || "",
+                });
+            } catch (error) {
+                console.error("Failed to fetch class info", error);
+                setKelasInfo((prev) => ({
+                    namaKelas: prev.namaKelas || "Kelas Tidak Diketahui",
+                    waliKelas: prev.waliKelas || "Belum ditentukan",
+                    jadwalImage: prev.jadwalImage || "",
+                }));
+            }
+        };
+
+        fetchClassInfo();
+    }, [jadwalImage, namaKelas, waliKelas]);
 
     return (
         <WalikelasLayout
@@ -94,20 +118,26 @@ export default function JadwalPengurus({
                     padding: 16,
                     border: "1px solid #E2E8F0",
                 }}>
-                    <img
-                        src={kelasInfo.jadwalImage}
-                        alt={`Jadwal ${kelasInfo.namaKelas}`}
-                        style={{
-                            width: "100%",
-                            maxWidth: 1200,
-                            margin: "0 auto",
-                            display: "block",
-                        }}
-                    />
+                    {kelasInfo.jadwalImage ? (
+                        <img
+                            src={kelasInfo.jadwalImage}
+                            alt={`Jadwal ${kelasInfo.namaKelas}`}
+                            style={{
+                                width: "100%",
+                                maxWidth: 1200,
+                                margin: "0 auto",
+                                display: "block",
+                            }}
+                        />
+                    ) : (
+                        <div style={{ textAlign: "center", color: "#64748B", padding: "32px 12px" }}>
+                            Belum ada jadwal yang diunggah.
+                        </div>
+                    )}
                 </div>
 
                 {/* Tombol Download/View Full */}
-                {kelasInfo.jadwalImage !== DummyJadwal && (
+                {kelasInfo.jadwalImage && (
                     <div style={{ display: "flex", justifyContent: "center" }}>
                         <a
                             href={kelasInfo.jadwalImage}

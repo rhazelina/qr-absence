@@ -6,6 +6,8 @@ export interface Major {
   name: string;
   department?: string;
   category?: string;
+  bidang_keahlian?: string;
+  program_keahlian?: string;
 }
 
 export interface ClassRoom {

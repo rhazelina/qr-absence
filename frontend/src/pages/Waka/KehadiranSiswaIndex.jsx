@@ -223,18 +223,18 @@ function KehadiranSiswaIndex() {
                       </td>
                       <td className="td-kelas">
                         <div className="info-kelas">
-                          <span className="nama-kelas">{getClassName(item)}</span>
+                          <span className="nama-kelas text-gray-900 font-bold">{getClassName(item)}</span>
                         </div>
                       </td>
                       <td>
-                        <span className="lencana-jurusan">{getMajorName(item)}</span>
+                        <span className="lencana-jurusan text-gray-700 font-medium">{getMajorName(item)}</span>
                       </td>
                       <td>
                         <div className="info-wali">
                           <div className="avatar-wali">
                             <FaUserTie />
                           </div>
-                          <span className="nama-wali">{getHomeroomName(item)}</span>
+                          <span className="nama-wali text-gray-900 font-semibold">{getHomeroomName(item)}</span>
                         </div>
                       </td>
                       <td className="td-tengah">

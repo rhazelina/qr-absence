@@ -1,5 +1,5 @@
 // src/Pages/WakaStaff/LihatKelas.tsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
 import { ArrowLeft } from "lucide-react";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";

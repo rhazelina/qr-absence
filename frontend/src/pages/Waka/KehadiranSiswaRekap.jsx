@@ -322,8 +322,14 @@ export default function KehadiranSiswaRekap() {
                            <td className="px-4 py-4 text-center text-orange-600 font-black">{item.totals?.return || 0}</td>
                            <td className="px-6 py-4 text-right">
                               <button 
-                                onClick={(e) => { e.stopPropagation(); fetchStudentDetail(item); }}
-                                className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  fetchStudentDetail(item);
+                                }}
+                                className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100 cursor-pointer"
+                                title="Lihat Detail"
                               >
                                  <FaEye />
                               </button>
@@ -379,69 +385,69 @@ export default function KehadiranSiswaRekap() {
 
               <div className="p-8 overflow-y-auto">
                  {modalLoading ? (
-                   <div className="py-20 text-center text-blue-600">
-                      <FaSpinner className="animate-spin text-3xl mx-auto mb-4" />
-                      <p className="font-bold">Memuat riwayat kehadiran...</p>
-                   </div>
+                    <div className="py-20 text-center text-blue-600">
+                       <FaSpinner className="animate-spin text-3xl mx-auto mb-4" />
+                       <p className="font-bold">Memuat riwayat kehadiran...</p>
+                    </div>
                  ) : (
-                   <div className="space-y-6">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                         {Object.entries(statusConfig).map(([key, config]) => {
-                            const count = studentHistory.filter(h => h.status.toLowerCase() === key).length;
-                            return (
-                               <div key={key} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
-                                  <div className="flex items-center gap-3 mb-1">
-                                     <div className={`w-2 h-2 rounded-full ${config.dot}`} />
-                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{config.label}</span>
-                                  </div>
-                                  <p className="text-2xl font-black text-gray-900">{count}</p>
-                               </div>
-                            );
-                         })}
-                      </div>
+                    <div className="space-y-6">
+                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {Object.entries(statusConfig).map(([key, config]) => {
+                             const count = studentHistory.filter(h => h.status.toLowerCase() === key).length;
+                             return (
+                                <div key={key} className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
+                                   <div className="flex items-center gap-3 mb-1">
+                                      <div className={`w-2 h-2 rounded-full ${config.dot}`} />
+                                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{config.label}</span>
+                                   </div>
+                                   <p className="text-2xl font-black text-gray-900">{count}</p>
+                                </div>
+                             );
+                          })}
+                       </div>
 
-                      <div className="kehadiran-siswa-rekap-modal-table-wrap bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden">
-                         <table className="kehadiran-siswa-rekap-modal-table w-full text-left">
-                            <thead>
-                               <tr className="bg-white/50">
-                                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tanggal</th>
-                                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mata Pelajaran</th>
-                                  <th className="px-6 py-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                                  <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Keterangan</th>
-                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                               {studentHistory.length > 0 ? studentHistory.map((item, idx) => {
-                                 const config = statusConfig[item.status.toLowerCase()] || statusConfig.present;
-                                 return (
-                                   <tr key={idx} className="bg-white/30">
-                                      <td className="px-6 py-4">
-                                         <p className="font-bold text-gray-800 text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                                         <p className="text-[10px] text-gray-500 font-bold uppercase">{item.schedule?.start_time.substring(0,5)} - {item.schedule?.end_time.substring(0,5)}</p>
-                                      </td>
-                                      <td className="px-6 py-4 font-bold text-gray-700 text-sm">
-                                         {item.schedule?.subject?.name}
-                                         <p className="text-[10px] text-gray-400 font-medium">Oleh: {item.schedule?.teacher?.user?.name}</p>
-                                      </td>
-                                      <td className="px-6 py-4 text-center">
-                                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${config.bg} text-[10px] font-bold uppercase tracking-wide`}>
-                                            {config.label}
-                                         </div>
-                                      </td>
-                                      <td className="px-6 py-4 italic text-gray-500 text-xs">
-                                         {item.notes || '-'}
-                                      </td>
-                                   </tr>
-                                 );
-                               }) : (
-                                 <tr>
-                                    <td colSpan="4" className="py-10 text-center text-gray-400 font-medium">Tidak ada riwayat untuk periode ini</td>
-                                 </tr>
-                               )}
-                            </tbody>
-                         </table>
-                      </div>
-                   </div>
+                       <div className="kehadiran-siswa-rekap-modal-table-wrap bg-gray-50 rounded-3xl border border-gray-100 overflow-hidden">
+                          <table className="kehadiran-siswa-rekap-modal-table w-full text-left">
+                             <thead>
+                                <tr className="bg-white/50">
+                                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tanggal</th>
+                                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mata Pelajaran</th>
+                                   <th className="px-6 py-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                                   <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Keterangan</th>
+                                </tr>
+                             </thead>
+                             <tbody className="divide-y divide-gray-100">
+                                {studentHistory.length > 0 ? studentHistory.map((item, idx) => {
+                                  const config = statusConfig[item.status.toLowerCase()] || statusConfig.present;
+                                  return (
+                                    <tr key={idx} className="bg-white/30">
+                                       <td className="px-6 py-4">
+                                          <p className="font-bold text-gray-800 text-sm">{new Date(item.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                          <p className="text-[10px] text-gray-500 font-bold uppercase">{item.schedule?.start_time.substring(0,5)} - {item.schedule?.end_time.substring(0,5)}</p>
+                                       </td>
+                                       <td className="px-6 py-4 font-bold text-gray-700 text-sm">
+                                          {item.schedule?.subject?.name}
+                                          <p className="text-[10px] text-gray-400 font-medium">Oleh: {item.schedule?.teacher?.user?.name}</p>
+                                       </td>
+                                       <td className="px-6 py-4 text-center">
+                                          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${config.bg} text-[10px] font-bold uppercase tracking-wide`}>
+                                             {config.label}
+                                          </div>
+                                       </td>
+                                       <td className="px-6 py-4 italic text-gray-500 text-xs">
+                                          {item.notes || '-'}
+                                       </td>
+                                    </tr>
+                                  );
+                                }) : (
+                                  <tr>
+                                     <td colSpan="4" className="py-10 text-center text-gray-400 font-medium">Tidak ada riwayat untuk periode ini</td>
+                                  </tr>
+                                )}
+                             </tbody>
+                          </table>
+                       </div>
+                    </div>
                  )}
               </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import SiswaLayout from "../../component/Siswa/SiswaLayout";
 import { scheduleService } from "../../services/scheduleService";
 import { authService } from "../../services/authService";
-import jadwalimg from "../../assets/Icon/DummyJadwal.png"
+import classService from "../../services/classService";
 
 type SiswaPage = "dashboard" | "jadwal-anda" | "notifikasi";
 
@@ -20,6 +20,7 @@ export default function JadwalSiswa({
     onLogout,
 }: JadwalSiswaProps) {
     const [profile, setProfile] = useState<any>(user); // Use passed user initially
+    const [classInfo, setClassInfo] = useState<any>(null);
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -33,7 +34,11 @@ export default function JadwalSiswa({
                     setProfile(me);
                 }
 
-                const scheduleData = await scheduleService.getMySchedule();
+                const [classData, scheduleData] = await Promise.all([
+                    classService.getMyClass(),
+                    scheduleService.getMySchedule(),
+                ]);
+                setClassInfo(classData?.data || classData || null);
                 setSchedules(scheduleData.items || []);
             } catch (error) {
                 console.error("Error loading schedule or profile", error);
@@ -101,7 +106,7 @@ export default function JadwalSiswa({
                                 marginBottom: 4,
                             }}
                         >
-                            {profile?.profile?.class_name || profile?.student_profile?.class?.name || "Memuat Kelas..."}
+                            {classInfo?.name || profile?.profile?.class_name || profile?.student_profile?.class?.name || "Memuat Kelas..."}
                         </div>
                         <div
                             style={{
@@ -110,8 +115,7 @@ export default function JadwalSiswa({
                                 fontWeight: 500,
                             }}
                         >
-                            {/* Wali Kelas: {profile?.student_profile?.class?.homeroom_teacher?.user?.name || "Belum ditentukan"} */}
-                            Wali Kelas: Triana Ardiane S.Pd
+                            Wali Kelas: {classInfo?.homeroom_teacher_name || "Belum ditentukan"}
                         </div>
                     </div>
                 </div>
@@ -123,17 +127,22 @@ export default function JadwalSiswa({
                     padding: 16,
                     boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
                 }}>
-                    <img
-                        // src={profile?.student_profile?.class?.schedule_image || "https://api.deskta.com/storage/schedules/defaults/default_schedule.jpg"}
-                        src={jadwalimg}
-                        alt="Jadwal Pelajaran"
-                        style={{
-                            width: "100%",
-                            borderRadius: 8,
-                            display: "block"
-                        }}
-                        onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
+                    {classInfo?.schedule_image_url ? (
+                        <img
+                            src={classInfo.schedule_image_url}
+                            alt="Jadwal Pelajaran"
+                            style={{
+                                width: "100%",
+                                borderRadius: 8,
+                                display: "block"
+                            }}
+                            onError={(e) => (e.currentTarget.style.display = 'none')}
+                        />
+                    ) : (
+                        <div style={{ textAlign: "center", color: "#64748B", padding: "18px 12px" }}>
+                            Belum ada gambar jadwal kelas yang diunggah.
+                        </div>
+                    )}
                 </div>
 
 

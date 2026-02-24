@@ -294,9 +294,13 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            'months' => ['nullable', 'integer', 'min:1', 'max:24'],
+            'group_by' => ['nullable', 'in:day,week,month'],
         ]);
 
         $studentId = $request->user()->studentProfile->id;
+        $months = $request->integer('months', 6);
+        $groupBy = $request->string('group_by', 'month')->toString();
 
         $baseQuery = Attendance::query()->where('student_id', $studentId);
 
@@ -306,6 +310,11 @@ class AttendanceController extends Controller
 
         if ($request->filled('to')) {
             $baseQuery->whereDate('date', '<=', $request->date('to'));
+        }
+
+        if (! $request->filled('from') && ! $request->filled('to')) {
+            $from = now()->subMonths($months - 1)->startOfMonth()->toDateString();
+            $baseQuery->whereDate('date', '>=', $from);
         }
 
         $statusSummary = (clone $baseQuery)
@@ -321,7 +330,62 @@ class AttendanceController extends Controller
             ->orderBy('day')
             ->get();
 
+        $weeklyStats = [
+            'hadir' => 0,
+            'izin' => 0,
+            'sakit' => 0,
+            'alpha' => 0,
+            'pulang' => 0,
+        ];
+
+        foreach ($statusSummary as $row) {
+            $frontendStatus = $this->mapStatusToFrontend($row->status);
+            if (array_key_exists($frontendStatus, $weeklyStats)) {
+                $weeklyStats[$frontendStatus] += (int) $row->total;
+            }
+        }
+
+        $trendBuckets = $dailySummary->groupBy(function ($row) use ($groupBy) {
+            $date = Carbon::parse($row->day);
+
+            return match ($groupBy) {
+                'day' => $date->format('Y-m-d'),
+                'week' => $date->startOfWeek()->format('Y-m-d'),
+                default => $date->format('Y-m'),
+            };
+        });
+
+        $trend = $trendBuckets->map(function ($rows, $bucketKey) use ($groupBy) {
+            $bucketDate = Carbon::parse($bucketKey);
+            $item = [
+                'month' => $groupBy === 'day'
+                    ? $bucketDate->format('d M')
+                    : ($groupBy === 'week' ? 'Minggu '.$bucketDate->weekOfYear : $bucketDate->locale('id')->translatedFormat('M')),
+                'hadir' => 0,
+                'izin' => 0,
+                'sakit' => 0,
+                'alpha' => 0,
+                'pulang' => 0,
+            ];
+
+            foreach ($rows as $row) {
+                $frontendStatus = $this->mapStatusToFrontend($row->status);
+                if (array_key_exists($frontendStatus, $item)) {
+                    $item[$frontendStatus] += (int) $row->total;
+                }
+            }
+
+            return $item;
+        })->values();
+
         return response()->json([
+            'status' => 'success',
+            'data' => [
+                'trend' => $trend,
+                'statistik' => $weeklyStats,
+                'group_by' => $groupBy,
+                'months' => $months,
+            ],
             'status_summary' => $statusSummary,
             'daily_summary' => $dailySummary,
         ]);
@@ -638,7 +702,7 @@ class AttendanceController extends Controller
         $attendancesQuery = Attendance::query()
             ->where('attendee_type', 'student')
             ->whereIn('student_id', $studentIds)
-            ->whereHas('schedule', function ($q) use ($class): void {
+            ->whereHas('schedule.dailySchedule.classSchedule', function ($q) use ($class): void {
                 $q->where('class_id', $class->id);
             });
 
@@ -710,9 +774,15 @@ class AttendanceController extends Controller
         ]);
 
         $query = Attendance::query()
-            ->with(['student.user:id,name', 'schedule:id,title,subject_name', 'attachments'])
+            ->with([
+                'student.user:id,name',
+                'schedule:id,subject_id,teacher_id,start_time,end_time,daily_schedule_id,room,keterangan',
+                'schedule.subject:id,name',
+                'schedule.teacher.user:id,name',
+                'attachments',
+            ])
             ->where('attendee_type', 'student')
-            ->whereHas('schedule', function ($q) use ($class): void {
+            ->whereHas('schedule.dailySchedule.classSchedule', function ($q) use ($class): void {
                 $q->where('class_id', $class->id);
             });
 
@@ -1063,7 +1133,13 @@ class AttendanceController extends Controller
     {
         if ($request->user()->user_type === 'teacher') {
             $teacherId = optional($request->user()->teacherProfile)->id;
-            $ownsSchedules = $class->schedules()->where('teacher_id', $teacherId)->exists();
+            $ownsSchedules = ScheduleItem::query()
+                ->where('teacher_id', $teacherId)
+                ->whereHas('dailySchedule.classSchedule', function ($q) use ($class): void {
+                    $q->where('class_id', $class->id)
+                        ->where('is_active', true);
+                })
+                ->exists();
             $isHomeroom = optional($class->homeroomTeacher)->id === $teacherId;
             if (! $ownsSchedules && ! $isHomeroom) {
                 abort(403, 'Tidak boleh melihat rekap kelas ini');
@@ -1071,7 +1147,7 @@ class AttendanceController extends Controller
         }
 
         $data = Attendance::selectRaw('status, count(*) as total')
-            ->whereHas('schedule', fn ($q) => $q->where('class_id', $class->id))
+            ->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $class->id))
             ->groupBy('status')
             ->get();
 
@@ -1352,7 +1428,7 @@ class AttendanceController extends Controller
 
         $data = $request->validate([
             'status' => ['required', 'in:present,late,excused,sick,absent,dispensasi,dinas,izin,return'],
-            'reason' => ['nullable', 'string'],
+            'reason' => ['nullable', 'string', 'required_if:status,return'],
         ]);
 
         $attendance->update([
@@ -1379,7 +1455,12 @@ class AttendanceController extends Controller
         }
 
         $user = $request->user();
-        $query = Attendance::with(['student.user:id,name', 'teacher.user:id,name', 'schedule.class:id,name']);
+        $query = Attendance::with([
+            'student.user:id,name',
+            'teacher.user:id,name',
+            'schedule.subject:id,name',
+            'schedule.dailySchedule.classSchedule.class:id,grade,label,major_id',
+        ]);
 
         if ($request->filled('schedule_id')) {
             $schedule = ScheduleItem::findOrFail($request->integer('schedule_id'));
@@ -1409,7 +1490,7 @@ class AttendanceController extends Controller
                 }
             }
 
-            $query->whereHas('schedule', fn ($q) => $q->where('class_id', $classId));
+            $query->whereHas('schedule.dailySchedule.classSchedule', fn ($q) => $q->where('class_id', $classId));
         }
 
         if ($request->filled('from')) {
@@ -1435,13 +1516,17 @@ class AttendanceController extends Controller
                         ? optional($attendance->student?->user)->name
                         : optional($attendance->teacher?->user)->name;
 
+                    $className = $attendance->schedule?->dailySchedule?->classSchedule?->class?->name
+                        ?? $attendance->schedule?->class?->name
+                        ?? '-';
+
                     fputcsv($handle, [
                         $attendance->attendee_type,
                         $name,
                         $attendance->status,
                         optional($attendance->checked_in_at)->toDateTimeString(),
                         $attendance->reason,
-                        optional($attendance->schedule?->class)->label,
+                        $className,
                         optional($attendance->schedule)->title,
                     ]);
                 }
@@ -1485,7 +1570,7 @@ class AttendanceController extends Controller
         }
 
         // Admin can download any class
-        $query = Attendance::with(['student.user', 'schedule.class'])
+        $query = Attendance::with(['student.user', 'schedule.dailySchedule.classSchedule.class', 'schedule.subject'])
             ->where('attendee_type', 'student');
 
         if ($classId) {

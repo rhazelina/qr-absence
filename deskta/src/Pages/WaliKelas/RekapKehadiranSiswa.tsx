@@ -3,7 +3,7 @@ import { Eye, FileDown, Calendar, ArrowLeft, Search, ClipboardPlus, X, Upload } 
 import WalikelasLayout from "../../component/Walikelas/layoutwakel";
 import { attendanceService } from "../../services/attendanceService";
 import classService from "../../services/classService";
-import { scheduleService } from "../../services/scheduleService";
+import { getTodayScheduleDay, normalizeScheduleDay, scheduleService } from "../../services/scheduleService";
 import { masterService } from "../../services/masterService";
 import type { Subject } from "../../services/masterService";
 
@@ -29,6 +29,7 @@ interface RekapRow {
 
 interface HomeroomScheduleOption {
   id: string;
+  day: string;
   mapel: string;
   guru: string;
   startTime: string;
@@ -45,6 +46,13 @@ interface TimeRangeOption {
 const toHHmm = (value?: string) => {
   if (!value) return "";
   return value.substring(0, 5);
+};
+
+const toDateInputString = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export function RekapKehadiranSiswa({
@@ -100,102 +108,147 @@ export function RekapKehadiranSiswa({
   const [teachersBySubject, setTeachersBySubject] = useState<Record<string, string[]>>({});
   const [timeRangeOptions, setTimeRangeOptions] = useState<TimeRangeOption[]>([]);
 
+  const buildScheduleState = (mappedSchedules: HomeroomScheduleOption[]) => {
+    setHomeroomSchedules(mappedSchedules);
+
+    const mapelGuruMap: Record<string, Set<string>> = {};
+    const timeOptionMap = new Map<string, TimeRangeOption>();
+
+    mappedSchedules.forEach((item) => {
+      if (!mapelGuruMap[item.mapel]) {
+        mapelGuruMap[item.mapel] = new Set<string>();
+      }
+      mapelGuruMap[item.mapel].add(item.guru);
+
+      const value = `${item.startTime}|${item.endTime}`;
+      if (!timeOptionMap.has(value)) {
+        timeOptionMap.set(value, {
+          value,
+          label: `${item.startTime} - ${item.endTime}`,
+          startTime: item.startTime,
+          endTime: item.endTime,
+        });
+      }
+    });
+
+    setTeachersBySubject(
+      Object.fromEntries(
+        Object.entries(mapelGuruMap).map(([mapel, teachers]) => [
+          mapel,
+          Array.from(teachers).sort((a, b) => a.localeCompare(b)),
+        ])
+      )
+    );
+
+    setTimeRangeOptions(
+      Array.from(timeOptionMap.values()).sort((a, b) =>
+        a.startTime.localeCompare(b.startTime)
+      )
+    );
+  };
+
   // Fetch Class Info & Subjects
   useEffect(() => {
+    const mapRawScheduleItems = (items: any[]): HomeroomScheduleOption[] =>
+      items
+        .map((item: any) => {
+          const mapel = item.subject?.name || item.subject_name || item.subject || item.keterangan || "";
+          const guru = item.teacher?.user?.name || item.teacher?.name || item.teacher || "";
+          const startTime = toHHmm(item.start_time);
+          const endTime = toHHmm(item.end_time);
+          const day = normalizeScheduleDay(item.day || item.daily_schedule?.day || item.dailySchedule?.day || "");
+
+          return {
+            id: String(item.id || `${day}-${mapel}-${startTime}-${endTime}`),
+            day,
+            mapel,
+            guru,
+            startTime,
+            endTime,
+          };
+        })
+        .filter(
+          (item: HomeroomScheduleOption) =>
+            !!item.mapel && !!item.guru && !!item.startTime && !!item.endTime
+        );
+
+    const mapClassScheduleItems = (schedulePayload: any): HomeroomScheduleOption[] => {
+      const dailySchedules = schedulePayload?.daily_schedules || schedulePayload?.dailySchedules || [];
+      const rawItems = dailySchedules.flatMap((daily: any) => {
+        const day = normalizeScheduleDay(daily?.day || "");
+        const scheduleItems = daily?.schedule_items || daily?.scheduleItems || [];
+        return scheduleItems.map((item: any) => ({
+          ...item,
+          day,
+        }));
+      });
+
+      return mapRawScheduleItems(rawItems);
+    };
+
+    const fetchSubjects = async () => {
+      try {
+        const data = await masterService.getSubjects();
+        setSubjects(data?.data || []);
+      } catch (error) {
+        console.error("Failed to fetch subjects", error);
+      }
+    };
+
+    const fetchHomeroomSchedules = async (classId?: string | number) => {
+      try {
+        const homeroomData = await scheduleService.getMyHomeroomSchedules();
+        const rawItems = Array.isArray(homeroomData)
+          ? homeroomData
+          : (homeroomData?.items || []);
+
+        let mapped = mapRawScheduleItems(rawItems);
+
+        if (mapped.length === 0 && classId) {
+          const classScheduleData = await scheduleService.getScheduleByClass(classId);
+          mapped = mapClassScheduleItems(classScheduleData);
+        }
+
+        buildScheduleState(mapped);
+      } catch (error) {
+        console.error("Failed to fetch homeroom schedules", error);
+
+        if (!classId) {
+          buildScheduleState([]);
+          return;
+        }
+
+        try {
+          const classScheduleData = await scheduleService.getScheduleByClass(classId);
+          const fallbackMapped = mapClassScheduleItems(classScheduleData);
+          buildScheduleState(fallbackMapped);
+        } catch (fallbackError) {
+          console.error("Failed to fetch fallback class schedule", fallbackError);
+          buildScheduleState([]);
+        }
+      }
+    };
+
     const fetchClass = async () => {
       try {
         const data = await classService.getMyClass();
         setKelasInfo({
           namaKelas: data.name || data.class_name || 'Kelas Tidak Diketahui',
           waliKelas: data.teacher?.user?.name || user.name || 'Wali Kelas',
-          id: data.id
+          id: data.id ? String(data.id) : undefined
         });
+
+        await fetchHomeroomSchedules(data.id);
       } catch (error) {
         console.error("Failed to fetch class info", error);
         setKelasInfo(prev => ({ ...prev, namaKelas: 'Gagal memuat data kelas' }));
-      }
-    };
 
-    const fetchSubjects = async () => {
-      try {
-        const data = await masterService.getSubjects();
-        setSubjects(data);
-      } catch (error) {
-        console.error("Failed to fetch subjects", error);
-      }
-    };
-
-    const fetchHomeroomSchedules = async () => {
-      try {
-        const data = await scheduleService.getMyHomeroomSchedules();
-        const rawItems = Array.isArray(data)
-          ? data
-          : (data?.items || data?.data || []);
-
-        const mapped: HomeroomScheduleOption[] = rawItems
-          .map((item: any) => {
-            const mapel = item.subject?.name || item.subject_name || item.keterangan || "";
-            const guru = item.teacher?.user?.name || item.teacher?.name || "";
-            const startTime = toHHmm(item.start_time);
-            const endTime = toHHmm(item.end_time);
-
-            return {
-              id: String(item.id || `${mapel}-${startTime}-${endTime}`),
-              mapel,
-              guru,
-              startTime,
-              endTime,
-            };
-          })
-          .filter(
-            (item: HomeroomScheduleOption) =>
-              !!item.mapel && !!item.guru && !!item.startTime && !!item.endTime
-          );
-
-        setHomeroomSchedules(mapped);
-
-        const mapelGuruMap: Record<string, Set<string>> = {};
-        const timeOptionMap = new Map<string, TimeRangeOption>();
-
-        mapped.forEach((item) => {
-          if (!mapelGuruMap[item.mapel]) {
-            mapelGuruMap[item.mapel] = new Set<string>();
-          }
-          mapelGuruMap[item.mapel].add(item.guru);
-
-          const value = `${item.startTime}|${item.endTime}`;
-          if (!timeOptionMap.has(value)) {
-            timeOptionMap.set(value, {
-              value,
-              label: `${item.startTime} - ${item.endTime}`,
-              startTime: item.startTime,
-              endTime: item.endTime,
-            });
-          }
-        });
-
-        setTeachersBySubject(
-          Object.fromEntries(
-            Object.entries(mapelGuruMap).map(([mapel, teachers]) => [
-              mapel,
-              Array.from(teachers).sort((a, b) => a.localeCompare(b)),
-            ])
-          )
-        );
-
-        setTimeRangeOptions(
-          Array.from(timeOptionMap.values()).sort((a, b) =>
-            a.startTime.localeCompare(b.startTime)
-          )
-        );
-      } catch (error) {
-        console.error("Failed to fetch homeroom schedules", error);
+        buildScheduleState([]);
       }
     };
 
     fetchClass();
     fetchSubjects();
-    fetchHomeroomSchedules();
   }, [user.name]);
 
   // Fetch Attendance Summary
@@ -287,6 +340,64 @@ export function RekapKehadiranSiswa({
   const guruOptions = useMemo(() => {
     return teachersBySubject[perizinanData.mapel] || [];
   }, [teachersBySubject, perizinanData.mapel]);
+
+  const availableTimeRangeOptions = useMemo(() => {
+    if (!perizinanData.mapel) return timeRangeOptions;
+
+    const filteredSchedules = homeroomSchedules.filter((item) =>
+      item.mapel === perizinanData.mapel &&
+      (!perizinanData.namaGuru || item.guru === perizinanData.namaGuru)
+    );
+
+    if (filteredSchedules.length === 0) return timeRangeOptions;
+
+    const uniqueByValue = new Map<string, TimeRangeOption>();
+    filteredSchedules.forEach((item) => {
+      const value = `${item.startTime}|${item.endTime}`;
+      if (!uniqueByValue.has(value)) {
+        uniqueByValue.set(value, {
+          value,
+          label: `${item.startTime} - ${item.endTime}`,
+          startTime: item.startTime,
+          endTime: item.endTime,
+        });
+      }
+    });
+
+    return Array.from(uniqueByValue.values()).sort((a, b) =>
+      a.startTime.localeCompare(b.startTime)
+    );
+  }, [homeroomSchedules, perizinanData.mapel, perizinanData.namaGuru, timeRangeOptions]);
+
+  useEffect(() => {
+    if (!isPerizinanOpen) return;
+
+    const todayScheduleDay = getTodayScheduleDay();
+    const prioritizedSchedules = homeroomSchedules.filter(
+      (schedule) => schedule.day === todayScheduleDay
+    );
+
+    const defaultSchedule = prioritizedSchedules[0] || homeroomSchedules[0];
+    const defaultMapel = defaultSchedule?.mapel || mapelOptions[0] || "";
+    const defaultGuru = defaultSchedule?.guru || (teachersBySubject[defaultMapel]?.[0] || "");
+    const defaultJam = defaultSchedule
+      ? `${defaultSchedule.startTime}|${defaultSchedule.endTime}`
+      : "";
+    const defaultStudent = rows.find((row) => row.nisn && row.nisn !== "-") || rows[0];
+
+    setPerizinanData((prev) => ({
+      ...prev,
+      nisn: prev.nisn || defaultStudent?.nisn || "",
+      namaSiswa: prev.namaSiswa || defaultStudent?.namaSiswa || "",
+      alasanPulang: prev.alasanPulang || "izin",
+      alasanDetail: prev.alasanDetail || "Simulasi perizinan pulang lebih awal.",
+      mapel: prev.mapel || defaultMapel,
+      namaGuru: prev.namaGuru || defaultGuru,
+      tanggal: prev.tanggal || toDateInputString(),
+      jamPelajaran: prev.jamPelajaran || defaultJam,
+      keterangan: prev.keterangan || "Simulasi perizinan",
+    }));
+  }, [isPerizinanOpen, homeroomSchedules, mapelOptions, rows, teachersBySubject]);
 
   // ... rest of calculations
   const totalHadir = useMemo(() => filteredRows.reduce((sum, row) => sum + row.hadir, 0), [filteredRows]);
@@ -667,16 +778,33 @@ export function RekapKehadiranSiswa({
   };
 
   const handleBuatPerizinan = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayString = `${year}-${month}-${day}`;
+    const todayString = toDateInputString();
+    const todayScheduleDay = getTodayScheduleDay();
+    const prioritizedSchedules = homeroomSchedules.filter(
+      (schedule) => schedule.day === todayScheduleDay
+    );
 
-    setPerizinanData(prev => ({
-      ...prev,
-      tanggal: todayString
-    }));
+    const defaultStudent = rows.find((row) => row.nisn && row.nisn !== "-") || rows[0];
+    const defaultSchedule = prioritizedSchedules[0] || homeroomSchedules[0];
+    const defaultMapel = defaultSchedule?.mapel || mapelOptions[0] || '';
+    const defaultGuru = defaultSchedule?.guru || (teachersBySubject[defaultMapel]?.[0] || '');
+    const defaultJam = defaultSchedule
+      ? `${defaultSchedule.startTime}|${defaultSchedule.endTime}`
+      : '';
+
+    setPerizinanData({
+      nisn: defaultStudent?.nisn || '',
+      namaSiswa: defaultStudent?.namaSiswa || '',
+      alasanPulang: 'izin',
+      alasanDetail: 'Simulasi perizinan pulang lebih awal.',
+      mapel: defaultMapel,
+      namaGuru: defaultGuru,
+      tanggal: todayString,
+      jamPelajaran: defaultJam,
+      keterangan: 'Simulasi perizinan',
+      file1: undefined,
+      file2: undefined,
+    });
 
     setIsPerizinanOpen(true);
   };
@@ -700,8 +828,8 @@ export function RekapKehadiranSiswa({
 
   const handleSubmitPerizinan = async () => {
     if (!perizinanData.nisn || !perizinanData.alasanPulang || !perizinanData.tanggal ||
-      !perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.jamPelajaran) {
-      alert('⚠️ Mohon isi semua field yang diperlukan (termasuk jam pelajaran)');
+      !perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.jamPelajaran || !perizinanData.file1) {
+      alert('⚠️ Mohon isi semua field yang diperlukan, termasuk foto bukti');
       return;
     }
 
@@ -721,8 +849,26 @@ export function RekapKehadiranSiswa({
         return;
       }
 
+      const selectedSchedule = homeroomSchedules.find(
+        (schedule) =>
+          schedule.mapel === perizinanData.mapel &&
+          schedule.guru === perizinanData.namaGuru &&
+          schedule.startTime === selectedTimeRange.startTime &&
+          schedule.endTime === selectedTimeRange.endTime
+      );
+
+      if (!selectedSchedule && homeroomSchedules.length > 0) {
+        alert('⚠️ Kombinasi mapel, guru, dan jam belum sesuai jadwal aktif kelas');
+        return;
+      }
+
+      const scheduleId = selectedSchedule && /^\d+$/.test(selectedSchedule.id)
+        ? selectedSchedule.id
+        : undefined;
+
       await attendanceService.createLeavePermission({
         student_id: siswa.id,
+        schedule_id: scheduleId,
         type: perizinanData.alasanPulang as any,
         start_time: selectedTimeRange.startTime,
         end_time: selectedTimeRange.endTime,
@@ -747,13 +893,7 @@ export function RekapKehadiranSiswa({
 
 
 
-  const todayString = (() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  })();
+  const todayString = toDateInputString();
 
   return (
     <WalikelasLayout
@@ -1390,13 +1530,21 @@ export function RekapKehadiranSiswa({
                   </p>
                   <select
                     value={perizinanData.mapel}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const nextMapel = e.target.value;
+                      const firstMatchedSchedule = homeroomSchedules.find(
+                        (schedule) => schedule.mapel === nextMapel
+                      );
+
                       setPerizinanData((prev) => ({
                         ...prev,
-                        mapel: e.target.value,
-                        namaGuru: '',
-                      }))
-                    }
+                        mapel: nextMapel,
+                        namaGuru: firstMatchedSchedule?.guru || '',
+                        jamPelajaran: firstMatchedSchedule
+                          ? `${firstMatchedSchedule.startTime}|${firstMatchedSchedule.endTime}`
+                          : '',
+                      }));
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -1431,12 +1579,22 @@ export function RekapKehadiranSiswa({
                   </p>
                   <select
                     value={perizinanData.namaGuru}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const nextGuru = e.target.value;
+                      const matchedSchedule = homeroomSchedules.find(
+                        (schedule) =>
+                          schedule.mapel === perizinanData.mapel &&
+                          schedule.guru === nextGuru
+                      );
+
                       setPerizinanData((prev) => ({
                         ...prev,
-                        namaGuru: e.target.value,
-                      }))
-                    }
+                        namaGuru: nextGuru,
+                        jamPelajaran: nextGuru && matchedSchedule
+                          ? `${matchedSchedule.startTime}|${matchedSchedule.endTime}`
+                          : '',
+                      }));
+                    }}
                     disabled={!perizinanData.mapel}
                     style={{
                       width: '100%',
@@ -1536,19 +1694,20 @@ export function RekapKehadiranSiswa({
                             jamPelajaran: e.target.value,
                           }))
                         }
+                        disabled={!perizinanData.mapel}
                         style={{
                           width: '100%',
                           padding: '12px 16px',
                           border: '1px solid #E5E7EB',
                           borderRadius: '8px',
                           fontSize: '14px',
-                          backgroundColor: '#FFFFFF',
-                          color: '#1F2937',
-                          cursor: 'pointer',
+                          backgroundColor: !perizinanData.mapel ? '#F9FAFB' : '#FFFFFF',
+                          color: !perizinanData.mapel ? '#9CA3AF' : '#1F2937',
+                          cursor: !perizinanData.mapel ? 'not-allowed' : 'pointer',
                         }}
                       >
                         <option value="">Pilih jam pelajaran</option>
-                        {timeRangeOptions.map((jam) => (
+                        {availableTimeRangeOptions.map((jam) => (
                           <option key={jam.value} value={jam.value}>
                             {jam.label}
                           </option>

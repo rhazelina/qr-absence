@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
-import { scheduleService } from "../../services/scheduleService";
+﻿import { useState, useEffect } from "react";
+import { scheduleService, getTodayScheduleDay, normalizeScheduleDay } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
-// import { classService } from "../../services/classService";
-import classService from "../../services/classService";
 import SiswaLayout from "../../component/Siswa/SiswaLayout";
 // import openBook from "../../assets/Icon/open-book.png";
 import { Modal } from "../../component/Shared/Modal";
@@ -72,9 +70,19 @@ interface DashboardSiswaProps {
   onLogout: () => void;
 }
 
+const SCHEDULE_TARGET_DAY = "Wednesday"; // Penyesuaian permintaan: hari ini gunakan jadwal Rabu
+const DAY_LABEL_ID: Record<string, string> = {
+  Monday: "Senin",
+  Tuesday: "Selasa",
+  Wednesday: "Rabu",
+  Thursday: "Kamis",
+  Friday: "Jumat",
+  Saturday: "Sabtu",
+  Sunday: "Minggu",
+};
+
 // Mapping ID siswa ke nama removed - using profile data
 
-// Dummy data removed - fetched from API
 
 export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) {
   const [currentPage, setCurrentPage] = useState<SiswaPage>("dashboard");
@@ -84,7 +92,6 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [scheduleImageUrl, setScheduleImageUrl] = useState<string | null>(null);
   const [monthlyTrendData, setMonthlyTrendData] = useState<any[]>([]);
   const [weeklyStats, setWeeklyStats] = useState({
     hadir: 0,
@@ -93,6 +100,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     alpha: 0,
     pulang: 0,
   });
+  const [effectiveScheduleDay, setEffectiveScheduleDay] = useState<string>(normalizeScheduleDay(SCHEDULE_TARGET_DAY));
   // const [dailyStats, setDailyStats] = useState<any[]>([]);
 
   // Use data directly from user object (synced in App.tsx)
@@ -134,56 +142,60 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
       try {
         // Fetch Schedule
         const scheduleResponse = await scheduleService.getMySchedule();
+        const realTodayName = getTodayScheduleDay();
+        const targetDayName = normalizeScheduleDay(SCHEDULE_TARGET_DAY || realTodayName);
+        setEffectiveScheduleDay(targetDayName);
         const scheduleItems = (scheduleResponse.items || [])
           .filter((item: any) => {
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-            const todayName = days[new Date().getDay()];
-            return item.day === todayName;
+            return normalizeScheduleDay(item.day) === targetDayName;
           })
           .map((item: any) => ({
             id: item.id.toString(),
             mapel: item.subject,
-            guru: item.teacher?.name || "Guru",
+            guru: typeof item.teacher === 'object' ? item.teacher.name : (item.teacher || "Guru"),
             start: item.start_time?.substring(0, 5) || "",
             end: item.end_time?.substring(0, 5) || ""
           }));
         setSchedules(scheduleItems);
 
-        // Fetch Schedule Image
-        try {
-          const classInfo = await classService.getMyClass();
-          if (classInfo?.id) {
-            const blob = await classService.getScheduleImage(classInfo.id);
-            const url = URL.createObjectURL(blob);
-            setScheduleImageUrl(url);
-          }
-        } catch {
-          // No schedule image available — ignore
-        }
-
         // Fetch Attendance Summary
         const summaryResponse = await attendanceService.getStudentSummary();
-        if (summaryResponse.status === 'success') {
-          const normalizedTrend = (summaryResponse.data.trend || []).map((t: any) => ({
-            month: t.month,
-            hadir: t.present || 0,
-            alpha: t.absent || 0,
-            sakit: t.sick || 0,
-            izin: t.izin || 0,
-            pulang: t.return || 0
-          }));
-          setMonthlyTrendData(normalizedTrend);
+        const responseData = summaryResponse?.data || {};
+        const trendSource =
+          responseData.trend ||
+          responseData.monthly_trend ||
+          [];
+        const normalizedTrend = (Array.isArray(trendSource) ? trendSource : []).map((t: any) => ({
+          month: t.month || t.label || "-",
+          hadir: t.hadir || t.present || 0,
+          alpha: t.alpha || t.absent || 0,
+          sakit: t.sakit || t.sick || 0,
+          izin: t.izin || t.excused || t.permission || 0,
+          pulang: t.pulang || t.return || 0
+        }));
+        setMonthlyTrendData(normalizedTrend);
 
-          if (summaryResponse.data.statistik) {
-            const s = summaryResponse.data.statistik;
-            setWeeklyStats({
-              hadir: s.hadir || 0,
-              izin: s.izin || 0,
-              sakit: s.sakit || 0,
-              alpha: s.alpha || 0,
-              pulang: s.pulang || 0,
-            });
-          }
+        const statistik = responseData.statistik || responseData.weekly_stats;
+        if (statistik) {
+          setWeeklyStats({
+            hadir: statistik.hadir || 0,
+            izin: statistik.izin || 0,
+            sakit: statistik.sakit || 0,
+            alpha: statistik.alpha || 0,
+            pulang: statistik.pulang || 0,
+          });
+        } else if (Array.isArray(summaryResponse?.status_summary)) {
+          const summaryMap = summaryResponse.status_summary.reduce((acc: any, row: any) => {
+            acc[row.status] = Number(row.total || 0);
+            return acc;
+          }, {});
+          setWeeklyStats({
+            hadir: (summaryMap.present || 0) + (summaryMap.late || 0),
+            izin: (summaryMap.excused || 0) + (summaryMap.permission || 0) + (summaryMap.izin || 0),
+            sakit: summaryMap.sick || 0,
+            alpha: summaryMap.absent || 0,
+            pulang: summaryMap.return || 0,
+          });
         }
 
       } catch (error) {
@@ -192,14 +204,6 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     };
 
     fetchData();
-
-    return () => {
-      // Cleanup blob URL
-      setScheduleImageUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
-    };
   }, []);
 
   const handleMenuClick = (page: string) => {
@@ -583,7 +587,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                       color: "#6B7280",
                       marginBottom: "20px"
                     }}>
-                      {schedules.length} mata pelajaran dijadwalkan
+                      {schedules.length} mata pelajaran dijadwalkan ({DAY_LABEL_ID[effectiveScheduleDay] || effectiveScheduleDay})
                     </div>
                   </div>
                   <div style={{
@@ -627,7 +631,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                     fontWeight: "600",
                     color: "#001F3E"
                   }}>
-                    Jadwal Hari Ini
+                    Jadwal Hari Ini ({DAY_LABEL_ID[effectiveScheduleDay] || effectiveScheduleDay})
                   </h3>
                   <button
                     onClick={() => handleMenuClick("jadwal-anda")}

@@ -258,7 +258,7 @@ class TeacherController extends Controller
             $query->whereYear('date', $request->year);
         }
 
-        $attendances = $query->with(['schedule.class', 'schedule.subject'])
+        $attendances = $query->with(['schedule.dailySchedule.classSchedule.class', 'schedule.subject'])
             ->latest('date')
             ->get();
 
@@ -307,7 +307,44 @@ class TeacherController extends Controller
             });
         }
 
-        return response()->json($query->with(['subject', 'teacher.user'])->get());
+        $items = $query->with(['subject', 'teacher.user', 'dailySchedule.classSchedule.class'])->get();
+
+        $normalized = $items->map(function ($item) {
+            $className = $item->dailySchedule?->classSchedule?->class?->name ?? '-';
+
+            return [
+                'id' => $item->id,
+                'day' => $item->dailySchedule?->day,
+                'start_time' => $item->start_time,
+                'end_time' => $item->end_time,
+                'room' => $item->room,
+                'keterangan' => $item->keterangan,
+                'subject_name' => $item->subject?->name ?? $item->keterangan ?? '-',
+                'subject' => $item->subject ? [
+                    'id' => $item->subject->id,
+                    'name' => $item->subject->name,
+                ] : null,
+                'teacher' => $item->teacher ? [
+                    'id' => $item->teacher->id,
+                    'nip' => $item->teacher->nip,
+                    'name' => $item->teacher->user?->name ?? 'Guru',
+                    'user' => $item->teacher->user ? [
+                        'id' => $item->teacher->user->id,
+                        'name' => $item->teacher->user->name,
+                    ] : null,
+                ] : null,
+                'class' => [
+                    'id' => $item->dailySchedule?->classSchedule?->class?->id,
+                    'name' => $className,
+                ],
+                'class_name' => $className,
+            ];
+        })->values();
+
+        return response()->json([
+            'status' => 'success',
+            'items' => $normalized,
+        ]);
     }
 
     /**

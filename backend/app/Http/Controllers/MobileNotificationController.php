@@ -64,7 +64,7 @@ class MobileNotificationController extends Controller
         })
             ->where('attendee_type', 'teacher')
             ->whereDate('date', $date)
-            ->with('schedule.subject:id,name', 'schedule.class:id,name')
+            ->with('schedule.subject:id,name', 'schedule.dailySchedule.classSchedule.class:id,grade,label,major_id')
             ->get();
 
         foreach ($teachingAttendances as $attendance) {
@@ -89,7 +89,7 @@ class MobileNotificationController extends Controller
                 'detail' => sprintf(
                     'Pelajaran %s - %s',
                     $attendance->schedule->subject->name ?? 'Unknown',
-                    $attendance->schedule->class->name ?? 'Unknown'
+                    $attendance->schedule->dailySchedule?->classSchedule?->class?->name ?? 'Unknown'
                 ),
                 'time' => $attendance->date->format('H:i'),
                 'created_at' => $attendance->created_at->toIso8601String(),

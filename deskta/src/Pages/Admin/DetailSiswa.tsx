@@ -57,10 +57,32 @@ export default function DetailSiswa({
         // Fetch Student Data
         if (siswaId) {
           const response = await studentService.getStudentById(siswaId);
-          const student = response.data;
-          
-          setSiswaData(student);
-          setOriginalData(student);
+          const rawStudent = response?.data ?? response;
+
+          if (!rawStudent || !rawStudent.id) {
+            throw new Error('Data siswa tidak valid dari server');
+          }
+
+          const normalizedStudent: Student = {
+            id: String(rawStudent.id),
+            name: rawStudent.name || '',
+            nisn: rawStudent.nisn || '',
+            nis: rawStudent.nis || '',
+            email: rawStudent.email || '',
+            major: rawStudent.major || '',
+            major_name: rawStudent.major_name || '',
+            class_id: rawStudent.class_id ? String(rawStudent.class_id) : '',
+            class_name: rawStudent.class_name || '',
+            grade: rawStudent.grade || '',
+            gender: rawStudent.gender || 'L',
+            phone: rawStudent.phone || rawStudent.parent_phone || '',
+            address: rawStudent.address || '',
+            photo_url: rawStudent.photo_url || '',
+          };
+
+          setSiswaData(normalizedStudent);
+          setOriginalData(normalizedStudent);
+          setErrorLocal(null);
           
           // Parse tahun angkatan if available, otherwise default
           // Assuming backend doesn't send distinct tahunMulai/Akhir, or we parse from 'grade' or add custom fields
@@ -260,7 +282,7 @@ export default function DetailSiswa({
           justifyContent: 'center',
           alignItems: 'center',
           minHeight: '400px',
-          color: 'white', // Changed to white for dark theme
+          color: '#1F2937',
           fontSize: '18px',
         }}>
           {loading ? 'Loading data siswa...' : (errorLocal || 'Data tidak ditemukan')}

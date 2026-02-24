@@ -15,7 +15,17 @@ interface AbsensiRecord {
   keterangan?: string; // Tambahan untuk izin/sakit/pulang
   namaSiswa?: string;
   nis?: string;
+  created_at?: string;
 }
+
+const normalizeStatus = (status?: string): AbsensiRecord["status"] => {
+  const key = String(status || "").toLowerCase();
+  if (key === "present" || key === "late" || key === "hadir" || key === "terlambat") return "hadir";
+  if (key === "excused" || key === "permission" || key === "izin") return "izin";
+  if (key === "sick" || key === "sakit") return "sakit";
+  if (key === "return" || key === "pulang" || key === "early_leave") return "pulang";
+  return "alfa";
+};
 
 function CalendarIcon() {
   return (
@@ -151,12 +161,40 @@ export default function TidakHadirPenguruskelas({
             // Need to handle this or filter in frontend
             delete params.status;
           } else {
-            params.status = statusFilter;
+            params.status =
+              statusFilter === "alfa" ? "absent" :
+                statusFilter === "pulang" ? "return" :
+                  statusFilter;
           }
         }
 
         const data = await classService.getMyClassAttendance(params);
-        setAttendanceData(data);
+        const normalized = (Array.isArray(data) ? data : []).map((row: any) => {
+          const status = normalizeStatus(row.status);
+          const subjectName =
+            row.schedule?.subject?.name ||
+            row.schedule?.subject_name ||
+            row.schedule?.keterangan ||
+            "-";
+          const studentName = row.student?.user?.name || row.student?.name || "-";
+          const jam = row.schedule
+            ? `${(row.schedule.start_time || "").substring(0, 5)} - ${(row.schedule.end_time || "").substring(0, 5)}`
+            : "-";
+
+          return {
+            id: String(row.id),
+            tanggal: row.date || row.created_at || "-",
+            jamPelajaran: jam,
+            mataPelajaran: subjectName,
+            guru: row.schedule?.teacher?.user?.name || "-",
+            status,
+            keterangan: row.reason || "-",
+            namaSiswa: studentName,
+            nis: row.student?.nis || row.student?.nisn || "-",
+            created_at: row.created_at,
+          } as AbsensiRecord;
+        });
+        setAttendanceData(normalized);
       } catch (err) {
         console.error("Failed to fetch attendance:", err);
       } finally {
@@ -266,26 +304,29 @@ export default function TidakHadirPenguruskelas({
       label: "Tanggal",
       width: "130px",
       align: "center" as const,
-      render: (_: any, row: any) => new Date(row.created_at).toLocaleDateString("id-ID"),
+      render: (_: any, row: AbsensiRecord) =>
+        row.tanggal && row.tanggal !== "-"
+          ? new Date(row.tanggal).toLocaleDateString("id-ID")
+          : "-",
     },
     {
       key: "jamPelajaran",
       label: "Jam Pelajaran",
       width: "130px",
       align: "center" as const,
-      render: (_: any, row: any) => row.schedule ? `${row.schedule.start_time.substring(0, 5)} - ${row.schedule.end_time.substring(0, 5)}` : "-",
+      render: (_: any, row: AbsensiRecord) => row.jamPelajaran || "-",
     },
     {
       key: "mataPelajaran",
       label: "Mata Pelajaran",
       width: "180px",
-      render: (_: any, row: any) => row.schedule?.subject?.name || "-",
+      render: (_: any, row: AbsensiRecord) => row.mataPelajaran || "-",
     },
     {
       key: "namaSiswa",
       label: "Nama Siswa",
       width: "200px",
-      render: (_: any, row: any) => row.student?.user?.name || "-",
+      render: (_: any, row: AbsensiRecord) => row.namaSiswa || "-",
     },
     {
       key: "status",

@@ -107,6 +107,67 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
   const [importRowErrors, setImportRowErrors] = useState<{[key: number]: string[]}>({});
 
+  const normalizeText = (value: unknown) =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+
+  const getRowValue = (row: Record<string, any>, keys: string[]) => {
+    const normalizedAliases = keys.map((k) => normalizeText(k).replace(/[^a-z0-9]/g, ''));
+
+    for (const [rawKey, rawValue] of Object.entries(row)) {
+      const normalizedKey = normalizeText(rawKey).replace(/[^a-z0-9]/g, '');
+      if (!normalizedAliases.includes(normalizedKey)) continue;
+      if (rawValue === undefined || rawValue === null) continue;
+      if (String(rawValue).trim() === '') continue;
+      return rawValue;
+    }
+
+    return '';
+  };
+
+  const resolveClassIdFromImport = (classInputRaw: string, majorInputRaw: string) => {
+    const classInput = String(classInputRaw || '').trim();
+    const majorInput = String(majorInputRaw || '').trim();
+    if (!classInput) return '';
+
+    const byId = classes.find((c) => c.id.toString() === classInput);
+    if (byId) return byId.id.toString();
+
+    const normalizedClass = normalizeText(classInput);
+    const normalizedMajor = normalizeText(majorInput);
+    const major = majors.find(
+      (m) => normalizeText(m.code) === normalizedMajor || normalizeText(m.name) === normalizedMajor
+    );
+
+    let candidates = classes.filter((c) => {
+      const name = normalizeText(c.name);
+      const label = normalizeText(c.label);
+      const grade = normalizeText(c.grade);
+      return (
+        name === normalizedClass ||
+        label === normalizedClass ||
+        grade === normalizedClass ||
+        name.includes(normalizedClass) ||
+        label.includes(normalizedClass)
+      );
+    });
+
+    if (major) {
+      const byMajor = candidates.filter((c) => c.major_id === major.id);
+      if (byMajor.length > 0) candidates = byMajor;
+    }
+
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => a.id - b.id);
+      return candidates[0].id.toString();
+    }
+
+    // Fallback: allow backend resolver (grade/label) to process this string.
+    return classInput;
+  };
+
   // Initial Data Fetch
   useEffect(() => {
     fetchMasterData();
@@ -352,16 +413,46 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             return v === '1' || v === 'true' || v === 'ya' || v === 'yes';
           };
 
+          const name = String(
+            getRowValue(row, ['Nama Siswa', 'Nama', 'name', '__EMPTY'])
+          ).trim();
+          const nisn = String(
+            getRowValue(row, ['NISN', 'nisn', '__EMPTY_1'])
+          ).trim();
+          const majorInput = String(
+            getRowValue(row, [
+              'Konsentrasi Keahlian',
+              'Kode Konsentrasi Keahlian',
+              'Jurusan',
+              'Konsentrasi',
+              'major',
+              'major_name'
+            ])
+          ).trim();
+          const tingkatanInput = String(
+            getRowValue(row, [
+              'Tingkatan Kelas',
+              'Tingkatan',
+              'Kelas',
+              'class_id',
+              'ClassID',
+              '__EMPTY_2'
+            ])
+          ).trim();
+          const resolvedClassId = resolveClassIdFromImport(tingkatanInput, majorInput);
+
           return {
-            name: row.Nama || row.name || row.__EMPTY || '',
+            name,
             username: row.Username || row.username || '',
             email: row.Email || row.email || null,
             password: row.Password || row.password || null,
-            nisn: (row.NISN || row.nisn || row.__EMPTY_1 || '').toString(),
-            nis: (row.NIS || row.nis || row.nisn || row.__EMPTY_1 || '').toString(),
+            nisn,
+            nis: (row.NIS || row.nis || nisn).toString(),
             gender: sanitizeGender(row['Jenis Kelamin'] || row.gender || row.Gender || row.JK),
             address: row.Alamat || row.address || '',
-            class_id: row.Kelas || row.class_id || row.KELAS || row.ClassID || row.__EMPTY_2 || '', // Can be name or ID
+            class_id: resolvedClassId, // numeric id if resolved; fallback raw text for backend resolver
+            major_display: majorInput,
+            tingkatan_display: tingkatanInput,
             is_class_officer: sanitizeBoolean(row['Pengurus Kelas'] || row.is_class_officer || row.PengurusKelas || row.Pengurus_Kelas),
             phone: (row.Telepon || row.phone || row.hp || row.Mobile || null)?.toString(),
             contact: row.Kontak || row.contact || null
@@ -421,24 +512,18 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   const handleDownloadFormatExcel = () => {
     const format = [
       {
-        'Nama': 'Ahmad Siswa',
-        'Username': 'ahmad123',
-        'Email': 'ahmad@example.com',
-        'Password': '',
-        'NISN': '0012345678',
-        'NIS': '12345',
+        'Nama Siswa': 'Arie',
+        'NISN': '00123456789',
+        'Konsentrasi Keahlian': 'RPL',
+        'Tingkatan Kelas': 'RPL 2',
         'Jenis Kelamin': 'L',
-        'Alamat': 'Jl. Contoh No. 123',
-        'Kelas': 'XII RPL 2',
-        'Pengurus Kelas': 'Tidak',
-        'Telepon': '08123456789',
-        'Kontak': 'Ibu Ahmad'
+
       },
     ];
     const ws = XLSX.utils.json_to_sheet(format);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Format Import Siswa');
-    XLSX.writeFile(wb, 'Format_Import_Siswa.xlsx');
+    XLSX.writeFile(wb, 'Format_Import_Siswa_Final.xlsx');
   };
 
   const handleExportPDF = () => {
@@ -1046,14 +1131,14 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                   <tr>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Nama</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>NISN</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Username</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Kelas</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Gender</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Konsentrasi Keahlian</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Tingkatan Kelas</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Jenis Kelamin</th>
                   </tr>
                 </thead>
                 <tbody>
                   {importPreviewData.map((row, idx) => {
-                    const hasError = importRowErrors[idx];
+                    const hasError = importRowErrors[idx + 1];
                     return (
                       <tr key={idx} style={{ 
                         borderBottom: '1px solid #F3F4F6',
@@ -1068,8 +1153,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                           {row.name}
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('NISN')) ? '#EF4444' : 'inherit' }}>{row.nisn}</td>
-                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('Username')) ? '#EF4444' : 'inherit' }}>{row.username}</td>
-                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('Kelas')) ? '#EF4444' : 'inherit' }}>{row.class_id}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => /konsentrasi|major/i.test(e)) ? '#EF4444' : 'inherit' }}>{row.major_display || '-'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => /tingkatan|kelas|class/i.test(e)) ? '#EF4444' : 'inherit' }}>{row.tingkatan_display || row.class_id || '-'}</td>
                         <td style={{ padding: '10px 12px', fontSize: '12px' }}>{row.gender}</td>
                       </tr>
                     );

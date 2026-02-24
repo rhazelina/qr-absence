@@ -238,7 +238,7 @@ class StudentController extends Controller
             ->firstOrFail();
 
         $query = $student->attendances()
-            ->with(['schedule.class', 'schedule.teacher.user', 'schedule.subject']) // Added relations for detail view
+            ->with(['schedule.dailySchedule.classSchedule.class', 'schedule.teacher.user', 'schedule.subject']) // Added relations for detail view
             ->latest('date');
 
         if ($request->filled('from')) {

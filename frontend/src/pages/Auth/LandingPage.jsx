@@ -77,13 +77,16 @@ const LandingPage = () => {
         <h2>{namaSekolah}</h2>
       </div>
 
-      {/* Hanya tampilkan maskot jika sudah di-upload */}
+      {/* Hanya tampilkan maskot jika sudah di-upload atau ada di localStorage */}
       {maskot && (
         <div className="maskot-container">
           <img 
-            src={maskot} 
+            src={maskot.startsWith('http') ? maskot : (maskot.startsWith('data:') ? maskot : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${maskot}`)} 
             alt="Maskot Sekolah" 
             className="maskot-image" 
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
           />
         </div>
       )}

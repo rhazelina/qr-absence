@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { scheduleService } from "../../services/scheduleService";
+import { scheduleService, getTodayScheduleDay, normalizeScheduleDay } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
 import { authService } from "../../services/authService";
 import { teacherService } from "../../services/teacherService";
@@ -15,6 +15,7 @@ import { JadwalModal } from "../../component/Shared/Form/Jadwal";
 import { Modal } from "../../component/Shared/Modal";
 import { MetodeGuru } from "../../component/Shared/Form/MetodeGuru";
 import { TidakBisaMengajar } from "../../component/Shared/Form/TidakBisaMengajar";
+import { CameraScanner } from "../../component/Shared/CameraScanner";
 
 
 // Icon Components
@@ -302,9 +303,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   const [currentTimeStr, setCurrentTimeStr] = useState("");
   const [iconStates, setIconStates] = useState<Record<string, "qr" | "eye">>({});
   const [isScanning, setIsScanning] = useState(false);
-  const [qrCode, setQrCode] = useState<string | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const [isScheduleImageModalOpen, setIsScheduleImageModalOpen] = useState(false);
 
   // ========== EFFECTS ==========
@@ -359,17 +358,16 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
       const response = await scheduleService.getMySchedule();
       const items = response.items || [];
 
-      // Filter for today
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const now = new Date();
-      const todayIndex = now.getDay();
-      const tomorrowIndex = (todayIndex + 1) % 7;
-      
-      const todayName = days[todayIndex];
-      const tomorrowName = days[tomorrowIndex];
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      const todayName = getTodayScheduleDay();
+      const tomorrowName = normalizeScheduleDay(
+        tomorrow.toLocaleDateString("en-US", { weekday: "long" })
+      );
 
       const mapItems = (dayName: string) => items
-        .filter((item: any) => item.day === dayName)
+        .filter((item: any) => normalizeScheduleDay(item.day) === dayName)
         .map((item: any) => ({
           id: item.id.toString(),
           subject: item.subject,
@@ -402,40 +400,11 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
   // ========== SCHEDULE HANDLERS ==========
 
-  const handleGenerateQrForSchedule = async (schedule: ScheduleItem) => {
-    try {
-      setIsGeneratingQr(true);
-      const response = await attendanceService.generateQrCode(schedule.id, 'student');
-      
-      if (response && response.token) {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(response.token)}`;
-        setQrCode(qrUrl);
-        setSelectedSchedule(schedule);
-        setIsQrModalOpen(true);
-      }
-    } catch (err: any) {
-      console.error('Error generating QR:', err);
-      alert(err.message || 'Gagal membuat QR Code');
-    } finally {
-      setIsGeneratingQr(false);
-    }
-  };
-
   const handleActionClick = (e: React.MouseEvent, schedule: ScheduleItem) => {
     e.stopPropagation();
-    const currentState = iconStates[schedule.id] || "qr";
-
-    if (currentState === "qr") {
-      // First click: Generate QR and show it
-      setIconStates((prev) => ({ ...prev, [schedule.id]: "eye" }));
-      setSelectedSchedule(schedule);
-      handleGenerateQrForSchedule(schedule);
-    } else {
-      // Second click: Change back to QR and navigate to view attendance
-      setIconStates((prev) => ({ ...prev, [schedule.id]: "qr" }));
-      setSelectedSchedule(schedule);
-      setCurrentPage("kehadiran");
-    }
+    setSelectedSchedule(schedule);
+    setIconStates((prev) => ({ ...prev, [schedule.id]: "eye" }));
+    setIsQrModalOpen(true);
   };
 
   // ========== MODAL HANDLERS ==========
@@ -474,20 +443,43 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
     setActiveModal(null);
   };
 
+  const extractTokenFromScan = (text: string): string => {
+    const raw = String(text || "").trim();
+    if (!raw) return "";
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.token) {
+        return String(parsed.token);
+      }
+    } catch {
+      // Fallback to raw string token
+    }
+
+    return raw;
+  };
+
   const handleScanSuccess = async (text: string) => {
     if (!selectedSchedule || isScanning) return;
-    
+
+    const token = extractTokenFromScan(text);
+    if (!token) {
+      alert("QR tidak valid. Silakan scan ulang QR dari pengurus kelas.");
+      return;
+    }
+
     setIsScanning(true);
-    
+
     try {
-      await attendanceService.scanStudent(text, selectedSchedule.id);
-      alert("Berhasil mencatat kehadiran siswa!");
-      setActiveModal(null);
-      setCurrentPage("input-manual");
+      const response = await attendanceService.scanQrToken(token);
+      alert(response?.message || "Berhasil mencatat kehadiran guru.");
+      setIsQrModalOpen(false);
+      setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
+      setCurrentPage("kehadiran");
     } catch (error: any) {
-      const errorMessage = error.response?.status === 409 
-        ? "Siswa ini sudah melakukan absensi!"
-        : error.message || "Gagal mencatat kehadiran.";
+      const errorMessage = error?.status === 409
+        ? "Presensi sudah tercatat."
+        : error?.message || "Gagal scan QR pengurus kelas.";
       alert(errorMessage);
     } finally {
       setIsScanning(false);
@@ -1061,8 +1053,16 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
               onPilihMetode={handlePilihMetodeDariTidakBisaMengajar}
             />
 
-            {/* QR Code Display Modal */}
-            <Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)}>
+            {/* Scan QR Pengurus Kelas */}
+            <Modal
+              isOpen={isQrModalOpen}
+              onClose={() => {
+                setIsQrModalOpen(false);
+                if (selectedSchedule) {
+                  setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
+                }
+              }}
+            >
               <div style={{
                 backgroundColor: "#FFFFFF",
                 borderRadius: 24,
@@ -1074,7 +1074,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                 textAlign: "center"
               }}>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0, marginBottom: 8 }}>
-                  QR Code Absensi
+                  Scan QR Pengurus Kelas
                 </h2>
                 <p style={{ fontSize: 14, color: "#6B7280", marginTop: 0, marginBottom: 16 }}>
                   {selectedSchedule?.subject} - {selectedSchedule?.className}
@@ -1087,41 +1087,27 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                   marginBottom: 20,
                   background: "#fff"
                 }}>
-                  {isGeneratingQr ? (
-                    <div style={{ padding: 40 }}>Membuat QR Code...</div>
-                  ) : qrCode ? (
-                    <img src={qrCode} alt="QR Code" style={{ width: 250, height: 250 }} />
+                  {isScanning ? (
+                    <div style={{ padding: 40 }}>Memproses hasil scan...</div>
                   ) : (
-                    <div style={{ padding: 40 }}>Tidak ada QR</div>
+                    <CameraScanner
+                      onScanSuccess={handleScanSuccess}
+                      onScanError={() => { }}
+                    />
                   )}
                 </div>
 
                 <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
-                  QR Code berlaku selama 2 jam
+                  Arahkan kamera ke QR dari Pengurus Kelas.
                 </p>
 
                 <button
                   onClick={() => {
                     setIsQrModalOpen(false);
-                    setCurrentPage("input-manual");
+                    if (selectedSchedule) {
+                      setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
+                    }
                   }}
-                  style={{
-                    width: "100%",
-                    padding: "12px 24px",
-                    background: "#2563EB",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 10,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    cursor: "pointer"
-                  }}
-                >
-                  Mulai Presensi Manual
-                </button>
-
-                <button
-                  onClick={() => setIsQrModalOpen(false)}
                   style={{
                     width: "100%",
                     padding: "12px 24px",

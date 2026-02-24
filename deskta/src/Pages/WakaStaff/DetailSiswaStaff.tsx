@@ -38,8 +38,10 @@ export default function DetailSiswaStaff({
   onMenuClick,
   selectedKelas,
   payload,
-  onNavigateToRecap
+  onNavigateToRecap,
+  kelasId,
 }: DetailSiswaStaffProps) {
+  const resolvedKelasId = kelasId || payload?.kelasId || undefined;
   // State for data
   const [attendanceData, setAttendanceData] = useState<ClassAttendanceResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -127,10 +129,10 @@ const DetailRow = ({ label, value, icon }: { label: string; value: string; icon?
 
   // Fetch data when date changes
   useEffect(() => {
-    if (selectedTanggal && payload?.kelasId) {
-        fetchAttendance(payload.kelasId, selectedTanggal);
+    if (selectedTanggal && resolvedKelasId) {
+        fetchAttendance(resolvedKelasId, selectedTanggal);
     }
-  }, [selectedTanggal, payload?.kelasId]);
+  }, [selectedTanggal, resolvedKelasId]);
 
   const fetchAttendance = async (classId: string, date: string) => {
     setLoading(true);

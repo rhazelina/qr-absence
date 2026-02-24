@@ -69,6 +69,17 @@ interface DashboardPengurusKelasProps {
   onLogout: () => void;
 }
 
+const SCHEDULE_TARGET_DAY = "Wednesday"; // Penyesuaian permintaan: gunakan jadwal Rabu
+const DAY_LABEL_ID: Record<string, string> = {
+  Monday: "Senin",
+  Tuesday: "Selasa",
+  Wednesday: "Rabu",
+  Thursday: "Kamis",
+  Friday: "Jumat",
+  Saturday: "Sabtu",
+  Sunday: "Minggu",
+};
+
 const normalizeDayName = (day?: string) => {
   if (!day) return "";
   const key = day.trim().toLowerCase();
@@ -177,6 +188,7 @@ export default function DashboardPengurusKelas({
 
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [effectiveScheduleDay, setEffectiveScheduleDay] = useState<string>(normalizeDayName(SCHEDULE_TARGET_DAY));
 
   useEffect(() => {
     const fetchSchoolHours = async () => {
@@ -218,9 +230,11 @@ export default function DashboardPengurusKelas({
             start: toHourMinute(item.start_time),
             end: toHourMinute(item.end_time),
           }));
-          const todayKey = normalizeDayName(
+          const realTodayKey = normalizeDayName(
             new Date().toLocaleDateString("en-US", { weekday: "long" })
           );
+          const todayKey = normalizeDayName(SCHEDULE_TARGET_DAY || realTodayKey);
+          setEffectiveScheduleDay(todayKey);
           setSchedules(mapped.filter((item) => normalizeDayName(item.day) === todayKey));
         }
       } catch (error) {
@@ -454,7 +468,7 @@ export default function DashboardPengurusKelas({
                     marginBottom: "8px",
                   }}
                 >
-                  Total Mata Pelajaran Hari Ini
+                  Total Mata Pelajaran Hari Ini ({DAY_LABEL_ID[effectiveScheduleDay.charAt(0).toUpperCase() + effectiveScheduleDay.slice(1)] || effectiveScheduleDay})
                 </div>
                 <div
                   style={{
@@ -618,6 +632,7 @@ export default function DashboardPengurusKelas({
             isOpen={isMapelModalOpen}
             onClose={() => setIsMapelModalOpen(false)}
             schedules={schedules}
+            dayLabel={DAY_LABEL_ID[effectiveScheduleDay.charAt(0).toUpperCase() + effectiveScheduleDay.slice(1)] || effectiveScheduleDay}
           />
         </>
       )}
@@ -884,10 +899,12 @@ function MapelListModal({
   isOpen,
   onClose,
   schedules,
+  dayLabel,
 }: {
   isOpen: boolean;
   onClose: () => void;
   schedules: ScheduleItem[];
+  dayLabel: string;
 }) {
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -914,7 +931,7 @@ function MapelListModal({
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <BookOpen size={24} color="white" />
             <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: 0 }}>
-              Jadwal Pelajaran Hari Ini
+              Jadwal Pelajaran Hari Ini ({dayLabel})
             </h2>
           </div>
           <button

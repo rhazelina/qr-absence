@@ -373,7 +373,6 @@ function Riwayat() {
               <div>Mata Pelajaran</div>
               <div>Guru</div>
               <div>Status</div>
-              <div>Detail</div>
             </div>
 
             {attendanceRecords.map((record, index) => (
@@ -387,15 +386,6 @@ function Riwayat() {
                   <span className={`status-badge ${record.statusColor}`}>
                     {record.status}
                   </span>
-                </div>
-                <div className="table-cell">
-                  <button 
-                    className="view-btn" 
-                    onClick={() => handleViewDetail(record)}
-                    title="Lihat Detail"
-                  >
-                    <Eye size={28} />
-                  </button>
                 </div>
               </div>
             ))}

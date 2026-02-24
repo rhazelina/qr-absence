@@ -179,13 +179,22 @@ class ScheduleController extends Controller
                 })
                 ->get()
                 ->map(function ($item) {
+                    $className = $item->dailySchedule?->classSchedule?->class?->name ?? '-';
+
                     return [
+                        'id' => $item->id,
                         'day' => $item->dailySchedule->day,
                         'start_time' => $item->start_time,
                         'end_time' => $item->end_time,
-                        'class' => $item->dailySchedule->classSchedule->class->name,
+                        'class' => $className,
+                        'class_name' => $className,
                         'subject' => $item->subject->name ?? 'N/A',
+                        'subject_name' => $item->subject->name ?? 'N/A',
                         'room' => $item->room,
+                        'teacher' => [
+                            'id' => $item->teacher_id,
+                            'name' => $item->teacher?->user?->name ?? 'Guru',
+                        ],
                     ];
                 });
 

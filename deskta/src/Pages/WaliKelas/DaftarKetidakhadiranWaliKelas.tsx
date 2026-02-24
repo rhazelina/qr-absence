@@ -4,6 +4,8 @@ import { User, ArrowLeft, Eye } from "lucide-react";
 import { Modal } from "../../component/Shared/Modal";
 import { attendanceService } from "../../services/attendanceService";
 import classService from "../../services/classService";
+import { masterService } from "../../services/masterService";
+import { API_BASE_URL } from "../../services/api";
 
 type StatusKehadiran = "Izin" | "Sakit" | "Alfa" | "Pulang";
 
@@ -19,6 +21,50 @@ type RowKehadiran = {
   bukti?: string;
   studentId?: string;
   scheduleId?: string;
+};
+
+type TimeSlotRow = {
+  id: number;
+  name: string;
+  start_time: string;
+  end_time: string;
+};
+
+const normalizeHHmm = (value?: string) => (value || "").slice(0, 5);
+
+const resolveStorageFileUrl = (pathOrUrl?: string) => {
+  if (!pathOrUrl) return undefined;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+
+  const trimmed = pathOrUrl.replace(/^\/+/, "");
+  const fromEnv = import.meta.env.VITE_STORAGE_URL as string | undefined;
+  if (fromEnv) {
+    return `${fromEnv.replace(/\/+$/, "")}/${trimmed}`;
+  }
+
+  const apiBase = API_BASE_URL.replace(/\/+$/, "");
+  const appBase = apiBase.replace(/\/api$/, "");
+  return `${appBase}/storage/${trimmed}`;
+};
+
+const buildPeriodLabel = (startTime?: string, endTime?: string, timeSlots: TimeSlotRow[] = []) => {
+  const start = normalizeHHmm(startTime);
+  const end = normalizeHHmm(endTime);
+  if (!start || !end || timeSlots.length === 0) {
+    return start && end ? `${start} - ${end}` : "-";
+  }
+
+  const sorted = [...timeSlots].sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const slotStartIndex = sorted.findIndex((slot) => normalizeHHmm(slot.start_time) === start);
+  const slotEndIndex = sorted.findIndex((slot) => normalizeHHmm(slot.end_time) === end);
+
+  if (slotStartIndex !== -1 && slotEndIndex !== -1 && slotEndIndex >= slotStartIndex) {
+    const from = slotStartIndex + 1;
+    const to = slotEndIndex + 1;
+    return from === to ? `Jam ${from}` : `Jam ${from}-${to}`;
+  }
+
+  return `${start} - ${end}`;
 };
 
 interface DaftarKetidakhadiranWaliKelasProps {
@@ -55,8 +101,16 @@ export default function DaftarKetidakhadiranWaliKelas({
         setIsLoading(true);
         setError(null);
 
-        // Get homeroom class info
-        const classData = await classService.getMyClass();
+        // Get homeroom class info + time slots
+        const [classData, timeSlotResponse] = await Promise.all([
+          classService.getMyClass(),
+          masterService.getTimeSlots(),
+        ]);
+
+        const slotRaw = Array.isArray(timeSlotResponse?.data)
+          ? timeSlotResponse.data
+          : (timeSlotResponse?.data?.data || []);
+
         const classId = classData.id;
         // const className = classData.name || classData.class_name || 'Kelas Tidak Diketahui';
         // setKelasInfo({ id: classId, namaKelas: className });
@@ -68,10 +122,6 @@ export default function DaftarKetidakhadiranWaliKelas({
           to: new Date().toISOString().split('T')[0]
         };
 
-        if (selectedStudentId) {
-          params.student_id = selectedStudentId;
-        }
-
         const response = await attendanceService.getClassStudentsAbsences(classId, params);
 
         if (response && response.data) {
@@ -81,28 +131,37 @@ export default function DaftarKetidakhadiranWaliKelas({
 
           studentsData.forEach((studentGroup: any) => {
             const student = studentGroup.student;
+            if (selectedStudentId && String(student?.id) !== String(selectedStudentId)) {
+              return;
+            }
             const items = studentGroup.items || [];
 
             items.forEach((item: any) => {
               const status = item.status?.toLowerCase();
               let mappedStatus: StatusKehadiran = "Alfa";
 
-              if (status === 'permission' || status === 'izin') mappedStatus = "Izin";
+              if (status === 'permission' || status === 'izin' || status === 'excused') mappedStatus = "Izin";
               else if (status === 'sick' || status === 'sakit') mappedStatus = "Sakit";
               else if (status === 'early_leave' || status === 'return' || status === 'pulang') mappedStatus = "Pulang";
               else if (status === 'alpha' || status === 'absent' || status === 'alfa') mappedStatus = "Alfa";
               else return; // Skip if status is not one we want to track here
 
+              const attachmentFromAttendance = item.attachments?.[0];
+              const attachmentUrl =
+                attachmentFromAttendance?.url ||
+                resolveStorageFileUrl(attachmentFromAttendance?.path) ||
+                resolveStorageFileUrl(item.reason_file);
+
               mappedRows.push({
                 id: item.id,
                 no: mappedRows.length + 1,
                 tanggal: item.date || '-',
-                jam: item.schedule?.period || item.jam_ke || '-',
+                jam: buildPeriodLabel(item.schedule?.start_time, item.schedule?.end_time, slotRaw),
                 mapel: item.schedule?.subject_name || item.schedule?.mataPelajaran || '-',
                 guru: item.schedule?.teacher?.user?.name || item.schedule?.guru || '-',
                 status: mappedStatus,
                 keterangan: item.reason || item.keterangan || '-',
-                bukti: item.document_path ? `${import.meta.env.VITE_STORAGE_URL}/${item.document_path}` : undefined,
+                bukti: attachmentUrl,
                 studentId: student?.id,
                 scheduleId: item.schedule_id
               });
@@ -159,11 +218,15 @@ export default function DaftarKetidakhadiranWaliKelas({
 
   const handleUpdateAttendance = async () => {
     if (!selectedRecord) return;
+    if (selectedRecord.status === "Pulang" && !editableReason.trim()) {
+      alert("⚠️ Catatan keterangan wajib diisi untuk status Pulang");
+      return;
+    }
     try {
       setIsUpdatingReason(true);
       await attendanceService.updateAttendanceStatus(
         selectedRecord.id.toString(),
-        selectedRecord.status,
+        selectedRecord.status.toLowerCase(),
         editableReason
       );
 
@@ -193,6 +256,9 @@ export default function DaftarKetidakhadiranWaliKelas({
     } else if (status === "Sakit") {
       bgColor = COLORS.SAKIT;
       label = "Sakit";
+    } else if (status === "Pulang") {
+      bgColor = COLORS.PULANG;
+      label = "Pulang";
     }
 
     return (
@@ -623,8 +689,22 @@ export default function DaftarKetidakhadiranWaliKelas({
                   <div style={{ 
                     padding: '4px 16px', 
                     borderRadius: '20px', 
-                    backgroundColor: selectedRecord.status === 'Alfa' ? '#FEE2E2' : '#EFF6FF',
-                    color: selectedRecord.status === 'Alfa' ? '#B91C1C' : '#1E40AF',
+                    backgroundColor:
+                      selectedRecord.status === 'Alfa'
+                        ? '#FEE2E2'
+                        : selectedRecord.status === 'Sakit'
+                          ? '#F3E8FF'
+                          : selectedRecord.status === 'Izin'
+                            ? '#FEF9C3'
+                            : '#DBEAFE',
+                    color:
+                      selectedRecord.status === 'Alfa'
+                        ? '#B91C1C'
+                        : selectedRecord.status === 'Sakit'
+                          ? '#6B21A8'
+                          : selectedRecord.status === 'Izin'
+                            ? '#854D0E'
+                            : '#1E40AF',
                     fontWeight: 800,
                     fontSize: '13px'
                   }}>
@@ -640,12 +720,16 @@ export default function DaftarKetidakhadiranWaliKelas({
                     color: "#374151",
                     marginBottom: 8,
                   }}>
-                    Keterangan :
+                    Keterangan {selectedRecord.status === "Pulang" ? "*" : ":"}
                   </label>
                   <textarea
                     value={editableReason}
                     onChange={(e) => setEditableReason(e.target.value)}
-                    placeholder="Masukkan keterangan (opsional)..."
+                    placeholder={
+                      selectedRecord.status === "Pulang"
+                        ? "Contoh: Pulang karena kontrol ke dokter, dijemput orang tua."
+                        : "Masukkan keterangan (opsional)..."
+                    }
                     style={{
                       width: "100%",
                       minHeight: "100px",

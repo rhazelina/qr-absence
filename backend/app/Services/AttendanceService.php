@@ -44,7 +44,7 @@ class AttendanceService
             throw new \Exception('QR tidak aktif atau sudah kadaluarsa', 422);
         }
 
-        if ($qr->type === 'student' && $user->user_type !== 'student') {
+        if ($qr->type === 'student' && ! in_array($user->user_type, ['student', 'teacher'], true)) {
             throw new \Exception('QR hanya untuk siswa', 403);
         }
 
@@ -58,6 +58,14 @@ class AttendanceService
 
         if ($user->user_type === 'teacher' && ! $user->teacherProfile) {
             throw new \Exception('Profil guru tidak ditemukan', 422);
+        }
+
+        if ($user->user_type === 'teacher') {
+            $teacherId = $user->teacherProfile->id;
+            $isOwner = $qr->schedule->teacher_id === $teacherId;
+            if (! $isOwner) {
+                throw new \Exception('QR ini bukan untuk jadwal mengajar Anda', 403);
+            }
         }
 
         // Class ownership validation for students
@@ -88,8 +96,8 @@ class AttendanceService
 
         // 3. Check if Schedule is Open (skip in demo mode)
         $demoMode = config('app.demo_mode', false);
-        
-        if (!$demoMode) {
+
+        if (! $demoMode) {
             $isClosed = \App\Models\Attendance::where('schedule_id', $qr->schedule_id)
                 ->whereDate('date', today())
                 ->where('source', 'system_close')
@@ -102,7 +110,7 @@ class AttendanceService
 
         // Geolocation Validation (skip in demo mode)
         $demoMode = config('app.demo_mode', false);
-        if (!$demoMode) {
+        if (! $demoMode) {
             $this->validateLocation($data);
         }
 
@@ -358,7 +366,7 @@ class AttendanceService
      *
      * Creates attendance records for all schedules today (for full day sick/izin)
      */
-    public function createFullDayAttendance(StudentProfile $student, string $status, string $date, ?string $reason): void
+    public function createFullDayAttendance(StudentProfile $student, string $status, string $date, ?string $reason, ?string $reasonFile = null): void
     {
         $dayName = Carbon::parse($date)->format('l');
 
@@ -376,11 +384,48 @@ class AttendanceService
                     'student_id' => $student->id,
                     'schedule_id' => $schedule->id,
                     'attendee_type' => 'student',
+                    'date' => $date,
                 ],
                 [
-                    'date' => $date,
                     'status' => $status,
                     'reason' => $reason,
+                    'reason_file' => $reasonFile,
+                    'source' => 'manual',
+                ]
+            );
+        }
+    }
+
+    /**
+     * Mark remaining schedules on the same day as izin.
+     */
+    public function markRemainingAsIzin(StudentProfile $student, string $date, string $startTime, ?string $reason, ?string $reasonFile = null): void
+    {
+        $dayName = Carbon::parse($date)->format('l');
+        $normalizedStart = Carbon::parse($startTime)->format('H:i');
+
+        $schedules = \App\Models\ScheduleItem::whereHas('dailySchedule', function ($q) use ($dayName, $student) {
+            $q->where('day', $dayName)
+                ->whereHas('classSchedule', function ($cq) use ($student) {
+                    $cq->where('class_id', $student->class_id);
+                });
+        })
+            ->where('start_time', '>=', $normalizedStart)
+            ->orderBy('start_time')
+            ->get();
+
+        foreach ($schedules as $schedule) {
+            Attendance::updateOrCreate(
+                [
+                    'student_id' => $student->id,
+                    'schedule_id' => $schedule->id,
+                    'attendee_type' => 'student',
+                    'date' => $date,
+                ],
+                [
+                    'status' => AttendanceStatus::PERMISSION->value,
+                    'reason' => $reason,
+                    'reason_file' => $reasonFile,
                     'source' => 'manual',
                 ]
             );

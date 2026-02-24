@@ -35,7 +35,7 @@ export default function KonsentrasiKeahlianAdmin({
   const [editingKonsentrasiKeahlian, setEditingKonsentrasiKeahlian] = useState<Major | null>(null);
   const [openActionId, setOpenActionId] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState({ name: "", code: "", department: "", category: "" });
+  const [formData, setFormData] = useState({ name: "", code: "", bidang_keahlian: "", program_keahlian: "" });
   const [errorMessage, setErrorMessage] = useState("");
 
   /* ===================== FETCH DATA ===================== */
@@ -60,8 +60,8 @@ export default function KonsentrasiKeahlianAdmin({
     (k) =>
       k.code.toLowerCase().includes(searchValue.toLowerCase()) ||
       k.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-      (k.department || "").toLowerCase().includes(searchValue.toLowerCase()) ||
-      (k.category || "").toLowerCase().includes(searchValue.toLowerCase())
+      (k.bidang_keahlian || "").toLowerCase().includes(searchValue.toLowerCase()) ||
+      (k.program_keahlian || "").toLowerCase().includes(searchValue.toLowerCase())
   );
 
   /* ===================== VALIDASI UNIK ===================== */
@@ -94,8 +94,8 @@ export default function KonsentrasiKeahlianAdmin({
     setFormData({
       name: konsentrasi.name,
       code: konsentrasi.code,
-      department: konsentrasi.department || "",
-      category: konsentrasi.category || ""
+      bidang_keahlian: konsentrasi.bidang_keahlian || "",
+      program_keahlian: konsentrasi.program_keahlian || ""
     });
     setShowPopup(true);
     setErrorMessage("");
@@ -105,7 +105,7 @@ export default function KonsentrasiKeahlianAdmin({
   const handleTambahKonsentrasi = () => {
     setEditingKonsentrasiKeahlian(null);
     setIsEditMode(false);
-    setFormData({ name: "", code: "", department: "", category: "" });
+    setFormData({ name: "", code: "", bidang_keahlian: "", program_keahlian: "" });
     setShowPopup(true);
     setErrorMessage("");
   };
@@ -114,7 +114,7 @@ export default function KonsentrasiKeahlianAdmin({
     e.preventDefault();
     
     // Validasi input
-    if (!formData.name.trim() || !formData.code.trim() || !formData.department.trim() || !formData.category.trim()) {
+    if (!formData.name.trim() || !formData.code.trim() || !formData.bidang_keahlian.trim() || !formData.program_keahlian.trim()) {
       setErrorMessage("Nama, kode, bidang keahlian, dan program keahlian harus diisi");
       return;
     }
@@ -171,7 +171,7 @@ export default function KonsentrasiKeahlianAdmin({
     setShowPopup(false);
     setEditingKonsentrasiKeahlian(null);
     setIsEditMode(false);
-    setFormData({ name: "", code: "", department: "", category: "" });
+    setFormData({ name: "", code: "", bidang_keahlian: "", program_keahlian: "" });
     setErrorMessage("");
   };
 
@@ -193,8 +193,8 @@ export default function KonsentrasiKeahlianAdmin({
       setFormData({
         name: editingKonsentrasiKeahlian.name,
         code: editingKonsentrasiKeahlian.code,
-        department: editingKonsentrasiKeahlian.department || "",
-        category: editingKonsentrasiKeahlian.category || ""
+        bidang_keahlian: editingKonsentrasiKeahlian.bidang_keahlian || "",
+        program_keahlian: editingKonsentrasiKeahlian.program_keahlian || ""
       });
     }
   }, [editingKonsentrasiKeahlian, isEditMode]);
@@ -306,7 +306,7 @@ export default function KonsentrasiKeahlianAdmin({
             </div>
              <div>
               <div style={{ fontSize: "28px", fontWeight: "700", color: "#1F2937", lineHeight: "1.2" }}>
-                {new Set(konsentrasiKeahlianList.map(k => k.department || k.category)).size}
+                {new Set(konsentrasiKeahlianList.map(k => k.bidang_keahlian || k.program_keahlian)).size}
               </div>
               <div style={{ fontSize: "14px", color: "#6B7280", fontWeight: "500" }}>Total Bidang</div>
             </div>
@@ -451,14 +451,14 @@ export default function KonsentrasiKeahlianAdmin({
                       color: '#374151',
                       textAlign: 'center',
                       borderRight: '1px solid #E5E7EB',
-                    }}>{row.department || '-'}</td>
+                    }}>{row.bidang_keahlian || '-'}</td>
                     <td style={{
                       padding: '12px 16px',
                       fontSize: '13px',
                       color: '#374151',
                       textAlign: 'center',
                       borderRight: '1px solid #E5E7EB',
-                    }}>{row.category || '-'}</td>
+                    }}>{row.program_keahlian || '-'}</td>
                     <td style={{
                       padding: '12px 16px',
                       fontSize: '13px',
@@ -591,8 +591,8 @@ export default function KonsentrasiKeahlianAdmin({
                   </label>
                   <input
                     type="text"
-                    name="department"
-                    value={formData.department}
+                    name="bidang_keahlian"
+                    value={formData.bidang_keahlian}
                     onChange={handleFormChange}
                     placeholder="Masukan bidang keahlian"
                     style={inputStyle}
@@ -606,8 +606,8 @@ export default function KonsentrasiKeahlianAdmin({
                   </label>
                   <input
                     type="text"
-                    name="category"
-                    value={formData.category}
+                    name="program_keahlian"
+                    value={formData.program_keahlian}
                     onChange={handleFormChange}
                     placeholder="Masukan program keahlian"
                     style={inputStyle}

@@ -3,6 +3,7 @@ import { CalendarDays, School, BookOpen, QrCode, Plus, Loader2 } from "lucide-re
 import { Modal } from "../../component/Shared/Modal";
 import classService from "../../services/classService";
 import { attendanceService } from "../../services/attendanceService";
+import { getTodayScheduleDay, normalizeScheduleDay } from "../../services/scheduleService";
 
 function formatDDMMYYYY(d: Date) {
   const dd = String(d.getDate()).padStart(2, "0");
@@ -33,12 +34,9 @@ export default function DaftarMapel() {
         ]);
         setClassInfo(cls);
 
-
-        // Filter hanya jadwal hari ini
-        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        const todayName = days[new Date().getDay()];
+        const todayName = getTodayScheduleDay();
         const todaySchedules = (Array.isArray(sch) ? sch : []).filter(
-          (item: any) => item.day === todayName
+          (item: any) => normalizeScheduleDay(item.day) === todayName
         );
         setSchedules(todaySchedules);
       } catch (err) {
@@ -175,7 +173,7 @@ export default function DaftarMapel() {
                   {m.subject?.name || "Mapel"}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", opacity: 0.8, marginTop: 4 }}>
-                  {m.kelas?.name || "Kelas"}
+                  {m.class?.name || m.class_name || "Kelas"}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A", opacity: 0.8, marginTop: 4 }}>
                   {m.teacher?.user?.name || "Guru"}
@@ -246,7 +244,7 @@ export default function DaftarMapel() {
               color: "#64748B",
               marginBottom: 4
             }}>
-              {selectedMapel?.name}
+              {selectedMapel?.subject?.name || selectedMapel?.subject_name || selectedMapel?.keterangan || "-"}
             </div>
 
             <div style={{
