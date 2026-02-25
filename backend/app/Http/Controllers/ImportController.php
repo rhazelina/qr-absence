@@ -175,8 +175,8 @@ class ImportController extends Controller
             'items.*.phone' => ['nullable', 'string', 'max:30'],
             'items.*.contact' => ['nullable', 'string', 'max:50'],
             'items.*.homeroom_class_id' => ['nullable', 'exists:classes,id'],
-            'items.*.subject' => ['nullable', 'string', 'max:100'],
-            'items.*.jabatan' => ['nullable', 'string', 'in:Guru,Waka,Kapro,Wali Kelas'],
+            'items.*.subject' => ['nullable'],
+            'items.*.jabatan' => ['nullable'],
             'items.*.bidang' => ['nullable', 'string', 'max:100'],
             'items.*.konsentrasi_keahlian' => ['nullable', 'string', 'max:100'],
         ]);
@@ -194,7 +194,20 @@ class ImportController extends Controller
                     $item['nip'] = $item['nip'] ?? ($item['kode_guru'] ?? null);
                     $item['username'] = $item['username'] ?? ($item['nip'] ?? null);
                     $item['password'] = $item['password'] ?? ($item['nip'] ?? 'password123');
-                    $item['jabatan'] = $item['jabatan'] ?? 'Guru';
+
+                    // Convert jabatan string to array if needed
+                    if (isset($item['jabatan'])) {
+                        if (is_string($item['jabatan'])) {
+                            $item['jabatan'] = array_map('trim', explode('|', $item['jabatan']));
+                        }
+                    } else {
+                        $item['jabatan'] = ['Guru'];
+                    }
+
+                    // Convert subject string to array if needed
+                    if (isset($item['subject']) && is_string($item['subject'])) {
+                        $item['subject'] = array_map('trim', explode(',', $item['subject']));
+                    }
 
                     // Map class_name to class_id if provided
                     if (! empty($item['class_name']) && empty($item['homeroom_class_id'])) {

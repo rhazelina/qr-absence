@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Classes;
 use App\Models\ClassSchedule;
 use App\Models\Subject;
-use App\Models\TeacherProfile;
 use Illuminate\Database\Seeder;
 
 class NewScheduleSeeder extends Seeder

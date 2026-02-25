@@ -12,10 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('teacher_profiles', function (Blueprint $table) {
-            $table->string('jabatan')->default('Guru')->after('user_id');
-            $table->string('bidang')->nullable()->after('jabatan');
-            $table->string('konsentrasi_keahlian')->nullable()->after('bidang');
-            $table->string('kode_guru')->unique()->nullable()->after('nip');
+            $table->text('jabatan')->nullable()->change();
+            $table->text('subject')->nullable()->change();
         });
     }
 
@@ -25,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('teacher_profiles', function (Blueprint $table) {
-            $table->dropColumn(['jabatan', 'bidang', 'konsentrasi_keahlian', 'kode_guru']);
+            $table->string('jabatan')->default('Guru')->change();
+            $table->string('subject')->nullable()->change();
         });
     }
 };

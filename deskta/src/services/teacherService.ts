@@ -7,7 +7,8 @@ export interface Teacher {
   code?: string;
   nama_guru?: string; // For compatibility
   kode_guru?: string; // For compatibility
-  subject?: string;
+  subject?: string | string[];
+  jabatan?: string[];
   subject_name?: string;
   role?: string;
   waka_field?: string;
@@ -27,6 +28,7 @@ export interface Teacher {
     major: string;
     major_name: string;
   };
+  konsentrasi_keahlian?: string;
 }
 
 export const teacherService = {

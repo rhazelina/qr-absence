@@ -23,6 +23,7 @@ interface GuruJadwal {
   namaGuru: string;
   mataPelajaran: string;
   role: string;
+  jabatan: string[];
   scheduleImage?: string;
 }
 
@@ -48,14 +49,20 @@ export default function JadwalGuruStaff({
       const response = await teacherService.getTeachers({ per_page: -1 });
       const teachers: Teacher[] = response.data || [];
       
-      const mappedData: GuruJadwal[] = teachers.map((t) => ({
-        id: t.id,
-        kodeGuru: t.kode_guru || t.code || t.nip || "-",
-        namaGuru: t.nama_guru || t.name || "-",
-        mataPelajaran: t.subject || t.subject_name || "-",
-        role: t.role || "Guru",
-        scheduleImage: t.schedule_image_url
-      }));
+      const mappedData: GuruJadwal[] = teachers.map((t) => {
+        const rolesArray = Array.isArray(t.jabatan) ? t.jabatan : (t.role ? t.role.split(' | ') : ['Guru']);
+        const subjects = Array.isArray(t.subject) ? t.subject.join(', ') : (t.subject || t.subject_name || "-");
+        
+        return {
+          id: t.id,
+          kodeGuru: t.kode_guru || t.code || t.nip || "-",
+          namaGuru: t.nama_guru || t.name || "-",
+          mataPelajaran: subjects,
+          role: rolesArray.join(' | '),
+          jabatan: rolesArray,
+          scheduleImage: t.schedule_image_url
+        };
+      });
 
       setGuruData(mappedData);
     } catch (error) {
@@ -127,7 +134,23 @@ export default function JadwalGuruStaff({
     { key: "kodeGuru", label: "Kode Guru" },
     { key: "namaGuru", label: "Nama Guru" },
     { key: "mataPelajaran", label: "Mata Pelajaran" },
-    { key: "role", label: "Role" },
+    { 
+      key: "role", 
+      label: "Role",
+      render: (_: any, row: GuruJadwal) => (
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {row.jabatan.map((r, i) => (
+            <span key={i} style={{
+              padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
+              backgroundColor: r === 'Wali Kelas' ? '#DBEAFE' : r === 'Guru' ? '#DCFCE7' : r === 'Waka' ? '#F3E8FF' : '#FEF3C7',
+              color: r === 'Wali Kelas' ? '#1E40AF' : r === 'Guru' ? '#166534' : r === 'Waka' ? '#6B21A8' : '#92400E',
+            }}>
+              {r}
+            </span>
+          ))}
+        </div>
+      )
+    },
     {
       key: "aksi",
       label: "Aksi",

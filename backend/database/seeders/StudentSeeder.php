@@ -19,12 +19,11 @@ class StudentSeeder extends Seeder
             ['name' => 'Rekayasa Perangkat Lunak']
         );
 
-        // 2. Pastikan Kelas XII RPL 1 dan XII RPL 2 ada
+        // 2. Pastikan Kelas 12 Rekayasa Perangkat Lunak 1 dan 12 Rekayasa Perangkat Lunak 2 ada
         $class1 = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => 'RPL 1',
-
+                'label' => "{$major->name} 1",
             ],
             [
                 'major_id' => $major->id,
@@ -34,7 +33,7 @@ class StudentSeeder extends Seeder
         $class2 = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => 'RPL 2',
+                'label' => "{$major->name} 2",
             ],
             [
                 'major_id' => $major->id,
@@ -127,7 +126,7 @@ class StudentSeeder extends Seeder
                 ]
             );
 
-            $classId = ($data['kelas'] === 'XII RPL 1') ? $class1->id : $class2->id;
+            $classId = (str_contains($data['kelas'], 'RPL 1')) ? $class1->id : $class2->id;
 
             $isFemale = preg_match('/(WIDYAWATI|AYU|PUSPITASARI|PRISSILVIA|AQILLA|FAILLA|RAFAELA|ANJANI|JANNAH|APRILIA|KARINA|AVIVA|AZZAHRA|HAPSARI|IGNACIA|IQLIMAHDA|IRDINA|ISABEL|NI\'MAH|LAURA|LELY|MAYA|NABILA|NADIA|NADJWA|NINDI|NISWATUL|NOVERITA|NOVITA|NURUL|RACHEL|RAENA|RHAMEYZHA|RHEISYA|RITA|SHISILIA|SUCI|TALITHA|SA\'IDHATUL|RAYHANUN|ALUNA|SINTA|Alya|Anissa|Aristia)/i', $data['nama']);
 

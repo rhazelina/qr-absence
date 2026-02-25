@@ -23,6 +23,14 @@ class TeacherProfile extends Model
         'schedule_image_path',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'jabatan' => 'array',
+            'subject' => 'array',
+        ];
+    }
+
     // User yang mengajar
     public function user(): BelongsTo
     {

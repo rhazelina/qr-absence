@@ -41,10 +41,11 @@ import KehadiranGuruShow from './pages/Waka/KehadiranGuruShow';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { SchoolProvider } from './context/SchoolContext';
 
 function App() {
   return (
-    <>
+    <SchoolProvider>
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -114,7 +115,7 @@ function App() {
         {/* Route lain yang nggak ada, balik ke landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </SchoolProvider>
   );
 }
 

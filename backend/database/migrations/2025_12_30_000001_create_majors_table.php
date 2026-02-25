@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('code')->unique();
             $table->string('name');
             $table->string('category')->nullable();
+            $table->string('bidang')->nullable();
             $table->timestamps();
         });
     }

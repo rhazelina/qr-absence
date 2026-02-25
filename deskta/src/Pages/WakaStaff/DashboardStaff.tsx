@@ -308,6 +308,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             namaGuru={selectedGuruDetail?.namaGuru || selectedGuru || undefined}
             noIdentitas={selectedGuruDetail?.noIdentitas}
             jadwalImage={selectedGuruDetail?.jadwalImage}
+            guruId={selectedGuruDetail?.guruId}
             onBack={() => handleMenuClick("jadwal-guru")}
           />
         );

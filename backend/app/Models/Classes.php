@@ -27,9 +27,8 @@ class Classes extends Model
     {
         $label = trim($this->label ?? '');
 
-        // Now that labels are numeric (e.g. "10 RPL 1"), we can return as-is
-        // but if it's just a number like "1", we still want to build it.
-        if (preg_match('/[A-Za-z]/', $label)) {
+        // If label already contains major names or spaces, assume it's the full name
+        if (preg_match('/\s/', $label)) {
             return $label;
         }
 

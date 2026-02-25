@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import './LandingPage.css';
+import { useSchool } from '../../context/SchoolContext';
 
 // Import gambar default dari src/assets
 import defaultLogo from "../../assets/logo.png";
@@ -8,46 +6,12 @@ import defaultLogo from "../../assets/logo.png";
 const LandingPage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  const { school_name, school_logo_url, school_mascot_url } = useSchool();
   
-  // State untuk data dinamis dari localStorage
-  const [logo, setLogo] = useState(defaultLogo);
-  const [maskot, setMaskot] = useState(null);
-  const [judulAplikasi, setJudulAplikasi] = useState('PRESENSI PEMBELAJARAN DIGITAL');
-  const [namaSekolah, setNamaSekolah] = useState('SMKN 2 SINGOSARI');
-
-  // Load data dari localStorage
-  useEffect(() => {
-    const savedLogo = localStorage.getItem('logoSekolah');
-    const savedMaskot = localStorage.getItem('maskotSekolah');
-    const savedProfile = localStorage.getItem('profileSekolah');
-    const schoolProfile = localStorage.getItem('schoolProfile');
-    
-    // Check schoolProfile first (newer format)
-    if (schoolProfile) {
-      try {
-        const profileData = JSON.parse(schoolProfile);
-        if (profileData.logoUrl) setLogo(profileData.logoUrl);
-        if (profileData.mascotUrl) setMaskot(profileData.mascotUrl);
-        if (profileData.judulAplikasi) setJudulAplikasi(profileData.judulAplikasi);
-        if (profileData.namaSekolah) setNamaSekolah(profileData.namaSekolah);
-      } catch (error) {
-        console.error('Error parsing schoolProfile:', error);
-      }
-    } else {
-      // Fallback to individual keys
-      if (savedLogo) setLogo(savedLogo);
-      if (savedMaskot) setMaskot(savedMaskot);
-      if (savedProfile) {
-        try {
-          const profileData = JSON.parse(savedProfile);
-          if (profileData.judulAplikasi) setJudulAplikasi(profileData.judulAplikasi);
-          if (profileData.namaSekolah) setNamaSekolah(profileData.namaSekolah);
-        } catch (error) {
-          console.error('Error parsing profileSekolah:', error);
-        }
-      }
-    }
-  }, []);
+  const logo = school_logo_url || defaultLogo;
+  const maskot = school_mascot_url;
+  const judulAplikasi = 'PRESENSI PEMBELAJARAN DIGITAL';
+  const namaSekolah = school_name;
 
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen);
@@ -81,7 +45,7 @@ const LandingPage = () => {
       {maskot && (
         <div className="maskot-container">
           <img 
-            src={maskot.startsWith('http') ? maskot : (maskot.startsWith('data:') ? maskot : `${import.meta.env.VITE_API_URL?.replace('/api', '')}/storage/${maskot}`)} 
+            src={maskot} 
             alt="Maskot Sekolah" 
             className="maskot-image" 
             onError={(e) => {

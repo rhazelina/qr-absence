@@ -18,14 +18,14 @@ class DatabaseSeeder extends Seeder
             SchoolYearSeeder::class,
             SemesterSeeder::class,
             SubjectSeeder::class,
-            // MajorSeeder, ClassSeeder handled by Comprehensive
-            ComprehensiveSeeder::class,
+            MajorSeeder::class,
+            ClassSeeder::class,
+            // ComprehensiveSeeder::class,
             TeacherSeeder::class, // Run after to update with real names
             NewScheduleSeeder::class,
             AdminSeeder::class,
-            WakaSeeder::class,
-            HomeroomTeacherSeeder::class,
             StudentSeeder::class,
+            TeacherRoleSeeder::class,
             ClassOfficerSeeder::class,
             AttendanceSeeder::class,
             WakaAttendancePresentationSeeder::class,

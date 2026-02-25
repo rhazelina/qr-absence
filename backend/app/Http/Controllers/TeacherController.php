@@ -29,14 +29,16 @@ class TeacherController extends Controller
         $query = TeacherProfile::query()->with(['user', 'homeroomClass']);
 
         if ($request->filled('role')) {
-            $query->where('role', $request->string('role'));
+            $query->whereJsonContains('jabatan', $request->string('role'));
         }
 
         if ($request->filled('search')) {
             $search = $request->string('search');
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            })->orWhere('nis', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($uq) use ($search) {
+                    $uq->where('name', 'like', "%{$search}%");
+                })->orWhere('nip', 'like', "%{$search}%");
+            });
         }
 
         $perPage = $request->integer('per_page', 10);
@@ -59,7 +61,7 @@ class TeacherController extends Controller
         $data['nip'] = $data['nip'] ?? ($data['kode_guru'] ?? null);
         $data['username'] = $data['username'] ?? ($data['nip'] ?? null);
         $data['password'] = $data['password'] ?? ($data['nip'] ?? 'password123');
-        $data['jabatan'] = $data['jabatan'] ?? 'Guru';
+        $data['jabatan'] = $data['jabatan'] ?? ['Guru'];
 
         $teacher = DB::transaction(function () use ($data) {
             $user = User::create([

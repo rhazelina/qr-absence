@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\AdminProfile;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class WakaSeeder extends Seeder
 {
@@ -14,7 +13,7 @@ class WakaSeeder extends Seeder
         $wakaName = 'Wiwin Winangsih, S.Pd., M.Pd.';
         $user = User::where('name', $wakaName)->first();
 
-        if (!$user) {
+        if (! $user) {
             throw new \Exception("Teacher '$wakaName' not found. Please run TeacherSeeder first.");
         }
 

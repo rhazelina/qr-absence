@@ -1,33 +1,13 @@
-import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useSchool } from '../../context/SchoolContext';
 import './NavbarGuru.css';
 import defaultLogo from '../../assets/logo.png';
 
 function NavbarGuru() {
   const navigate = useNavigate();
-  const [logo, setLogo] = useState(defaultLogo);
-  const [namaSekolah, setNamaSekolah] = useState('SMKN 2 SINGOSARI');
-
-  // Load logo dan nama sekolah dari localStorage
-  useEffect(() => {
-    const savedLogo = localStorage.getItem('logoSekolah');
-    const savedProfile = localStorage.getItem('profileSekolah');
-    
-    if (savedLogo) {
-      setLogo(savedLogo);
-    }
-    
-    if (savedProfile) {
-      try {
-        const profileData = JSON.parse(savedProfile);
-        if (profileData.namaSekolah) {
-          setNamaSekolah(profileData.namaSekolah);
-        }
-      } catch (error) {
-        console.error('Error loading profile data:', error);
-      }
-    }
-  }, []);
+  const { school_name, school_logo_url } = useSchool();
+  const logo = school_logo_url || defaultLogo;
+  const namaSekolah = school_name;
 
   const handleLogout = () => {
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');

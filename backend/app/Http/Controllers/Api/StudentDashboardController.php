@@ -8,7 +8,6 @@ use App\Models\Attendance;
 use App\Models\ScheduleItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class StudentDashboardController extends Controller
@@ -21,7 +20,7 @@ class StudentDashboardController extends Controller
         $user = $request->user();
         $profile = $user->studentProfile;
 
-        if (!$profile) {
+        if (! $profile) {
             return response()->json(['message' => 'Student profile not found'], 404);
         }
 
@@ -47,6 +46,7 @@ class StudentDashboardController extends Controller
 
         $data = $schedules->map(function ($item) use ($attendances) {
             $attendance = $attendances->get($item->id);
+
             return [
                 'id' => $item->id,
                 'mapel' => $item->subject_name,
@@ -61,7 +61,7 @@ class StudentDashboardController extends Controller
         return response()->json([
             'date' => $dateStr,
             'day' => $dayName,
-            'items' => $data
+            'items' => $data,
         ]);
     }
 
@@ -73,7 +73,7 @@ class StudentDashboardController extends Controller
         $user = $request->user();
         $profile = $user->studentProfile;
 
-        if (!$profile) {
+        if (! $profile) {
             return response()->json(['message' => 'Student profile not found'], 404);
         }
 
@@ -95,15 +95,16 @@ class StudentDashboardController extends Controller
         $cursor = $startOfMonth->copy();
         while ($cursor->lte($endOfMonth)) {
             $dateStr = $cursor->toDateString();
-            
+
             // Skip weekends if no attendance data exists to keep chart clean
-            if ($cursor->isWeekend() && !$monthlyAttendances->has($dateStr)) {
+            if ($cursor->isWeekend() && ! $monthlyAttendances->has($dateStr)) {
                 $cursor->addDay();
+
                 continue;
             }
 
             $dateRecords = $monthlyAttendances->get($dateStr, collect());
-            
+
             $monthlyChartData[] = [
                 'date' => $dateStr,
                 'day_label' => $cursor->format('d M'),
@@ -113,7 +114,7 @@ class StudentDashboardController extends Controller
                 'excused' => $dateRecords->whereIn('status', [AttendanceStatus::EXCUSED->value, AttendanceStatus::PERMISSION->value])->sum('count'),
                 'absent' => $dateRecords->where('status', AttendanceStatus::ABSENT->value)->sum('count'),
             ];
-            
+
             $cursor->addDay();
         }
 

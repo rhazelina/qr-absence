@@ -162,9 +162,9 @@ const JadwalGuruIndex = () => {
                   <th>No</th>
                   <th>Kode Guru</th>
                   <th>Nama Guru</th>
+                  <th className="whitespace-nowrap">Peran</th>
                   <th>Mata Pelajaran</th>
                   <th>Kontak</th>
-                  <th>Jumlah Kelas</th>
                   <th>Status Jadwal</th>
                   <th className="text-center">Aksi</th>
                 </tr>
@@ -188,47 +188,64 @@ const JadwalGuruIndex = () => {
                       </td>
                       <td className="guru-nama">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0">
                             {guru.photo_url ? (
                               <img src={guru.photo_url} alt={guru.name} className="w-full h-full object-cover"/>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs text-center border-0 p-0 m-0">
+                              <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs font-bold">
                                 {guru.name?.charAt(0)}
                               </div>
                             )}
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-800">{guru.name}</p>
-                            <p className="text-xs text-gray-400">{guru.nip}</p>
+                            <p className="font-semibold text-gray-800 leading-tight">{guru.name}</p>
+                            <p className="text-[10px] text-gray-400">{guru.nip || '-'}</p>
                           </div>
                         </div>
                       </td>
+                      <td className="guru-peran">
+                        <div className="flex gap-1 flex-wrap">
+                          {(Array.isArray(guru.jabatan) ? guru.jabatan : (guru.role ? guru.role.split(' | ') : ['Guru'])).map((role, idx) => (
+                            <span 
+                              key={idx}
+                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+                              style={{
+                                backgroundColor: role === 'Wali Kelas' ? '#DBEAFE' : role === 'Guru' ? '#DCFCE7' : role === 'Waka' ? '#F3E8FF' : '#FEF3C7',
+                                color: role === 'Wali Kelas' ? '#1E40AF' : role === 'Guru' ? '#166534' : role === 'Waka' ? '#6B21A8' : '#92400E',
+                              }}
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="guru-mapel">
-                        {guru.subject || guru.subject_name || <span className="text-gray-400">-</span>}
+                        <div className="text-xs text-gray-600">
+                          {Array.isArray(guru.subject) 
+                            ? guru.subject.join(', ') 
+                            : (guru.subject || guru.subject_name || <span className="text-gray-400">-</span>)}
+                        </div>
                       </td>
                       <td className="guru-kontak">
-                        <div className="flex flex-col text-xs space-y-1">
-                          <div className="flex items-center gap-2">
-                             <FaEnvelope className="text-gray-400" />
-                             <span>{guru.email || '-'}</span>
+                        <div className="flex flex-col text-[10px] space-y-0.5">
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                             <FaEnvelope className="text-gray-400 shrink-0" size={10} />
+                             <span className="truncate">{guru.email || '-'}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                             <FaPhone className="text-gray-400" />
+                          <div className="flex items-center gap-1.5">
+                             <FaPhone className="text-gray-400 shrink-0" size={10} />
                              <span>{guru.phone || '-'}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="guru-jumlah-kelas">
-                        {guru.classes_count || 0} Kelas
-                      </td>
-                      <td className="guru-status">
-                        {guru.schedule_image_path ? (
-                          <span className="jadwal-guru-index-badge-green flex items-center gap-1 justify-center whitespace-nowrap">
-                            <FaCheckCircle /> Jadwal Tersedia
+                      <td className="guru-status text-center">
+                        {guru.schedule_image_url || guru.schedule_image_path ? (
+                          <span className="jadwal-guru-index-badge-green inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
+                            <FaCheckCircle className="shrink-0" /> Tersedia
                           </span>
                         ) : (
-                          <span className="jadwal-guru-index-badge-orange flex items-center gap-1 justify-center whitespace-nowrap">
-                            <FaExclamationCircle /> Belum Ada Jadwal
+                          <span className="jadwal-guru-index-badge-orange inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium whitespace-nowrap">
+                            <FaExclamationCircle className="shrink-0" /> Belum Ada
                           </span>
                         )}
                       </td>

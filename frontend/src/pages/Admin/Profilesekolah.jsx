@@ -4,61 +4,12 @@ import NavbarAdmin from '../../components/Admin/NavbarAdmin';
 import './Profilesekolah.css'
 import defaultLogo from '../../assets/logo.png';
 
-// ==================== DUMMY DATA SERVICE ====================
-const dummyDataService = {
-  getSchoolProfile() {
-    const savedData = localStorage.getItem('schoolProfile');
-    if (savedData) return JSON.parse(savedData);
-    return {
-      namaSekolah: 'SMKN 2 SINGOSARI',
-      npsn: '20517748',
-      akreditasi: 'A',
-      jenisSekolah: 'SMK',
-      kepalaSekolah: 'SUMIJAH, S.Pd., M,Si',
-      nipKepalaSekolah: '97002101998022009',
-      jalan: 'Jl. Perusahaan No.20, Tanjungtirto',
-      kelurahan: 'Tunjungtirto',
-      kecamatan: 'Singosari',
-      kabupatenKota: 'Kab. Malang',
-      provinsi: 'Jawa Timur',
-      kodePos: '65153',
-      nomorTelepon: '(0341) 458823',
-      email: 'smkn2.singosari@yahoo.co.id'
-    };
-  },
-  updateSchoolProfile(data) {
-    const updatedData = { ...this.getSchoolProfile(), ...data };
-    localStorage.setItem('schoolProfile', JSON.stringify(updatedData));
-    return updatedData;
-  },
-  uploadLogo(base64Image) {
-    const currentData = this.getSchoolProfile();
-    currentData.logoUrl = base64Image;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  },
-  uploadMascot(base64Image) {
-    const currentData = this.getSchoolProfile();
-    currentData.mascotUrl = base64Image;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  },
-  resetLogo() {
-    const currentData = this.getSchoolProfile();
-    currentData.logoUrl = null;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  },
-  deleteMascot() {
-    const currentData = this.getSchoolProfile();
-    currentData.mascotUrl = null;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  }
-};
+import apiService from '../../utils/api';
+import { useSchool } from '../../context/SchoolContext';
 
 function ProfileSekolah() {
   const navigate = useNavigate();
+  const { refreshSettings } = useSchool();
   const logoInputRef = useRef(null);
   const maskotInputRef = useRef(null);
 
@@ -73,7 +24,6 @@ function ProfileSekolah() {
     nomorTelepon: '', email: ''
   });
 
-  const [originalData, setOriginalData] = useState(null);
   const [logo, setLogo] = useState(defaultLogo);
   const [maskot, setMaskot] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
@@ -83,16 +33,36 @@ function ProfileSekolah() {
     fetchSchoolProfile();
   }, []);
 
-  const fetchSchoolProfile = () => {
+  const fetchSchoolProfile = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const data = dummyDataService.getSchoolProfile();
-      setFormData(data);
-      setOriginalData(data);
-      setLogo(data.logoUrl || defaultLogo);
-      setMaskot(data.mascotUrl || null);
+    try {
+      const response = await apiService.getSettings();
+      if (response.data) {
+        const d = response.data;
+        setFormData({
+          namaSekolah: d.school_name || '',
+          npsn: d.school_npsn || '',
+          akreditasi: d.school_accreditation || '',
+          jenisSekolah: d.school_type || '',
+          kepalaSekolah: d.school_principal_name || '',
+          nipKepalaSekolah: d.school_principal_nip || '',
+          jalan: d.school_address || '',
+          kelurahan: d.village || '',
+          kecamatan: d.district || '',
+          kabupatenKota: d.city || '',
+          provinsi: d.province || '',
+          kodePos: d.postal_code || '',
+          nomorTelepon: d.school_phone || '',
+          email: d.school_email || ''
+        });
+        setLogo(d.school_logo_url || defaultLogo);
+        setMaskot(d.school_mascot_url || null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -123,42 +93,61 @@ function ProfileSekolah() {
   };
 
   const handleResetLogo = () => {
-    if (!window.confirm('Kembalikan logo ke default?')) return;
-    setSaving(true);
-    setTimeout(() => {
-      dummyDataService.resetLogo();
-      setLogo(defaultLogo);
-      setLogoFile(null);
-      alert('Logo berhasil direset!');
-      setSaving(false);
-    }, 300);
+    if (!window.confirm('Logo default akan digunakan jika tidak mengunggah logo baru saat simpan. Lanjutkan?')) return;
+    setLogo(defaultLogo);
+    setLogoFile(null);
   };
 
   const handleRemoveMaskot = () => {
     if (!window.confirm('Hapus maskot?')) return;
-    setSaving(true);
-    setTimeout(() => {
-      dummyDataService.deleteMascot();
-      setMaskot(null);
-      setMaskotFile(null);
-      alert('Maskot berhasil dihapus!');
-      setSaving(false);
-    }, 300);
+    setMaskot(null);
+    setMaskotFile(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!window.confirm('Simpan perubahan?')) return;
     setSaving(true);
-    setTimeout(() => {
-      if (logoFile && logo !== defaultLogo) dummyDataService.uploadLogo(logo);
-      if (maskotFile) dummyDataService.uploadMascot(maskot);
-      dummyDataService.updateSchoolProfile(formData);
-      alert('Data diperbarui!');
+    
+    try {
+      const uploadData = new FormData();
+      uploadData.append('school_name', formData.namaSekolah);
+      uploadData.append('school_npsn', formData.npsn);
+      uploadData.append('school_accreditation', formData.akreditasi);
+      uploadData.append('school_type', formData.jenisSekolah);
+      uploadData.append('school_principal_name', formData.kepalaSekolah);
+      uploadData.append('school_principal_nip', formData.nipKepalaSekolah);
+      uploadData.append('school_address', formData.jalan);
+      uploadData.append('village', formData.kelurahan);
+      uploadData.append('district', formData.kecamatan);
+      uploadData.append('city', formData.kabupatenKota);
+      uploadData.append('province', formData.provinsi);
+      uploadData.append('postal_code', formData.kodePos);
+      uploadData.append('school_phone', formData.nomorTelepon);
+      uploadData.append('school_email', formData.email);
+
+      if (logoFile) {
+        uploadData.append('school_logo', logoFile);
+      }
+      
+      if (maskotFile) {
+        uploadData.append('school_mascot', maskotFile);
+      } else if (maskot === null) {
+        // Explicitly remove mascot if it was removed in UI
+        uploadData.append('school_mascot', '');
+      }
+
+      await apiService.updateSettings(uploadData);
+      alert('Profil sekolah berhasil diperbarui!');
       setIsEditing(false);
-      fetchSchoolProfile();
+      refreshSettings(); // Sync global state
+      await fetchSchoolProfile();
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      alert('Gagal memperbarui profil: ' + (error.data?.message || error.message));
+    } finally {
       setSaving(false);
-    }, 800);
+    }
   };
 
   if (loading) {

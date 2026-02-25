@@ -25,10 +25,12 @@ class TeacherResource extends JsonResource
             'phone' => $this->user->phone,
             'contact' => $this->user->contact,
             'subject' => $this->subject,
-            'subject_name' => $this->subject, // Alias untuk Mobile
+            'subject_name' => is_array($this->subject) ? implode(', ', $this->subject) : $this->subject, // Alias untuk Mobile
             'role' => $this->jabatan,
+            'jabatan' => $this->jabatan, // Keep for Deskta
             'waka_field' => $this->bidang,
             'major_expertise' => $this->konsentrasi_keahlian,
+            'konsentrasi_keahlian' => $this->konsentrasi_keahlian, // Keep for Deskta
             'homeroom_class_id' => $this->homeroom_class_id,
             'homeroom_class' => $this->whenLoaded('homeroomClass', function () {
                 return [

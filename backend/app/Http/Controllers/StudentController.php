@@ -23,6 +23,7 @@ class StudentController extends Controller
             'nisn' => ['nullable', 'string', 'max:20'],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
             'major_id' => ['nullable', 'integer', 'exists:majors,id'],
+            'grade' => ['nullable', 'in:10,11,12'],
             'per_page' => ['nullable', 'integer', 'min:-1', 'max:1000'],
         ]);
 
@@ -66,6 +67,12 @@ class StudentController extends Controller
         if ($request->filled('major_id')) {
             $query->whereHas('classRoom', function ($q) use ($request) {
                 $q->where('major_id', $request->integer('major_id'));
+            });
+        }
+
+        if ($request->filled('grade')) {
+            $query->whereHas('classRoom', function ($q) use ($request) {
+                $q->where('grade', (string) $request->input('grade'));
             });
         }
 

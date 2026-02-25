@@ -26,11 +26,14 @@ it('allows admin to create a teacher', function () {
         'email' => 'teach@school.com',
         'password' => 'password',
         'nip' => 'NIP999',
-        'subject' => 'Math',
+        'subject' => ['Math'],
+        'jabatan' => ['Guru'],
     ]);
 
     $response->assertStatus(201);
     $this->assertDatabaseHas('users', ['username' => 'newteacher']);
+    // Subject is stored as JSON in DB, so we might need JSON search if driver supports it,
+    // or just check individual fields. DatabaseHas for JSON can be tricky depending on driver.
     $this->assertDatabaseHas('teacher_profiles', ['nip' => 'NIP999']);
 });
 
@@ -40,12 +43,16 @@ it('allows admin to update a teacher', function () {
 
     $response = $this->actingAs($admin)->putJson("/api/teachers/{$teacher->teacherProfile->id}", [
         'name' => 'Updated Teacher',
-        'subject' => 'Science',
+        'subject' => ['Science'],
+        'jabatan' => ['Guru', 'Wali Kelas'],
     ]);
 
     $response->assertStatus(200);
     $this->assertDatabaseHas('users', ['id' => $teacher->id, 'name' => 'Updated Teacher']);
-    $this->assertDatabaseHas('teacher_profiles', ['id' => $teacher->teacherProfile->id, 'subject' => 'Science']);
+
+    $teacherProfile = $teacher->teacherProfile->fresh();
+    expect($teacherProfile->subject)->toBe(['Science']);
+    expect($teacherProfile->jabatan)->toBe(['Guru', 'Wali Kelas']);
 });
 
 it('allows teacher to upload schedule image', function () {

@@ -16,11 +16,13 @@ interface Guru {
   namaGuru: string; // name
   kodeGuru: string; // nip
   jenisKelamin: string;
-  role: string; // role
+  roles: string[]; // roles array
   noTelp: string; // phone
   keterangan: string; // subject or wali class name or staff bagian
+  subjects: string[]; // subjects array
   waliKelasDari?: string; // class name
-  waka_field?: string; // specific field for staff
+  wakaField?: string; // waka field
+  kaproField?: string; // kapro field
   email?: string;
   password?: string;
 }
@@ -36,8 +38,10 @@ interface DetailGuruProps {
 
 /* ===================== OPTIONS DATA ===================== */
 const peranList = [
-  { id: 'Wali Kelas', nama: 'Wali Kelas' },
   { id: 'Guru', nama: 'Guru' },
+  { id: 'Wali Kelas', nama: 'Wali Kelas' },
+  { id: 'Waka', nama: 'Waka' },
+  { id: 'Kapro', nama: 'Kapro' },
   { id: 'Staff', nama: 'Staff' },
 ];
 
@@ -47,6 +51,13 @@ const staffBagianList = [
   { id: 'Perpustakaan', nama: 'Perpustakaan' },
   { id: 'Laboratorium', nama: 'Laboratorium' },
   { id: 'Keuangan', nama: 'Keuangan' },
+];
+
+const wakaOptions = [
+  { id: 'Waka Kesiswaan', nama: 'Waka Kesiswaan' },
+  { id: 'Waka Kurikulum', nama: 'Waka Kurikulum' },
+  { id: 'Waka Humas', nama: 'Waka Humas' },
+  { id: 'Waka Sarpras', nama: 'Waka Sarpras' },
 ];
 
 /* ===================== MAIN COMPONENT ===================== */
@@ -71,6 +82,7 @@ export default function DetailGuru({
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classes, setClasses] = useState<ClassRoom[]>([]);
+  const [majors, setMajors] = useState<any[]>([]);
   
   const [tempMataPelajaran, setTempMataPelajaran] = useState('');
   const [tempStaffBagian, setTempStaffBagian] = useState('');
@@ -78,12 +90,14 @@ export default function DetailGuru({
   // ==================== FETCH DATA ====================
   const fetchMasterData = async () => {
     try {
-      const [subjectsRes, classesRes] = await Promise.all([
+      const [subjectsRes, classesRes, majorsRes] = await Promise.all([
         masterService.getSubjects(),
-        masterService.getClasses()
+        masterService.getClasses(),
+        masterService.getMajors()
       ]);
       setSubjects(subjectsRes.data || []);
       setClasses(classesRes.data || []);
+      setMajors(majorsRes.data || []);
     } catch (err) {
       console.error('Error fetching master data:', err);
     }
@@ -115,31 +129,45 @@ export default function DetailGuru({
       const response = await teacherService.getTeacherById(targetId);
       const data = response.data;
       
+      const rolesArray = Array.isArray(data.jabatan) ? data.jabatan : (data.jabatan ? [data.jabatan] : ['Guru']);
+      const subjectsArray = Array.isArray(data.subject) ? data.subject : (data.subject ? [data.subject] : []);
+
       const mappedGuru: Guru = {
         id: data.id.toString(),
         namaGuru: data.name,
-        kodeGuru: data.nip, // or data.username
-        jenisKelamin: 'Laki-Laki', // API doesn't have gender yet?
-        role: data.role || 'Guru',
+        kodeGuru: data.nip,
+        jenisKelamin: data.gender || 'Laki-Laki',
+        roles: rolesArray,
+        subjects: subjectsArray,
         noTelp: data.phone || '',
         email: data.email,
-        keterangan: '', // Will be computed
-        waliKelasDari: data.homeroom_class ? data.homeroom_class.name : undefined
+        keterangan: '', 
+        waliKelasDari: data.homeroom_class ? data.homeroom_class.name : undefined,
+        wakaField: data.waka_field || data.bidang,
+        kaproField: data.konsentrasi_keahlian
       };
 
-      if (mappedGuru.role === 'Guru') {
-        mappedGuru.keterangan = data.subject || '';
-        setTempMataPelajaran(mappedGuru.keterangan);
-      } else if (mappedGuru.role === 'Wali Kelas') {
-        mappedGuru.keterangan = mappedGuru.waliKelasDari || '';
-      } else if (mappedGuru.role === 'Staff') {
-        mappedGuru.waka_field = data.waka_field || data.bidang;
-        mappedGuru.keterangan = mappedGuru.waka_field || ''; 
-        setTempStaffBagian(mappedGuru.keterangan);
+      // Compute display keterangan
+      const detailKeterangan = [];
+      if (rolesArray.includes('Guru') && subjectsArray.length > 0) {
+        detailKeterangan.push(subjectsArray.join(', '));
       }
+      if (rolesArray.includes('Wali Kelas') && mappedGuru.waliKelasDari) {
+        detailKeterangan.push(mappedGuru.waliKelasDari);
+      }
+      if (rolesArray.includes('Kapro') && mappedGuru.kaproField) {
+        detailKeterangan.push(mappedGuru.kaproField);
+      }
+      if (rolesArray.includes('Waka') && mappedGuru.wakaField) {
+        detailKeterangan.push(mappedGuru.wakaField);
+      }
+      
+      mappedGuru.keterangan = detailKeterangan.join(' | ');
 
       setGuruData(mappedGuru);
       setOriginalData(mappedGuru);
+      setTempMataPelajaran(subjectsArray[0] || '');
+      setTempStaffBagian(mappedGuru.wakaField || mappedGuru.kaproField || '');
     } catch (err: any) {
       console.error('Error fetching teacher detail:', err);
       setError('Gagal memuat data guru.');
@@ -189,9 +217,11 @@ export default function DetailGuru({
       errors.noTelp = 'Nomor telepon tidak valid';
     }
     
-    if (guruData.role === 'Guru' && !tempMataPelajaran) errors.mataPelajaran = 'Mata pelajaran harus dipilih';
-    if (guruData.role === 'Wali Kelas' && !guruData.waliKelasDari) errors.waliKelasDari = 'Kelas harus dipilih';
-    if (guruData.role === 'Staff' && !tempStaffBagian) errors.staffBagian = 'Bagian staff harus dipilih';
+    if (guruData.roles.includes('Guru') && !tempMataPelajaran) errors.mataPelajaran = 'Mata pelajaran harus dipilih';
+    if (guruData.roles.includes('Wali Kelas') && !guruData.waliKelasDari) errors.waliKelasDari = 'Kelas harus dipilih';
+    
+    const needsStaffBagian = guruData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r));
+    if (needsStaffBagian && !tempStaffBagian) errors.staffBagian = 'Bagian harus dipilih';
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -208,8 +238,9 @@ export default function DetailGuru({
     setGuruData(originalData);
     setFormErrors({});
     if (originalData) {
-      setTempMataPelajaran(originalData.role === 'Guru' ? originalData.keterangan : '');
-      setTempStaffBagian(originalData.role === 'Staff' ? originalData.keterangan : '');
+      setTempMataPelajaran(originalData.roles.includes('Guru') ? originalData.keterangan : '');
+      const hasStaff = originalData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r));
+      setTempStaffBagian(hasStaff ? originalData.keterangan : '');
     }
   };
 
@@ -218,7 +249,7 @@ export default function DetailGuru({
     
     try {
       // Check for Occupied Homeroom Class
-      if (guruData.role === 'Wali Kelas') {
+      if (guruData.roles.includes('Wali Kelas')) {
         const classesRes = await masterService.getClasses();
         const classesData = classesRes.data || [];
         const selectedClass = classesData.find((c: any) => c.name === guruData.waliKelasDari);
@@ -233,30 +264,30 @@ export default function DetailGuru({
       const payload: any = {
         name: guruData.namaGuru,
         nip: guruData.kodeGuru,
-        role: guruData.role,
+        jabatan: guruData.roles, // Updated to use array
         phone: guruData.noTelp,
         email: guruData.email,
+        
+        // Conditional fields
+        subject: guruData.roles.includes('Guru') ? [tempMataPelajaran] : [],
+        homeroom_class_id: guruData.roles.includes('Wali Kelas') 
+          ? classes.find(c => c.name === guruData.waliKelasDari)?.id 
+          : null,
+        bidang: guruData.roles.includes('Waka') ? tempStaffBagian : null,
+        waka_field: guruData.roles.includes('Waka') ? tempStaffBagian : null,
+        konsentrasi_keahlian: guruData.roles.includes('Kapro') ? tempStaffBagian : null,
       };
-
-      if (guruData.role === 'Guru') {
-        payload.subject = tempMataPelajaran;
-      } else if (guruData.role === 'Wali Kelas') {
-         const selectedClass = classes.find(c => c.name === guruData.waliKelasDari);
-         if (selectedClass) {
-           payload.homeroom_class_id = selectedClass.id;
-         }
-      } else if (guruData.role === 'Staff') {
-        payload.bidang = tempStaffBagian;
-        payload.waka_field = tempStaffBagian;
-      }
 
       await teacherService.updateTeacher(guruData.id, payload);
       
       // Update local state
       let updatedData = { ...guruData };
-      if (updatedData.role === 'Guru') updatedData.keterangan = tempMataPelajaran;
-      else if (updatedData.role === 'Wali Kelas') updatedData.keterangan = updatedData.waliKelasDari || '';
-      else if (updatedData.role === 'Staff') updatedData.keterangan = tempStaffBagian;
+      const detailKeterangan = [];
+      if (updatedData.roles.includes('Guru') && tempMataPelajaran) detailKeterangan.push(tempMataPelajaran);
+      if (updatedData.roles.includes('Wali Kelas') && updatedData.waliKelasDari) detailKeterangan.push(updatedData.waliKelasDari);
+      if (updatedData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r)) && tempStaffBagian) detailKeterangan.push(tempStaffBagian);
+      
+      updatedData.keterangan = detailKeterangan.join(' | ');
       
       setGuruData(updatedData);
       setOriginalData(updatedData);
@@ -271,16 +302,21 @@ export default function DetailGuru({
     }
   };
 
-  const handleFieldChange = (field: keyof Guru, value: string) => {
+  const handleFieldChange = (field: keyof Guru, value: any) => {
     if (!guruData) return;
-    const updatedGuru = { ...guruData, [field]: value };
-    
-    if (field === 'role') {
-      setTempMataPelajaran('');
-      setTempStaffBagian('');
-      updatedGuru.waliKelasDari = '';
+    setGuruData({ ...guruData, [field]: value });
+  };
+
+  const handleRoleToggle = (roleId: string) => {
+    if (!guruData) return;
+    const isSelected = guruData.roles.includes(roleId);
+    let newRoles = [];
+    if (isSelected) {
+      newRoles = guruData.roles.filter(r => r !== roleId);
+    } else {
+      newRoles = [...guruData.roles, roleId];
     }
-    setGuruData(updatedGuru);
+    setGuruData({ ...guruData, roles: newRoles });
   };
 
   const handleBack = () => {
@@ -471,16 +507,33 @@ export default function DetailGuru({
                   {formErrors.kodeGuru && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.kodeGuru}</p>}
                 </div>
 
-                {/* Role */}
+                {/* Roles Checkboxes */}
                 <div>
-                  <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Peran</label>
-                  <select value={guruData.role} onChange={(e) => handleFieldChange('role', e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
-                    {peranList.map(item => <option key={item.id} value={item.id}>{item.nama}</option>)}
-                  </select>
+                   <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Peran {isEditMode && '(Bisa pilih lebih dari satu)'}</label>
+                   {!isEditMode ? (
+                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {guruData.roles.map(r => (
+                          <span key={r} style={{ padding: '6px 12px', backgroundColor: '#334155', color: 'white', borderRadius: '6px', fontSize: '13px' }}>{r}</span>
+                        ))}
+                     </div>
+                   ) : (
+                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        {peranList.map(item => (
+                          <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'white', fontSize: '14px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={guruData.roles.includes(item.id)} 
+                              onChange={() => handleRoleToggle(item.id)}
+                            />
+                            {item.nama}
+                          </label>
+                        ))}
+                     </div>
+                   )}
                 </div>
 
                 {/* Conditional Fields based on Role */}
-                {guruData.role === 'Guru' && (
+                {guruData.roles.includes('Guru') && (
                   <div>
                     <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Mata Pelajaran</label>
                     <select value={tempMataPelajaran} onChange={(e) => setTempMataPelajaran(e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.mataPelajaran ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
@@ -491,7 +544,7 @@ export default function DetailGuru({
                   </div>
                 )}
                 
-                {guruData.role === 'Wali Kelas' && (
+                {guruData.roles.includes('Wali Kelas') && (
                   <div>
                     <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Wali Kelas Dari</label>
                     <select value={guruData.waliKelasDari} onChange={(e) => handleFieldChange('waliKelasDari', e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.waliKelasDari ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
@@ -502,12 +555,14 @@ export default function DetailGuru({
                   </div>
                 )}
 
-                {guruData.role === 'Staff' && (
+                {(guruData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r))) && (
                   <div>
-                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Bagian</label>
+                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Detail Bagian / Jabatan Khusus</label>
                      <select value={tempStaffBagian} onChange={(e) => setTempStaffBagian(e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.staffBagian ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
-                      <option value="">Pilih Bagian</option>
-                      {staffBagianList.map(item => <option key={item.id} value={item.nama}>{item.nama}</option>)}
+                      <option value="">Pilih Detail</option>
+                      {guruData.roles.includes('Waka') && wakaOptions.map(item => <option key={item.id} value={item.nama}>{item.nama}</option>)}
+                      {guruData.roles.includes('Kapro') && majors.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+                      {guruData.roles.includes('Staff') && staffBagianList.map(item => <option key={item.id} value={item.nama}>{item.nama}</option>)}
                     </select>
                     {formErrors.staffBagian && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.staffBagian}</p>}
                   </div>

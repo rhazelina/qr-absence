@@ -7,7 +7,6 @@ use App\Models\Major;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class HomeroomTeacherSeeder extends Seeder
 {
@@ -33,7 +32,7 @@ class HomeroomTeacherSeeder extends Seeder
         $teacherName = 'Triana Ardiani, S.Pd';
         $user = User::where('name', $teacherName)->first();
 
-        if (!$user) {
+        if (! $user) {
             throw new \Exception("Teacher '$teacherName' not found. Please run TeacherSeeder first.");
         }
 

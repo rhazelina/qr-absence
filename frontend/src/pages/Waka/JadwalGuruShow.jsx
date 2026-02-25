@@ -106,23 +106,65 @@ function JadwalGuruShow() {
         {/* INFO GRID */}
         <div className="jadwal-guru-show-header-info">
           <div className="jadwal-guru-show-info-box">
-            <span>Kode Guru</span>
-            <strong>{jadwal.kode_guru || jadwal.code || '-'}</strong>
+            <span>Kode Guru / NIP</span>
+            <strong>{jadwal.kode_guru || jadwal.code || jadwal.nip || '-'}</strong>
+          </div>
+
+          <div className="jadwal-guru-show-info-box">
+            <span>Peran</span>
+            <div className="flex gap-1 flex-wrap mt-1">
+              {(Array.isArray(jadwal.jabatan) ? jadwal.jabatan : (jadwal.role ? jadwal.role.split(' | ') : ['Guru'])).map((role, idx) => (
+                <span 
+                  key={idx}
+                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
+                  style={{
+                    backgroundColor: role === 'Wali Kelas' ? '#DBEAFE' : role === 'Guru' ? '#DCFCE7' : role === 'Waka' ? '#F3E8FF' : '#FEF3C7',
+                    color: role === 'Wali Kelas' ? '#1E40AF' : role === 'Guru' ? '#166534' : role === 'Waka' ? '#6B21A8' : '#92400E',
+                  }}
+                >
+                  {role}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="jadwal-guru-show-info-box">
             <span>Mata Pelajaran</span>
-            <strong>{jadwal.subject || '-'}</strong>
+            <strong>
+              {Array.isArray(jadwal.subject) 
+                ? jadwal.subject.join(', ') 
+                : (jadwal.subject || jadwal.subject_name || '-')}
+            </strong>
           </div>
 
-          <div className="jadwal-guru-show-info-box">
-            <span>Email</span>
-            <strong>{jadwal.email || '-'}</strong>
-          </div>
+          {/* Role-specific Info */}
+          {(Array.isArray(jadwal.jabatan) ? jadwal.jabatan : []).includes('Wali Kelas') && jadwal.homeroom_class && (
+            <div className="jadwal-guru-show-info-box">
+              <span>Wali Kelas Dari</span>
+              <strong>{jadwal.homeroom_class.name || '-'}</strong>
+            </div>
+          )}
+
+          {(Array.isArray(jadwal.jabatan) ? jadwal.jabatan : []).includes('Kapro') && jadwal.konsentrasi_keahlian && (
+            <div className="jadwal-guru-show-info-box">
+              <span>Kapro Program</span>
+              <strong>{jadwal.konsentrasi_keahlian}</strong>
+            </div>
+          )}
+
+          {(Array.isArray(jadwal.jabatan) ? jadwal.jabatan : []).includes('Waka') && (jadwal.waka_field || jadwal.bidang) && (
+            <div className="jadwal-guru-show-info-box">
+              <span>Bidang Waka</span>
+              <strong>{jadwal.waka_field || jadwal.bidang}</strong>
+            </div>
+          )}
 
           <div className="jadwal-guru-show-info-box">
-            <span>No. HP</span>
-            <strong>{jadwal.phone || '-'}</strong>
+            <span>Email / No. HP</span>
+            <div className="flex flex-col">
+               <strong className="text-xs">{jadwal.email || '-'}</strong>
+               <strong className="text-xs">{jadwal.phone || '-'}</strong>
+            </div>
           </div>
         </div>
       </div>
