@@ -64,19 +64,38 @@ class ImportController extends Controller
             ], 422);
         }
 
-        // Resolve class labels to IDs if necessary
+        // Resolve class labels or grade/label combinations to IDs if necessary
         $resolvedItems = [];
         foreach ($items as $item) {
             $resolved = $item;
-            if (isset($item['class_id']) && ! is_numeric($item['class_id'])) {
-                $class = \App\Models\Classes::where('label', $item['class_id'])
-                    ->orWhere('grade', $item['class_id']) // Fallback if grade is sent
-                    ->first();
+
+            // resolve using any available hints: explicit class_id string, or grade/class_label fields
+            if (!isset($item['class_id']) || !is_numeric($item['class_id'])) {
+                $query = \App\Models\Classes::query();
+
+                if (!empty($item['grade'])) {
+                    $query->where('grade', $item['grade']);
+                }
+                if (!empty($item['class_label'])) {
+                    $query->where('label', $item['class_label']);
+                }
+
+                // if class_id field exists but is non-numeric, treat it as a possible label/grade/name
+                if (isset($item['class_id'])) {
+                    $query->where(function ($q) use ($item) {
+                        $q->where('label', $item['class_id'])
+                          ->orWhere('grade', $item['class_id'])
+                          ->orWhere('name', $item['class_id']);
+                    });
+                }
+
+                $class = $query->first();
 
                 if ($class) {
                     $resolved['class_id'] = $class->id;
                 }
             }
+
             $resolvedItems[] = $resolved;
         }
         $items = $resolvedItems;

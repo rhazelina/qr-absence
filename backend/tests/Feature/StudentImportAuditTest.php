@@ -91,3 +91,26 @@ it('SUCCEEDS when password is short or missing (Defaults to NISN)', function () 
     $response->assertStatus(201);
     $this->assertDatabaseHas('users', ['username' => 'shortpass']);
 });
+
+it('SUCCEEDS when only grade and class_label are provided', function () {
+    $admin = User::factory()->admin()->create();
+    $class = Classes::factory()->create(['grade' => '10', 'label' => 'RPL 2']);
+
+    $payload = [
+        'items' => [
+            [
+                'name' => 'Grade Label Student',
+                'nisn' => '1231231234',
+                'nis' => '12345',
+                'gender' => 'L',
+                'address' => 'Jl. GradeLabel',
+                'grade' => '10',
+                'class_label' => 'RPL 2',
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($admin)->postJson('/api/import/siswa', $payload);
+    $response->assertStatus(201);
+    $this->assertDatabaseHas('student_profiles', ['nisn' => '1231231234', 'class_id' => $class->id]);
+});

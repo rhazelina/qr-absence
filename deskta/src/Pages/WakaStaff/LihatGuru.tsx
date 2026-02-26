@@ -170,7 +170,7 @@ export default function LihatGuru({
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ fontSize: '12px', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>Kontak</span>
-                  <span style={{ fontWeight: 600, color: '#374151' }}>{teacherData?.phone || teacherData?.email || '-'}</span>
+                  <span style={{ fontWeight: 600, color: '#374151' }}>{teacherData?.phone || '-'}</span>
                 </div>
               </div>
 

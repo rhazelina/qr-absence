@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardGuru.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
-import { isJadwalCompleted } from '../../utils/dataManager';
 import apiService from '../../utils/api';
 
 function DashboardGuru() {
@@ -87,7 +86,7 @@ function DashboardGuru() {
         const stats = jadwal.statistics;
         const totalAttendance = (stats?.present || 0) + (stats?.late || 0) + (stats?.sick || 0) + (stats?.izin || 0) + (stats?.excused || 0) + (stats?.absent || 0);
 
-        if (totalAttendance > 0 || isJadwalCompleted(jadwal.id, currentFormattedDate)) {
+        if (totalAttendance > 0) {
           completed.add(jadwal.id);
         }
       });

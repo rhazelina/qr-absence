@@ -32,6 +32,11 @@ class TeacherSeeder extends Seeder
                 continue;
             } // Skip dot if any
 
+            // Ensure valid UTF-8 to avoid JSON encode errors
+            $name = trim($name);
+            $name = mb_convert_encoding($name, 'UTF-8', 'UTF-8, ISO-8859-1, WINDOWS-1252');
+            $name = iconv('UTF-8', 'UTF-8//IGNORE', $name);
+
             // Generate username from name (slugified)
             $cleanName = preg_replace('/[^a-zA-Z0-9\s]/', '', $name);
             $parts = explode(' ', strtolower($cleanName));

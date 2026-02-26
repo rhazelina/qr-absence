@@ -92,3 +92,25 @@ it('successfully imports siswa with class label instead of ID', function () {
     $response->assertStatus(201);
     $this->assertDatabaseHas('student_profiles', ['nisn' => '7777777', 'class_id' => $kelas->id]);
 });
+
+it('successfully imports siswa using separate grade and class_label columns', function () {
+    $kelas = Classes::factory()->create(['grade' => '11', 'label' => 'RPL 1']);
+
+    $response = $this->actingAs($this->admin)->postJson('/api/import/siswa', [
+        'items' => [
+            [
+                'name' => 'Jane Composite',
+                'username' => 'jane_comp',
+                'nisn' => '5555555',
+                'nis' => '44444',
+                'gender' => 'P',
+                'address' => 'Jl. Test 3',
+                'grade' => '11',
+                'class_label' => 'RPL 1',
+            ],
+        ],
+    ]);
+
+    $response->assertStatus(201);
+    $this->assertDatabaseHas('student_profiles', ['nisn' => '5555555', 'class_id' => $kelas->id]);
+});

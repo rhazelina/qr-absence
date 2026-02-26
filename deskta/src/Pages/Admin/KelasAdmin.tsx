@@ -20,12 +20,6 @@ interface KelasAdminProps {
 }
 
 /* ===================== DUMMY DATA REMOVED ===================== */
-const tingkatKelasOptions = [
-  "Semua Tingkat",
-  "10",
-  "11",
-  "12"
-];
 
 export default function KelasAdmin({
   user,
@@ -41,7 +35,6 @@ export default function KelasAdmin({
   const [editingKelas, setEditingKelas] = useState<ClassRoom | null>(null);
   const [openActionId, setOpenActionId] = useState<number | null>(null);
   const [selectedKonsentrasi, setSelectedKonsentrasi] = useState("Semua Konsentrasi Keahlian");
-  const [selectedTingkat, setSelectedTingkat] = useState("Semua Tingkat");
   const [validationError, setValidationError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,8 +43,8 @@ export default function KelasAdmin({
   // Form state
   const [formData, setFormData] = useState({
     label: "",
-    major_id: "",
     grade: "",
+    major_id: "",
     homeroom_teacher_id: "",
   });
 
@@ -125,7 +118,7 @@ export default function KelasAdmin({
   // Konsentrasi options for filter
   const konsentrasiKeahlianOptions = useMemo(() => {
     return ["Semua Konsentrasi Keahlian", ...majors.map(m => m.name)];
-  }, [majors]);
+  }, [majors]); 
 
   // Statistik
   const stats = useMemo(() => ({
@@ -144,41 +137,54 @@ export default function KelasAdmin({
 
     const inputLabel = data.label?.trim() || "";
     const inputMajorId = data.major_id || "";
-    const inputGrade = data.grade || "";
+    const inputGrade = data.grade?.trim() || "";
     const inputTeacherId = data.homeroom_teacher_id || "";
 
     if (!inputLabel) {
       return { isValid: false, message: "Label kelas harus diisi!" };
     }
 
-    if (!inputMajorId) {
-      return { isValid: false, message: "Konsentrasi keahlian harus dipilih!" };
-    }
-
     if (!inputGrade) {
       return { isValid: false, message: "Tingkat kelas harus dipilih!" };
+    }
+
+    if (!inputMajorId) {
+      return { isValid: false, message: "Konsentrasi keahlian harus dipilih!" };
     }
 
     if (!inputTeacherId) {
       return { isValid: false, message: "Wali kelas harus dipilih!" };
     }
 
-    const duplicateCombination = kelasList.find((k) => {
+    const normalizedLabel = inputLabel.toLowerCase();
+    const duplicateSameGrade = kelasList.find((k) => {
       if (isEditMode && k.id === excludeId) return false;
-      
       const kelasLabel = k.label.trim().toLowerCase();
       const kelasMajorId = k.major_id.toString();
-      const kelasGrade = k.grade;
-      
-      return kelasMajorId === inputMajorId && 
-             kelasGrade === inputGrade && 
-             kelasLabel === inputLabel.toLowerCase();
+      const kelasGrade = String(k.grade || "").trim();
+      return kelasMajorId === inputMajorId && kelasLabel === normalizedLabel && kelasGrade === inputGrade;
     });
 
-    if (duplicateCombination) {
+    if (duplicateSameGrade) {
       return {
         isValid: false,
-        message: `Kelas "${inputLabel}" untuk konsentrasi tersebut tingkat ${inputGrade} sudah ada!`
+        message: `Kelas "${inputLabel}" untuk tingkat ${inputGrade} sudah ada!`
+      };
+    }
+
+    const duplicateOtherGrade = kelasList.filter((k) => {
+      if (isEditMode && k.id === excludeId) return false;
+      const kelasLabel = k.label.trim().toLowerCase();
+      const kelasMajorId = k.major_id.toString();
+      const kelasGrade = String(k.grade || "").trim();
+      return kelasMajorId === inputMajorId && kelasLabel === normalizedLabel && kelasGrade !== inputGrade;
+    });
+
+    if (duplicateOtherGrade.length > 0) {
+      const existingGrades = Array.from(new Set(duplicateOtherGrade.map((k) => String(k.grade || "").trim()).filter(Boolean))).join(", ");
+      return {
+        isValid: false,
+        message: `Kelas "${inputLabel}" sudah ada di tingkat ${existingGrades}.`
       };
     }
 
@@ -203,12 +209,19 @@ export default function KelasAdmin({
       selectedKonsentrasi === "Semua Konsentrasi Keahlian" || 
       k.major_name === selectedKonsentrasi;
     
-    const tingkatMatch = 
-      selectedTingkat === "Semua Tingkat" || 
-      k.grade === selectedTingkat;
-    
-    return konsentrasiMatch && tingkatMatch;
+    return konsentrasiMatch;
   });
+
+  const getKelasLabel = (row: ClassRoom) => {
+    const label = row.label?.trim();
+    if (label) return label;
+    const grade = String(row.grade || "").trim();
+    const name = String(row.name || "").trim();
+    if (grade && name.toLowerCase().startsWith(grade.toLowerCase())) {
+      return name.slice(grade.length).trim() || name;
+    }
+    return name;
+  };
 
   const handleDelete = async (row: ClassRoom) => {
     if (confirm(`Hapus kelas "${row.name}"?`)) {
@@ -244,8 +257,8 @@ export default function KelasAdmin({
       if (editingKelas) {
         const updated = await masterService.updateClass(editingKelas.id, {
           label: formData.label,
-          major_id: parseInt(formData.major_id),
           grade: formData.grade,
+          major_id: parseInt(formData.major_id),
           homeroom_teacher_id: parseInt(formData.homeroom_teacher_id)
         });
         const updatedRaw = (updated as any)?.data || updated;
@@ -256,8 +269,8 @@ export default function KelasAdmin({
       } else {
         const newClass = await masterService.addClass({
           label: formData.label,
-          major_id: parseInt(formData.major_id),
           grade: formData.grade,
+          major_id: parseInt(formData.major_id),
           homeroom_teacher_id: parseInt(formData.homeroom_teacher_id)
         });
         const newClassRaw = (newClass as any)?.data || newClass;
@@ -268,7 +281,11 @@ export default function KelasAdmin({
       handleCloseModal();
     } catch (error) {
       console.error("Failed to save class:", error);
-      setValidationError("Gagal menyimpan data kelas. Silakan coba lagi.");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Gagal menyimpan data kelas. Silakan coba lagi.";
+      setValidationError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -280,8 +297,8 @@ export default function KelasAdmin({
     setEditingKelas(null);
     setFormData({
       label: "",
-      major_id: "",
       grade: "",
+      major_id: "",
       homeroom_teacher_id: "",
     });
     setValidationError("");
@@ -294,8 +311,8 @@ export default function KelasAdmin({
     setEditingKelas(kelas);
     setFormData({
       label: kelas.label,
+      grade: kelas.grade || "",
       major_id: kelas.major_id?.toString() || "",
-      grade: kelas.grade,
       homeroom_teacher_id: kelas.homeroom_teacher_id?.toString() || fallbackTeacherId,
     });
     setValidationError("");
@@ -309,8 +326,8 @@ export default function KelasAdmin({
     setEditingKelas(null);
     setFormData({
       label: "",
-      major_id: "",
       grade: "",
+      major_id: "",
       homeroom_teacher_id: "",
     });
     setValidationError("");
@@ -387,19 +404,6 @@ export default function KelasAdmin({
               </select>
             </div>
             
-            <div style={{ minWidth: "120px", maxWidth: "150px" }}>
-              <select
-                value={selectedTingkat}
-                onChange={(e) => setSelectedTingkat(e.target.value)}
-                style={dropdownStyle}
-              >
-                {tingkatKelasOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           <div style={{ ...buttonContainerStyle, display: 'flex', gap: '8px' }}>
@@ -529,7 +533,7 @@ export default function KelasAdmin({
                     color: '#374151',
                     textAlign: 'center',
                     borderRight: '1px solid #E5E7EB',
-                  }}>{row.name}</td>
+                  }}>{getKelasLabel(row)}</td>
                   <td style={{
                     padding: '12px 16px',
                     fontSize: '13px',
@@ -735,6 +739,58 @@ export default function KelasAdmin({
                 />
               </div>
 
+              {/* Tingkat Kelas */}
+              <div style={{
+                marginBottom: '18px',
+              }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '10px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Tingkat Kelas<span style={{
+                    color: '#ef4444',
+                    marginLeft: '6px',
+                    fontWeight: '700',
+                  }}>*</span>
+                </label>
+                <select
+                  value={formData.grade}
+                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    backgroundColor: '#f8fafc',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">Pilih Tingkat Kelas</option>
+                  <option value="10">10</option>
+                  <option value="11">11</option>
+                  <option value="12">12</option>
+                </select>
+              </div>
+
               {/* Konsentrasi Keahlian */}
               <div style={{
                 marginBottom: '18px',
@@ -787,57 +843,6 @@ export default function KelasAdmin({
                 </select>
               </div>
 
-              {/* Tingkat Kelas */}
-              <div style={{
-                marginBottom: '18px',
-              }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '10px',
-                  fontWeight: '700',
-                  fontSize: '14px',
-                  color: '#1e293b',
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                }}>
-                  Tingkat Kelas<span style={{
-                    color: '#ef4444',
-                    marginLeft: '6px',
-                    fontWeight: '700',
-                  }}>*</span>
-                </label>
-                <select
-                  value={formData.grade}
-                  onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                    backgroundColor: '#f8fafc',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.backgroundColor = '#ffffff';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="">Pilih Tingkat Kelas</option>
-                  <option value="10">10</option>
-                  <option value="11">11</option>
-                  <option value="12">12</option>
-                </select>
-              </div>
 
               {/* Wali Kelas */}
               <div style={{

@@ -13,7 +13,7 @@ import {
   X,
   Search
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx';
 import { teacherService } from '../../services/teacherService';
 import { masterService, type Subject, type ClassRoom } from '../../services/masterService';
 
@@ -29,19 +29,19 @@ interface User {
 
 interface Guru {
   id: string;
-  nip: string; 
-  name: string; 
+  nip: string;
+  name: string;
   role: string; // Akan menyimpan string gabungan: "Guru | Wali Kelas"
-  phone?: string; 
-  subject?: string | string[]; 
-  waka_field?: string; 
+  phone?: string;
+  subject?: string | string[];
+  waka_field?: string;
   homeroom_class?: {
     id: number;
     name: string;
-  }; 
+  };
   keterangan: string; // Computed for display: "Matematika | 10 RPL 1"
   email?: string;
-  gender?: string; 
+  gender?: string;
 }
 
 interface GuruAdminProps {
@@ -89,7 +89,8 @@ export default function GuruAdmin({
     jenisKelamin: 'Laki-Laki',
     roles: [] as string[],
     subjects: [] as string[], // Bisa lebih dari 1 jika pakai multi-select nanti
-    waliKelasDari: '',
+    waliGrade: '',
+    waliKelasId: '',
     wakaField: '',
     kaproField: '',
     noTelp: '',
@@ -104,61 +105,7 @@ export default function GuruAdmin({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper normalisasi untuk Import
-  const normalizeText = (value: unknown) =>
-    String(value ?? '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
 
-  const normalizeKey = (value: unknown) =>
-    normalizeText(value).replace(/[^a-z0-9]/g, '');
-
-  const getRowValue = (row: Record<string, any>, aliases: string[]) => {
-    const aliasSet = new Set(aliases.map(normalizeKey));
-    for (const [key, value] of Object.entries(row)) {
-      if (!aliasSet.has(normalizeKey(key))) continue;
-      if (value === undefined || value === null) continue;
-      if (String(value).trim() === '') continue;
-      return value;
-    }
-    return '';
-  };
-
-  const normalizeImportRole = (rawRole: unknown): 'Guru' | 'Wali Kelas' | 'Waka' | 'Kapro' => {
-    const role = normalizeText(rawRole);
-    if (role === 'wali kelas' || role === 'walikelas' || role.includes('wali')) return 'Wali Kelas';
-    if (role === 'waka' || role === 'staff' || role.includes('wak')) return 'Waka';
-    if (role === 'kapro' || role === 'kaprog' || role === 'kaprodi') return 'Kapro';
-    return 'Guru';
-  };
-
-  const resolveHomeroomClassId = (rawClass: unknown) => {
-    const classText = String(rawClass ?? '').trim();
-    if (!classText) return null;
-
-    const byId = classes.find(c => c.id.toString() === classText);
-    if (byId) return byId.id;
-
-    const normalizedInput = normalizeText(classText);
-    const candidates = classes.filter(c => {
-      const className = normalizeText(c.name);
-      const classLabel = normalizeText(c.label);
-      const classGrade = normalizeText(c.grade);
-      return (
-        className === normalizedInput ||
-        classLabel === normalizedInput ||
-        classGrade === normalizedInput ||
-        className.includes(normalizedInput) ||
-        classLabel.includes(normalizedInput)
-      );
-    });
-
-    if (candidates.length > 0) {
-      return candidates[0].id;
-    }
-
-    return null;
-  };
 
   // ==================== FETCH DATA ====================
   const fetchTeachers = async () => {
@@ -173,19 +120,21 @@ export default function GuruAdmin({
       const mappedGuru = response.data.map((t: any) => {
         // Antisipasi jika backend sudah mengirimkan array jabatan
         const rolesArray = Array.isArray(t.jabatan) ? t.jabatan : (t.jabatan ? [t.jabatan] : ['Guru']);
-        
+        const hasRole = (prefix: string) =>
+          rolesArray.some((r) => r.toLowerCase().startsWith(prefix.toLowerCase()));
+
         // Buat string keterangan gabungan
         const detailKeterangan = [];
-        if (rolesArray.includes('Guru') && t.subject) {
+        if (hasRole('Guru') && t.subject) {
           detailKeterangan.push(Array.isArray(t.subject) ? t.subject.join(', ') : t.subject);
         }
-        if (rolesArray.includes('Wali Kelas') && t.homeroom_class) {
+        if (hasRole('Wali Kelas') && t.homeroom_class) {
           detailKeterangan.push(t.homeroom_class.name);
         }
-        if (rolesArray.includes('Kapro') && t.konsentrasi_keahlian) {
+        if (hasRole('Kapro') && t.konsentrasi_keahlian) {
           detailKeterangan.push(t.konsentrasi_keahlian);
         }
-        if (rolesArray.includes('Waka') && t.waka_field) {
+        if (hasRole('Waka') && t.waka_field) {
           detailKeterangan.push(t.waka_field);
         }
 
@@ -266,7 +215,7 @@ export default function GuruAdmin({
 
     if (!formData.namaGuru.trim()) errors.namaGuru = 'Nama guru harus diisi';
     if (!formData.kodeGuru.trim()) errors.kodeGuru = 'NIP/Kode guru harus diisi';
-    
+
     if (formData.roles.length === 0) {
       errors.roles = 'Pilih minimal satu peran';
     }
@@ -274,8 +223,9 @@ export default function GuruAdmin({
     if (formData.roles.includes('Guru') && formData.subjects.length === 0) {
       errors.subjects = 'Mata pelajaran harus dipilih';
     }
-    if (formData.roles.includes('Wali Kelas') && !formData.waliKelasDari) {
-      errors.waliKelasDari = 'Kelas binaan harus dipilih';
+    if (formData.roles.includes('Wali Kelas')) {
+      if (!formData.waliGrade) errors.waliGrade = 'Tingkatan binaan harus dipilih';
+      if (!formData.waliKelasId) errors.waliKelasId = 'Kelas binaan harus dipilih';
     }
     if (formData.roles.includes('Kapro') && !formData.kaproField) {
       errors.kaproField = 'Program keahlian harus dipilih';
@@ -295,7 +245,8 @@ export default function GuruAdmin({
       jenisKelamin: 'Laki-Laki',
       roles: [],
       subjects: [],
-      waliKelasDari: '',
+      waliGrade: '',
+      waliKelasId: '',
       wakaField: '',
       kaproField: '',
       noTelp: '',
@@ -332,11 +283,11 @@ export default function GuruAdmin({
         phone: formData.noTelp,
         email: formData.email || `${formData.kodeGuru}@deskta.com`,
         password: formData.password || 'password123',
-        
+
         // Kirim properti opsional sesuai peran yang dipilih
         subject: formData.roles.includes('Guru') ? formData.subjects : null,
-        homeroom_class_id: formData.roles.includes('Wali Kelas') 
-          ? classes.find(c => c.name === formData.waliKelasDari)?.id 
+        homeroom_class_id: formData.roles.includes('Wali Kelas')
+          ? formData.waliKelasId
           : null,
         bidang: formData.roles.includes('Waka') ? formData.wakaField : null,
         konsentrasi_keahlian: formData.roles.includes('Kapro') ? formData.kaproField : null,
@@ -379,9 +330,10 @@ export default function GuruAdmin({
 
   const getFilteredKeteranganOptions = () => {
     if (selectedRole === 'Guru') return mataPelajaranOptions;
-    if (selectedRole === 'Wali Kelas') return kelasOptions;
+    // use major list for both wali kelas and kapro as per new requirements
+    if (selectedRole === 'Wali Kelas' || selectedRole === 'Kapro')
+      return majors.map(m => ({ label: m.name, value: m.name }));
     if (selectedRole === 'Waka') return wakaOptions;
-    if (selectedRole === 'Kapro') return majors.map(m => ({ label: m.name, value: m.name }));
     return [];
   };
 
@@ -415,7 +367,7 @@ export default function GuruAdmin({
   const handleExportExcel = () => { /* Logika Excel mu */ };
   const handleDownloadFormatExcel = () => { /* Logika Format mu */ };
   const handleImport = () => { fileInputRef.current?.click(); };
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => { /* Logika Import mu */ };
+  const handleFileSelect = async (_e: React.ChangeEvent<HTMLInputElement>) => { /* Logika Import mu */ };
 
 
   /* ===================== RENDER ===================== */
@@ -439,13 +391,13 @@ export default function GuruAdmin({
 
         {/* FILTERS & ACTIONS */}
         <div style={{ display: 'grid', gridTemplateColumns: '200px 200px 1fr auto auto auto auto', gap: '12px', alignItems: 'flex-end' }}>
-          <Select label="Filter Peran" value={selectedRole} onChange={(v) => { setSelectedRole(v); setSelectedKeterangan(''); }} options={roleOptions} placeholder="Semua Peran" />
+          <Select label="Peran" value={selectedRole} onChange={(v) => { setSelectedRole(v); setSelectedKeterangan(''); }} options={roleOptions} placeholder="Semua" />
           <Select
-            label="Filter Detail"
+            label="Detail"
             value={selectedKeterangan}
             onChange={setSelectedKeterangan}
             options={getFilteredKeteranganOptions()}
-            placeholder="Semua Detail"
+            placeholder="Semua"
             disabled={!selectedRole}
           />
 
@@ -500,7 +452,7 @@ export default function GuruAdmin({
                       <td style={{ padding: '12px 16px', fontSize: '13px', color: '#334155' }}>{(pageIndex - 1) * itemsPerPage + index + 1}</td>
                       <td style={{ padding: '12px 16px', fontSize: '13px', color: '#334155' }}>{guru.nip}</td>
                       <td style={{ padding: '12px 16px', fontSize: '13px', color: '#334155' }}>{guru.name}</td>
-                      
+
                       {/* KOLOM PERAN DENGAN MULTI-ROLE STYLE */}
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -515,9 +467,9 @@ export default function GuruAdmin({
                           ))}
                         </div>
                       </td>
-                      
+
                       <td style={{ padding: '12px 16px', fontSize: '13px', color: '#334155' }}>{guru.keterangan}</td>
-                      
+
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                         <div style={{ position: 'relative' }}>
                           <button onClick={() => setOpenActionId(openActionId === guru.id ? null : guru.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
@@ -615,23 +567,63 @@ export default function GuruAdmin({
 
                 {formData.roles.includes('Guru') && (
                   <div>
-                    <label style={{ fontSize: '13px', fontWeight: 600 }}>Mata Pelajaran Utama</label>
-                    <select name="subjects" value={formData.subjects[0] || ''} onChange={(e) => setFormData(p => ({ ...p, subjects: [e.target.value] }))} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                      <option value="">Pilih Mata Pelajaran</option>
-                      {mataPelajaranOptions.map((opt: { label: string; value: string }) => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
+                    <label style={{ fontSize: '13px', fontWeight: 600 }}>Mata Pelajaran</label>
+                    <select
+                      name="subjects"
+                      multiple
+                      value={formData.subjects}
+                      onChange={(e) => {
+                        const opts = Array.from(e.target.selectedOptions).map(o => o.value);
+                        setFormData(p => ({ ...p, subjects: opts }));
+                      }}
+                      style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc', minHeight: '120px' }}
+                    >
+                      {mataPelajaranOptions.map((opt: { label: string; value: string }) => (
+                        <option key={opt.value} value={opt.label}>{opt.label}</option>
+                      ))}
                     </select>
                     {formErrors.subjects && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.subjects}</span>}
                   </div>
                 )}
 
                 {formData.roles.includes('Wali Kelas') && (
-                  <div>
-                    <label style={{ fontSize: '13px', fontWeight: 600 }}>Kelas Binaan (Wali Kelas)</label>
-                    <select name="waliKelasDari" value={formData.waliKelasDari} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
-                      <option value="">Pilih Kelas</option>
-                      {kelasOptions.map((opt: { label: string; value: string }) => <option key={opt.value} value={opt.label}>{opt.label}</option>)}
-                    </select>
-                    {formErrors.waliKelasDari && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.waliKelasDari}</span>}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '13px', fontWeight: 600 }}>Tingkatan Binaan</label>
+                      <select
+                        name="waliGrade"
+                        value={formData.waliGrade}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          // clear class id when grade changes
+                          setFormData(p => ({ ...p, waliKelasId: '' }));
+                        }}
+                        style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                      >
+                        <option value="">Pilih Tingkatan</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                      </select>
+                      {formErrors.waliGrade && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.waliGrade}</span>}
+                    </div>
+                    <div style={{ flex: 2 }}>
+                      <label style={{ fontSize: '13px', fontWeight: 600 }}>Kelas Binaan (Wali Kelas)</label>
+                      <select
+                        name="waliKelasId"
+                        value={formData.waliKelasId}
+                        onChange={handleInputChange}
+                        style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                      >
+                        <option value="">Pilih Kelas</option>
+                        {kelasOptions
+                          .filter(o => !formData.waliGrade || classes.find(c => c.id.toString() === o.value)?.grade === formData.waliGrade)
+                          .map((opt: { label: string; value: string }) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                      </select>
+                      {formErrors.waliKelasId && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.waliKelasId}</span>}
+                    </div>
                   </div>
                 )}
 
@@ -660,16 +652,16 @@ export default function GuruAdmin({
 
               <div>
                 <label>Nomor Telepon (Opsional)</label>
-                <input 
-                  type="text" 
-                  name="noTelp" 
-                  value={formData.noTelp} 
+                <input
+                  type="text"
+                  name="noTelp"
+                  value={formData.noTelp}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, '').slice(0, 15);
                     setFormData(prev => ({ ...prev, noTelp: val }));
-                  }} 
+                  }}
                   placeholder="08xxxxxxxxxxxx"
-                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }} 
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
                 />
               </div>
 

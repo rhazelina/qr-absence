@@ -1,4 +1,4 @@
-const baseURL = import.meta.env.VITE_API_URL;
+             const baseURL = import.meta.env.VITE_API_URL;
 export const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
 export const getHeaders = () => {
@@ -29,24 +29,37 @@ export const handleResponse = async (response: Response) => {
     throw new Error(errorData.message || 'You do not have permission to perform this action.');
   }
 
+  const text = await response.text();
+  const tryParse = (raw: string) => {
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+  const data = tryParse(text);
+
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const error = new Error(errorData.message || 'API request failed') as Error & {
+    const message = data?.message || text || 'API request failed';
+    const error = new Error(message) as Error & {
       data?: any;
       status?: number;
     };
-    error.data = errorData;
+    error.data = data || { raw: text };
     error.status = response.status;
     throw error;
   }
 
-  // Handle empty responses
-  const text = await response.text();
+  if (data !== null) {
+    return data;
+  }
+
   if (!text) {
     return null;
   }
 
-  return JSON.parse(text);
+  throw new Error('Invalid JSON response from server.');
 };
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<any> => {

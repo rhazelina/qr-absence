@@ -608,7 +608,7 @@ export default function ProfilSekolah({
                 name="jenis_sekolah"
                 value={editFormData.jenis_sekolah}
                 onChange={handleInputChange}
-                options={['SMK', 'SMA', 'SMP', 'SD']}
+                options={['SMK', 'SMA', 'SMP', 'SD', 'MA', 'MTS', 'MI']}
               />
               <FormSelect
                 label="Akreditasi"

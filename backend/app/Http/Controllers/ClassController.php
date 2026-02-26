@@ -67,7 +67,11 @@ class ClassController extends Controller
             return $class;
         });
 
-        return response()->json($class->load(['major', 'homeroomTeacher.user']), 201);
+        $payload = $this->sanitizeForJson(
+            $class->load(['major', 'homeroomTeacher.user'])->toArray()
+        );
+
+        return response()->json($payload, 201);
     }
 
     /**
@@ -117,7 +121,25 @@ class ClassController extends Controller
             }
         });
 
-        return response()->json($class->fresh()->load(['major', 'homeroomTeacher.user']));
+        $payload = $this->sanitizeForJson(
+            $class->fresh()->load(['major', 'homeroomTeacher.user'])->toArray()
+        );
+
+        return response()->json($payload);
+    }
+
+    private function sanitizeForJson($value)
+    {
+        if (is_array($value)) {
+            return array_map([$this, 'sanitizeForJson'], $value);
+        }
+
+        if (is_string($value)) {
+            $value = mb_convert_encoding($value, 'UTF-8', 'UTF-8, ISO-8859-1, WINDOWS-1252');
+            $value = iconv('UTF-8', 'UTF-8//IGNORE', $value);
+        }
+
+        return $value;
     }
 
     /**

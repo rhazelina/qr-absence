@@ -101,7 +101,7 @@ function PresensiSiswa() {
     { value: '8', label: 'Jam Ke-8 (13:15 - 14:00)' },
   ];
 
-  // ✅ Initialize siswa list - data akan dimuat dari dataManager
+  // ✅ Initialize siswa list - data dimuat dari backend
   const [siswaList, setSiswaList] = useState([]);
   const [pulangStudents, setPulangStudents] = useState([]); // Students already marked Pulang today
   const [showOverrideModal, setShowOverrideModal] = useState(false);
@@ -516,7 +516,7 @@ function PresensiSiswa() {
                             <line x1="12" y1="16" x2="12.01" y2="16"></line>
                           </svg>
                           <strong>Tidak ada data siswa</strong>
-                          <p style={{ fontSize: '14px', marginTop: '5px' }}>Pastikan data siswa sudah tersedia di dataManager.js</p>
+                          <p style={{ fontSize: '14px', marginTop: '5px' }}>Pastikan data siswa sudah tersedia dari backend.</p>
                         </div>
                       </td>
                     </tr>

@@ -19,11 +19,11 @@ class StudentSeeder extends Seeder
             ['name' => 'Rekayasa Perangkat Lunak']
         );
 
-        // 2. Pastikan Kelas 12 Rekayasa Perangkat Lunak 1 dan 12 Rekayasa Perangkat Lunak 2 ada
+        // 2. Pastikan Kelas 12 RPL 1 dan 12 RPL 2 ada
         $class1 = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => "{$major->name} 1",
+                'label' => "{$major->code} 1",
             ],
             [
                 'major_id' => $major->id,
@@ -33,7 +33,7 @@ class StudentSeeder extends Seeder
         $class2 = Classes::firstOrCreate(
             [
                 'grade' => '12',
-                'label' => "{$major->name} 2",
+                'label' => "{$major->code} 2",
             ],
             [
                 'major_id' => $major->id,

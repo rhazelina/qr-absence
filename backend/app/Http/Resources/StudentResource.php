@@ -24,7 +24,11 @@ class StudentResource extends JsonResource
             'address' => $this->address,
             'parent_phone' => $this->parent_phone,
             'class_id' => $this->class_id,
+            // the full combined name (grade + label) is kept for backward compatibility
             'class_name' => $this->whenLoaded('classRoom', fn () => $this->classRoom->name),
+            // expose separate pieces for grade/tingkatan and kelas label
+            'class_grade' => $this->whenLoaded('classRoom', fn () => $this->classRoom->grade),
+            'class_label' => $this->whenLoaded('classRoom', fn () => $this->classRoom->label),
             'major_id' => $this->whenLoaded('classRoom', fn () => $this->classRoom->major_id),
             'major_name' => $this->whenLoaded('classRoom', fn () => $this->classRoom->major?->name),
             'major' => $this->whenLoaded('classRoom', fn () => $this->classRoom->major?->code),

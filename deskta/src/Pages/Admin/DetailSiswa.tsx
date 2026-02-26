@@ -35,6 +35,9 @@ export default function DetailSiswa({
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
   const [classes, setClasses] = useState<ClassRoom[]>([]);
+  const [majors, setMajors] = useState<any[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = useState<string>('');
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
   
   // Custom fields not directly in Student interface or needing transformation
   const currentYear = new Date().getFullYear();
@@ -48,11 +51,15 @@ export default function DetailSiswa({
       setLoading(true);
       try {
         // Fetch Master Data first
-        const [classesRes] = await Promise.all([
-          masterService.getClasses()
+        const [classesRes, majorsRes] = await Promise.all([
+          masterService.getClasses(),
+          masterService.getMajors(),
         ]);
         
-        setClasses(classesRes.data || []);
+        const classesRaw = Array.isArray(classesRes) ? classesRes : (classesRes.data || classesRes.data?.data || []);
+        const majorsRaw = Array.isArray(majorsRes) ? majorsRes : (majorsRes.data || majorsRes.data?.data || []);
+        setClasses(classesRaw);
+        setMajors(majorsRaw);
 
         // Fetch Student Data
         if (siswaId) {
@@ -73,6 +80,9 @@ export default function DetailSiswa({
             major_name: rawStudent.major_name || '',
             class_id: rawStudent.class_id ? String(rawStudent.class_id) : '',
             class_name: rawStudent.class_name || '',
+            class_grade: rawStudent.class_grade || rawStudent.grade || '',
+            class_label: rawStudent.class_label || '',
+            // grade field kept for compatibility but not used
             grade: rawStudent.grade || '',
             gender: rawStudent.gender || 'L',
             phone: rawStudent.phone || rawStudent.parent_phone || '',
@@ -83,6 +93,16 @@ export default function DetailSiswa({
           setSiswaData(normalizedStudent);
           setOriginalData(normalizedStudent);
           setErrorLocal(null);
+
+          const classFromList = classesRaw.find((c: any) => c.id?.toString() === normalizedStudent.class_id);
+          const majorId =
+            classFromList?.major_id?.toString()
+            || majorsRaw.find((m: any) => m.code === normalizedStudent.major)?.id?.toString()
+            || majorsRaw.find((m: any) => m.name === normalizedStudent.major_name)?.id?.toString()
+            || '';
+          const gradeValue = classFromList?.grade?.toString() || normalizedStudent.class_grade || '';
+          setSelectedMajorId(majorId);
+          setSelectedGrade(gradeValue);
           
           // Parse tahun angkatan if available, otherwise default
           // Assuming backend doesn't send distinct tahunMulai/Akhir, or we parse from 'grade' or add custom fields
@@ -101,6 +121,18 @@ export default function DetailSiswa({
 
     loadData();
   }, [siswaId]);
+
+  useEffect(() => {
+    if (!siswaData) return;
+    if (!selectedMajorId && siswaData.class_id) {
+      const cls = classes.find(c => c.id.toString() === siswaData.class_id);
+      if (cls?.major_id) setSelectedMajorId(cls.major_id.toString());
+    }
+    if (!selectedGrade) {
+      const grade = siswaData.class_grade || '';
+      if (grade) setSelectedGrade(String(grade));
+    }
+  }, [siswaData, classes, selectedMajorId, selectedGrade]);
 
   // ==================== FORM VALIDATION ====================
   const validateField = (field: string, value: string) => {
@@ -224,14 +256,19 @@ export default function DetailSiswa({
     
     // Handle special cases if any
     if (field === 'class_id') {
-      // When class changes, update class_name if needed for UI immediate feedback
-      // But usually we rely on ID.
-      // Also potentially auto-set major based on class?
       const selectedClass = classes.find(c => c.id.toString() === value);
       if (selectedClass) {
           updatedSiswa.class_name = selectedClass.name;
-          updatedSiswa.grade = selectedClass.grade;
-          // Could also set major if needed
+          updatedSiswa.class_grade = selectedClass.grade;
+          updatedSiswa.class_label = selectedClass.label;
+          updatedSiswa.grade = selectedClass.grade; // legacy
+          if (selectedClass.major_id) {
+            const maj = majors.find((m) => m.id.toString() === selectedClass.major_id.toString());
+            updatedSiswa.major = maj?.code || updatedSiswa.major;
+            updatedSiswa.major_name = maj?.name || updatedSiswa.major_name;
+            setSelectedMajorId(selectedClass.major_id.toString());
+          }
+          setSelectedGrade(String(selectedClass.grade || ''));
       }
     }
     
@@ -242,6 +279,7 @@ export default function DetailSiswa({
     (updatedSiswa as any)[field] = value;
     setSiswaData(updatedSiswa);
   };
+
 
   // Generate tahun options
   const generateTahunOptions = () => {
@@ -611,49 +649,7 @@ export default function DetailSiswa({
                   </select>
                 </div>
 
-                {/* Kelas */}
-                <div>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#FFFFFF',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}>
-                    Kelas
-                  </label>
-                  <select
-                    value={siswaData.class_id || ''}
-                    onChange={(e) => handleFieldChange('class_id', e.target.value)}
-                    disabled={!isEditMode}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: formErrors.class_id ? '2px solid #EF4444' : '1px solid #E5E7EB',
-                      fontSize: '14px',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937',
-                      outline: 'none',
-                      cursor: isEditMode ? 'pointer' : 'not-allowed',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <option value="">Pilih Kelas</option>
-                    {classes.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.class_id && isEditMode && (
-                    <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>
-                      {formErrors.class_id}
-                    </p>
-                  )}
-                </div>
-
-                {/* Konsentrasi Keahlian / Major (Read-only or derived from Class) */}
+                {/* Konsentrasi Keahlian */}
                 <div>
                   <label style={{
                     fontSize: '14px',
@@ -664,26 +660,121 @@ export default function DetailSiswa({
                   }}>
                     Konsentrasi Keahlian
                   </label>
-                  <input
-                    type="text"
-                    value={siswaData.major_name || '-'}
-                    disabled
+                  <select
+                    value={selectedMajorId}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedMajorId(value);
+                      setSelectedGrade('');
+                      handleFieldChange('class_id', '');
+                    }}
+                    disabled={!isEditMode}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
                       borderRadius: '8px',
                       border: '1px solid #E5E7EB',
                       fontSize: '14px',
-                      backgroundColor: '#F3F4F6', // Read-only look
-                      color: '#374151',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937',
                       outline: 'none',
-                      cursor: 'not-allowed',
+                      cursor: isEditMode ? 'pointer' : 'not-allowed',
                       boxSizing: 'border-box',
                     }}
-                  />
-                  <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>
-                    *Otomatis dari kelas
-                  </p>
+                  >
+                    <option value="">Pilih Konsentrasi Keahlian</option>
+                    {majors.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tingkat Kelas */}
+                <div>
+                  <label style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#FFFFFF',
+                    display: 'block',
+                    marginBottom: '8px',
+                  }}>
+                    Tingkat Kelas
+                  </label>
+                  <select
+                    value={selectedGrade}
+                    onChange={(e) => {
+                      setSelectedGrade(e.target.value);
+                      handleFieldChange('class_id', '');
+                    }}
+                    disabled={!isEditMode}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #E5E7EB',
+                      fontSize: '14px',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937',
+                      outline: 'none',
+                      cursor: isEditMode ? 'pointer' : 'not-allowed',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="">Pilih Tingkat</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                  </select>
+                </div>
+
+                {/* Kelas */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#FFFFFF',
+                      display: 'block',
+                      marginBottom: '8px',
+                    }}>
+                      Kelas
+                    </label>
+                    <select
+                      value={siswaData.class_id || ''}
+                      onChange={(e) => handleFieldChange('class_id', e.target.value)}
+                      disabled={!isEditMode}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        border: formErrors.class_id ? '2px solid #EF4444' : '1px solid #E5E7EB',
+                        fontSize: '14px',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937',
+                        outline: 'none',
+                        cursor: isEditMode ? 'pointer' : 'not-allowed',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <option value="">Pilih Kelas</option>
+                      {classes
+                        .filter(c => {
+                          if (selectedMajorId && c.major_id?.toString() !== selectedMajorId) return false;
+                          if (selectedGrade && c.grade?.toString() !== selectedGrade) return false;
+                          return true;
+                        })
+                        .map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.label || c.name}
+                          </option>
+                        ))}
+                    </select>
+                    {formErrors.class_id && isEditMode && (
+                      <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>
+                        {formErrors.class_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* No. Telepon Orang Tua */}

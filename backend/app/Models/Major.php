@@ -17,6 +17,7 @@ class Major extends Model
         'program_keahlian',
         'bidang_keahlian',
         'category',
+        'bidang',
     ];
 
     public function classes(): HasMany

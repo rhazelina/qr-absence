@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSchool } from '../../context/SchoolContext';
 
 // Import gambar default dari src/assets

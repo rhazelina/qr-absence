@@ -57,19 +57,8 @@ class TeacherRoleSeeder extends Seeder
             if (isset($walikelasTeachers[$index])) {
                 $teacher = $walikelasTeachers[$index];
 
-                // Format as requested: "10 RPL 1" etc.
-                // We need to parse the class name to get something like "10 RPL 1"
-                // Our class names are currently "Rekayasa Perangkat Lunak 1" with grade 10
-                // We want "[Grade] [Code] [Number]"
-
-                $label = $class->label; // "Rekayasa Perangkat Lunak 1"
-                $parts = explode(' ', $label);
-                $number = end($parts);
-                $majorCode = $class->major->code;
-                $formattedRole = "{$class->grade} {$majorCode} {$number}";
-
                 $teacher->update([
-                    'jabatan' => $formattedRole,
+                    'jabatan' => 'Wali Kelas',
                     'homeroom_class_id' => $class->id,
                 ]);
             }

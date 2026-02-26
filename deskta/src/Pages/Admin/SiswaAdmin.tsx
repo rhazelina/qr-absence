@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../../component/Admin/AdminLayout';
 import { Button } from '../../component/Shared/Button';
 import { Select } from '../../component/Shared/Select';
-import { 
-  MoreVertical, 
-  Trash2, 
-  Edit,
+import {
+  MoreVertical,
+  Trash2,
   FileDown,
   Upload,
   FileText,
@@ -29,7 +28,8 @@ interface Siswa {
   nis: string;
   jurusan: string;
   jurusanId?: string;
-  kelas: string;
+  kelasGrade: string;     // numeric grade (10,11,12)
+  kelasLabel: string;     // actual class name (RPL 1, etc)
   kelasId?: string;
   jenisKelamin: 'L' | 'P';
   phone?: string;
@@ -48,12 +48,12 @@ interface SiswaAdminProps {
   onNavigateToDetail?: (id: string) => void;
 }
 
-const SiswaAdmin: React.FC<SiswaAdminProps> = ({ 
-  user, 
-  onLogout, 
-  currentPage, 
-  onMenuClick, 
-  onNavigateToDetail 
+const SiswaAdmin: React.FC<SiswaAdminProps> = ({
+  user,
+  onLogout,
+  currentPage,
+  onMenuClick,
+  onNavigateToDetail
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,7 +68,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   // Search & Filter
   const [searchValue, setSearchValue] = useState('');
   const [selectedJurusan, setSelectedJurusan] = useState('');
-  const [selectedKelas, setSelectedKelas] = useState('');
+  const [selectedTingkatan, setSelectedTingkatan] = useState('');
 
   // Dropdown & Modal State
   const [openActionId, setOpenActionId] = useState<string | null>(null);
@@ -78,7 +78,24 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
   // Form State
   const currentYear = new Date().getFullYear();
-  const [formData, setFormData] = useState({
+  interface FormData {
+    namaSiswa: string;
+    nisn: string;
+    nis: string;
+    username: string;
+    password: string;
+    email: string;
+    address: string;
+    jenisKelamin: 'L' | 'P';
+    jurusanId: string;
+    tingkatan: string;
+    kelasId: string;
+    noTelp: string;
+    tahunMulai: string;
+    tahunAkhir: string;
+  }
+
+  const [formData, setFormData] = useState<FormData>({
     namaSiswa: '',
     nisn: '',
     nis: '',
@@ -88,13 +105,14 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     address: '',
     jenisKelamin: 'L',
     jurusanId: '',
-    kelas: '',
+    tingkatan: '',
+    kelasId: '',
     noTelp: '',
     tahunMulai: currentYear.toString(),
     tahunAkhir: (currentYear + 3).toString()
   });
 
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   // Pagination
   const [pageIndex, setPageIndex] = useState(1);
@@ -105,7 +123,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   // Import Preview State
   const [importPreviewData, setImportPreviewData] = useState<any[]>([]);
   const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
-  const [importRowErrors, setImportRowErrors] = useState<{[key: number]: string[]}>({});
+  const [importRowErrors, setImportRowErrors] = useState<{ [key: number]: string[] }>({});
 
   const normalizeText = (value: unknown) =>
     String(value ?? '')
@@ -132,6 +150,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     const majorInput = String(majorInputRaw || '').trim();
     if (!classInput) return '';
 
+    // if a numeric id is given
     const byId = classes.find((c) => c.id.toString() === classInput);
     if (byId) return byId.id.toString();
 
@@ -142,29 +161,18 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     );
 
     let candidates = classes.filter((c) => {
-      const name = normalizeText(c.name);
       const label = normalizeText(c.label);
-      const grade = normalizeText(c.grade);
-      return (
-        name === normalizedClass ||
-        label === normalizedClass ||
-        grade === normalizedClass ||
-        name.includes(normalizedClass) ||
-        label.includes(normalizedClass)
-      );
+      const name = normalizeText(c.name);
+      const majorMatch = major ? c.major_id === major.id : true;
+      return majorMatch && (label === normalizedClass || name === normalizedClass || name.includes(normalizedClass) || label.includes(normalizedClass));
     });
-
-    if (major) {
-      const byMajor = candidates.filter((c) => c.major_id === major.id);
-      if (byMajor.length > 0) candidates = byMajor;
-    }
 
     if (candidates.length > 0) {
       candidates.sort((a, b) => a.id - b.id);
       return candidates[0].id.toString();
     }
 
-    // Fallback: allow backend resolver (grade/label) to process this string.
+    // fallback
     return classInput;
   };
 
@@ -178,7 +186,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     const controller = new AbortController();
     fetchStudents();
     return () => controller.abort();
-  }, [searchValue, pageIndex, selectedJurusan, selectedKelas]);
+  }, [searchValue, pageIndex, selectedJurusan, selectedTingkatan]);
 
   const fetchMasterData = async () => {
     try {
@@ -193,6 +201,80 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     }
   };
 
+  const findClassById = (classId?: string) => {
+    if (!classId) return undefined;
+    return classes.find((c) => c.id.toString() === classId);
+  };
+
+  const findMajorById = (majorId?: string) => {
+    if (!majorId) return undefined;
+    return majors.find((m) => m.id.toString() === majorId);
+  };
+
+  const enrichStudent = (raw: any): Siswa => {
+    const classId =
+      raw.class_id?.toString() ||
+      raw.classId?.toString() ||
+      raw.kelasId?.toString() ||
+      raw.kelas_id?.toString();
+    const majorId =
+      raw.major_id?.toString() ||
+      raw.majorId?.toString() ||
+      raw.jurusanId?.toString();
+    const classRoom = raw.class_room || raw.classRoom || null;
+
+    const classFromList = findClassById(classId);
+    const majorFromList =
+      findMajorById(majorId) ||
+      (classFromList?.major_id ? findMajorById(classFromList.major_id.toString()) : undefined);
+
+    const classGrade =
+      raw.class_grade ||
+      classRoom?.grade ||
+      classFromList?.grade ||
+      '';
+
+    const classLabel =
+      raw.class_label ||
+      classRoom?.label ||
+      raw.class_name ||
+      classRoom?.name ||
+      classFromList?.label ||
+      classFromList?.name ||
+      '-';
+
+    const majorCode =
+      raw.major ||
+      classRoom?.major?.code ||
+      majorFromList?.code ||
+      '';
+
+    const majorName =
+      raw.major_name ||
+      classRoom?.major?.name ||
+      majorFromList?.name ||
+      '';
+
+    return {
+      id: raw.id?.toString() || '',
+      namaSiswa: raw.name || raw.nama || '-',
+      nisn: raw.nisn || '-',
+      nis: raw.nis || '-',
+      jurusan: majorCode || majorName || '-',
+      jurusanId: majorFromList?.id?.toString() || majorId,
+      kelasGrade: classGrade || '',
+      kelasLabel: classLabel || '-',
+      kelasId: classId,
+      jenisKelamin: raw.gender || raw.jenisKelamin || 'L',
+      phone: raw.parent_phone || raw.phone,
+      address: raw.address,
+      email: raw.email,
+      username: raw.username,
+      tahunMulai: raw.start_year || raw.tahunMulai || '2025',
+      tahunAkhir: raw.end_year || raw.tahunAkhir || '2026'
+    };
+  };
+
   const fetchStudents = async () => {
     setLoading(true);
     try {
@@ -201,44 +283,28 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         per_page: itemsPerPage,
         search: searchValue,
       };
-      
+
       if (selectedJurusan) {
         params.major_id = selectedJurusan;
       }
-      if (selectedKelas) {
-        params.class_id = selectedKelas;
+      if (selectedTingkatan) {
+        params.grade = selectedTingkatan;
       }
-      
+
       const response = await studentService.getStudents(params as any);
-      
+
       const data = response.data || [];
-      const mappedStudents: Siswa[] = data.map((s: any) => ({
-        id: s.id.toString(),
-        namaSiswa: s.name,
-        nisn: s.nisn,
-        nis: s.nis || '-',
-        jurusan: s.major || '-',
-        jurusanId: s.major_id?.toString(),
-        kelas: s.class_name || '-',
-        kelasId: s.class_id?.toString(),
-        jenisKelamin: s.gender,
-        phone: s.parent_phone,
-        address: s.address,
-        email: s.email,
-        username: s.username,
-        tahunMulai: s.start_year || '2025',
-        tahunAkhir: s.end_year || '2026'
-      }));
+      const mappedStudents: Siswa[] = data.map((s: any) => enrichStudent(s));
 
       setStudents(mappedStudents);
-      
+
       if (response.meta) {
         setTotalPages(response.meta.last_page);
         if (response.meta.total) {
           setTotalStudentsCount(response.meta.total);
         }
       }
-      
+
     } catch (err: any) {
       if (err.name === 'AbortError' || err.message === 'canceled') return;
       console.error('Error fetching students:', err);
@@ -246,6 +312,12 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (students.length === 0) return;
+    setStudents((prev) => prev.map((s) => enrichStudent(s)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes, majors]);
 
   // Remote filtering handles this now
   const filteredData = students;
@@ -256,21 +328,23 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     if (name === 'noTelp' && value && !/^\d+$/.test(value)) error = 'No. Telepon harus berupa angka';
     if (name === 'noTelp' && value && value.length > 15) error = 'No. Telepon maksimal 15 digit';
     if (name === 'jurusanId' && !value) error = 'Jurusan wajib dipilih';
-    if (name === 'kelas' && !value) error = 'Kelas wajib dipilih';
-    
+    if (name === 'tingkatan' && !value) error = 'Tingkatan wajib dipilih';
+    if (name === 'kelasId' && !value) error = 'Kelas wajib dipilih';
+
     setFormErrors(prev => ({ ...prev, [name]: error }));
     return error;
   };
 
   const validateForm = () => {
-    const errors: {[key: string]: string} = {};
+    const errors: { [key: string]: string } = {};
     if (!formData.namaSiswa.trim()) errors.namaSiswa = 'Nama Siswa wajib diisi';
     if (!formData.nisn.trim()) errors.nisn = 'NISN wajib diisi';
     if (formData.noTelp && !/^\d+$/.test(formData.noTelp)) errors.noTelp = 'No. Telepon harus berupa angka';
     if (formData.noTelp && formData.noTelp.length > 15) errors.noTelp = 'No. Telepon maksimal 15 digit';
     if (!formData.jurusanId) errors.jurusanId = 'Jurusan wajib dipilih';
-    if (!formData.kelas) errors.kelas = 'Kelas wajib dipilih';
-    
+    if (!formData.tingkatan) errors.tingkatan = 'Tingkatan wajib dipilih';
+    if (!formData.kelasId) errors.kelasId = 'Kelas wajib dipilih';
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -288,42 +362,14 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       address: '',
       jenisKelamin: 'L',
       jurusanId: '',
-      kelas: '',
+      tingkatan: '',
+      kelasId: '',
       noTelp: '',
       tahunMulai: currentYear.toString(),
       tahunAkhir: (currentYear + 3).toString()
     });
     setFormErrors({});
     setIsModalOpen(true);
-  };
-
-  const handleEdit = (student: Siswa) => {
-    if (onNavigateToDetail) {
-      onNavigateToDetail(student.id);
-    } else {
-      setEditingId(student.id);
-      
-      const selectedClass = classes.find(c => c.name === student.kelas || c.id.toString() === student.kelasId);
-      const selectedMajor = majors.find(m => m.code === student.jurusan || m.id.toString() === student.jurusanId);
-
-      setFormData({
-        namaSiswa: student.namaSiswa,
-        nisn: student.nisn,
-        nis: student.nis,
-        username: student.username || '',
-        password: '',
-        email: student.email || '',
-        address: student.address || '',
-        jenisKelamin: student.jenisKelamin,
-        jurusanId: selectedMajor ? selectedMajor.id.toString() : '',
-        kelas: selectedClass ? selectedClass.id.toString() : '',
-        noTelp: student.phone || '',
-        tahunMulai: student.tahunMulai || '2023',
-        tahunAkhir: student.tahunAkhir || '2026'
-      });
-      setIsModalOpen(true);
-      setOpenActionId(null);
-    }
   };
 
   const handleCloseModal = () => {
@@ -344,7 +390,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         email: formData.email || undefined,
         address: formData.address,
         gender: formData.jenisKelamin,
-        class_id: formData.kelas,
+        class_id: formData.kelasId,
         parent_phone: formData.noTelp,
       };
 
@@ -357,7 +403,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       } else {
         await studentService.addStudent(payload);
       }
-      
+
       handleCloseModal();
       fetchStudents();
       alert(`Berhasil ${editingId ? 'memperbarui' : 'menambahkan'} data siswa.`);
@@ -429,17 +475,29 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
               'major_name'
             ])
           ).trim();
+          // read separate Tingkatan and Kelas columns if provided
           const tingkatanInput = String(
             getRowValue(row, [
-              'Tingkatan Kelas',
               'Tingkatan',
-              'Kelas',
-              'class_id',
-              'ClassID',
-              '__EMPTY_2'
+              'Tingkatan Kelas',
+              'grade',
+              '__EMPTY_3'
             ])
           ).trim();
-          const resolvedClassId = resolveClassIdFromImport(tingkatanInput, majorInput);
+          const kelasLabelInput = String(
+            getRowValue(row, [
+              'Kelas',
+              'Kelas Nama',
+              'class',
+              '__EMPTY_4'
+            ])
+          ).trim();
+          let resolvedClassId = '';
+          if (tingkatanInput && kelasLabelInput) {
+            resolvedClassId = resolveClassIdFromImport(kelasLabelInput, majorInput);
+          } else {
+            resolvedClassId = resolveClassIdFromImport(tingkatanInput, majorInput);
+          }
 
           return {
             name,
@@ -453,6 +511,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             class_id: resolvedClassId, // numeric id if resolved; fallback raw text for backend resolver
             major_display: majorInput,
             tingkatan_display: tingkatanInput,
+            kelas_label_display: kelasLabelInput,
             is_class_officer: sanitizeBoolean(row['Pengurus Kelas'] || row.is_class_officer || row.PengurusKelas || row.Pengurus_Kelas),
             phone: (row.Telepon || row.phone || row.hp || row.Mobile || null)?.toString(),
             contact: row.Kontak || row.contact || null
@@ -460,7 +519,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         });
 
         console.log('Mapped data ready for preview:', mappedData);
-        
+
         setImportPreviewData(mappedData);
         setIsImportPreviewOpen(true);
         if (event.target) event.target.value = ''; // Clear the file input
@@ -474,35 +533,35 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       setLoading(true);
       setImportRowErrors({});
       const result = await studentService.importStudents(importPreviewData);
-      
+
       if (result.total_rows !== undefined) {
         alert(`Berhasil mengimpor ${result.success_count} data siswa dari total ${result.total_rows} baris.`);
       } else {
         alert(`Berhasil mengimpor data siswa.`);
       }
-      
+
       setIsImportPreviewOpen(false);
       setImportPreviewData([]);
       fetchStudents();
     } catch (error: any) {
       console.error('Import failed:', error);
-      
+
       const errData = error.data || error;
       if (errData && errData.errors && Array.isArray(errData.errors)) {
-        const rowErrors: {[key: number]: string[]} = {};
-        
+        const rowErrors: { [key: number]: string[] } = {};
+
         errData.errors.forEach((err: any) => {
           if (!rowErrors[err.row]) rowErrors[err.row] = [];
           rowErrors[err.row].push(err.message);
         });
-        
+
         if (Object.keys(rowErrors).length > 0) {
           setImportRowErrors(rowErrors);
           alert(`Gagal mengimpor.\nTotal Baris: ${errData.total_rows}\nBerhasil: ${errData.success_count}\nGagal: ${errData.failed_count}\n\nAda kesalahan data pada baris yang ditandai merah.`);
           return;
         }
       }
-      
+
       alert('Gagal mengimpor data: ' + (error.message || 'Terjadi kesalahan sistem.'));
     } finally {
       setLoading(false);
@@ -515,9 +574,9 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         'Nama Siswa': 'Arie',
         'NISN': '00123456789',
         'Konsentrasi Keahlian': 'RPL',
-        'Tingkatan Kelas': 'RPL 2',
+        'Tingkatan': '12',
+        'Kelas': 'RPL 2',
         'Jenis Kelamin': 'L',
-
       },
     ];
     const ws = XLSX.utils.json_to_sheet(format);
@@ -552,8 +611,9 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
               <th>No</th>
               <th>Nama Siswa</th>
               <th>NISN</th>
-              <th>Kode Konsentrasi Keahlian</th>
-              <th>Tingkatan Kelas</th>
+              <th>Konsentrasi Keahlian</th>
+              <th>Tingkatan</th>
+              <th>Kelas</th>
               <th>Jenis Kelamin</th>
             </tr>
           </thead>
@@ -564,7 +624,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                 <td>${siswa.namaSiswa}</td>
                 <td>${siswa.nisn}</td>
                 <td>${siswa.jurusan}</td>
-                <td>${siswa.kelas}</td>
+                <td>${siswa.kelasGrade}</td>
+                <td>${siswa.kelasLabel}</td>
                 <td>${siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
               </tr>
             `).join('')}
@@ -588,12 +649,13 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   };
 
   const handleOpenInExcel = () => {
-    const headers = ['Nama Siswa', 'NISN', 'Konsentrasi Keahlian', 'Tingkatan Kelas', 'Jenis Kelamin'];
+    const headers = ['Nama Siswa', 'NISN', 'Konsentrasi Keahlian', 'Tingkatan', 'Kelas', 'Jenis Kelamin'];
     const rows = filteredData.map((siswa) => [
       siswa.namaSiswa,
       siswa.nisn,
       siswa.jurusan,
-      siswa.kelas,
+      siswa.kelasGrade,
+      siswa.kelasLabel,
       siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'
     ]);
 
@@ -620,21 +682,26 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   } as const;
 
   // Options for Select
-  const jurusanOptions = majors.map(m => ({ label: m.name, value: m.id.toString() }));
-  const kelasOptions = classes.map(c => ({ label: c.name, value: c.id.toString() }));
+  // deduplicate options to avoid double entries
+  const jurusanOptions = majors
+    .map(m => ({ label: m.name, value: m.id.toString() }))
+    .filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
+  const kelasOptions = classes
+    .map(c => ({ label: c.label || c.name, value: c.id.toString(), grade: c.grade }))
+    .filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
 
   return (
     <AdminLayout
       pageTitle="Data Siswa"
       currentPage={currentPage || "siswa"}
-      onMenuClick={onMenuClick || (() => {})}
+      onMenuClick={onMenuClick || (() => { })}
       user={user}
-      onLogout={onLogout || (() => {})}
+      onLogout={onLogout || (() => { })}
       hideBackground
     >
       {/* BACKGROUND AWAN */}
-      <img 
-        src={AWANKIRI} 
+      <img
+        src={AWANKIRI}
         style={{
           position: "fixed",
           top: 0,
@@ -642,12 +709,12 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
           width: 220,
           zIndex: 0,
           pointerEvents: "none",
-        }} 
-        alt="Background awan kiri" 
+        }}
+        alt="Background awan kiri"
       />
-      
-      <img 
-        src={AwanBawahkanan} 
+
+      <img
+        src={AwanBawahkanan}
         style={{
           position: "fixed",
           bottom: 0,
@@ -655,8 +722,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
           width: 220,
           zIndex: 0,
           pointerEvents: "none",
-        }} 
-        alt="Background awan kanan bawah" 
+        }}
+        alt="Background awan kanan bawah"
       />
 
       {/* KONTEN UTAMA */}
@@ -680,7 +747,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '200px 200px 1fr auto auto auto auto',
+            gridTemplateColumns: '200px 1fr auto auto auto auto',
             gap: '12px',
             alignItems: 'flex-end',
           }}
@@ -696,13 +763,19 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             />
           </div>
 
-          {/* Kelas */}
+
+          {/* Kelas filter */}
           <div>
             <Select
-              label="Tingkatan Kelas"
-              value={selectedKelas}
-              onChange={setSelectedKelas}
-              options={[{ label: 'Semua', value: '' }, ...kelasOptions]}
+              label="Tingkatan"
+              value={selectedTingkatan}
+              onChange={setSelectedTingkatan}
+              options={[
+                { label: 'Semua', value: '' },
+                { label: '10', value: '10' },
+                { label: '11', value: '11' },
+                { label: '12', value: '12' },
+              ]}
               placeholder="Semua"
             />
           </div>
@@ -716,7 +789,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             onClick={handleOpenModal}
             variant="primary"
           />
-          
+
           <button
             onClick={handleDownloadFormatExcel}
             style={{
@@ -881,133 +954,135 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         </div>
 
         {/* ============ DATA TABLE ============ */}
-        <div style={{ 
-          borderRadius: 12, 
-          overflow: 'hidden', 
+        <div style={{
+          borderRadius: 12,
+          overflow: 'hidden',
           boxShadow: '0 0 0 1px #E5E7EB'
         }}>
           {loading ? (
-             <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
-               Memuat data...
-             </div>
+            <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+              Memuat data...
+            </div>
           ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              backgroundColor: '#FFFFFF',
-            }}>
-              <thead>
-                <tr style={{
-                  backgroundColor: '#F3F4F6',
-                  borderBottom: '1px solid #E5E7EB',
-                }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>No</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Nama Siswa</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>NISN</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Konsentrasi Keahlian</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Tingkatan Kelas</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Jenis Kelamin</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
-                      Tidak ada data siswa
-                    </td>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                backgroundColor: '#FFFFFF',
+              }}>
+                <thead>
+                  <tr style={{
+                    backgroundColor: '#F3F4F6',
+                    borderBottom: '1px solid #E5E7EB',
+                  }}>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>No</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Nama Siswa</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>NISN</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Konsentrasi Keahlian</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Tingkatan</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Kelas</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151', borderRight: '1px solid #E5E7EB' }}>Jenis Kelamin</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Aksi</th>
                   </tr>
-                ) : (
-                  filteredData.map((siswa, index) => (
-                    <tr key={siswa.id} style={{
-                      borderBottom: '1px solid #E5E7EB',
-                      backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
-                    }}>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{(pageIndex - 1) * 10 + index + 1}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', borderRight: '1px solid #E5E7EB' }}>{siswa.namaSiswa}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.nisn}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>
-                        <span style={{ backgroundColor: '#EFF6FF', color: '#2563EB', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>
-                          {siswa.jurusan}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.kelas}</td>
-                      <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', borderRight: '1px solid #E5E7EB', textAlign: 'center' }}>{siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center', position: 'relative' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                            <button
-                          onClick={() => setOpenActionId(openActionId === siswa.id ? null : siswa.id)}
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px' }}
-                        >
-                          <MoreVertical size={20} strokeWidth={1.5} />
-                        </button>
-                        </div>
-                    
-                        {openActionId === siswa.id && (
-                          <div style={{
-                            position: 'absolute', top: '100%', right: 0, marginTop: 6,
-                            background: '#FFFFFF', borderRadius: 8, boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
-                            minWidth: 180, zIndex: 10, overflow: 'hidden', border: '1px solid #E2E8F0',
-                            textAlign: 'left'
-                          }}>
-                            <button onClick={() => { if (onNavigateToDetail) onNavigateToDetail(siswa.id); }} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#0F172A', fontSize: '14px' }}>
-                              <FileDown size={16} /> Detail
-                            </button>
-                            <button onClick={() => handleDeleteSiswa(siswa.id)} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#DC2626', fontSize: '14px' }}>
-                              <Trash2 size={16} /> Hapus
-                            </button>
-                          </div>
-                        )}
+                </thead>
+                <tbody>
+                  {filteredData.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+                        Tidak ada data siswa
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    filteredData.map((siswa, index) => (
+                      <tr key={siswa.id} style={{
+                        borderBottom: '1px solid #E5E7EB',
+                        backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
+                      }}>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{(pageIndex - 1) * 10 + index + 1}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', borderRight: '1px solid #E5E7EB' }}>{siswa.namaSiswa}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.nisn}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>
+                          <span style={{ backgroundColor: '#EFF6FF', color: '#2563EB', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>
+                            {siswa.jurusan}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.kelasGrade}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.kelasLabel}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', borderRight: '1px solid #E5E7EB', textAlign: 'center' }}>{siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', position: 'relative' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => setOpenActionId(openActionId === siswa.id ? null : siswa.id)}
+                              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px' }}
+                            >
+                              <MoreVertical size={20} strokeWidth={1.5} />
+                            </button>
+                          </div>
+
+                          {openActionId === siswa.id && (
+                            <div style={{
+                              position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                              background: '#FFFFFF', borderRadius: 8, boxShadow: '0 10px 15px rgba(0,0,0,0.1)',
+                              minWidth: 180, zIndex: 10, overflow: 'hidden', border: '1px solid #E2E8F0',
+                              textAlign: 'left'
+                            }}>
+                              <button onClick={() => { if (onNavigateToDetail) onNavigateToDetail(siswa.id); }} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#0F172A', fontSize: '14px' }}>
+                                <FileDown size={16} /> Detail
+                              </button>
+                              <button onClick={() => handleDeleteSiswa(siswa.id)} style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', color: '#DC2626', fontSize: '14px' }}>
+                                <Trash2 size={16} /> Hapus
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
-          
+
           {/* Pagination Controls */}
-           <div style={{
-             padding: '12px 24px',
-             borderTop: '1px solid #E5E7EB',
-             display: 'flex',
-             justifyContent: 'space-between',
-             alignItems: 'center',
-             backgroundColor: '#FFFFFF'
+          <div style={{
+            padding: '12px 24px',
+            borderTop: '1px solid #E5E7EB',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#FFFFFF'
           }}>
-             <button
-                onClick={() => setPageIndex(prev => Math.max(1, prev - 1))}
-                disabled={pageIndex === 1}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  backgroundColor: pageIndex === 1 ? '#F3F4F6' : '#FFFFFF',
-                  color: pageIndex === 1 ? '#9CA3AF' : '#374151',
-                  cursor: pageIndex === 1 ? 'not-allowed' : 'pointer',
-               }}
-             >
-               Previous
-             </button>
-             <span style={{ fontSize: '14px', color: '#6B7280' }}>
-               Page {pageIndex} of {totalPages}
-             </span>
-             <button
-                onClick={() => setPageIndex(prev => Math.min(totalPages, prev + 1))}
-                disabled={pageIndex >= totalPages}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '6px',
-                  backgroundColor: pageIndex >= totalPages ? '#F3F4F6' : '#FFFFFF',
-                  color: pageIndex >= totalPages ? '#9CA3AF' : '#374151',
-                  cursor: pageIndex >= totalPages ? 'not-allowed' : 'pointer',
-               }}
-             >
-               Next
-             </button>
+            <button
+              onClick={() => setPageIndex(prev => Math.max(1, prev - 1))}
+              disabled={pageIndex === 1}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                backgroundColor: pageIndex === 1 ? '#F3F4F6' : '#FFFFFF',
+                color: pageIndex === 1 ? '#9CA3AF' : '#374151',
+                cursor: pageIndex === 1 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Previous
+            </button>
+            <span style={{ fontSize: '14px', color: '#6B7280' }}>
+              Page {pageIndex} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPageIndex(prev => Math.min(totalPages, prev + 1))}
+              disabled={pageIndex >= totalPages}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                backgroundColor: pageIndex >= totalPages ? '#F3F4F6' : '#FFFFFF',
+                color: pageIndex >= totalPages ? '#9CA3AF' : '#374151',
+                cursor: pageIndex >= totalPages ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
@@ -1035,60 +1110,79 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                 <X size={18} color="#FFFFFF" />
               </button>
             </div>
-            
+
             <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '18px', overflowY: 'auto' }}>
               <form onSubmit={handleSubmitForm}>
-                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                     <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Nama Siswa *</label>
-                        <input type="text" value={formData.namaSiswa} onChange={e => { setFormData({...formData, namaSiswa: e.target.value}); validateField('namaSiswa', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                        {formErrors.namaSiswa && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.namaSiswa}</p>}
-                     </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Nama Siswa *</label>
+                    <input type="text" value={formData.namaSiswa} onChange={e => { setFormData({ ...formData, namaSiswa: e.target.value }); validateField('namaSiswa', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    {formErrors.namaSiswa && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.namaSiswa}</p>}
+                  </div>
 
-                     <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NISN *</label>
-                        <input type="text" value={formData.nisn} onChange={e => { setFormData({...formData, nisn: e.target.value}); validateField('nisn', e.target.value) }} placeholder="10 digit NISN" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                        {formErrors.nisn && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.nisn}</p>}
-                     </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NISN *</label>
+                    <input type="text" value={formData.nisn} onChange={e => { setFormData({ ...formData, nisn: e.target.value }); validateField('nisn', e.target.value) }} placeholder="10 digit NISN" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    {formErrors.nisn && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.nisn}</p>}
+                  </div>
 
-                     <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Jenis Kelamin *</label>
-                        <select value={formData.jenisKelamin} onChange={e => setFormData({...formData, jenisKelamin: e.target.value as 'L'|'P'})} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                           <option value="L">Laki-Laki</option>
-                           <option value="P">Perempuan</option>
-                        </select>
-                     </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Jenis Kelamin *</label>
+                    <select value={formData.jenisKelamin} onChange={e => setFormData({ ...formData, jenisKelamin: e.target.value as 'L' | 'P' })} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                      <option value="L">Laki-Laki</option>
+                      <option value="P">Perempuan</option>
+                    </select>
+                  </div>
 
-                     <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>No. Telepon</label>
-                        <input type="text" value={formData.noTelp} onChange={e => { setFormData({...formData, noTelp: e.target.value}); validateField('noTelp', e.target.value) }} placeholder="Maks 15 digit" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                        {formErrors.noTelp && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.noTelp}</p>}
-                     </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>No. Telepon</label>
+                    <input type="text" value={formData.noTelp} onChange={e => { setFormData({ ...formData, noTelp: e.target.value }); validateField('noTelp', e.target.value) }} placeholder="Maks 15 digit" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
+                    {formErrors.noTelp && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.noTelp}</p>}
+                  </div>
 
-                     <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
-                        <select value={formData.jurusanId} onChange={e => { setFormData({...formData, jurusanId: e.target.value}); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                           <option value="">Pilih</option>
-                           {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        {formErrors.jurusanId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.jurusanId}</p>}
-                     </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
+                    <select value={formData.jurusanId} onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                      <option value="">Pilih</option>
+                      {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {formErrors.jurusanId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.jurusanId}</p>}
+                  </div>
 
-                     <div>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
-                        <select value={formData.kelas} onChange={e => { setFormData({...formData, kelas: e.target.value}); validateField('kelas', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                           <option value="">Pilih</option>
-                           {kelasOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                        {formErrors.kelas && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.kelas}</p>}
-                     </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Tingkatan *</label>
+                    <select value={formData.tingkatan} onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '' }); validateField('tingkatan', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                      <option value="">Pilih</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                    </select>
+                    {formErrors.tingkatan && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.tingkatan}</p>}
+                  </div>
 
-                 </div>
-                 
-                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={handleCloseModal} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#FFFFFF', cursor: 'pointer' }}>Batal</button>
-                    <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFFFFF', cursor: 'pointer' }}>Simpan</button>
-                 </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
+                    <select value={formData.kelasId} onChange={e => { setFormData({ ...formData, kelasId: e.target.value }); validateField('kelasId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                      <option value="">Pilih</option>
+                      {kelasOptions
+                        .filter(o => {
+                          if (!formData.jurusanId) return true;
+                          const cls = classes.find(c => c.id.toString() === o.value);
+                          if (!cls || cls.major_id?.toString() !== formData.jurusanId) return false;
+                          if (formData.tingkatan && cls.grade?.toString() !== formData.tingkatan) return false;
+                          return true;
+                        })
+                        .map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {formErrors.kelasId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.kelasId}</p>}
+                  </div>
+
+                </div>
+
+                <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={handleCloseModal} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#FFFFFF', cursor: 'pointer' }}>Batal</button>
+                  <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFFFFF', cursor: 'pointer' }}>Simpan</button>
+                </div>
               </form>
             </div>
           </div>
@@ -1111,18 +1205,18 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#FFFFFF' }}>
                 Preview Import Siswa ({importPreviewData.length} data)
               </h2>
-              <button 
-                onClick={() => setIsImportPreviewOpen(false)} 
+              <button
+                onClick={() => setIsImportPreviewOpen(false)}
                 style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}
               >
                 <X size={18} color="#FFFFFF" />
               </button>
             </div>
-            
-            <div style={{ 
-              backgroundColor: '#FFFFFF', 
-              borderRadius: '10px', 
-              padding: '0', 
+
+            <div style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '10px',
+              padding: '0',
               overflowY: 'auto',
               flex: 1
             }}>
@@ -1132,7 +1226,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Nama</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>NISN</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Konsentrasi Keahlian</th>
-                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Tingkatan Kelas</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Tingkatan</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Kelas</th>
                     <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', borderBottom: '1px solid #E5E7EB' }}>Jenis Kelamin</th>
                   </tr>
                 </thead>
@@ -1140,7 +1235,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                   {importPreviewData.map((row, idx) => {
                     const hasError = importRowErrors[idx + 1];
                     return (
-                      <tr key={idx} style={{ 
+                      <tr key={idx} style={{
                         borderBottom: '1px solid #F3F4F6',
                         backgroundColor: hasError ? '#FEF2F2' : 'transparent'
                       }}>
@@ -1154,7 +1249,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => e.includes('NISN')) ? '#EF4444' : 'inherit' }}>{row.nisn}</td>
                         <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => /konsentrasi|major/i.test(e)) ? '#EF4444' : 'inherit' }}>{row.major_display || '-'}</td>
-                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => /tingkatan|kelas|class/i.test(e)) ? '#EF4444' : 'inherit' }}>{row.tingkatan_display || row.class_id || '-'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => /tingkatan|grade/i.test(e)) ? '#EF4444' : 'inherit' }}>{row.tingkatan_display || '-'}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: hasError?.some(e => /kelas|class/i.test(e)) ? '#EF4444' : 'inherit' }}>{row.kelas_label_display || '-'}</td>
                         <td style={{ padding: '10px 12px', fontSize: '12px' }}>{row.gender}</td>
                       </tr>
                     );
@@ -1164,21 +1260,21 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             </div>
 
             <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setIsImportPreviewOpen(false)} 
+              <button
+                onClick={() => setIsImportPreviewOpen(false)}
                 style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#FFFFFF', cursor: 'pointer', fontWeight: 600 }}
               >
                 Batal
               </button>
-              <button 
-                onClick={handleCommitImport} 
+              <button
+                onClick={handleCommitImport}
                 disabled={loading}
-                style={{ 
-                  padding: '8px 16px', 
-                  borderRadius: '6px', 
-                  border: 'none', 
-                  background: '#10B981', 
-                  color: '#FFFFFF', 
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#10B981',
+                  color: '#FFFFFF',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.7 : 1,
                   fontWeight: 600

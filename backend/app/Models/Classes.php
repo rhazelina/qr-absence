@@ -26,9 +26,14 @@ class Classes extends Model
     public function getNameAttribute(): string
     {
         $label = trim($this->label ?? '');
+        $grade = (string) ($this->grade ?? '');
 
         // If label already contains major names or spaces, assume it's the full name
+        // We ensure grade is prepended if not already.
         if (preg_match('/\s/', $label)) {
+            if ($grade && !str_starts_with($label, $grade . ' ')) {
+                return $grade . ' ' . $label;
+            }
             return $label;
         }
 

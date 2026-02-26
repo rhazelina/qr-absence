@@ -2,43 +2,18 @@ import React, { useState, useEffect } from 'react';
 import './InputDispensasiModal.css';
 
 const InputDispensasiModal = ({ isOpen, onClose, onSuratUploaded, studentList = [] }) => {
-  // ✅ Data siswa BARU - 34 siswa dari gambar terbaru
-  const [daftarSiswa] = useState(studentList.length > 0 ? studentList : [
-    { nisn: '0074182519', nama: 'LAURA LAVIDA LOCA' },
-    { nisn: '0074320819', nama: 'LELY SAGITA' },
-    { nisn: '0078658367', nama: 'MAYA MELINDA WIJAYANTI' },
-    { nisn: '0079292238', nama: 'MOCH. ABYL GUSTIAN' },
-    { nisn: '0084421457', nama: 'MUHAMMAD AMINULLAH' },
-    { nisn: '0089104721', nama: 'Muhammad Azka Fadli Atthaya' },
-    { nisn: '0087917739', nama: 'MUHAMMAD HADI FIRMANSYAH' },
-    { nisn: '0074704843', nama: 'MUHAMMAD HARRIS MAULANA SAPUTRA' },
-    { nisn: '0077192596', nama: 'MUHAMMAD IBNU RAFFI AHDAN' },
-    { nisn: '0075024492', nama: 'MUHAMMAD REYHAN ATHADIANSYAH' },
-    { nisn: '0141951182', nama: 'MUHAMMAD WISNU DEWANDARU' },
-    { nisn: '0072504970', nama: 'NABILA RAMADHAN' },
-    { nisn: '0061631562', nama: 'NADIA SINTA DEVI OKTAVIA' },
-    { nisn: '0081112175', nama: 'NADJWA KIRANA FIRDAUS' },
-    { nisn: '0089965810', nama: 'NINDI NARITA MAULIDYA' },
-    { nisn: '0085834363', nama: 'NISWATUL KHOIRIYAH' },
-    { nisn: '0087884391', nama: 'NOVERITA PASCALIA RAHMA' },
-    { nisn: '0078285764', nama: 'NOVITA ANDRIANI' },
-    { nisn: '0078980482', nama: 'NOVITA AZZAHRA' },
-    { nisn: '0078036100', nama: 'NURUL KHASANAH' },
-    { nisn: '0081838771', nama: 'RACHEL ALUNA MEIZHA' },
-    { nisn: '0079312790', nama: 'RAENA WESTI DHEANOFA HERLIANI' },
-    { nisn: '0084924963', nama: 'RAYHANUN' },
-    { nisn: '0077652198', nama: 'RAYYAN DAFFA AL AFFANI' },
-    { nisn: '0087959211', nama: 'RHAMEYZHA ALEA CHALILA PUTRI EDWA' },
-    { nisn: '0089530132', nama: 'RHEISYA MAULIDDIYA PUTRI' },
-    { nisn: '0089479412', nama: 'RHEYVAN RAMADHAN I.P' },
-    { nisn: '0073540571', nama: 'RISKY RAMADHANI' },
-    { nisn: '0076610748', nama: 'RITA AURA AGUSTINA' },
-    { nisn: '0077493253', nama: 'RIZKY RAMADHANI' },
-    { nisn: '0076376703', nama: "SA'IDHATUL HASANA" },
-    { nisn: '0072620559', nama: 'SHISILIA ISMU PUTRI' },
-    { nisn: '0072336597', nama: 'SUCI RAMADANI INDRIANSYAH' },
-    { nisn: '0075802873', nama: 'TALITHA NUDIA RISMATULLAH' },
-  ]);
+  const [daftarSiswa, setDaftarSiswa] = useState([]);
+
+  useEffect(() => {
+    if (studentList && studentList.length > 0) {
+      setDaftarSiswa(studentList.map(s => ({
+        nisn: s.nisn || s.id,
+        nama: s.nama || s.user?.name || s.name || '-'
+      })));
+    } else {
+      setDaftarSiswa([]);
+    }
+  }, [studentList]);
 
   // Daftar jam pelajaran (Ke-1 sampai Ke-10)
   const jamPelajaran = [

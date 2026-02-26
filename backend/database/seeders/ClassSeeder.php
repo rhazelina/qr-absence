@@ -32,18 +32,26 @@ class ClassSeeder extends Seeder
         foreach ($majors as $major) {
             foreach ($grades as $grade) {
                 foreach ($labels as $label) {
-                    // Class label as requested: "Rekayasa Perangkat Lunak 1"
-                    $className = "{$major->name} {$label}";
+                    // Normalize label to use major code (e.g., "DKV 2", "AN 1")
+                    $newLabel = "{$major->code} {$label}";
+                    $oldLabel = "{$major->name} {$label}";
 
-                    $class = Classes::firstOrCreate(
-                        [
+                    $class = Classes::where('grade', (string) $grade)
+                        ->where('major_id', $major->id)
+                        ->whereIn('label', [$newLabel, $oldLabel])
+                        ->first();
+
+                    if ($class) {
+                        if ($class->label !== $newLabel) {
+                            $class->update(['label' => $newLabel]);
+                        }
+                    } else {
+                        $class = Classes::create([
                             'grade' => (string) $grade,
-                            'label' => $className,
-                        ],
-                        [
+                            'label' => $newLabel,
                             'major_id' => $major->id,
-                        ]
-                    );
+                        ]);
+                    }
 
                     // Create 5 students per class
                     for ($s = 1; $s <= 5; $s++) {

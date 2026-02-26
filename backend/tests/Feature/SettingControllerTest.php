@@ -149,3 +149,20 @@ it('returns mascot URL in sync endpoint', function () {
         ->assertOk()
         ->assertJsonFragment(['school_mascot_url' => asset('storage/settings/mascot/test.png')]); // TEMPAT BUAT NARO MASCOT INO DAN RASI
 });
+
+it('allows updating school_type with new allowed codes', function () {
+    $this->actingAs($this->admin)
+        ->postJson('/api/settings', ['school_type' => 'MA'])
+        ->assertOk()
+        ->assertJsonFragment(['school_type' => 'MA']);
+
+    $this->actingAs($this->admin)
+        ->postJson('/api/settings', ['school_type' => 'MTS'])
+        ->assertOk()
+        ->assertJsonFragment(['school_type' => 'MTS']);
+
+    $this->actingAs($this->admin)
+        ->postJson('/api/settings', ['school_type' => 'MI'])
+        ->assertOk()
+        ->assertJsonFragment(['school_type' => 'MI']);
+});

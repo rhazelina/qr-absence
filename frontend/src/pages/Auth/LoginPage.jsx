@@ -110,13 +110,47 @@ const LoginPage = () => {
         throw new Error(data.message || 'Login gagal');
       }
 
-      // Simpan token dan data user ke localStorage
+      // Simpan token
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      // Navigate ke dashboard sesuai role yang dikembalikan backend
-      // Backend returns role logic, but purely navigating based on requested role is safer for now if compatible
-      // Or better yet, allow the user to navigate to the role they selected if successful
+
+      // Normalisasi role agar konsisten dengan deskta (tapi jangan ubah redirect UI)
+      const normalizeRole = (backendRole = '', userType = '', isClassOfficer = false, selectionRole = '') => {
+        const b = (backendRole || '').toLowerCase();
+        const t = (userType || '').toLowerCase();
+        const s = (selectionRole || '').toLowerCase();
+
+        if (s === 'guru' && (b === 'wakel' || b === 'walikelas' || b === 'guru')) return 'guru';
+        if (s === 'siswa' && (b === 'pengurus_kelas' || b === 'siswa')) return 'siswa';
+
+        if (b === 'wakel' || b === 'walikelas') return 'wakel';
+        if (b === 'pengurus_kelas') return 'pengurus_kelas';
+        if (b === 'waka' || b === 'admin') return b;
+
+        if (t === 'student') return isClassOfficer ? 'pengurus_kelas' : 'siswa';
+        if (t === 'teacher') return (b === 'wakel' || b === 'walikelas') ? 'wakel' : 'guru';
+
+        const valid = ['admin', 'waka', 'wakel', 'guru', 'siswa', 'pengurus_kelas'];
+        if (valid.includes(b)) return b;
+        if (valid.includes(s)) return s;
+        return selectionRole || 'siswa';
+      };
+
+      const user = data.user || {};
+      const normalized = normalizeRole(user.role, user.user_type, user.is_class_officer, role);
+
+      const storedUser = {
+        role: normalized,
+        name: user.name || '',
+        phone: user.phone || '',
+        profile: user.profile || {}
+      };
+
+      // Simpan user yang dinormalisasi agar konsisten dengan deskta
+      localStorage.setItem('user', JSON.stringify(storedUser));
+      localStorage.setItem('userRole', normalized);
+      localStorage.setItem('userIdentifier', formData.identifier);
+
+      // Tetap redirect sesuai UI/role pilihan di template untuk menjaga tampilan tidak berubah
       navigate(config.dashboard);
 
     } catch (err) {

@@ -9,8 +9,10 @@ export interface Student {
   major?: string; // Code like 'RPL'
   major_name?: string; // Full name
   class_id?: string;
-  class_name?: string;
-  grade?: string;
+  class_name?: string;        // combined name (grade + label)
+  class_grade?: string;       // numeric grade
+  class_label?: string;       // label portion (e.g., RPL 1)
+  grade?: string;             // legacy alias (kept for compatibility)
   gender: 'L' | 'P';
   phone?: string;
   address?: string;

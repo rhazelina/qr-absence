@@ -87,6 +87,7 @@ export default function InputManualGuru({
   onLogout,
   currentPage,
   onMenuClick,
+  schedule,
 }: InputManualGuruProps) {
   const [selectedKelas] = useState('XII REKAYASA PERANGKAT LUNAK 2');
   const [selectedMapel] = useState('MPKK (1-4)');
@@ -96,9 +97,9 @@ export default function InputManualGuru({
   });
 
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_isLoading, setIsLoading] = useState(true);
+  const [_isSubmitting, setIsSubmitting] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
 
   // Fetch students from API
   useEffect(() => {
@@ -113,13 +114,13 @@ export default function InputManualGuru({
         setError(null);
         // Try to get homeroom students
         const response = await attendanceService.getMyHomeroomStudents();
-        
+
         if (response && Array.isArray(response)) {
           const mapped = response.map((student: any) => ({
             id: String(student.id),
             nisn: student.nisn || '-',
             nama: student.name || student.user?.name || '-',
-            status: null as const
+            status: null as Siswa['status']
           }));
           setSiswaList(mapped);
         } else {
@@ -140,13 +141,13 @@ export default function InputManualGuru({
       setIsLoading(true);
       setError(null);
       const response = await attendanceService.getScheduleStudents(schedule.id);
-      
+
       if (response.eligible_students) {
-        const mapped = response.eligible_students.map((student: any, index: number) => ({
+        const mapped = response.eligible_students.map((student: any, _index: number) => ({
           id: String(student.id),
           nisn: student.nisn || '-',
           nama: student.name,
-          status: null as const
+          status: null as Siswa['status']
         }));
         setSiswaList(mapped);
       }
@@ -160,7 +161,7 @@ export default function InputManualGuru({
 
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editStatus, setEditStatus] = useState<'hadir' | 'sakit' | 'izin' | 'alfa' | 'pulang' | null>(null);
+  const [editStatus, setEditStatus] = useState<Siswa['status']>(null);
   const [editKeterangan, setEditKeterangan] = useState('');
 
   // Warna sesuai permintaan
@@ -180,7 +181,7 @@ export default function InputManualGuru({
   const handleStatusClick = (siswa: Siswa, e: React.MouseEvent) => {
     e.stopPropagation();
     if (siswa.status === null) return;
-    
+
     setSelectedSiswa(siswa);
     setEditStatus(siswa.status);
     setEditKeterangan(siswa.keterangan || '');
@@ -190,13 +191,13 @@ export default function InputManualGuru({
   const handleSaveEdit = () => {
     if (!selectedSiswa || !editStatus) return;
 
-    setSiswaList(siswaList.map(s => 
-      s.id === selectedSiswa.id 
-        ? { 
-            ...s, 
-            status: editStatus, 
-            keterangan: editKeterangan 
-          } 
+    setSiswaList(siswaList.map(s =>
+      s.id === selectedSiswa.id
+        ? {
+          ...s,
+          status: editStatus,
+          keterangan: editKeterangan
+        }
         : s
     ));
 
@@ -226,10 +227,10 @@ export default function InputManualGuru({
 
     try {
       setIsSubmitting(true);
-      
+
       const items = siswaList.map(s => ({
         student_id: Number(s.id),
-        status: s.status === 'alfa' ? 'alpha' : s.status,
+        status: (s.status === 'alfa' ? 'alpha' : s.status) as string,
       }));
 
       await attendanceService.submitBulkAttendance({
@@ -247,7 +248,6 @@ export default function InputManualGuru({
       setIsSubmitting(false);
     }
   };
-
   // Custom Status Renderer seperti di InputAbsenWaliKelas.tsx
   const StatusButton = ({ siswa }: { siswa: Siswa }) => {
     if (!siswa.status) {
@@ -260,9 +260,10 @@ export default function InputManualGuru({
       izin: { label: 'Izin', color: statusColors.izin, textColor: '#FFFFFF' },
       alfa: { label: 'alfa', color: statusColors.alfa, textColor: '#FFFFFF' },
       pulang: { label: 'pulang', color: statusColors.pulang, textColor: '#FFFFFF' },
-    };
+      terlambat: { label: 'Terlambat', color: statusColors.terlambat, textColor: '#FFFFFF' },
+    } as const;
 
-    const config = statusConfig[siswa.status];
+    const config = statusConfig[siswa.status as keyof typeof statusConfig];
 
     return (
       <div
@@ -463,97 +464,97 @@ export default function InputManualGuru({
                       <td style={{ padding: '16px', fontSize: '14px', color: '#111827', fontWeight: '500' }}>{idx + 1}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#374151', fontWeight: '400' }}>{siswa.nisn}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#111827', fontWeight: '500' }}>{siswa.nama}</td>
-                      
+
                       {/* Radio Button Hadir */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'hadir'} 
-                          onChange={() => handleStatusChange(siswa.id, 'hadir')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'hadir'}
+                          onChange={() => handleStatusChange(siswa.id, 'hadir')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.hadir,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Sakit */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'sakit'} 
-                          onChange={() => handleStatusChange(siswa.id, 'sakit')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'sakit'}
+                          onChange={() => handleStatusChange(siswa.id, 'sakit')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.sakit,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Izin */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'izin'} 
-                          onChange={() => handleStatusChange(siswa.id, 'izin')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'izin'}
+                          onChange={() => handleStatusChange(siswa.id, 'izin')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.izin,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Tidak Hadir (alfa) */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'alfa'} 
-                          onChange={() => handleStatusChange(siswa.id, 'alfa')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'alfa'}
+                          onChange={() => handleStatusChange(siswa.id, 'alfa')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.alfa,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button pulang */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'pulang'} 
-                          onChange={() => handleStatusChange(siswa.id, 'pulang')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'pulang'}
+                          onChange={() => handleStatusChange(siswa.id, 'pulang')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.pulang,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Kolom Status */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <StatusButton siswa={siswa} />
@@ -618,14 +619,14 @@ export default function InputManualGuru({
             </div>
 
             {/* Content Modal */}
-            <div style={{ 
+            <div style={{
               padding: 24,
               overflowY: "auto",
               flex: 1,
             }}>
               {/* Row Nama Siswa */}
               <DetailRow label="Nama Siswa" value={selectedSiswa.nama} />
-              
+
               {/* Row NISN */}
               <DetailRow label="NISN" value={selectedSiswa.nisn} />
 
@@ -647,9 +648,9 @@ export default function InputManualGuru({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {editStatus === 'alfa' ? 'Alfa' : 
-                     editStatus === 'pulang' ? 'Pulang' : 
-                     editStatus.charAt(0).toUpperCase() + editStatus.slice(1)}
+                    {editStatus === 'alfa' ? 'Alfa' :
+                      editStatus === 'pulang' ? 'Pulang' :
+                        editStatus.charAt(0).toUpperCase() + editStatus.slice(1)}
                   </span>
                 </div>
               </div>
@@ -687,10 +688,10 @@ export default function InputManualGuru({
                   onChange={(e) => setEditKeterangan(e.target.value)}
                   placeholder={
                     editStatus === 'hadir' ? "Contoh: Hadir tepat waktu, aktif dalam pembelajaran..." :
-                    editStatus === 'izin' ? "Contoh: Menghadiri acara keluarga, izin dokter..." :
-                    editStatus === 'sakit' ? "Contoh: Demam tinggi, flu berat..." :
-                    editStatus === 'pulang' ? "Contoh: Sakit perut, ada keperluan mendadak..." :
-                    "Alasan tidak hadir..."
+                      editStatus === 'izin' ? "Contoh: Menghadiri acara keluarga, izin dokter..." :
+                        editStatus === 'sakit' ? "Contoh: Demam tinggi, flu berat..." :
+                          editStatus === 'pulang' ? "Contoh: Sakit perut, ada keperluan mendadak..." :
+                            "Alasan tidak hadir..."
                   }
                   style={{
                     width: "100%",
@@ -723,10 +724,10 @@ export default function InputManualGuru({
                   paddingBottom: 12,
                   borderBottom: "1px solid #E5E7EB",
                 }}>
-                  <div style={{ 
-                    fontWeight: 600, 
+                  <div style={{
+                    fontWeight: 600,
                     color: "#374151",
-                    marginBottom: 12 
+                    marginBottom: 12
                   }}>
                     Ubah Status :
                   </div>
@@ -761,9 +762,9 @@ export default function InputManualGuru({
                           backgroundColor: editStatus === status ? statusColors[status] : '#D1D5DB',
                           marginRight: "8px",
                         }} />
-                        {status === 'alfa' ? 'alfa' : 
-                         status === 'pulang' ? 'Pulang' : 
-                         status.charAt(0).toUpperCase() + status.slice(1)}
+                        {status === 'alfa' ? 'alfa' :
+                          status === 'pulang' ? 'Pulang' :
+                            status.charAt(0).toUpperCase() + status.slice(1)}
                       </button>
                     ))}
                   </div>
