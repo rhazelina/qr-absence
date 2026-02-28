@@ -99,6 +99,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
     sakit: 0,
     alpha: 0,
     pulang: 0,
+    dispen: 0
   });
   const [effectiveScheduleDay, setEffectiveScheduleDay] = useState<string>(normalizeScheduleDay(SCHEDULE_TARGET_DAY));
   // const [dailyStats, setDailyStats] = useState<any[]>([]);
@@ -171,7 +172,8 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
           alpha: t.alpha || t.absent || 0,
           sakit: t.sakit || t.sick || 0,
           izin: t.izin || t.excused || t.permission || 0,
-          pulang: t.pulang || t.return || 0
+          pulang: t.pulang || t.return || 0,
+          dispen: t.dispen || 0 // Added dispen
         }));
         setMonthlyTrendData(normalizedTrend);
 
@@ -183,6 +185,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
             sakit: statistik.sakit || 0,
             alpha: statistik.alpha || 0,
             pulang: statistik.pulang || 0,
+            dispen: statistik.dispen || 0
           });
         } else if (Array.isArray(summaryResponse?.status_summary)) {
           const summaryMap = summaryResponse.status_summary.reduce((acc: any, row: any) => {
@@ -195,6 +198,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
             sakit: summaryMap.sick || 0,
             alpha: summaryMap.absent || 0,
             pulang: summaryMap.return || 0,
+            dispen: summaryMap.dispen || 0
           });
         }
 
@@ -955,7 +959,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
                 }}
               >
                 <span><PieChart size={18} color="#B91C1C" /></span>
-                <span>Lihat Detail Kehadiran</span>
+                <span>Lihat Daftar Ketidakhadiran</span>
                 <ArrowRight size={18} />
               </button>
             </div>
@@ -981,7 +985,7 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
 function MonthlyLineChart({
   data,
 }: {
-  data: Array<{ month: string; hadir: number; izin: number; sakit: number; alpha: number; pulang: number }>;
+  data: Array<{ month: string; hadir: number; izin: number; sakit: number; alpha: number; pulang: number; dispen: number }>;
 }) {
   if (!data || data.length === 0) {
     return (
@@ -1067,6 +1071,20 @@ function MonthlyLineChart({
         tension: 0.4,
         fill: true,
       },
+      {
+        label: "Dispen",
+        data: data.map((d) => d.dispen),
+        borderColor: "#E45A92",
+        backgroundColor: "rgba(194, 24, 91, 0.1)",
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#E45A92",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        tension: 0.4,
+        fill: true,
+      }
     ],
   };
 
@@ -1151,9 +1169,9 @@ function MonthlyLineChart({
 function WeeklyDonutChart({
   data,
 }: {
-  data: { hadir: number; izin: number; sakit: number; alpha: number; pulang: number };
+  data: { hadir: number; izin: number; sakit: number; alpha: number; pulang: number; dispen: number };
 }) {
-  const total = data.hadir + data.izin + data.sakit + data.alpha + data.pulang;
+  const total = data.hadir + data.izin + data.sakit + data.alpha + data.pulang + data.dispen;
 
   if (total === 0) {
     return (
@@ -1167,16 +1185,17 @@ function WeeklyDonutChart({
   }
 
   const chartData = {
-    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang"], // Mengganti Dispen dengan Pulang
+    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Dispen"], // Ditambah Dispen
     datasets: [
       {
-        data: [data.hadir, data.izin, data.sakit, data.alpha, data.pulang],
+        data: [data.hadir, data.izin, data.sakit, data.alpha, data.pulang, data.dispen],
         backgroundColor: [
           "#1FA83D", // REVISI: Hadir > #1FA83D
           "#ACA40D", // REVISI: Izin > #ACA40D
           "#520C8F", // REVISI: Sakit > #520C8F
           "#D90000", // REVISI: Alfa > #D90000
           "#2F85EB", // REVISI: Pulang > #2F85EB
+          "#E45A92", // Dispen
         ],
         borderColor: "#ffffff",
         borderWidth: 2,

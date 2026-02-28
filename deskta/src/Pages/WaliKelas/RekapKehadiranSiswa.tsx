@@ -24,6 +24,7 @@ interface RekapRow {
   sakit: number;
   alfa: number;
   pulang: number;
+  dispen: number;
   status: 'aktif' | 'non-aktif';
 }
 
@@ -66,7 +67,8 @@ export function RekapKehadiranSiswa({
     IZIN: "#ACA40D",
     PULANG: "#2F85EB",
     ALFA: "#D90000",
-    SAKIT: "#520C8F"
+    SAKIT: "#520C8F",
+    DISPEN: "#E45A92"
   };
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -281,6 +283,7 @@ export function RekapKehadiranSiswa({
               sakit: totals.sick || 0,
               alfa: totals.alpha || totals.absent || totals.alfa || 0,
               pulang: totals.return || totals.leave_early || totals.pulang || 0,
+              dispen: totals.dispensation || totals.dispen || 0,
               status: item.student?.status === 'active' ? 'aktif' : 'non-aktif' // Adjust based on student status field
             };
           });
@@ -405,6 +408,7 @@ export function RekapKehadiranSiswa({
   const totalSakit = useMemo(() => filteredRows.reduce((sum, row) => sum + row.sakit, 0), [filteredRows]);
   const totalAlfa = useMemo(() => filteredRows.reduce((sum, row) => sum + row.alfa, 0), [filteredRows]);
   const totalPulang = useMemo(() => filteredRows.reduce((sum, row) => sum + row.pulang, 0), [filteredRows]);
+  const totalDispen = useMemo(() => filteredRows.reduce((sum, row) => sum + (row.dispen || 0), 0), [filteredRows]);
 
   // const handleExportExcel = () => {
   //   try {
@@ -507,7 +511,7 @@ export function RekapKehadiranSiswa({
 
   const handleExportExcel = () => {
     try {
-      const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Status"];
+      const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Dispen", "Status"];
       const rowsData = filteredRows.map((row) => [
         row.no,
         row.nisn,
@@ -517,6 +521,7 @@ export function RekapKehadiranSiswa({
         row.sakit,
         row.alfa,
         row.pulang,
+        row.dispen || 0,
         row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'
       ]);
 
@@ -529,6 +534,7 @@ export function RekapKehadiranSiswa({
         totalSakit,
         totalAlfa,
         totalPulang,
+        totalDispen,
         ''
       ]);
 
@@ -634,6 +640,7 @@ export function RekapKehadiranSiswa({
             .sakit { color: #520C8F; font-weight: bold; }
             .alfa { color: #D90000; font-weight: bold; }
             .pulang { color: #2F85EB; font-weight: bold; }
+            .dispen { color: #E45A92; font-weight: bold; }
             .status-aktif {
               background-color: #D1FAE5;
               color: #065F46;
@@ -685,7 +692,8 @@ export function RekapKehadiranSiswa({
                 <th>Sakit</th>
                 <th>Alfa</th>
                 <th>Pulang</th>
-                <th>Status</th>
+                 <th>Dispen</th>
+                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -702,6 +710,7 @@ export function RekapKehadiranSiswa({
             <td class="sakit">${row.sakit}</td>
             <td class="alfa">${row.alfa}</td>
             <td class="pulang">${row.pulang}</td>
+            <td class="dispen">${row.dispen || 0}</td>
             <td><span class="${row.status === 'aktif' ? 'status-aktif' : 'status-nonaktif'}">${row.status === 'aktif' ? 'Aktif' : 'Non-Aktif'}</span></td>
           </tr>
         `;
@@ -715,6 +724,7 @@ export function RekapKehadiranSiswa({
             <td><strong>${totalSakit}</strong></td>
             <td><strong>${totalAlfa}</strong></td>
             <td><strong>${totalPulang}</strong></td>
+            <td><strong>${totalDispen}</strong></td>
             <td></td>
           </tr>
         </tbody>
@@ -1197,7 +1207,7 @@ export function RekapKehadiranSiswa({
           </h3>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
+            gridTemplateColumns: 'repeat(6, 1fr)',
             gap: '16px',
           }}>
             <div style={{ textAlign: 'center' }}>
@@ -1220,6 +1230,10 @@ export function RekapKehadiranSiswa({
               <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px', fontWeight: '600' }}>Pulang</div>
               <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.PULANG }}>{totalPulang}</div>
             </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px', fontWeight: '600' }}>Dispen</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: COLORS.DISPEN }}>{totalDispen}</div>
+            </div>
           </div>
         </div>
 
@@ -1237,7 +1251,7 @@ export function RekapKehadiranSiswa({
           }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '50px 130px minmax(180px, 1fr) 80px 80px 80px 100px 80px 80px',
+              gridTemplateColumns: '50px 130px minmax(180px, 1fr) 80px 80px 80px 100px 80px 80px 80px',
               gap: '12px',
               fontSize: '13px',
               fontWeight: '700',
@@ -1252,6 +1266,7 @@ export function RekapKehadiranSiswa({
               <div style={{ textAlign: 'center' }}>Sakit</div>
               <div style={{ textAlign: 'center' }}>Alfa</div>
               <div style={{ textAlign: 'center' }}>Pulang</div>
+              <div style={{ textAlign: 'center' }}>Dispen</div>
               <div style={{ textAlign: 'center' }}>Aksi</div>
             </div>
           </div>
@@ -1284,7 +1299,7 @@ export function RekapKehadiranSiswa({
                   key={row.id}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '50px 130px minmax(180px, 1fr) 80px 80px 80px 100px 80px 80px',
+                    gridTemplateColumns: '50px 130px minmax(180px, 1fr) 80px 80px 80px 100px 80px 80px 80px',
                     gap: '12px',
                     padding: '14px 20px',
                     fontSize: '14px',
@@ -1303,6 +1318,7 @@ export function RekapKehadiranSiswa({
                   <div style={{ textAlign: 'center', color: COLORS.SAKIT, fontWeight: '700' }}>{row.sakit}</div>
                   <div style={{ textAlign: 'center', color: COLORS.ALFA, fontWeight: '700' }}>{row.alfa}</div>
                   <div style={{ textAlign: 'center', color: COLORS.PULANG, fontWeight: '700' }}>{row.pulang}</div>
+                  <div style={{ textAlign: 'center', color: COLORS.DISPEN, fontWeight: '700' }}>{row.dispen || 0}</div>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',

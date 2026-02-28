@@ -79,7 +79,7 @@ export default function Sidebar({
     roleLabel = "Guru";
   } else if (userRole === "waka") {
     MENU_ITEMS = MENU_ITEMS_WAKA;
-    roleLabel = "Waka Staff";
+    roleLabel = "Waka";
   } else if (userRole === "siswa") {
     MENU_ITEMS = MENU_ITEMS_SISWA;
     roleLabel = "Siswa";

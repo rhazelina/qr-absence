@@ -43,31 +43,48 @@ export default function LandingPage({ onRoleSelect }: LandingPageProps) {
   const dropdownContentRef = useRef<HTMLDivElement>(null);
 
   // ==================== LOAD SCHOOL DATA FROM API ====================
-  useEffect(() => {
-    const fetchSchoolData = async () => {
-      try {
-        const settings = await settingService.getPublicSettings();
-        setSchoolData({
-          nama_sekolah: settings.school_name || DEFAULT_LANDING_DATA.nama_sekolah,
-          logo_sekolah: settings.school_logo_url || null,
-          maskot_sekolah: settings.school_mascot_url || DefaultMascot,
-        });
-      } catch (error) {
-        console.error('Error fetching school data:', error);
-        // Fallback to localStorage if API fails (optional, but keep it simple for now)
-        const savedData = localStorage.getItem('schoolData');
-        if (savedData) {
+  const loadSchoolData = async () => {
+    try {
+      const settings = await settingService.getPublicSettings();
+      setSchoolData({
+        nama_sekolah: settings.school_name || DEFAULT_LANDING_DATA.nama_sekolah,
+        logo_sekolah: settings.school_logo_url || null,
+        maskot_sekolah: settings.school_mascot_url || DefaultMascot,
+      });
+    } catch (error) {
+      console.error('Error fetching school data:', error);
+      // Fallback to localStorage if API fails
+      const savedData = localStorage.getItem('schoolData');
+      if (savedData) {
+        try {
           const parsedData = JSON.parse(savedData);
           setSchoolData({
-            nama_sekolah: parsedData.nama_sekolah || DEFAULT_LANDING_DATA.nama_sekolah,
-            logo_sekolah: parsedData.logo_sekolah || null,
-            maskot_sekolah: parsedData.maskot_sekolah || DefaultMascot,
+            nama_sekolah: parsedData.nama_sekolah || parsedData.school_name || DEFAULT_LANDING_DATA.nama_sekolah,
+            logo_sekolah: parsedData.logo_sekolah || parsedData.school_logo_url || null,
+            maskot_sekolah: parsedData.maskot_sekolah || parsedData.school_mascot_url || DefaultMascot,
           });
+        } catch (parseErr) {
+          console.error('Error parsing localStorage schoolData:', parseErr);
         }
       }
+    }
+  };
+
+  useEffect(() => {
+    loadSchoolData();
+
+    // Listen for school data updates from admin profile change
+    const handleSchoolDataUpdated = () => {
+      loadSchoolData();
     };
 
-    fetchSchoolData();
+    window.addEventListener('schoolDataUpdated', handleSchoolDataUpdated);
+    window.addEventListener('schoolSettingsUpdated', handleSchoolDataUpdated);
+
+    return () => {
+      window.removeEventListener('schoolDataUpdated', handleSchoolDataUpdated);
+      window.removeEventListener('schoolSettingsUpdated', handleSchoolDataUpdated);
+    };
   }, []);
 
   // ==================== HANDLE CLICK OUTSIDE DROPDOWN ====================

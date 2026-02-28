@@ -38,7 +38,7 @@ interface SchoolData {
 const DEFAULT_SCHOOL_DATA: SchoolData = {
   nama_sekolah: 'SMKN 2 SINGOSARI',
   npsn: '20517748',
-  jenis_sekolah: 'SMK',
+  jenis_sekolah: 'SMK/SMA/MA',
   akreditasi: 'A',
   jalan: 'Jl. Perusahaan No.20',
   kelurahan: 'Tanjungtirto',
@@ -52,6 +52,15 @@ const DEFAULT_SCHOOL_DATA: SchoolData = {
   nomor_telepon: '(0341) 458823',
   logo_sekolah: '',
   maskot_sekolah: '',
+};
+
+const normalizeJenjangSekolah = (value: string) => {
+  const raw = (value || '').toUpperCase().replace(/\s+/g, '');
+  if (!raw) return '';
+  if (['SMK', 'SMA', 'MA', 'SMK/SMA/MA'].includes(raw)) return 'SMK/SMA/MA';
+  if (['SMP', 'MTS', 'SMP/MTS', 'MTS/MTs'].includes(raw)) return 'SMP/MTS';
+  if (['SD', 'MI', 'SD/MI'].includes(raw)) return 'SD/MI';
+  return value;
 };
 
 export default function ProfilSekolah({
@@ -87,7 +96,7 @@ export default function ProfilSekolah({
         const mappedData: SchoolData = {
           nama_sekolah: settings.school_name || DEFAULT_SCHOOL_DATA.nama_sekolah,
           npsn: settings.school_npsn || DEFAULT_SCHOOL_DATA.npsn,
-          jenis_sekolah: settings.school_type || DEFAULT_SCHOOL_DATA.jenis_sekolah,
+          jenis_sekolah: normalizeJenjangSekolah(settings.school_type || DEFAULT_SCHOOL_DATA.jenis_sekolah),
           akreditasi: settings.school_accreditation || DEFAULT_SCHOOL_DATA.akreditasi,
           jalan: settings.school_address || DEFAULT_SCHOOL_DATA.jalan,
           kelurahan: settings.school_subdistrict || settings.village || DEFAULT_SCHOOL_DATA.kelurahan, // Backend might use school_subdistrict or village
@@ -248,7 +257,6 @@ export default function ProfilSekolah({
       const payload: any = {
         school_name: editFormData.nama_sekolah,
         school_npsn: editFormData.npsn,
-        school_type: editFormData.jenis_sekolah,
         school_accreditation: editFormData.akreditasi,
         school_address: editFormData.jalan,
         village: editFormData.kelurahan,
@@ -261,6 +269,12 @@ export default function ProfilSekolah({
         school_headmaster_nip: editFormData.nip_kepala_sekolah,
         school_phone: editFormData.nomor_telepon,
       };
+      
+      // Only send school_type if it matches expected values (backend validation)
+      const validSchoolTypes = ['SMK/SMA/MA', 'SMP/MTS', 'SD/MI'];
+      if (validSchoolTypes.includes(editFormData.jenis_sekolah)) {
+        payload.school_type = editFormData.jenis_sekolah;
+      }
 
       if (logoFile) {
         payload.school_logo = logoFile;
@@ -310,12 +324,35 @@ export default function ProfilSekolah({
       setLogoDeleted(false);
       setMaskotDeleted(false);
       setErrorMessage('');
-      setTimeout(() => setSuccessMessage(''), 3000);
 
+      // Persist complete school data to localStorage so ALL layouts can update instantly
+      try {
+        const publicStore = {
+          logo_sekolah: updatedData.logo_sekolah || '',
+          maskot_sekolah: updatedData.maskot_sekolah || '',
+          nama_sekolah: updatedData.nama_sekolah || '',
+          school_logo_url: updatedData.logo_sekolah || '',
+          school_mascot_url: updatedData.maskot_sekolah || '',
+          school_name: updatedData.nama_sekolah || ''
+        };
+        localStorage.setItem('schoolData', JSON.stringify(publicStore));
+      } catch (err) {
+        console.error('Failed to persist schoolData to localStorage', err);
+      }
+
+      // Dispatch update events so all listeners (layouts, landing page, login) update
       window.dispatchEvent(new Event('schoolDataUpdated'));
-    } catch (error) {
+      window.dispatchEvent(new Event('schoolSettingsUpdated'));
+      
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error: any) {
       console.error('Error saving school data:', error);
-      setErrorMessage('Gagal menyimpan data. Silakan coba lagi.');
+      // Better error message for user
+      if (error.message && error.message.includes('school type')) {
+        setErrorMessage('Pastikan semua field sudah terisi dengan benar.');
+      } else {
+        setErrorMessage('Gagal menyimpan data. Silakan coba lagi.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -393,7 +430,7 @@ export default function ProfilSekolah({
                   <tbody>
                     <TableRow label="Nama Sekolah" value={schoolData.nama_sekolah} />
                     <TableRow label="NPSN" value={schoolData.npsn} />
-                    <TableRow label="Jenis Sekolah" value={schoolData.jenis_sekolah} />
+                    <TableRow label="Jenjang Sekolah" value={schoolData.jenis_sekolah} />
                     <TableRow label="Akreditasi" value={schoolData.akreditasi} />
                     <TableRow label="Kepala Sekolah" value={schoolData.kepala_sekolah} />
                     <TableRow label="NIP Kepala Sekolah" value={schoolData.nip_kepala_sekolah} />
@@ -482,7 +519,7 @@ export default function ProfilSekolah({
                 ) : (
                   <div style={placeholderStyle}>
                     <div style={placeholderIconStyle}>📷</div>
-                    <div style={placeholderTextStyle}>Klik atau drag untuk upload logo</div>
+                    <div style={placeholderTextStyle}>Klik untuk mengunggah Logo</div>
                     <div style={uploadHintStyle}>PNG, JPG (Max 2MB)</div>
                   </div>
                 )}
@@ -551,7 +588,7 @@ export default function ProfilSekolah({
                 ) : (
                   <div style={placeholderStyle}>
                     <div style={placeholderIconStyle}>🎭</div>
-                    <div style={placeholderTextStyle}>Klik atau drag untuk upload maskot</div>
+                    <div style={placeholderTextStyle}>Klik untuk mengunggah Maskot</div>
                     <div style={uploadHintStyle}>PNG, JPG (Max 2MB)</div>
                   </div>
                 )}
@@ -604,11 +641,11 @@ export default function ProfilSekolah({
                 onChange={handleInputChange}
               />
               <FormSelect
-                label="Jenis Sekolah"
+                label="Jenjang Sekolah"
                 name="jenis_sekolah"
                 value={editFormData.jenis_sekolah}
                 onChange={handleInputChange}
-                options={['SMK', 'SMA', 'SMP', 'SD', 'MA', 'MTS', 'MI']}
+                options={['SMK/SMA/MA', 'SMP/MTS', 'SD/MI']}
               />
               <FormSelect
                 label="Akreditasi"

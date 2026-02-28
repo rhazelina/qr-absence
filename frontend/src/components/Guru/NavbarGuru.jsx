@@ -38,6 +38,9 @@ function NavbarGuru() {
         <NavLink to="/guru/presensi" className={({ isActive }) => isActive ? "active" : ""}>
           Kehadiran Siswa
         </NavLink>
+        <NavLink to="/guru/pengajuan-izin" className={({ isActive }) => isActive ? "active" : ""}>
+          Pengajuan Izin
+        </NavLink>
         
         <button onClick={handleLogout} className="btn-logoutt">
           <i className="fas fa-sign-out-alt"></i>

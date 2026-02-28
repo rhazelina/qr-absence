@@ -12,7 +12,7 @@ Digunakan untuk mengelola data master (Guru, Siswa, Kelas, Jurusan).
 
 ## 2. Wakil Kepala Sekolah (Waka)
 Digunakan untuk melihat statistik kehadiran secara global.
-- **Username**: `waka1`
+- **Username**: `zulkifli.abdillah`
 - **Password**: `password123`
 
 ## 3. Wali Kelas (Homeroom Teacher)

@@ -12,6 +12,7 @@ const STATUS_COLORS = {
   sakit: '#520C8F',   // UNGU - Sakit
   alfa: '#D90000',   // MERAH - Tidak Hadir
   pulang: '#2F85EB',  // BIRU - Pulang
+  dispen: '#E45A92',  // PINK - Dispen
   unknown: '#9CA3AF'
 };
 
@@ -28,7 +29,7 @@ interface SiswaData {
   nisn: string;
   nama: string;
   mapel: string;
-  status: 'hadir' | 'izin' | 'sakit' | 'alfa' | 'pulang' | 'unknown';
+  status: 'hadir' | 'izin' | 'sakit' | 'alfa' | 'pulang' | 'dispen' | 'unknown';
   keterangan?: string;
   tanggal?: string;
   jamPelajaran?: string;
@@ -164,10 +165,10 @@ function KehadiranSiswaGuru({
 
   const handleSaveDetail = async () => {
     if (!selectedSiswa || !schedule?.id) return;
-    
+
     // In a real app, you might want to save the 'keterangan' or 'jamPelajaran' to the backend
     // Since our manualAttendance API takes 'notes', we can use that for keterangan.
-    
+
     setSiswaList(prevList =>
       prevList.map(s =>
         s.id === selectedSiswa.id ? selectedSiswa : s
@@ -183,6 +184,7 @@ function KehadiranSiswaGuru({
       case "alfa": return "Siswa tidak hadir tanpa keterangan";
       case "izin": return "Siswa izin dengan keterangan";
       case "sakit": return "Siswa sakit dengan surat dokter";
+      case "dispen": return "Siswa dispen lebih awal karena ada kepentingan";
       case "hadir":
         if (!waktuHadir) return "Siswa hadir";
         const [jam, menit] = waktuHadir.split(":").map(Number);
@@ -432,6 +434,8 @@ function KehadiranSiswaGuru({
                   <option value="sakit">Sakit</option>
                   <option value="alfa">Alfa</option>
                   <option value="pulang">Pulang</option>
+                  <option value="dispen">Dispen</option>
+
                 </select>
               </div>
             </div>
@@ -475,17 +479,17 @@ function KehadiranSiswaGuru({
               </button>
             </div>
 
-            {/* Content */ }
+            {/* Content */}
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
               <DetailRow label="Tanggal" value={selectedSiswa.tanggal || currentDate} icon={<TimeIcon size={18} />} />
               <DetailRow label="Nama Siswa" value={selectedSiswa.nama} />
               <DetailRow label="NISN" value={selectedSiswa.nisn} />
               <DetailRow label="Mata Pelajaran" value={selectedSiswa.mapel} />
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
                 <div style={{ fontWeight: 600, color: '#374151' }}>Jam Pelajaran :</div>
-                <select 
-                  value={selectedSiswa.jamPelajaran || ""} 
+                <select
+                  value={selectedSiswa.jamPelajaran || ""}
                   onChange={(e) => setSelectedSiswa({ ...selectedSiswa, jamPelajaran: e.target.value })}
                   style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14 }}
                 >
@@ -500,9 +504,9 @@ function KehadiranSiswaGuru({
               {selectedSiswa.status === 'pulang' && (
                 <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
                   <div style={{ fontWeight: 600, color: '#374151', marginBottom: 8 }}>Upload Surat :</div>
-                  <input 
-                    type="file" 
-                    accept=".pdf,.jpg,.png" 
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.png"
                     onChange={(e) => setSelectedSiswa({ ...selectedSiswa, suratPulang: e.target.files?.[0] || null })}
                     style={{ fontSize: 13, width: '100%' }}
                   />

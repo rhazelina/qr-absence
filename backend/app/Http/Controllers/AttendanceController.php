@@ -854,21 +854,36 @@ class AttendanceController extends Controller
             ->where('attendee_type', 'teacher')
             ->whereDate('date', $date)
             ->whereIn('teacher_id', $teacherIds)
-            ->with(['schedule.dailySchedule.classSchedule.class', 'schedule.subject'])
-            ->orderByDesc('checked_in_at')
+            ->with(['schedule.subject', 'schedule.dailySchedule.classSchedule.class'])
             ->get()
             ->groupBy('teacher_id');
 
-        $items = $teachers->getCollection()->map(function (TeacherProfile $teacher) use ($attendanceByTeacher): array {
+        $timeSlots = \App\Models\TimeSlot::orderBy('start_time')->get();
+
+        $items = $teachers->getCollection()->map(function (TeacherProfile $teacher) use ($attendanceByTeacher, $timeSlots): array {
             $attendances = $attendanceByTeacher->get($teacher->id) ?? collect([]);
-            // Eager load schedule if possible. But here we already fetched it?
-            // No, the query above didn't eager load schedule.
-            // We should update the query above to ->with('schedule').
+            
+            // Map attendances to slots (1-10)
+            $slots = array_fill(0, 10, null);
+            
+            foreach ($attendances as $attendance) {
+                $schedule = $attendance->schedule;
+                if ($schedule) {
+                    // Try to find which slot this schedule belongs to
+                    foreach ($timeSlots as $index => $slot) {
+                        if ($index < 10 && $schedule->start_time === $slot->start_time) {
+                            $slots[$index] = $attendance->status;
+                            break;
+                        }
+                    }
+                }
+            }
 
             return [
                 'teacher' => $teacher,
                 'attendances' => $attendances,
-                'status' => $attendances->isNotEmpty() ? $attendances->first()->status : 'absent', // Fallback status
+                'status' => $attendances->isNotEmpty() ? $attendances->first()->status : 'absent',
+                'slots' => $slots,
             ];
         });
 

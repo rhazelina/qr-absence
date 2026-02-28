@@ -4,6 +4,28 @@ import { scheduleService } from "../../services/scheduleService";
 import { authService } from "../../services/authService";
 import classService from "../../services/classService";
 
+// Helper: convert common Roman numerals I..X to Arabic numerals in a string
+function convertRoman(text: string | undefined) {
+    if (!text) return text || "";
+    // Replace only standalone roman numerals (I, II, III, IV, V, VI, VII, VIII, IX, X)
+    return text.replace(/\b(X|IX|IV|V?I{1,3}|VI|VII|VIII)\b/gi, (match) => {
+        const m = match.toUpperCase();
+        switch (m) {
+            case 'I': return '1';
+            case 'II': return '2';
+            case 'III': return '3';
+            case 'IV': return '4';
+            case 'V': return '5';
+            case 'VI': return '6';
+            case 'VII': return '7';
+            case 'VIII': return '8';
+            case 'IX': return '9';
+            case 'X': return '10';
+            default: return match;
+        }
+    });
+}
+
 type SiswaPage = "dashboard" | "jadwal-anda" | "notifikasi";
 
 interface JadwalSiswaProps {
@@ -170,7 +192,7 @@ export default function JadwalSiswa({
                                 <div style={{ padding: "0 10px" }}>
                                     {groupedSchedules[day]
                                         .sort((a: any, b: any) => a.start_time.localeCompare(b.start_time))
-                                        .map((item: any, idx: number) => (
+                                                        .map((item: any, idx: number) => (
                                             <div key={idx} style={{
                                                 padding: "16px 10px",
                                                 borderBottom: idx === groupedSchedules[day].length - 1 ? "none" : "1px solid #F1F5F9",
@@ -180,7 +202,7 @@ export default function JadwalSiswa({
                                             }}>
                                                 <div>
                                                     <div style={{ fontSize: 16, fontWeight: 600, color: "#1E293B", marginBottom: 4 }}>
-                                                        {item.subject}
+                                                        {convertRoman(item.subject)}
                                                     </div>
                                                     <div style={{ fontSize: 14, color: "#64748B" }}>
                                                         Pengajar: {item.teacher?.name || item.teacher || "-"}
@@ -207,7 +229,7 @@ export default function JadwalSiswa({
                                                         color: "#475569",
                                                         display: "inline-block"
                                                     }}>
-                                                        Ruang: {item.room || "-"}
+                                                        Ruang: {convertRoman(item.room || "-")}
                                                     </div>
                                                 </div>
                                             </div>

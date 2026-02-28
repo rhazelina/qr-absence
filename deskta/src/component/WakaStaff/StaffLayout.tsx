@@ -67,7 +67,11 @@ export default function StaffLayout({
       loadLogoSekolah();
     };
     window.addEventListener('schoolDataUpdated', handleUpdate);
-    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+    window.addEventListener('schoolSettingsUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('schoolDataUpdated', handleUpdate);
+      window.removeEventListener('schoolSettingsUpdated', handleUpdate);
+    };
   }, []);
 
   return (

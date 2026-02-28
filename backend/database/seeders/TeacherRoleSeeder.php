@@ -21,10 +21,34 @@ class TeacherRoleSeeder extends Seeder
         ];
 
         $teachers = TeacherProfile::all()->shuffle();
+
+        // Ensure default Waka is Pak Zul (Zulkifli Abdillah, S.Kom)
+        $defaultWaka = TeacherProfile::whereHas('user', function ($query) {
+            $query->where('name', 'Zulkifli Abdillah, S.Kom');
+        })->first();
+
+        if ($defaultWaka) {
+            $defaultWaka->update(['jabatan' => $wakaRoles[0]]);
+
+            AdminProfile::updateOrCreate(
+                ['user_id' => $defaultWaka->user_id],
+                ['type' => 'waka']
+            );
+
+            $defaultWaka->user->update(['user_type' => 'admin']);
+
+            // Remove from pool to avoid double-assigning
+            $teachers = $teachers->reject(fn ($t) => $t->id === $defaultWaka->id)->values();
+        }
+
         $wakaTeachers = $teachers->splice(0, 4);
 
         foreach ($wakaTeachers as $index => $teacher) {
-            $teacher->update(['jabatan' => $wakaRoles[$index]]);
+            $roleIndex = $defaultWaka ? $index + 1 : $index;
+            if (! isset($wakaRoles[$roleIndex])) {
+                break;
+            }
+            $teacher->update(['jabatan' => $wakaRoles[$roleIndex]]);
 
             // Also ensure they have an AdminProfile of type 'waka' if that's how the system works
             AdminProfile::updateOrCreate(

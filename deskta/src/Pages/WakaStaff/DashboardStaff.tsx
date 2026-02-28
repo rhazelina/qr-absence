@@ -128,7 +128,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
   const [selectedStat, setSelectedStat] = useState<StatisticType>(null);
   const [currentDate, setCurrentDate] = useState("");
   const [currentTime, setCurrentTime] = useState("");
-  
+
   // Data State
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -139,6 +139,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
     alpha: 0,
     pulang: 0
   });
+  const [filterMode, setFilterMode] = useState<"guru" | "siswa">("guru");
   const [dailyData, setDailyData] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [historyInfo, setHistoryInfo] = useState({
@@ -155,13 +156,13 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
       try {
         setIsLoading(true);
         const data = await dashboardService.getWakaDashboard();
-        
+
         // Update stats
         setStats(data.statistik);
-        
+
         // Update charts - transform backend field names to frontend field names
         setDailyData(data.daily_stats || []);
-        
+
         // Transform monthly trend data: backend uses present/absent/return, frontend expects hadir/tidak_hadir/pulang
         const transformedTrend = (data.trend || []).map((item: any) => ({
           month: item.month,
@@ -171,21 +172,22 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
           sakit: item.sick ?? 0,          // backend: sick -> frontend: sakit (same)
           pulang: item.return ?? 0,        // backend: return -> frontend: pulang
           alfa: item.absent ?? 0,         // backend: absent -> frontend: alfa (same as tidak_hadir)
+          dispen: item.dispen ?? 0,       // backend: dispen -> frontend: dispen
         }));
         setMonthlyData(transformedTrend);
-        
+
         // Update history info card
         const now = new Date();
         const startTime = "07:00:00"; // Could be from settings
         const endTime = "15:00:00";   // Could be from settings
-        
+
         setHistoryInfo({
           date: new Date(data.date).toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
           start: startTime,
           end: endTime,
           time: now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })
         });
-        
+
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -248,7 +250,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         setSelectedKelas(String(payload.kelas));
       }
     }
-    
+
     // Handle payload for ID setting
     if (payload?.kelasId) {
       setSelectedKelasId(String(payload.kelasId));
@@ -427,87 +429,123 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "28px", backgroundColor: "#F9FAFB", padding: "4px" }}>
-              {/* Welcome Section */}
-              <div style={{ marginBottom: "8px" }}>
-                <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#111827", margin: 0 }}>
-                  Selamat Datang, {user.name}
-                </h2>
-                <p style={{ fontSize: "14px", color: "#6B7280", margin: "4px 0 0" }}>
-                  Ringkasan aktivitas dan data sekolah hari ini
-                </p>
-              </div>
-
-              {/* Top Section: History & Statistics */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-                  gap: "24px",
-                }}
-              >
-                {/* Riwayat Kehadiran Card */}
-                <div style={cardStyle}>
-                  <SectionHeader
-                    title="Riwayat Kehadiran"
-                    subtitle={`${currentDate} • ${currentTime}`}
-                  />
-                  <HistoryCard
-                    start={historyInfo.start}
-                    end={historyInfo.end}
-                  />
+                {/* Welcome Section */}
+                <div style={{ marginBottom: "8px" }}>
+                  <h2 style={{ fontSize: "24px", fontWeight: "700", color: "#111827", margin: 0 }}>
+                    Selamat Datang, {user.name}
+                  </h2>
+                  <p style={{ fontSize: "14px", color: "#6B7280", margin: "4px 0 0" }}>
+                    Ringkasan aktivitas dan data sekolah hari ini
+                  </p>
                 </div>
 
-                {/* Statistik Kehadiran Card */}
-                <div style={cardStyle}>
-                  <SectionHeader
-                    title="Statistik Kehadiran"
-                    subtitle="Klik untuk melihat detail"
-                  />
-                  <LinkStatsGrid 
-                    stats={stats}
-                    selectedStat={selectedStat}
-                    onSelectStat={setSelectedStat}
-                  />
-                  {selectedStat && (
-                    <StatisticDetail stat={selectedStat} />
-                  )}
+                {/* Filter Toggle Siswa / Guru */}
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: 8 }}>
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>Tampilkan Data:</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      backgroundColor: "#F3F4F6",
+                      borderRadius: "12px",
+                      padding: "4px",
+                      gap: "4px",
+                    }}
+                  >
+                    {(["guru", "siswa"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => { setFilterMode(mode); setSelectedStat(null); }}
+                        style={{
+                          padding: "8px 20px",
+                          borderRadius: "8px",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          transition: "all 0.2s ease",
+                          backgroundColor: filterMode === mode ? "#1D4ED8" : "transparent",
+                          color: filterMode === mode ? "#FFFFFF" : "#6B7280",
+                          boxShadow: filterMode === mode ? "0 2px 8px rgba(29,78,216,0.3)" : "none",
+                        }}
+                      >
+                        {mode === "guru" ? "👨‍🏫 Guru" : "🎒 Siswa"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Grafik Section */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                  gap: "24px",
-                }}
-              >
-                {/* Weekly Chart - Kembali ke bentuk semula dengan warna baru */}
-                <div style={cardStyle}>
-                  <SectionHeader title="Grafik Kehadiran Harian" subtitle="Rekap Mingguan (Senin - Jumat)" />
-                  <WeeklyBarGraph data={dailyData} />
-                </div>
-
-                {/* Monthly Chart - Line Chart seperti DashboardSiswa */}
-                <div style={{
-                  ...cardStyle,
-                  transition: "all 0.3s ease",
-                }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 8px 30px rgba(0, 31, 62, 0.12)";
+                {/* Top Section: History & Statistics */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                    gap: "24px",
                   }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.08)";
-                  }}>
-                  <SectionHeader
-                    title="Grafik Kehadiran Bulanan"
-                    subtitle="Periode Jan - Jun"
-                  />
-                  <MonthlyLineChart data={monthlyData} />
+                >
+                  {/* Riwayat Kehadiran Card */}
+                  <div style={cardStyle}>
+                    <SectionHeader
+                      title="Riwayat Kehadiran"
+                      subtitle={`${currentDate} • ${currentTime}`}
+                    />
+                    <HistoryCard
+                      start={historyInfo.start}
+                      end={historyInfo.end}
+                    />
+                  </div>
+
+                  {/* Statistik Kehadiran Card */}
+                  <div style={cardStyle}>
+                    <SectionHeader
+                      title="Statistik Kehadiran"
+                      subtitle="Klik untuk melihat detail"
+                    />
+                    <LinkStatsGrid
+                      stats={stats}
+                      selectedStat={selectedStat}
+                      onSelectStat={setSelectedStat}
+                      mode={filterMode}
+                    />
+                    {selectedStat && (
+                      <StatisticDetail stat={selectedStat} />
+                    )}
+                  </div>
                 </div>
-              </div>
+
+                {/* Grafik Section */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: "24px",
+                  }}
+                >
+                  {/* Weekly Chart - Kembali ke bentuk semula dengan warna baru */}
+                  <div style={cardStyle}>
+                    <SectionHeader title="Grafik Kehadiran Harian" subtitle="Rekap Mingguan (Senin - Jumat)" />
+                    <WeeklyBarGraph data={dailyData} />
+                  </div>
+
+                  {/* Monthly Chart - Line Chart seperti DashboardSiswa */}
+                  <div style={{
+                    ...cardStyle,
+                    transition: "all 0.3s ease",
+                  }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 8px 30px rgba(0, 31, 62, 0.12)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.08)";
+                    }}>
+                    <SectionHeader
+                      title="Grafik Kehadiran Bulanan"
+                      subtitle="Periode Jan - Jun"
+                    />
+                    <MonthlyLineChart data={monthlyData} />
+                  </div>
+                </div>
               </div>
             )}
           </StaffLayout>
@@ -542,16 +580,17 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 }
 
 
-function LinkStatsGrid({ 
-  stats, 
+function LinkStatsGrid({
+  stats,
   selectedStat,
-  onSelectStat 
-}: { 
+  onSelectStat
+}: {
   stats: any;
   selectedStat: StatisticType;
   onSelectStat: (stat: StatisticType) => void;
 }) {
-  const statCards = [
+  // default to guru cards; caller can pass mode prop to switch to siswa
+  const statCardsGuru = [
     { id: "tepat-waktu", label: "Tepat Waktu", value: stats.hadir?.toString() || "0", color: "#1FA83D", icon: "✓" },
     { id: "terlambat", label: "Terlambat", value: stats.terlambat?.toString() || "0", color: "#ACA40D", icon: "⏱" },
     { id: "izin", label: "Izin", value: (stats.izin || 0).toString(), color: "#520C8F", icon: "📋" },
@@ -559,6 +598,19 @@ function LinkStatsGrid({
     { id: "alfa", label: "Alfa", value: stats.alpha?.toString() || "0", color: "#6B7280", icon: "❌" },
     { id: "pulang", label: "Pulang", value: stats.pulang?.toString() || "0", color: "#2F85EB", icon: "🚪" },
   ];
+
+  const statCardsSiswa = [
+    { id: "tepat-waktu", label: "Tepat Waktu", value: stats.hadir?.toString() || "0", color: "#1FA83D", icon: "✓" },
+    { id: "terlambat", label: "Terlambat", value: stats.terlambat?.toString() || "0", color: "#ACA40D", icon: "⏱" },
+    { id: "izin", label: "Izin", value: (stats.izin || 0).toString(), color: "#520C8F", icon: "📋" },
+    { id: "sakit", label: "Sakit", value: stats.sakit?.toString() || "0", color: "#D90000", icon: "🏥" },
+    { id: "dispensasi", label: "Dispen", value: (stats.dispen || stats.dispensasi || 0).toString(), color: "#E45A92", icon: "📄" },
+    { id: "pulang", label: "Pulang", value: stats.pulang?.toString() || "0", color: "#2F85EB", icon: "🚪" },
+  ];
+
+  // read optional prop mode (default guru)
+  const mode = (arguments[0] as any).mode || "guru";
+  const statCards = mode === "siswa" ? statCardsSiswa : statCardsGuru;
 
   return (
     <div
@@ -641,25 +693,25 @@ function LinkStatsGrid({
 
 function StatisticDetail({ stat }: { stat: Exclude<StatisticType, null> }) {
   const details: Record<string, { desc: string; color: string }> = {
-    "tepat-waktu": { 
-      desc: "Total guru yang hadir tepat waktu sesuai jadwal kerja", 
-      color: "#1FA83D" 
+    "tepat-waktu": {
+      desc: "Total guru yang hadir tepat waktu sesuai jadwal kerja",
+      color: "#1FA83D"
     },
-    "terlambat": { 
-      desc: "Total guru yang terlambat lebih dari 5 menit", 
-      color: "#ACA40D" 
+    "terlambat": {
+      desc: "Total guru yang terlambat lebih dari 5 menit",
+      color: "#ACA40D"
     },
-    "izin": { 
-      desc: "Total guru yang mengajukan izin dan disetujui", 
-      color: "#520C8F" 
+    "izin": {
+      desc: "Total guru yang mengajukan izin dan disetujui",
+      color: "#520C8F"
     },
-    "sakit": { 
-      desc: "Total guru yang tidak masuk karena sakit", 
-      color: "#D90000" 
+    "sakit": {
+      desc: "Total guru yang tidak masuk karena sakit",
+      color: "#D90000"
     },
-    "pulang": { 
-      desc: "Total guru yang pulang lebih awal dengan izin", 
-      color: "#2F85EB" 
+    "pulang": {
+      desc: "Total guru yang pulang lebih awal dengan izin",
+      color: "#2F85EB"
     },
   };
 
@@ -891,8 +943,8 @@ function WeeklyBarGraph({ data = [] }: { data?: any[] }) {
   };
 
   return (
-    <div style={{ 
-      height: "350px", 
+    <div style={{
+      height: "350px",
       width: "100%",
       padding: "10px 0"
     }}>
@@ -905,7 +957,7 @@ function WeeklyBarGraph({ data = [] }: { data?: any[] }) {
 function MonthlyLineChart({
   data,
 }: {
-  data: Array<{ month: string; hadir: number; izin: number; tidak_hadir: number; sakit: number; pulang: number }>;
+  data: Array<{ month: string; hadir: number; izin: number; tidak_hadir: number; sakit: number; pulang: number; dispen: number }>;
 }) {
   const chartData = {
     labels: data.map((d) => d.month),
@@ -980,6 +1032,20 @@ function MonthlyLineChart({
         tension: 0.4,
         fill: true,
       },
+      {
+        label: "Dispen",
+        data: data.map((d) => d.dispen),
+        borderColor: "#E45A92",
+        backgroundColor: "rgba(194, 24, 91, 0.1)",
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#E45A92",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        tension: 0.4,
+        fill: true,
+      }
     ],
   };
 
@@ -1067,7 +1133,7 @@ function HistoryCard({ start, end }: { start: string; end: string }) {
   const durationMs = endTime.getTime() - startTime.getTime();
   const durationHours = Math.floor(durationMs / (1000 * 60 * 60));
   const durationMinutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   // Check if on time (before 7:30 AM)
   const isOnTime = start <= "07:30:00";
   const statusColor = isOnTime ? "#10B981" : "#F59E0B";
@@ -1109,7 +1175,7 @@ function HistoryCard({ start, end }: { start: string; end: string }) {
               {durationHours}h {durationMinutes}m
             </span>
           </div>
-          
+
           {/* Progress Bar */}
           <div style={{ position: "relative", height: "6px", backgroundColor: "rgba(2, 132, 199, 0.15)", borderRadius: "3px", overflow: "hidden" }}>
             <div
@@ -1212,14 +1278,14 @@ function TimeRange({ label, value }: { label: string; value: string }) {
           opacity: 0.1,
         }}
       />
-      
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative", zIndex: 1 }}>
         <span style={{ fontSize: "11px", color: textColor, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px" }}>
           {label}
         </span>
         <span style={{ fontSize: "18px" }}>{icon}</span>
       </div>
-      
+
       <strong style={{ fontSize: "22px", color: textColor, fontWeight: 800, fontFamily: "'Monaco', 'Courier New', monospace" }}>
         {value}
       </strong>

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import './JadwalWakel.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
-import { FaSchool, FaUsers, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { FaSchool, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import apiService from '../../utils/api';
 
 const JadwalWakel = () => {
   const [classInfo, setClassInfo] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -15,25 +17,17 @@ const JadwalWakel = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json'
-      };
-
-      const [classRes, scheduleRes] = await Promise.all([
-        fetch('http://localhost:8000/api/me/homeroom', { headers }),
-        fetch('http://localhost:8000/api/me/homeroom/schedules', { headers })
+      const [classData, scheduleData] = await Promise.all([
+        apiService.getHomeroomInfo().catch(() => null),
+        apiService.getHomeroomSchedules().catch(() => null)
       ]);
 
-      if (classRes.ok) {
-        const classData = await classRes.json();
+      if (classData) {
         setClassInfo(classData.data || classData);
       }
 
-      if (scheduleRes.ok) {
-        const scheduleData = await scheduleRes.json();
-        setSchedules(scheduleData.items || []);
+      if (scheduleData) {
+        setSchedules(scheduleData.items || scheduleData.data || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -55,10 +49,10 @@ const JadwalWakel = () => {
 
   if (loading) {
     return (
-      <div className="jadwal-container min-h-screen bg-transparent">
+      <div className="jadwal-container">
         <NavbarWakel />
-        <div className="flex justify-center items-center h-[calc(100vh-80px)] text-[#94a3b8] font-bold">
-           Memuat jadwal kelas...
+        <div className="flex justify-center items-center h-64 text-white">
+          Memuat jadwal kelas...
         </div>
       </div>
     );
@@ -75,78 +69,103 @@ const JadwalWakel = () => {
   const sortedDays = Object.keys(groupedSchedules).sort((a, b) => (dayOrder[a] || 8) - (dayOrder[b] || 8));
 
   return (
-    <div className="jadwal-container min-h-screen bg-transparent p-4 md:p-10">
+    <div className="jadwal-container">
       <NavbarWakel />
-      
-      <h1 className="text-3xl font-bold text-white mb-8 max-w-7xl mx-auto pl-4">Jadwal Pelajaran</h1>
-
-      <div className="max-w-7xl mx-auto bg-white rounded-[2rem] shadow-2xl overflow-hidden min-h-[600px] flex flex-col md:flex-row">
-        {/* Sidebar Profile-like Class Info */}
-        <div className="md:w-80 flex-shrink-0 bg-gradient-to-b from-[#003d73] to-[#001a33] p-10 flex flex-col items-center justify-center text-center">
-          <div className="w-32 h-32 bg-white/95 rounded-full flex items-center justify-center mb-8 shadow-xl text-[#003d73]">
-            <FaSchool size={50} />
-          </div>
-          <div className="w-full">
-            <h2 className="text-2xl font-bold text-white mb-3 leading-tight">{classInfo?.name || 'Kelas Tidak Ditemukan'}</h2>
-            <p className="text-white/80 text-lg font-medium">{classInfo?.major?.name || classInfo?.major_name || '-'}</p>
-            <div className="mt-8 pt-8 border-t border-white/10">
-              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">Wali Kelas</p>
-              <p className="text-white font-bold text-lg">{classInfo?.homeroom_teacher?.user?.name || '-'}</p>
+      <div className="jadwal-wrapper">
+        <div className="jadwal-layout">
+          {/* Sidebar Profile */}
+          <div className="jadwal-sidebar">
+            <div className="jadwal-profile-card">
+              <div className="jadwal-avatar">
+                <FaSchool size={50} style={{ color: '#003d73' }} />
+              </div>
+              <div className="jadwal-teacher-info">
+                <h2 className="jadwal-teacher-name">{classInfo?.name || 'Nama Kelas'}</h2>
+                <p className="jadwal-teacher-nip">{classInfo?.major?.name || classInfo?.major_name || '-'}</p>
+                {classInfo?.homeroom_teacher?.user?.name && (
+                  <p className="text-xs mt-2">Wali: {classInfo.homeroom_teacher.user.name}</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="flex-1 bg-white p-6 md:p-12 overflow-y-auto max-h-[800px]">
-          <div className="flex items-center gap-4 mb-10 border-b border-gray-100 pb-6">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-              <FaCalendarAlt size={24} />
+          {/* Main Content */}
+          <div className="jadwal-main">
+            {/* Upload controls */}
+            <div className="flex gap-4 items-center mb-4">
+              {classInfo?.schedule_image_url && (
+                <a href={classInfo.schedule_image_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600">Lihat Jadwal</a>
+              )}
+              <label className="btn btn-sm">
+                Unggah Jadwal
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setUploadingImage(true);
+                    try {
+                      const form = new FormData();
+                      form.append('image', file);
+                      const res = await apiService.uploadClassScheduleImage(classInfo.id, form);
+                      if (res && res.url) {
+                        setClassInfo(prev => ({ ...prev, schedule_image_url: res.url }));
+                      }
+                    } catch (err) {
+                      console.error('upload class image failed', err);
+                    } finally {
+                      setUploadingImage(false);
+                    }
+                  }}
+                />
+              </label>
+              {uploadingImage && <span>Uploading...</span>}
             </div>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Jadwal Kelas Mingguan</h1>
-          </div>
 
-          <div className="space-y-12">
-            {sortedDays.map(day => (
-              <div key={day} className="day-section">
-                <div className="flex items-center gap-3 bg-gray-50/80 px-6 py-3 rounded-2xl font-black text-gray-700 uppercase tracking-widest text-xs border border-gray-100 mb-6">
-                  <FaCalendarAlt className="text-blue-500" />
-                  {dayNameIndo[day] || day}
-                </div>
-                <div className="schedule-list-container space-y-4">
-                  {groupedSchedules[day].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((item, idx) => (
-                    <div key={idx} className="schedule-item flex items-center justify-between p-6 bg-white rounded-3xl border border-gray-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/5 transition-all group">
-                      <div className="course-info flex items-center gap-5">
-                         <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            {item.subject?.charAt(0) || 'M'}
-                         </div>
-                         <div>
-                            <div className="course-subject font-black text-gray-900 text-lg leading-tight">{item.subject}</div>
-                            <div className="course-teacher text-sm text-gray-500 font-medium mt-1">Oleh: {item.teacher}</div>
-                         </div>
-                      </div>
-                      <div className="time-info text-right flex flex-col items-end gap-2">
-                        <div className="time-range flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-black tracking-wider">
-                          <FaClock size={14} className="text-blue-400" />
-                          {item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}
-                        </div>
-                        <div className="room-info text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-lg border border-gray-100">
-                          RUANG: {item.room || '-'}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+            {/* Schedule image */}
+            <div className="schedule-image-container">
+              {classInfo?.schedule_image_url ? (
+                <img src={classInfo.schedule_image_url} alt="Jadwal" />
+              ) : (
+                <p className="text-gray-300">Belum ada gambar jadwal</p>
+              )}
+            </div>
 
-            {sortedDays.length === 0 && (
-              <div className="no-schedules flex flex-col items-center justify-center py-20 bg-gray-50 rounded-[2.5rem] border-2 border-dashed border-gray-100">
-                <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-gray-200 text-3xl mb-4 shadow-sm">
-                  <FaCalendarAlt />
+            {/* Schedule list */}
+            <div className="mt-8">
+              {sortedDays.map(day => (
+                <div key={day} className="day-section">
+                  <div className="day-header">
+                    <FaCalendarAlt className="inline-block mr-2" />
+                    {dayNameIndo[day] || day}
+                  </div>
+                  <div className="schedule-list-container">
+                    {groupedSchedules[day].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((item, idx) => (
+                      <div key={idx} className="schedule-item">
+                        <div className="course-info">
+                          <div className="course-subject">{item.subject}</div>
+                          <div className="course-teacher">{item.teacher}</div>
+                        </div>
+                        <div className="time-info">
+                          <div className="time-range">
+                            <FaClock className="inline-block mr-1" />
+                            {item.start_time?.substring(0, 5)} - {item.end_time?.substring(0, 5)}
+                          </div>
+                          <div className="room-info">Ruang: {item.room || '-'}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Belum ada jadwal aktif</p>
-              </div>
-            )}
+              ))}
+              {sortedDays.length === 0 && (
+                <div className="no-schedules">
+                  <p>Belum ada jadwal aktif</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

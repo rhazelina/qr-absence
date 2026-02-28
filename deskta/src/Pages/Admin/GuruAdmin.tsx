@@ -13,7 +13,7 @@ import {
   X,
   Search
 } from 'lucide-react';
-// import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { teacherService } from '../../services/teacherService';
 import { masterService, type Subject, type ClassRoom } from '../../services/masterService';
 
@@ -121,7 +121,7 @@ export default function GuruAdmin({
         // Antisipasi jika backend sudah mengirimkan array jabatan
         const rolesArray = Array.isArray(t.jabatan) ? t.jabatan : (t.jabatan ? [t.jabatan] : ['Guru']);
         const hasRole = (prefix: string) =>
-          rolesArray.some((r) => r.toLowerCase().startsWith(prefix.toLowerCase()));
+          rolesArray.some((r: string) => r.toLowerCase().startsWith(prefix.toLowerCase()));
 
         // Buat string keterangan gabungan
         const detailKeterangan = [];
@@ -311,6 +311,18 @@ export default function GuruAdmin({
     { label: 'Waka', value: 'Waka' },
   ];
 
+  const CLASS_LABELS = [
+    'RPL 1', 'RPL 2', 'RPL 3',
+    'DKV 1', 'DKV 2', 'DKV 3',
+    'TAV 1', 'TAV 2',
+    'TKJ 1', 'TKJ 2', 'TKJ 3',
+    'TMT 1', 'TMT 2', 'TMT 3',
+    'TEI 1', 'TEI 2',
+    'AN 1', 'AN 2',
+    'BC 1', 'BC 2',
+  ];
+  const kelasLabelOptions = CLASS_LABELS.map((label) => ({ label, value: label }));
+
   const wakaOptions = [
     { label: 'Waka Kesiswaan', value: 'Waka Kesiswaan' },
     { label: 'Waka Kurikulum', value: 'Waka Kurikulum' },
@@ -330,9 +342,11 @@ export default function GuruAdmin({
 
   const getFilteredKeteranganOptions = () => {
     if (selectedRole === 'Guru') return mataPelajaranOptions;
-    // use major list for both wali kelas and kapro as per new requirements
-    if (selectedRole === 'Wali Kelas' || selectedRole === 'Kapro')
-      return majors.map(m => ({ label: m.name, value: m.name }));
+    if (selectedRole === 'Wali Kelas') return kelasLabelOptions;
+    if (selectedRole === 'Kapro') return majors.map(m => {
+      const normalized = String(m.name || '').replace(/\s*&\s*/g, ' dan ');
+      return ({ label: normalized, value: normalized });
+    });
     if (selectedRole === 'Waka') return wakaOptions;
     return [];
   };
@@ -362,10 +376,110 @@ export default function GuruAdmin({
 
   /* ... Biarkan Handle Export dan Import persis sama dengan kode sebelumnya ... */
   // (Fungsi Export/Import bisa kamu paste dari kodemu sebelumnya agar file tidak terlalu raksasa)
+  const buttonBaseStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontWeight: 600,
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    height: '36px',
+    border: 'none',
+  } as const;
 
-  const handleExportPDF = () => { /* Logika PDF mu */ };
-  const handleExportExcel = () => { /* Logika Excel mu */ };
-  const handleDownloadFormatExcel = () => { /* Logika Format mu */ };
+  const handleExportPDF = () => {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Data Guru Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { text-align: center; color: #1E3A8A; }
+          .date { text-align: center; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background-color: #2563EB; color: white; padding: 10px; text-align: left; }
+          td { padding: 10px; border-bottom: 1px solid #ddd; }
+          tr:nth-child(even) { background-color: #f5f7fa; }
+          .footer { margin-top: 20px; text-align: right; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>Laporan Data Guru</h1>
+        <div class="date">Tanggal: ${new Date().toLocaleDateString('id-ID')}</div>
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Kode Guru / NIP</th>
+              <th>Nama Guru</th>
+              <th>Peran</th>
+              <th>Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredData.map((guru, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${guru.nip || '-'}</td>
+                <td>${guru.name || '-'}</td>
+                <td>${guru.role || '-'}</td>
+                <td>${guru.keterangan || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Total Guru: ${filteredData.length}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const newWindow = window.open('', '', 'width=900,height=600');
+    if (newWindow) {
+      newWindow.document.write(htmlContent);
+      newWindow.document.close();
+      setTimeout(() => {
+        newWindow.print();
+      }, 250);
+    }
+  };
+
+  const handleExportExcel = () => {
+    const headers = ['Kode Guru / NIP', 'Nama Guru', 'Peran', 'Keterangan'];
+    const rows = filteredData.map((guru) => [
+      guru.nip || '',
+      guru.name || '',
+      guru.role || '',
+      guru.keterangan || ''
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data Guru");
+    XLSX.writeFile(wb, `Data_Guru_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+  };
+
+  const handleDownloadFormatExcel = () => {
+    const format = [
+      {
+        'Kode Guru / NIP': '198010112005011001',
+        'Nama Guru': 'Budi Santoso',
+        'Peran': 'Guru',
+        'Keterangan': 'Matematika',
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(format);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Format Import Guru');
+    XLSX.writeFile(wb, 'Format_Import_Guru.xlsx');
+  };
+
   const handleImport = () => { fileInputRef.current?.click(); };
   const handleFileSelect = async (_e: React.ChangeEvent<HTMLInputElement>) => { /* Logika Import mu */ };
 
@@ -393,7 +507,7 @@ export default function GuruAdmin({
         <div style={{ display: 'grid', gridTemplateColumns: '200px 200px 1fr auto auto auto auto', gap: '12px', alignItems: 'flex-end' }}>
           <Select label="Peran" value={selectedRole} onChange={(v) => { setSelectedRole(v); setSelectedKeterangan(''); }} options={roleOptions} placeholder="Semua" />
           <Select
-            label="Detail"
+            label="Keterangan"
             value={selectedKeterangan}
             onChange={setSelectedKeterangan}
             options={getFilteredKeteranganOptions()}
@@ -502,9 +616,9 @@ export default function GuruAdmin({
         {/* PAGINATION */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <Button label="Previous" onClick={() => setPageIndex(Math.max(1, pageIndex - 1))} disabled={pageIndex === 1} variant="secondary" />
-            <span style={{ display: 'flex', alignItems: 'center' }}>Page {pageIndex} of {totalPages}</span>
-            <Button label="Next" onClick={() => setPageIndex(Math.min(totalPages, pageIndex + 1))} disabled={pageIndex === totalPages} variant="secondary" />
+            <Button label="Sebelumnya" onClick={() => setPageIndex(Math.max(1, pageIndex - 1))} disabled={pageIndex === 1} variant="secondary" />
+            <span style={{ display: 'flex', alignItems: 'center' }}>Halaman {pageIndex} dari {totalPages}</span>
+            <Button label="Selanjutnya" onClick={() => setPageIndex(Math.min(totalPages, pageIndex + 1))} disabled={pageIndex === totalPages} variant="secondary" />
           </div>
         </div>
       </div>
@@ -632,7 +746,10 @@ export default function GuruAdmin({
                     <label style={{ fontSize: '13px', fontWeight: 600 }}>Program Keahlian (Kapro)</label>
                     <select name="kaproField" value={formData.kaproField} onChange={handleInputChange} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #ccc' }}>
                       <option value="">Pilih Program Keahlian</option>
-                      {majors.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                      {majors.map(m => {
+                        const normalized = String(m.name || '').replace(/\s*&\s*/g, ' dan ');
+                        return <option key={m.id} value={normalized}>{normalized}</option>;
+                      })}
                     </select>
                     {formErrors.kaproField && <span style={{ color: 'red', fontSize: '12px' }}>{formErrors.kaproField}</span>}
                   </div>

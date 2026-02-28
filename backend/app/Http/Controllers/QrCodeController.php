@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode as QrCodeFacade;
 
+
 class QrCodeController extends Controller
 {
     /**

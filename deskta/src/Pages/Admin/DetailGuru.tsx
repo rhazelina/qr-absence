@@ -42,16 +42,9 @@ const peranList = [
   { id: 'Wali Kelas', nama: 'Wali Kelas' },
   { id: 'Waka', nama: 'Waka' },
   { id: 'Kapro', nama: 'Kapro' },
-  { id: 'Staff', nama: 'Staff' },
 ];
 
-const staffBagianList = [
-  { id: 'Tata Usaha', nama: 'Tata Usaha' },
-  { id: 'Administrasi', nama: 'Administrasi' },
-  { id: 'Perpustakaan', nama: 'Perpustakaan' },
-  { id: 'Laboratorium', nama: 'Laboratorium' },
-  { id: 'Keuangan', nama: 'Keuangan' },
-];
+
 
 const wakaOptions = [
   { id: 'Waka Kesiswaan', nama: 'Waka Kesiswaan' },
@@ -86,6 +79,7 @@ export default function DetailGuru({
 
   // temporary variables for form
   const [tempStaffBagian, setTempStaffBagian] = useState('');
+  const [tempSubject, setTempSubject] = useState('');
 
   // ==================== FETCH DATA ====================
   const fetchMasterData = async () => {
@@ -221,13 +215,17 @@ export default function DetailGuru({
       errors.noTelp = 'Nomor telepon tidak valid';
     }
 
-    if (guruData.roles.includes('Guru') && guruData.subjects.length === 0) errors.mataPelajaran = 'Mata pelajaran harus dipilih';
-    if (guruData.roles.includes('Wali Kelas')) {
-      if (!guruData.waliGrade) errors.waliGrade = 'Tingkatan harus dipilih';
-      if (!guruData.waliKelasId) errors.waliKelasId = 'Kelas harus dipilih';
+    const kaproSelected = guruData.roles.includes('Kapro');
+
+    if (!kaproSelected) {
+      if (guruData.roles.includes('Guru') && guruData.subjects.length === 0) errors.mataPelajaran = 'Mata pelajaran harus dipilih';
+      if (guruData.roles.includes('Wali Kelas')) {
+        if (!guruData.waliGrade) errors.waliGrade = 'Tingkatan harus dipilih';
+        if (!guruData.waliKelasId) errors.waliKelasId = 'Kelas harus dipilih';
+      }
     }
 
-    const needsStaffBagian = guruData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r));
+    const needsStaffBagian = guruData.roles.some(r => ['Waka', 'Kapro'].includes(r));
     if (needsStaffBagian && !tempStaffBagian) errors.staffBagian = 'Bagian harus dipilih';
 
     setFormErrors(errors);
@@ -245,7 +243,7 @@ export default function DetailGuru({
     setGuruData(originalData);
     setFormErrors({});
     if (originalData) {
-      const hasStaff = originalData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r));
+      const hasStaff = originalData.roles.some(r => ['Waka', 'Kapro'].includes(r));
       setTempStaffBagian(hasStaff ? originalData.keterangan : '');
     }
   };
@@ -319,7 +317,7 @@ export default function DetailGuru({
         const cls = classes.find(c => c.id.toString() === updatedData.waliKelasId);
         if (cls) detailKeterangan.push(cls.name);
       }
-      if (updatedData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r)) && tempStaffBagian) detailKeterangan.push(tempStaffBagian);
+      if (updatedData.roles.some(r => ['Waka', 'Kapro'].includes(r)) && tempStaffBagian) detailKeterangan.push(tempStaffBagian);
 
       updatedData.keterangan = detailKeterangan.join(' | ');
 
@@ -567,57 +565,125 @@ export default function DetailGuru({
               </div>
 
               {/* Conditional Fields based on Role */}
-              {guruData.roles.includes('Guru') && (
+              {guruData.roles.includes('Kapro') ? (
+                // IF KAPRO IS SELECTED: ONLY SHOW THIS MENU
                 <div>
-                  <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Mata Pelajaran</label>
-                  <select
-                    multiple
-                    value={guruData.subjects}
-                    onChange={(e) => handleFieldChange('subjects', Array.from(e.target.selectedOptions, o => o.value))}
-                    disabled={!isEditMode}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.mataPelajaran ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box', height: 'auto' }}>
-                    {subjects.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                  </select>
-                  {formErrors.mataPelajaran && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.mataPelajaran}</p>}
-                </div>
-              )}
-
-              {guruData.roles.includes('Wali Kelas') && (
-                <>
-                  <div>
-                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Tingkatan Kelas</label>
-                    <select value={guruData.waliGrade || ''} onChange={(e) => handleFieldChange('waliGrade', e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.waliGrade ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
-                      <option value="">Pilih Tingkatan</option>
-                      <option value="10">10</option>
-                      <option value="11">11</option>
-                      <option value="12">12</option>
-                    </select>
-                    {formErrors.waliGrade && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.waliGrade}</p>}
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Kelas</label>
-                    <select value={guruData.waliKelasId || ''} onChange={(e) => handleFieldChange('waliKelasId', e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.waliKelasId ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
-                      <option value="">Pilih Kelas</option>
-                      {classes.filter(c => !guruData.waliGrade || c.grade === guruData.waliGrade).map(item => (
-                        <option key={item.id} value={item.id}>{item.name}</option>
-                      ))}
-                    </select>
-                    {formErrors.waliKelasId && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.waliKelasId}</p>}
-                  </div>
-                </>
-              )}
-
-              {(guruData.roles.some(r => ['Staff', 'Waka', 'Kapro'].includes(r))) && (
-                <div>
-                  <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Detail Bagian / Jabatan Khusus</label>
+                  <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Konsentrasi Keahlian (Kapro)</label>
                   <select value={tempStaffBagian} onChange={(e) => setTempStaffBagian(e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.staffBagian ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
-                    <option value="">Pilih Detail</option>
-                    {guruData.roles.includes('Waka') && wakaOptions.map(item => <option key={item.id} value={item.nama}>{item.nama}</option>)}
-                    {guruData.roles.includes('Kapro') && majors.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                    {guruData.roles.includes('Staff') && staffBagianList.map(item => <option key={item.id} value={item.nama}>{item.nama}</option>)}
+                    <option value="">Pilih Konsentrasi Keahlian</option>
+                    {majors.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                   {formErrors.staffBagian && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.staffBagian}</p>}
                 </div>
+              ) : (
+                // IF NOT KAPRO: SHOW THE REGULAR MENUS BASED ON ROLE
+                <>
+                  {guruData.roles.includes('Guru') && (
+                    <div>
+                      <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Mata Pelajaran</label>
+
+                      {/* Selected subject chips */}
+                      {guruData.subjects.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                          {guruData.subjects.map(s => (
+                            <span
+                              key={s}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                padding: '4px 10px', borderRadius: '16px',
+                                backgroundColor: '#DBEAFE', color: '#1E40AF',
+                                fontSize: '12px', fontWeight: 600,
+                              }}
+                            >
+                              {s}
+                              {isEditMode && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleFieldChange('subjects', guruData.subjects.filter(x => x !== s))}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0', lineHeight: 1, color: '#1E40AF', fontWeight: 700, fontSize: '14px' }}
+                                >×</button>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {isEditMode && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <select
+                            value={tempSubject}
+                            onChange={(e) => setTempSubject(e.target.value)}
+                            style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: formErrors.mataPelajaran ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' }}
+                          >
+                            <option value="">Pilih Mata Pelajaran</option>
+                            {subjects.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!tempSubject) return;
+                              if (!guruData.subjects.includes(tempSubject)) {
+                                handleFieldChange('subjects', [...guruData.subjects, tempSubject]);
+                              }
+                              setTempSubject('');
+                            }}
+                            style={{
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: '#2563EB',
+                              color: '#FFFFFF',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              fontSize: '13px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Tambah
+                          </button>
+                        </div>
+                      )}
+
+                      {formErrors.mataPelajaran && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.mataPelajaran}</p>}
+                    </div>
+                  )}
+
+                  {guruData.roles.includes('Wali Kelas') && (
+                    <>
+                      <div>
+                        <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Tingkatan Kelas</label>
+                        <select value={guruData.waliGrade || ''} onChange={(e) => handleFieldChange('waliGrade', e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.waliGrade ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
+                          <option value="">Pilih Tingkatan</option>
+                          <option value="10">10</option>
+                          <option value="11">11</option>
+                          <option value="12">12</option>
+                        </select>
+                        {formErrors.waliGrade && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.waliGrade}</p>}
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Kelas</label>
+                        <select value={guruData.waliKelasId || ''} onChange={(e) => handleFieldChange('waliKelasId', e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.waliKelasId ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
+                          <option value="">Pilih Kelas</option>
+                          {classes.filter(c => !guruData.waliGrade || c.grade === guruData.waliGrade).map(item => (
+                            <option key={item.id} value={item.id}>{item.label || item.name}</option>
+                          ))}
+                        </select>
+                        {formErrors.waliKelasId && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.waliKelasId}</p>}
+                      </div>
+                    </>
+                  )}
+
+                  {guruData.roles.includes('Waka') && (
+                    <div>
+                      <label style={{ fontSize: '14px', fontWeight: '600', color: '#FFFFFF', display: 'block', marginBottom: '8px' }}>Detail Bagian / Jabatan Khusus</label>
+                      <select value={tempStaffBagian} onChange={(e) => setTempStaffBagian(e.target.value)} disabled={!isEditMode} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: formErrors.staffBagian ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', backgroundColor: '#FFFFFF', color: '#1F2937', outline: 'none', cursor: isEditMode ? 'pointer' : 'not-allowed', boxSizing: 'border-box' }}>
+                        <option value="">Pilih Detail</option>
+                        {wakaOptions.map(item => <option key={item.id} value={item.nama}>{item.nama}</option>)}
+                      </select>
+                      {formErrors.staffBagian && isEditMode && <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{formErrors.staffBagian}</p>}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* No Telp */}

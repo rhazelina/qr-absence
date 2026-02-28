@@ -24,7 +24,7 @@ interface Siswa {
   id: string;
   nisn: string;
   nama: string;
-  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'terlambat' | 'pulang' | null;
+  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'terlambat' | 'pulang' | 'dispen' | null;
   keterangan?: string;
 }
 
@@ -153,7 +153,7 @@ export function InputAbsenWalikelas({
       try {
         // Try to get homeroom students
         const response = await attendanceService.getMyHomeroomStudents();
-        
+
         if (response && Array.isArray(response)) {
           const mapped: Siswa[] = response.map((student: any) => ({
             id: String(student.id),
@@ -176,7 +176,7 @@ export function InputAbsenWalikelas({
 
     try {
       const response = await attendanceService.getScheduleStudents(schedule.id);
-      
+
       if (response.eligible_students) {
         const mapped: Siswa[] = response.eligible_students.map((student: any) => ({
           id: String(student.id),
@@ -202,7 +202,7 @@ export function InputAbsenWalikelas({
   const handleStatusClick = (siswa: Siswa, e: React.MouseEvent) => {
     e.stopPropagation();
     if (siswa.status === null) return;
-    
+
     setSelectedSiswa(siswa);
     setIsModalOpen(true);
   };
@@ -255,6 +255,7 @@ export function InputAbsenWalikelas({
     alfa: '#D90000',
     sakit: '#520C8F',
     terlambat: '#F59E0B',
+    dispen: '#E45A92',
   };
 
   // Fungsi untuk mendapatkan teks status
@@ -270,6 +271,8 @@ export function InputAbsenWalikelas({
         return "Siswa hadir tepat waktu";
       case "pulang":
         return "Siswa pulang lebih awal karena ada kepentingan";
+      case "dispen":
+        return "Siswa dispen lebih awal karena ada kepentingan";
       default:
         return status;
     }
@@ -288,6 +291,7 @@ export function InputAbsenWalikelas({
       alfa: { label: 'Tidak Hadir', color: statusColors.alfa, textColor: '#FFFFFF' },
       pulang: { label: 'Pulang', color: statusColors.pulang, textColor: '#FFFFFF' },
       terlambat: { label: 'Terlambat', color: statusColors.terlambat, textColor: '#FFFFFF' },
+      dispen: { label: 'Dispen', color: statusColors.dispen, textColor: '#FFFFFF' },
     };
 
     const config = statusConfig[siswa.status];
@@ -477,7 +481,8 @@ export function InputAbsenWalikelas({
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Izin</th>
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '90px' }}>Tidak Hadir</th>
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Pulang</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '120px' }}>Status</th>
+                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Dispen</th>
+                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '120px' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -495,97 +500,115 @@ export function InputAbsenWalikelas({
                       <td style={{ padding: '16px', fontSize: '14px', color: '#111827', fontWeight: '500' }}>{idx + 1}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#374151', fontWeight: '400' }}>{siswa.nisn}</td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#111827', fontWeight: '500' }}>{siswa.nama}</td>
-                      
+
                       {/* Radio Button Hadir */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'hadir'} 
-                          onChange={() => handleStatusChange(siswa.id, 'hadir')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'hadir'}
+                          onChange={() => handleStatusChange(siswa.id, 'hadir')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.hadir,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Sakit */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'sakit'} 
-                          onChange={() => handleStatusChange(siswa.id, 'sakit')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'sakit'}
+                          onChange={() => handleStatusChange(siswa.id, 'sakit')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.sakit,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Izin */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'izin'} 
-                          onChange={() => handleStatusChange(siswa.id, 'izin')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'izin'}
+                          onChange={() => handleStatusChange(siswa.id, 'izin')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.izin,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Tidak Hadir (Alpha) */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'alfa'} 
-                          onChange={() => handleStatusChange(siswa.id, 'alfa')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'alfa'}
+                          onChange={() => handleStatusChange(siswa.id, 'alfa')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.alfa,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
                       {/* Radio Button Pulang */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <input 
-                          type="radio" 
-                          name={`status-${siswa.id}`} 
-                          checked={siswa.status === 'pulang'} 
-                          onChange={() => handleStatusChange(siswa.id, 'pulang')} 
-                          style={{ 
-                            width: '18px', 
-                            height: '18px', 
-                            cursor: 'pointer', 
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'pulang'}
+                          onChange={() => handleStatusChange(siswa.id, 'pulang')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
                             accentColor: statusColors.pulang,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
-                          }} 
+                          }}
                         />
                       </td>
-                      
+
+                      {/* Radio Button Dispen */}
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'dispen'}
+                          onChange={() => handleStatusChange(siswa.id, 'dispen')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
+                            accentColor: statusColors.dispen,
+                            border: '2px solid #D1D5DB',
+                            borderRadius: '50%',
+                          }}
+                        />
+                      </td>
+
                       {/* Kolom Status */}
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <StatusButton siswa={siswa} />
@@ -650,21 +673,21 @@ export function InputAbsenWalikelas({
             </div>
 
             {/* Content Modal */}
-            <div style={{ 
+            <div style={{
               padding: 24,
               overflowY: "auto",
               flex: 1,
             }}>
               {/* Row Nama Siswa */}
               <DetailRow label="Nama Siswa" value={selectedSiswa.nama} />
-              
+
               {/* Row NISN */}
               <DetailRow label="NISN" value={selectedSiswa.nisn} />
 
               {/* Row Tanggal */}
-              <DetailRow 
-                label="Tanggal" 
-                value={currentDate.split('-').reverse().join('-')} 
+              <DetailRow
+                label="Tanggal"
+                value={currentDate.split('-').reverse().join('-')}
               />
 
               {/* Row Kelas */}
@@ -694,19 +717,19 @@ export function InputAbsenWalikelas({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {selectedSiswa.status === 'alfa' ? 'Tidak Hadir' : 
-                     selectedSiswa.status === 'pulang' ? 'Pulang' : 
-                     selectedSiswa.status.charAt(0).toUpperCase() + selectedSiswa.status.slice(1)}
+                    {selectedSiswa.status === 'alfa' ? 'Tidak Hadir' :
+                      selectedSiswa.status === 'pulang' ? 'Pulang' :
+                        selectedSiswa.status.charAt(0).toUpperCase() + selectedSiswa.status.slice(1)}
                   </span>
                 </div>
               </div>
 
               {/* Info Box */}
               <div style={{
-                backgroundColor: selectedSiswa.status === 'hadir' ? '#F0FDF4' : 
-                                selectedSiswa.status === 'pulang' ? '#EFF6FF' : '#FEF3C7',
-                border: `1px solid ${selectedSiswa.status === 'hadir' ? '#BBF7D0' : 
-                         selectedSiswa.status === 'pulang' ? '#BFDBFE' : '#FDE68A'}`,
+                backgroundColor: selectedSiswa.status === 'hadir' ? '#F0FDF4' :
+                  selectedSiswa.status === 'pulang' ? '#EFF6FF' : '#FEF3C7',
+                border: `1px solid ${selectedSiswa.status === 'hadir' ? '#BBF7D0' :
+                  selectedSiswa.status === 'pulang' ? '#BFDBFE' : '#FDE68A'}`,
                 borderRadius: 8,
                 padding: 16,
                 textAlign: "center",
@@ -715,8 +738,8 @@ export function InputAbsenWalikelas({
                 <div style={{
                   fontSize: 14,
                   fontWeight: 600,
-                  color: selectedSiswa.status === 'hadir' ? '#166534' : 
-                         selectedSiswa.status === 'pulang' ? '#1E40AF' : '#92400E',
+                  color: selectedSiswa.status === 'hadir' ? '#166534' :
+                    selectedSiswa.status === 'pulang' ? '#1E40AF' : '#92400E',
                 }}>
                   {getStatusText(selectedSiswa.status)}
                 </div>

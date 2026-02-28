@@ -1,4 +1,5 @@
 import { toast } from 'react-toastify';
+import API_ENDPOINTS from './apiConfig';
 
 const baseURL = import.meta.env.VITE_API_URL;
 const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
@@ -26,6 +27,14 @@ const apiService = {
         headers
       });
 
+      // if server redirected to login page (HTML) treat as unauthorized
+      if (response.redirected && response.url.includes('/login')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+        throw new Error('Sesi telah berakhir, silakan login kembali');
+      }
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem('token');
@@ -52,6 +61,10 @@ const apiService = {
 
       return await response.json();
     } catch (error) {
+      // normalize error: always have data property
+      if (error && typeof error === 'object' && !('data' in error)) {
+        error.data = {};
+      }
       // Only toast if it's a TypeError (Network Error from fetch failing) and not our custom re-thrown error
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         toast.error('Gagal terhubung ke server. Periksa koneksi internet Anda.', { toastId: 'network-err' });
@@ -75,150 +88,196 @@ const apiService = {
 
   // Auth Methods
   getProfile() {
-    return this.get('/me');
+    return this.get(API_ENDPOINTS.me);
   },
 
   // Class & Schedule Methods
   getMyClassSchedules() {
-    return this.get('/me/class/schedules');
+    return this.get(API_ENDPOINTS.meClassSchedules);
   },
 
   getMyClassAttendance(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/me/class/attendance${query}`);
+    return this.get(API_ENDPOINTS.meClassAttendance + query);
   },
 
   getMyClassStudents() {
-    return this.get('/me/class/students');
+    return this.get(API_ENDPOINTS.meClassStudents);
   },
 
   getMyClassAttendanceHistory(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/me/class/attendance${query}`);
+    return this.get(API_ENDPOINTS.meClassAttendance + query);
   },
 
   // Teacher Schedule & Attendance Methods
   getTeacherSchedules() {
-    return this.get('/me/schedules');
+    return this.get(API_ENDPOINTS.meSchedules);
   },
 
   getTeacherScheduleDetail(scheduleId) {
-    return this.get(`/me/schedules/${scheduleId}/detail`);
+    return this.get(`${API_ENDPOINTS.meSchedules}/${scheduleId}/detail`);
   },
 
   getTeacherScheduleStudents(scheduleId) {
-    return this.get(`/me/schedules/${scheduleId}/students`);
+    return this.get(`${API_ENDPOINTS.meSchedules}/${scheduleId}/students`);
   },
 
   submitBulkAttendance(data) {
-    return this.post('/attendance/bulk-manual', data);
+    return this.post(`${API_ENDPOINTS.attendance}/bulk-manual`, data);
   },
 
   // Homeroom Teacher Methods
   getHomeroomInfo() {
-    return this.get('/me/homeroom');
+    return this.get(API_ENDPOINTS.meHomeroom);
   },
 
   getHomeroomSchedules(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/me/homeroom/schedules${query}`);
+    return this.get(API_ENDPOINTS.meHomeroomSchedules + query);
   },
 
   getHomeroomStudents() {
-    return this.get('/me/homeroom/students');
+    return this.get(API_ENDPOINTS.meHomeroomStudents);
   },
 
   getHomeroomAttendance(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/me/homeroom/attendance${query}`);
+    return this.get(API_ENDPOINTS.meHomeroomAttendance + query);
   },
 
   getMyClassDashboard() {
-    return this.get('/me/class/dashboard');
+    return this.get(API_ENDPOINTS.meClassDashboard);
   },
 
   generateClassQr(data) {
-    return this.post('/me/class/qr-token', data);
+    return this.post(API_ENDPOINTS.meClassQrToken, data);
   },
 
   // Student Methods
   getStudentDashboard() {
-    return this.get('/me/dashboard/summary');
+    return this.get(API_ENDPOINTS.meDashboardSummary);
   },
 
   getAttendanceHistory(params) {
     const query = new URLSearchParams({
       from: params.start_date,
-      to: params.end_date,
+      to: params.end_date
     }).toString();
-    return this.get(`/me/attendance?${query}`);
+    return this.get(`${API_ENDPOINTS.meAttendance}?${query}`);
   },
 
   // Shared / Public Methods
   getSemesters() {
-    return this.get('/semesters');
+    return this.get(API_ENDPOINTS.semesters);
+  },
+
+  // miscellaneous
+  login(data) {
+    return this.post(API_ENDPOINTS.login, data);
+  },
+
+  getMyAttendanceSummary() {
+    return this.get(API_ENDPOINTS.meAttendanceSummary);
   },
 
   // Settings Methods
   getSettings() {
-    return this.get('/settings');
+    return this.get(API_ENDPOINTS.settings);
   },
 
   getPublicSettings() {
-    return this.get('/settings/public');
+    return this.get(API_ENDPOINTS.publicSettings);
   },
 
   updateSettings(data) {
-    return this.post('/settings', data);
+    return this.post(API_ENDPOINTS.settings, data);
   },
 
   getTeachers(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/teachers${query}`);
+    return this.get(API_ENDPOINTS.teachers + query);
   },
 
   // Waka Methods
   getWakaDashboardSummary(semesterId) {
     const params = semesterId ? `?semester_id=${semesterId}` : '';
-    return this.get(`/waka/dashboard/summary${params}`);
+    return this.get(API_ENDPOINTS.waDashboardSummary + params);
   },
 
   getWakaClassAttendanceSummary(classId, params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/waka/classes/${classId}/attendance-summary${query}`);
+    return this.get(`${API_ENDPOINTS.waClasses}/${classId}/attendance-summary${query}`);
   },
 
   // Waka/Admin Methods
-  getStudentAttendance(studentId, params) { // For detail view
+  getStudentAttendance(studentId, params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/students/${studentId}/attendance${query}`);
+    return this.get(`${API_ENDPOINTS.students}/${studentId}/attendance${query}`);
   },
 
   getTeacherAttendanceHistory(teacherId, params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/teachers/${teacherId}/attendance-history${query}`);
+    return this.get(`${API_ENDPOINTS.teachers}/${teacherId}/attendance-history${query}`);
+  },
+
+  getTeacherAttendance(teacherId, params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`${API_ENDPOINTS.teachers}/${teacherId}/attendance${query}`);
+  },
+
+  // detailed summaries for admins/waka
+  getAttendanceClassSummary(classId, params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(`${API_ENDPOINTS.attendanceClasses}/${classId}/summary${query}`);
+  },
+
+  getAttendanceBySchedule(scheduleId) {
+    return this.get(`${API_ENDPOINTS.attendance}/schedules/${scheduleId}`);
   },
 
   getDailyTeacherAttendance(date, params) {
     const query = new URLSearchParams({ date, ...params }).toString();
-    return this.get(`/attendance/teachers/daily?${query}`);
+    return this.get(`${API_ENDPOINTS.attendanceTeachersDaily}?${query}`);
   },
 
   voidAttendance(id) {
-    return this.post(`/attendance/${id}/void`, {});
+    return this.post(`${API_ENDPOINTS.attendance}/${id}/void`, {});
   },
 
   updateAttendanceStatus(attendanceId, data) {
-    return this.post(`/attendance/${attendanceId}/excuse`, data);
+    return this.post(`${API_ENDPOINTS.attendance}/${attendanceId}/excuse`, data);
   },
 
   uploadAttendanceDocument(attendanceId, formData) {
-    return this.post(`/attendance/${attendanceId}/document`, formData);
+    return this.post(`${API_ENDPOINTS.attendance}/${attendanceId}/document`, formData);
   },
 
   getClasses(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
-    return this.get(`/classes${query}`);
+    return this.get(API_ENDPOINTS.classes + query);
+  },
+
+  /**
+   * Schedule image management for teachers and classes
+   */
+  uploadTeacherScheduleImage(teacherId, formData) {
+    return this.post(`${API_ENDPOINTS.teacherScheduleBase}/${teacherId}/schedule-image`, formData);
+  },
+  deleteTeacherScheduleImage(teacherId) {
+    return this.post(`${API_ENDPOINTS.teacherScheduleBase}/${teacherId}/schedule-image`, {}); // backend uses POST for delete?
+  },
+  getTeacherScheduleImage(teacherId) {
+    return this.get(`${API_ENDPOINTS.teacherScheduleBase}/${teacherId}/schedule-image`);
+  },
+  uploadClassScheduleImage(classId, formData) {
+    return this.post(`${API_ENDPOINTS.classScheduleBase}/${classId}/schedule-image`, formData);
+  },
+  deleteClassScheduleImage(classId) {
+    return this.post(`${API_ENDPOINTS.classScheduleBase}/${classId}/schedule-image`, {});
+  },
+  getClassScheduleImage(classId) {
+    return this.get(`${API_ENDPOINTS.classScheduleBase}/${classId}/schedule-image`);
   },
 
   getAvailableClasses(teacherId = null) {
@@ -226,78 +285,222 @@ const apiService = {
     if (teacherId) {
       query += `&exclude_teacher=${teacherId}`;
     }
-    return this.get(`/classes${query}`);
+    return this.get(API_ENDPOINTS.classes + query);
   },
 
   getMajors(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '?per_page=1000';
-    return this.get(`/majors${query}`);
+    return this.get(API_ENDPOINTS.majors + query);
+  },
+
+  addMajor(data) {
+    return this.post(API_ENDPOINTS.majors, data);
+  },
+
+  updateMajor(id, data) {
+    return this.request(`${API_ENDPOINTS.majors}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+
+  deleteMajor(id) {
+    return this.request(`${API_ENDPOINTS.majors}/${id}`, { method: 'DELETE' });
   },
 
   getClass(classId) {
-    return this.get(`/classes/${classId}`);
+    return this.get(`${API_ENDPOINTS.classes}/${classId}`);
   },
 
   getClassAttendanceByDate(classId, date) {
     const query = date ? `?date=${date}` : '';
-    return this.get(`/waka/classes/${classId}/attendance${query}`);
+    return this.get(`${API_ENDPOINTS.waClasses}/${classId}/attendance${query}`);
+  },
+
+  // Leave permissions / absence requests
+  getLeavePermissions(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.leavePermissions + query);
+  },
+  createLeavePermission(data) {
+    return this.post(API_ENDPOINTS.leavePermissions, data);
+  },
+  getLeavePermission(id) {
+    return this.get(`${API_ENDPOINTS.leavePermissions}/${id}`);
+  },
+  updateLeavePermission(id, data) {
+    return this.request(`${API_ENDPOINTS.leavePermissions}/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  },
+  markLeaveReturned(id) {
+    return this.post(`${API_ENDPOINTS.leavePermissions}/${id}/return`, {});
+  },
+  markLeaveAbsent(id) {
+    return this.post(`${API_ENDPOINTS.leavePermissions}/${id}/mark-absent`, {});
+  },
+  cancelLeavePermission(id) {
+    return this.post(`${API_ENDPOINTS.leavePermissions}/${id}/cancel`, {});
+  },
+  checkLeaveExpired() {
+    return this.post(`${API_ENDPOINTS.leavePermissions}/check-expired`, {});
+  },
+
+  getAbsenceRequests(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.absenceRequests + query);
+  },
+  createAbsenceRequest(data) {
+    return this.post(API_ENDPOINTS.absenceRequests, data);
+  },
+  approveAbsenceRequest(id) {
+    return this.post(`${API_ENDPOINTS.absenceRequests}/${id}/approve`, {});
+  },
+  rejectAbsenceRequest(id) {
+    return this.post(`${API_ENDPOINTS.absenceRequests}/${id}/reject`, {});
   },
 
   // Student Admin CRUD
   getStudents(params) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-    return this.get(`/students${query}`);
+    return this.get(API_ENDPOINTS.students + query);
   },
   getStudent(id) {
-    return this.get(`/students/${id}`);
+    return this.get(`${API_ENDPOINTS.students}/${id}`);
   },
   addStudent(data) {
-    return this.post('/students', data);
+    return this.post(API_ENDPOINTS.students, data);
   },
   updateStudent(id, data) {
-    return this.request(`/students/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return this.request(`${API_ENDPOINTS.students}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   deleteStudent(id) {
-    return this.request(`/students/${id}`, { method: 'DELETE' });
+    return this.request(`${API_ENDPOINTS.students}/${id}`, { method: 'DELETE' });
   },
   importStudents(data) {
-    return this.post('/import/siswa', data);
+    return this.post(API_ENDPOINTS.importStudents, data);
   },
 
   // Teacher Admin CRUD
   getTeacher(id) {
-    return this.get(`/teachers/${id}`);
+    return this.get(`${API_ENDPOINTS.teachers}/${id}`);
   },
   addTeacher(data) {
-    return this.post('/teachers', data);
+    return this.post(API_ENDPOINTS.teachers, data);
   },
   updateTeacher(id, data) {
-    return this.request(`/teachers/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return this.request(`${API_ENDPOINTS.teachers}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   deleteTeacher(id) {
-    return this.request(`/teachers/${id}`, { method: 'DELETE' });
+    return this.request(`${API_ENDPOINTS.teachers}/${id}`, { method: 'DELETE' });
   },
   importTeachers(data) {
-    return this.post('/import/guru', data);
+    return this.post(API_ENDPOINTS.importTeachers, data);
   },
 
   // Class Admin CRUD
   addClass(data) {
-    return this.post('/classes', data);
+    return this.post(API_ENDPOINTS.classes, data);
   },
   updateClass(id, data) {
-    return this.request(`/classes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return this.request(`${API_ENDPOINTS.classes}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   deleteClass(id) {
-    return this.request(`/classes/${id}`, { method: 'DELETE' });
+    return this.request(`${API_ENDPOINTS.classes}/${id}`, { method: 'DELETE' });
   },
   importClasses(data) {
-    return this.post('/import/kelas', data);
+    return this.post(API_ENDPOINTS.importClasses, data);
+  },
+
+  // attendance export / recap
+  exportAttendance(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.attendanceExport + query);
+  },
+  exportAttendancePdf(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.attendanceExportPdf + query);
+  },
+  getAttendanceRecap(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.attendanceRecap + query);
+  },
+
+  // Admin master data CRUD
+  /* rooms */
+  getRooms(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.rooms + query);
+  },
+  addRoom(data) {
+    return this.post(API_ENDPOINTS.rooms, data);
+  },
+  updateRoom(id, data) {
+    return this.request(`${API_ENDPOINTS.rooms}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteRoom(id) {
+    return this.request(`${API_ENDPOINTS.rooms}/${id}`, { method: 'DELETE' });
+  },
+  /* subjects */
+  getSubjects(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.subjects + query);
+  },
+  addSubject(data) {
+    return this.post(API_ENDPOINTS.subjects, data);
+  },
+  updateSubject(id, data) {
+    return this.request(`${API_ENDPOINTS.subjects}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteSubject(id) {
+    return this.request(`${API_ENDPOINTS.subjects}/${id}`, { method: 'DELETE' });
+  },
+  /* time slots */
+  getTimeSlots(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.timeSlots + query);
+  },
+  addTimeSlot(data) {
+    return this.post(API_ENDPOINTS.timeSlots, data);
+  },
+  updateTimeSlot(id, data) {
+    return this.request(`${API_ENDPOINTS.timeSlots}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteTimeSlot(id) {
+    return this.request(`${API_ENDPOINTS.timeSlots}/${id}`, { method: 'DELETE' });
+  },
+  /* school years */
+  getSchoolYears(params) {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.get(API_ENDPOINTS.schoolYears + query);
+  },
+  addSchoolYear(data) {
+    return this.post(API_ENDPOINTS.schoolYears, data);
+  },
+  updateSchoolYear(id, data) {
+    return this.request(`${API_ENDPOINTS.schoolYears}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteSchoolYear(id) {
+    return this.request(`${API_ENDPOINTS.schoolYears}/${id}`, { method: 'DELETE' });
+  },
+  /* semesters already have getSemesters; provide modification too */
+  addSemester(data) {
+    return this.post(API_ENDPOINTS.semesters, data);
+  },
+  updateSemester(id, data) {
+    return this.request(`${API_ENDPOINTS.semesters}/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteSemester(id) {
+    return this.request(`${API_ENDPOINTS.semesters}/${id}`, { method: 'DELETE' });
+  },
+
+  // bulk settings and admin sync
+  updateSettingsBulk(data) {
+    return this.post(API_ENDPOINTS.settingsBulk, data);
+  },
+  syncAdminData(data = {}) {
+    return this.post(API_ENDPOINTS.adminDataSync, data);
   },
 
   importSchedules(data) {
-    return this.post('/import/jadwal', data);
+    return this.post(API_ENDPOINTS.importSchedules, data);
   }
 };
 
 export default apiService;
+

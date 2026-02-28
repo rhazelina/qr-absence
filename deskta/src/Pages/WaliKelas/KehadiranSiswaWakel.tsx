@@ -16,9 +16,10 @@ const STATUS_COLORS = {
   sakit: '#520C8F',   // UNGU - Sakit
   alfa: '#D90000',   // MERAH - Alfa
   pulang: '#2F85EB',  // BIRU - Pulang
+  dispen: '#E45A92',  // PINK - Dispen
 };
 
-type StatusType = 'hadir' | 'izin' | 'sakit' | 'alfa' | 'pulang';
+type StatusType = 'hadir' | 'izin' | 'sakit' | 'alfa' | 'pulang' | 'dispen';
 
 const normalizeStatus = (status?: string): StatusType => {
   const key = String(status || "").toLowerCase();
@@ -26,6 +27,7 @@ const normalizeStatus = (status?: string): StatusType => {
   if (key === "permission" || key === "excused" || key === "izin") return "izin";
   if (key === "sick" || key === "sakit") return "sakit";
   if (key === "return" || key === "pulang" || key === "early_leave") return "pulang";
+  if (key === "dispensation" || key === "dispen") return "dispen";
   return "alfa";
 };
 
@@ -204,6 +206,7 @@ export function KehadiranSiswaWakel({
   const totalSakit = filteredRows.filter((r) => r.status === 'sakit').length;
   const totalAlfa = filteredRows.filter((r) => r.status === 'alfa').length;
   const totalPulang = filteredRows.filter((r) => r.status === 'pulang').length;
+  const totalDispen = filteredRows.filter((r) => r.status === 'dispen').length;
 
 
 
@@ -230,6 +233,7 @@ export function KehadiranSiswaWakel({
       status === 'sakit' ? 'Sakit' :
         status === 'izin' ? 'Izin' :
           status === 'hadir' ? 'Hadir' :
+            status === 'dispen' ? 'Dispen' :
             'Pulang';
 
     return (
@@ -286,6 +290,7 @@ export function KehadiranSiswaWakel({
     { label: 'Izin', value: 'izin' as StatusType },
     { label: 'Alfa', value: 'alfa' as StatusType },
     { label: 'Pulang', value: 'pulang' as StatusType },
+    { label: 'Dispen', value: 'dispen' as StatusType },
   ];
 
 

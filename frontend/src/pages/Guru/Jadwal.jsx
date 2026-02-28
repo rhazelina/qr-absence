@@ -8,6 +8,8 @@ const Jadwal = () => {
   const [profile, setProfile] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scheduleImage, setScheduleImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,6 +32,18 @@ const Jadwal = () => {
       if (scheduleRes) {
         const items = scheduleRes.items || scheduleRes.data || scheduleRes || [];
         setSchedules(items);
+
+      // load schedule image separately
+      if (meRes && meRes.data?.teacher_profile?.id) {
+        try {
+          const imgRes = await apiService.getTeacherScheduleImage(meRes.data.teacher_profile.id);
+          if (imgRes && imgRes.url) {
+            setScheduleImage(imgRes.url);
+          }
+        } catch (e) {
+          // ignore if none
+        }
+      }
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -82,8 +96,6 @@ const Jadwal = () => {
     <div className="jadwal-container">
       <NavbarGuru />
       
-      <h1 className="jadwal-title">Jadwal Mengajar</h1>
-
       <div className="jadwal-wrapper">
         <div className="jadwal-layout">
           {/* Sidebar Profile */}
@@ -110,11 +122,50 @@ const Jadwal = () => {
 
           {/* Main Content */}
           <div className="jadwal-main">
-            <div className="jadwal-header-main">
-              <Calendar size={30} />
-              <h1>Jadwal Pelajaran</h1>
+            {/* header & upload controls */}
+            <h1 className="jadwal-title">Jadwal Mengajar</h1>
+            <div className="flex gap-4 items-center mb-4">
+              {scheduleImage && (
+                <a href={scheduleImage} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600">Lihat Jadwal</a>
+              )}
+              <label className="btn btn-sm">
+                Unggah Jadwal
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    setUploading(true);
+                    try {
+                      const teacherId = profile?.teacher_profile?.id;
+                      const form = new FormData();
+                      form.append('image', file);
+                      const res = await apiService.uploadTeacherScheduleImage(teacherId, form);
+                      if (res && res.url) {
+                        setScheduleImage(res.url);
+                      }
+                    } catch (err) {
+                      console.error('upload failed', err);
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                />
+              </label>
+              {uploading && <span>Uploading...</span>}
             </div>
 
+            <div className="schedule-image-container">
+              {scheduleImage ? (
+                <img src={scheduleImage} alt="Jadwal" />
+              ) : (
+                <p className="text-gray-300">Belum ada gambar jadwal</p>
+              )}
+            </div>
+
+            {/* dynamic schedule list */}
             <div className="schedule-list-container">
               {sortedDays.map(day => (
                 <div key={day} className="day-section">

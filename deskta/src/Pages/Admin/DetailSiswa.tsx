@@ -4,6 +4,58 @@ import { User as UserIcon, ArrowLeft, Edit2, Save, X } from 'lucide-react';
 import { studentService, type Student } from '../../services/studentService';
 import { masterService, type ClassRoom } from '../../services/masterService';
 
+// Mapping nama jurusan lengkap
+const MAJOR_NAMES: Record<string, string> = {
+  'RPL': 'Rekayasa Perangkat Lunak',
+  'DKV': 'Desain Komunikasi Visual',
+  'TKJ': 'Teknik Komputer dan Jaringan'
+};
+
+const MAJOR_CODE_BY_NAME: Record<string, string> = {
+  'Rekayasa Perangkat Lunak': 'RPL',
+  'Desain Komunikasi Visual': 'DKV',
+  'Teknik Komputer & Jaringan': 'TKJ',
+  'Teknik Komputer dan Jaringan': 'TKJ'
+};
+
+const ALLOWED_CLASS_LABELS = new Set([
+  'RPL 1', 'RPL 2', 'RPL 3',
+  'DKV 1', 'DKV 2', 'DKV 3',
+  'TAV 1', 'TAV 2',
+  'TKJ 1', 'TKJ 2', 'TKJ 3',
+  'TMT 1', 'TMT 2', 'TMT 3',
+  'TEI 1', 'TEI 2',
+  'AN 1', 'AN 2',
+  'BC 1', 'BC 2',
+]);
+
+const getMajorCode = (raw?: string) => {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  if (MAJOR_NAMES[value]) return value;
+  if (MAJOR_CODE_BY_NAME[value]) return MAJOR_CODE_BY_NAME[value];
+  return value;
+};
+
+const CLASS_LABELS = [
+  'RPL 1', 'RPL 2', 'RPL 3',
+  'DKV 1', 'DKV 2', 'DKV 3',
+  'TAV 1', 'TAV 2',
+  'TKJ 1', 'TKJ 2', 'TKJ 3',
+  'TMT 1', 'TMT 2', 'TMT 3',
+  'TEI 1', 'TEI 2',
+  'AN 1', 'AN 2',
+  'BC 1', 'BC 2',
+];
+
+// Strict validasi relasi grade dan jurusan
+const STRICT_KELAS_MAP: Record<string, string[]> = {
+  "12_RPL": ["RPL 1", "RPL 2"],
+  "12_TKJ": ["TKJ 1", "TKJ 2"],
+  "11_RPL": ["RPL 3"],
+  "11_TKJ": ["TKJ 3"],
+};
+
 /* ===================== INTERFACE DEFINITIONS ===================== */
 // Use Student interface from service, but locally we might extend it for UI state if needed
 // or just use it directly.
@@ -30,7 +82,7 @@ export default function DetailSiswa({
   const [siswaData, setSiswaData] = useState<Student | null>(null);
   const [originalData, setOriginalData] = useState<Student | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(true);
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
@@ -38,7 +90,42 @@ export default function DetailSiswa({
   const [majors, setMajors] = useState<any[]>([]);
   const [selectedMajorId, setSelectedMajorId] = useState<string>('');
   const [selectedGrade, setSelectedGrade] = useState<string>('');
-  
+  const [selectedClassLabel, setSelectedClassLabel] = useState<string>('');
+
+  const resolveClassIdByLabel = (label: string, majorId?: string, grade?: string) => {
+    const trimmed = String(label || '').trim();
+    if (!trimmed) return '';
+    const found = classes.find((c) => {
+      const classLabel = c.label || c.name;
+      if (!classLabel) return false;
+      const matchesLabel =
+        classLabel === trimmed ||
+        c.name === trimmed ||
+        (c.name && c.name.endsWith(trimmed));
+      if (!matchesLabel) return false;
+      if (majorId && c.major_id?.toString() !== majorId) return false;
+      if (grade && c.grade?.toString() !== grade) return false;
+      return true;
+    });
+    return found ? found.id.toString() : '';
+  };
+
+  const filterClassLabels = (majorCode?: string, grade?: string) => {
+    if (!majorCode && !grade) return CLASS_LABELS;
+    let labels = CLASS_LABELS;
+    if (majorCode) {
+      labels = labels.filter((l) => l.startsWith(`${majorCode} `));
+    }
+    if (grade && majorCode) {
+      const strictKey = `${grade}_${majorCode}`;
+      const allowedKelas = STRICT_KELAS_MAP[strictKey];
+      if (allowedKelas) {
+        labels = labels.filter((l) => allowedKelas.includes(l));
+      }
+    }
+    return labels;
+  };
+
   // Custom fields not directly in Student interface or needing transformation
   const currentYear = new Date().getFullYear();
   const [tahunMulai, setTahunMulai] = useState<string>(currentYear.toString());
@@ -55,7 +142,7 @@ export default function DetailSiswa({
           masterService.getClasses(),
           masterService.getMajors(),
         ]);
-        
+
         const classesRaw = Array.isArray(classesRes) ? classesRes : (classesRes.data || classesRes.data?.data || []);
         const majorsRaw = Array.isArray(majorsRes) ? majorsRes : (majorsRes.data || majorsRes.data?.data || []);
         setClasses(classesRaw);
@@ -103,13 +190,14 @@ export default function DetailSiswa({
           const gradeValue = classFromList?.grade?.toString() || normalizedStudent.class_grade || '';
           setSelectedMajorId(majorId);
           setSelectedGrade(gradeValue);
-          
+          setSelectedClassLabel(classFromList?.label || classFromList?.name || normalizedStudent.class_label || '');
+
           // Parse tahun angkatan if available, otherwise default
           // Assuming backend doesn't send distinct tahunMulai/Akhir, or we parse from 'grade' or add custom fields
           // For now, let's keep defaults or try to parse if a field exists, valid logic:
           // If student has a 'grade' like 'X', 'XI', 'XII', we can guess? 
           // Or just leave as manual input for now until backend supports 'batch_year'
-          
+
         }
       } catch (err: any) {
         console.error('Error loading data:', err);
@@ -131,6 +219,10 @@ export default function DetailSiswa({
     if (!selectedGrade) {
       const grade = siswaData.class_grade || '';
       if (grade) setSelectedGrade(String(grade));
+    }
+    if (!selectedClassLabel && siswaData.class_id) {
+      const cls = classes.find(c => c.id.toString() === siswaData.class_id);
+      if (cls) setSelectedClassLabel(cls.label || cls.name || '');
     }
   }, [siswaData, classes, selectedMajorId, selectedGrade]);
 
@@ -175,19 +267,19 @@ export default function DetailSiswa({
 
   const validateForm = (): boolean => {
     if (!siswaData) return false;
-    
-    const errors: {[key: string]: string} = {};
-    
+
+    const errors: { [key: string]: string } = {};
+
     if (!siswaData.name.trim()) errors.name = 'Nama siswa harus diisi';
     if (!siswaData.nisn.trim()) errors.nisn = 'NISN harus diisi';
     if (!siswaData.class_id) errors.class_id = 'Kelas harus dipilih';
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   // ==================== EVENT HANDLERS ====================
-  
+
   const handleEnableEdit = () => {
     setIsEditMode(true);
     setFormErrors({});
@@ -222,13 +314,29 @@ export default function DetailSiswa({
       };
 
       await studentService.updateStudent(siswaData.id, payload);
-      
+
       setOriginalData(siswaData);
-      
+
       if (onUpdateSiswa) {
         onUpdateSiswa(siswaData);
       }
-      
+
+      const updatedClass = classes.find(c => c.id.toString() === siswaData.class_id);
+      const updatedMajor = updatedClass?.major_id
+        ? majors.find(m => m.id.toString() === updatedClass.major_id?.toString())
+        : majors.find(m => m.code === siswaData.major || m.name === siswaData.major_name);
+
+      const updateDetail = {
+        id: siswaData.id?.toString(),
+        namaSiswa: siswaData.name,
+        nisn: siswaData.nisn,
+        kelasId: siswaData.class_id,
+        kelasLabel: updatedClass?.label || updatedClass?.name || selectedClassLabel || siswaData.class_label,
+        kelasGrade: updatedClass?.grade?.toString() || siswaData.class_grade || '',
+        jurusan: updatedMajor?.code || updatedMajor?.name || siswaData.major || siswaData.major_name,
+      };
+      window.dispatchEvent(new CustomEvent('siswaUpdated', { detail: updateDetail }));
+
       setIsEditMode(false);
       alert('✓ Data berhasil diperbarui!');
     } catch (err: any) {
@@ -253,25 +361,25 @@ export default function DetailSiswa({
     if (!siswaData) return;
 
     const updatedSiswa = { ...siswaData };
-    
+
     // Handle special cases if any
     if (field === 'class_id') {
       const selectedClass = classes.find(c => c.id.toString() === value);
       if (selectedClass) {
-          updatedSiswa.class_name = selectedClass.name;
-          updatedSiswa.class_grade = selectedClass.grade;
-          updatedSiswa.class_label = selectedClass.label;
-          updatedSiswa.grade = selectedClass.grade; // legacy
-          if (selectedClass.major_id) {
-            const maj = majors.find((m) => m.id.toString() === selectedClass.major_id.toString());
-            updatedSiswa.major = maj?.code || updatedSiswa.major;
-            updatedSiswa.major_name = maj?.name || updatedSiswa.major_name;
-            setSelectedMajorId(selectedClass.major_id.toString());
-          }
-          setSelectedGrade(String(selectedClass.grade || ''));
+        updatedSiswa.class_name = selectedClass.name;
+        updatedSiswa.class_grade = selectedClass.grade;
+        updatedSiswa.class_label = selectedClass.label;
+        updatedSiswa.grade = selectedClass.grade; // legacy
+        if (selectedClass.major_id) {
+          const maj = majors.find((m) => m.id.toString() === selectedClass.major_id.toString());
+          updatedSiswa.major = maj?.code || updatedSiswa.major;
+          updatedSiswa.major_name = maj?.name || updatedSiswa.major_name;
+          setSelectedMajorId(selectedClass.major_id.toString());
+        }
+        setSelectedGrade(String(selectedClass.grade || ''));
       }
     }
-    
+
     if (field === 'major') {
       // If we change major manually, filter classes?
     }
@@ -293,13 +401,13 @@ export default function DetailSiswa({
   const tahunOptions = generateTahunOptions();
 
 
-  
+
   // Actually, allow user to select Major first, then Class?
   // Or just select Class. Class determines Major.
   // In UI, we have "Konsentrasi Keahlian" (Major) dropdown.
   // We should bind it to state.
   // Let's add 'major_id' or 'major_code' to state handling if we want to filter classes.
-  
+
   // Implementation choice:
   // Prioritize Class selection. Major is derived or can be filtered.
   // Let's allow selecting Major to filter Class options.
@@ -379,9 +487,9 @@ export default function DetailSiswa({
                 position: 'relative',
               }}
             >
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: '20px',
                 flex: 1,
               }}>
@@ -401,7 +509,7 @@ export default function DetailSiswa({
                 >
                   <UserIcon size={window.innerWidth < 768 ? 28 : 32} />
                 </div>
-                
+
                 <div style={{ flex: 1 }}>
                   <h2
                     style={{
@@ -526,7 +634,7 @@ export default function DetailSiswa({
             </div>
 
             {/* ============ CONTENT - FORM FIELDS ============ */}
-            <div style={{ 
+            <div style={{
               padding: window.innerWidth < 768 ? '20px' : '32px',
             }}>
               <div
@@ -660,14 +768,15 @@ export default function DetailSiswa({
                   }}>
                     Konsentrasi Keahlian
                   </label>
-                  <select
-                    value={selectedMajorId}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setSelectedMajorId(value);
-                      setSelectedGrade('');
-                      handleFieldChange('class_id', '');
-                    }}
+                    <select
+                      value={selectedMajorId}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSelectedMajorId(value);
+                        setSelectedGrade('');
+                        setSelectedClassLabel('');
+                        handleFieldChange('class_id', '');
+                      }}
                     disabled={!isEditMode}
                     style={{
                       width: '100%',
@@ -684,7 +793,7 @@ export default function DetailSiswa({
                   >
                     <option value="">Pilih Konsentrasi Keahlian</option>
                     {majors.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
+                      <option key={m.id} value={m.id}>{MAJOR_NAMES[m.name] || m.name}</option>
                     ))}
                   </select>
                 </div>
@@ -700,12 +809,13 @@ export default function DetailSiswa({
                   }}>
                     Tingkat Kelas
                   </label>
-                  <select
-                    value={selectedGrade}
-                    onChange={(e) => {
-                      setSelectedGrade(e.target.value);
-                      handleFieldChange('class_id', '');
-                    }}
+                    <select
+                      value={selectedGrade}
+                      onChange={(e) => {
+                        setSelectedGrade(e.target.value);
+                        setSelectedClassLabel('');
+                        handleFieldChange('class_id', '');
+                      }}
                     disabled={!isEditMode}
                     style={{
                       width: '100%',
@@ -740,8 +850,14 @@ export default function DetailSiswa({
                       Kelas
                     </label>
                     <select
-                      value={siswaData.class_id || ''}
-                      onChange={(e) => handleFieldChange('class_id', e.target.value)}
+                      value={selectedClassLabel}
+                      onChange={(e) => {
+                        const label = e.target.value;
+                        const classId = resolveClassIdByLabel(label, selectedMajorId, selectedGrade);
+                        setSelectedClassLabel(label);
+                        handleFieldChange('class_id', classId);
+                        validateField('class_id', classId);
+                      }}
                       disabled={!isEditMode}
                       style={{
                         width: '100%',
@@ -757,17 +873,12 @@ export default function DetailSiswa({
                       }}
                     >
                       <option value="">Pilih Kelas</option>
-                      {classes
-                        .filter(c => {
-                          if (selectedMajorId && c.major_id?.toString() !== selectedMajorId) return false;
-                          if (selectedGrade && c.grade?.toString() !== selectedGrade) return false;
-                          return true;
-                        })
-                        .map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.label || c.name}
-                          </option>
-                        ))}
+                      {filterClassLabels(
+                        getMajorCode(majors.find(m => m.id.toString() === selectedMajorId)?.code || majors.find(m => m.id.toString() === selectedMajorId)?.name),
+                        selectedGrade
+                      ).map((label) => (
+                        <option key={label} value={label}>{label}</option>
+                      ))}
                     </select>
                     {formErrors.class_id && isEditMode && (
                       <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>

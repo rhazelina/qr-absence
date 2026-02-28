@@ -6,11 +6,17 @@ import DataSiswa from './pages/Admin/DataSiswa';
 import DataGuru from './pages/Admin/DataGuru';
 import DataKelas from './pages/Admin/DataKelas';
 import DataJurusan from './pages/Admin/DataJurusan';
+import DataRooms from './pages/Admin/DataRooms';
+import DataSubjects from './pages/Admin/DataSubjects';
+import DataTimeSlots from './pages/Admin/DataTimeSlots';
 import ProfileSekolah from './pages/Admin/Profilesekolah';
+import ApproveAbsence from './pages/Admin/ApproveAbsence';
+import AttendanceExport from './pages/Admin/AttendanceExport';
 
 import DashboardGuru from './pages/Guru/DashboardGuru';
 import Jadwal from './pages/Guru/Jadwal';
 import PresensiSiswa from './pages/Guru/PresensiSiswa';
+import PengajuanIzin from './pages/Guru/PengajuanIzin';
 
 import DashboardSiswa from './pages/Siswa/DashboardSiswa';
 import Riwayat from './pages/Siswa/Riwayat';
@@ -38,6 +44,7 @@ import KehadiranSiswaShow from './pages/Waka/KehadiranSiswaShow';
 import KehadiranSiswaRekap from './pages/Waka/KehadiranSiswaRekap';
 import KehadiranGuruIndex from './pages/Waka/KehadiranGuruIndex';
 import KehadiranGuruShow from './pages/Waka/KehadiranGuruShow';
+import AttendanceClassDetail from './pages/Waka/AttendanceClassDetail';
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -72,12 +79,18 @@ function App() {
         <Route path="/admin/guru" element={<DataGuru />} />
         <Route path="/admin/kelas" element={<DataKelas />} />
         <Route path="/admin/jurusan" element={<DataJurusan />} />
+        <Route path="/admin/rooms" element={<DataRooms />} />
+        <Route path="/admin/subjects" element={<DataSubjects />} />
+        <Route path="/admin/time-slots" element={<DataTimeSlots />} />
         <Route path="/admin/profil-sekolah" element={<ProfileSekolah />} />
+        <Route path="/admin/approve-absence" element={<ApproveAbsence />} />
+        <Route path="/admin/attendance-export" element={<AttendanceExport />} />
 
         {/* Guru Routes */}
         <Route path="/guru/dashboard" element={<DashboardGuru />} />
         <Route path="/guru/jadwal" element={<Jadwal />} />
         <Route path="/guru/presensi" element={<PresensiSiswa />} />
+        <Route path="/guru/pengajuan-izin" element={<PengajuanIzin />} />
 
         {/* Siswa Routes */}
         <Route path="/siswa/dashboard" element={<DashboardSiswa />} />
@@ -110,6 +123,7 @@ function App() {
         <Route path="/waka/kehadiran-siswa/:id" element={<KehadiranSiswaShow />} />
         <Route path="/waka/kehadiran-guru" element={<KehadiranGuruIndex />} />
         <Route path="/waka/kehadiran-guru/:id" element={<KehadiranGuruShow />} />
+        <Route path="/waka/attendance-class/:classId" element={<AttendanceClassDetail />} />
 
 
         {/* Route lain yang nggak ada, balik ke landing */}

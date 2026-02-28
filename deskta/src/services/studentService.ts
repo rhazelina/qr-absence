@@ -20,7 +20,7 @@ export interface Student {
 }
 
 export const studentService = {
-  getStudents: async (params?: { search?: string, major?: string, grade?: string }) => {
+  getStudents: async (params?: { search?: string; major?: string; major_id?: string; grade?: string; class_id?: string }) => {
     let url = `${API_BASE_URL}/students`;
     if (params) {
       const query = new URLSearchParams(params as any).toString();

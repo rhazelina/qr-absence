@@ -81,8 +81,22 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         });
       } catch (error) {
         console.error('Error loading school data:', error);
-        // Optional: fallback to localStorage if needed, but let's stick to API
-        setSchoolData(DEFAULT_SCHOOL_DATA);
+        // Fallback to localStorage if API fails
+        const savedData = localStorage.getItem('schoolData');
+        if (savedData) {
+          try {
+            const parsedData = JSON.parse(savedData);
+            setSchoolData({
+              nama_sekolah: parsedData.nama_sekolah || parsedData.school_name || DEFAULT_SCHOOL_DATA.nama_sekolah,
+              logo_sekolah: parsedData.logo_sekolah || parsedData.school_logo_url || '',
+            });
+          } catch (parseErr) {
+            console.error('Error parsing localStorage schoolData:', parseErr);
+            setSchoolData(DEFAULT_SCHOOL_DATA);
+          }
+        } else {
+          setSchoolData(DEFAULT_SCHOOL_DATA);
+        }
       }
     };
 
@@ -90,9 +104,11 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
 
     // ==================== LISTEN FOR SCHOOL DATA UPDATES ====================
     window.addEventListener('schoolDataUpdated', loadSchoolData);
+    window.addEventListener('schoolSettingsUpdated', loadSchoolData);
 
     return () => {
       window.removeEventListener('schoolDataUpdated', loadSchoolData);
+      window.removeEventListener('schoolSettingsUpdated', loadSchoolData);
     };
   }, []);
 
@@ -110,8 +126,13 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
     e.preventDefault();
     setError("");
 
-    if (!form.identifier.trim() || !form.password.trim()) {
-      setError("Semua field harus diisi");
+    const isStudentRole = role === "siswa" || role === "pengurus_kelas";
+    if (!form.identifier.trim()) {
+      setError("Identitas wajib diisi");
+      return;
+    }
+    if (!isStudentRole && !form.password.trim()) {
+      setError("Kata sandi wajib diisi");
       return;
     }
 
@@ -154,10 +175,10 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         return "Nama Pengguna";
       case "guru":
       case "wakel":
-        return "Kode Guru";
+        return "NIP / Kode Guru";
       case "siswa":
       case "pengurus_kelas":
-        return "NISN";
+        return "NISN / NIS";
       default:
         return "Identitas";
     }
@@ -171,10 +192,10 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
         return "Masukkan nama pengguna";
       case "guru":
       case "wakel":
-        return "Masukkan kode guru";
+        return "Masukkan NIP atau kode guru";
       case "siswa":
       case "pengurus_kelas":
-        return "Masukkan NISN";
+        return "Masukkan NISN atau NIS";
       default:
         return "Masukkan identitas";
     }
@@ -430,7 +451,9 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
                     fontSize: 14,
                   }}
                 >
-                  Kata Sandi
+                  {role === "siswa" || role === "pengurus_kelas"
+                    ? "Kata Sandi (opsional untuk siswa)"
+                    : "Kata Sandi"}
                 </label>
                 <div className="password-container">
                   <input
@@ -439,7 +462,11 @@ export default function LoginPage({ role, onLogin, onBack }: LoginPageProps) {
                     onChange={(e) =>
                       setForm({ ...form, password: e.target.value })
                     }
-                    placeholder="Masukkan Kata Sandi"
+                    placeholder={
+                      role === "siswa" || role === "pengurus_kelas"
+                        ? "Masukkan kata sandi (opsional)"
+                        : "Masukkan kata sandi"
+                    }
                     style={inputStyle}
                     disabled={isLoading || !role}
                     aria-label="Password"

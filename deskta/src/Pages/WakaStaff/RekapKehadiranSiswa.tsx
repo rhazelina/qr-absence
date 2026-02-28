@@ -25,6 +25,7 @@ interface SiswaRow {
   izin: number;
   alpha: number;
   pulang: number;
+  dispen?: number;
 }
 
 export default function RekapKehadiranSiswa({
@@ -57,6 +58,7 @@ export default function RekapKehadiranSiswa({
     PULANG: "#2F85EB",
     TIDAK_HADIR: "#D90000",
     SAKIT: "#520C8F"
+  , DISPEN: "#FF3E9B"
   };
 
   // Inject CSS untuk ubah icon kalender jadi putih
@@ -116,18 +118,20 @@ export default function RekapKehadiranSiswa({
             // Let's sum 'present' + 'late'.
             
             const hadir = (totals.present || 0) + (totals.late || 0);
-            
+            const dispenCount = totals.dispen || totals.dispensasi || totals.dispensation || totals.dispense || 0;
+
             return {
-                no: index + 1,
-                nisn: item.student?.nisn || "-",
-                namaSiswa: item.student?.user?.name || item.student?.name || "-",
-                hadir: hadir,
-                sakit: totals.sick || 0,
-                izin: totals.permission || 0,
-                alpha: totals.alpha || totals.absent || 0, // 'absent' usually means alpha if not otherwise specified
-                pulang: 0 // Backend doesn't seem to have 'pulang' status explicitly in totals? 
-                          // If 'pulang' is a status, it should be in totals.
-                          // 'pulang' usually means 'permission to go home'.
+              no: index + 1,
+              nisn: item.student?.nisn || "-",
+              namaSiswa: item.student?.user?.name || item.student?.name || "-",
+              hadir: hadir,
+              sakit: totals.sick || 0,
+              izin: totals.permission || 0,
+              alpha: totals.alpha || totals.absent || 0, // 'absent' usually means alpha if not otherwise specified
+              pulang: 0, // Backend doesn't seem to have 'pulang' status explicitly in totals? 
+                    // If 'pulang' is a status, it should be in totals.
+                    // 'pulang' usually means 'permission to go home'.
+              dispen: dispenCount,
             };
         });
 
@@ -142,7 +146,7 @@ export default function RekapKehadiranSiswa({
 
   const handleExportExcel = () => {
     // Buat data untuk Excel
-    const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Sakit", "Izin", "Alfa", "Pulang"];
+    const headers = ["No", "NISN", "Nama Siswa", "Hadir", "Sakit", "Izin", "Alfa", "Pulang", "Dispen"];
     const rows = siswaData.map((siswa) => [
       siswa.no,
       siswa.nisn,
@@ -152,6 +156,7 @@ export default function RekapKehadiranSiswa({
       siswa.izin,
       siswa.alpha,
       siswa.pulang,
+      siswa.dispen || 0,
     ]);
 
     // Gabungkan headers dan rows
@@ -194,6 +199,7 @@ export default function RekapKehadiranSiswa({
           .izin { color: ${COLORS.IZIN}; font-weight: bold; }
           .alpha { color: ${COLORS.TIDAK_HADIR}; font-weight: bold; }
           .pulang { color: ${COLORS.PULANG}; font-weight: bold; }
+          .dispen { color: ${COLORS.DISPEN}; font-weight: bold; }
         </style>
         <script>
           window.onload = function() {
@@ -225,6 +231,7 @@ export default function RekapKehadiranSiswa({
               <th>Izin</th>
               <th>Alfa</th>
               <th>Pulang</th>
+              <th>Dispen</th>
             </tr>
           </thead>
           <tbody>
@@ -238,6 +245,7 @@ export default function RekapKehadiranSiswa({
                 <td class="izin">${siswa.izin}</td>
                 <td class="alpha">${siswa.alpha}</td>
                 <td class="pulang">${siswa.pulang}</td>
+                <td class="dispen">${siswa.dispen || 0}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -319,6 +327,15 @@ export default function RekapKehadiranSiswa({
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
             <span style={{ color: COLORS.PULANG, fontWeight: 700 }}>{value}</span>
+          </div>
+        ),
+      },
+      { 
+        key: "dispen", 
+        label: <div style={{ textAlign: "center" }}>Dispen</div>,
+        render: (value: number) => (
+          <div style={{ textAlign: "center" }}>
+            <span style={{ color: COLORS.DISPEN, fontWeight: 700 }}>{value || 0}</span>
           </div>
         ),
       },

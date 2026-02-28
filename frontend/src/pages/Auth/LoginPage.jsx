@@ -113,7 +113,7 @@ const LoginPage = () => {
       // Simpan token
       localStorage.setItem('token', data.token);
 
-      // Normalisasi role agar konsisten dengan deskta (tapi jangan ubah redirect UI)
+      // Normalisasi role agar konsisten dengan deskta
       const normalizeRole = (backendRole = '', userType = '', isClassOfficer = false, selectionRole = '') => {
         const b = (backendRole || '').toLowerCase();
         const t = (userType || '').toLowerCase();
@@ -138,19 +138,21 @@ const LoginPage = () => {
       const user = data.user || {};
       const normalized = normalizeRole(user.role, user.user_type, user.is_class_officer, role);
 
-      const storedUser = {
-        role: normalized,
+      // Simpan user yang dinormalisasi
+      localStorage.setItem('user', JSON.stringify({
+        id: user.id,
         name: user.name || '',
-        phone: user.phone || '',
-        profile: user.profile || {}
-      };
-
-      // Simpan user yang dinormalisasi agar konsisten dengan deskta
-      localStorage.setItem('user', JSON.stringify(storedUser));
+        username: user.username || '',
+        email: user.email || '',
+        user_type: user.user_type || '',
+        role: normalized,
+        is_class_officer: user.is_class_officer || false,
+        profile: user.profile || {},
+      }));
       localStorage.setItem('userRole', normalized);
       localStorage.setItem('userIdentifier', formData.identifier);
 
-      // Tetap redirect sesuai UI/role pilihan di template untuk menjaga tampilan tidak berubah
+      // Tetap redirect sesuai UI/role pilihan di template
       navigate(config.dashboard);
 
     } catch (err) {

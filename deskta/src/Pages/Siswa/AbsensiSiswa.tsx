@@ -11,7 +11,7 @@ interface AbsensiRecord {
   jamPelajaran: string;
   mataPelajaran: string;
   guru: string;
-  status: "alfa" | "izin" | "sakit" | "hadir" | "pulang";
+  status: "alfa" | "izin" | "sakit" | "hadir" | "pulang" | "dispen";
   keterangan?: string; // Tambahan untuk izin/sakit/pulang
 }
 
@@ -175,6 +175,11 @@ export default function AbsensiSiswa({
         case 'sick': return 'sakit';
         case 'excused':
         case 'izin': return 'izin';
+        case 'dispensasi':
+        case 'dispensation':
+        case 'dispen':
+        case 'dispense':
+         return 'dispen';
         case 'absent': return 'alfa';
         case 'return':
         case 'pulang': return 'pulang';
@@ -182,15 +187,11 @@ export default function AbsensiSiswa({
      }
   };
 
-  // Filter local (status only)
-  const filteredData = useMemo(() => {
-     if (statusFilter === 'semua') return attendanceData;
-     
-     return attendanceData.filter(item => {
-        if (statusFilter === 'izin/sakit') return item.status === 'izin' || item.status === 'sakit';
-        return item.status === statusFilter;
-     });
-  }, [attendanceData, statusFilter]);
+    // Filter local (status only)
+    const filteredData = useMemo(() => {
+      if (statusFilter === 'semua') return attendanceData;
+      return attendanceData.filter(item => item.status === statusFilter);
+    }, [attendanceData, statusFilter]);
 
   // Hitung summary berdasarkan data filtered
   const summary = useMemo(() => {
@@ -199,8 +200,9 @@ export default function AbsensiSiswa({
     const izin = filteredData.filter((d) => d.status === "izin").length;
     const sakit = filteredData.filter((d) => d.status === "sakit").length;
     const alfa = filteredData.filter((d) => d.status === "alfa").length;
+    const dispen = filteredData.filter((d) => d.status === "dispen").length;
 
-    return { hadir, pulang, izin, sakit, alfa, total: filteredData.length };
+    return { hadir, pulang, izin, sakit, alfa, dispen, total: filteredData.length };
   }, [filteredData]);
 
   // Fungsi untuk membuka modal detail - SEMUA STATUS bisa diklik
@@ -224,6 +226,9 @@ export default function AbsensiSiswa({
     } else if (status === "sakit") {
       bgColor = "#520C8F"; // REVISI: Sakit > #520C8F
       label = "Sakit";
+    } else if (status === "dispen") {
+      bgColor = "#E45A92"; // Dispen pink
+      label = "Dispen";
     } else if (status === "pulang") {
       bgColor = "#2F85EB"; // REVISI: Pulang > #2F85EB
       label = "Pulang";
@@ -313,9 +318,11 @@ export default function AbsensiSiswa({
   // Status filter options 
   const statusOptions = [
     { label: "Semua Status", value: "semua" },
-    { label: "Alfa", value: "Alfa" },
-    { label: "Izin/Sakit", value: "Izin/Sakit" },
-    { label: "Pulang", value: "Pulang" },
+    { label: "Alfa", value: "alfa" },
+    { label: "Izin", value: "izin" },
+    { label: "Sakit", value: "sakit" },
+    { label: "Pulang", value: "pulang" },
+    { label: "Dispen", value: "dispen" },
   ];
 
   // Fungsi untuk mendapatkan teks status
@@ -338,24 +345,26 @@ export default function AbsensiSiswa({
 
   // Helper function untuk warna status
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Alfa": return "#D90000"; // REVISI: alfa > #D90000
-      case "Izin": return "#ACA40D"; // REVISI: Izin > #ACA40D
-      case "Sakit": return "#520C8F"; // REVISI: Sakit > #520C8F
-      case "Hadir": return "#1FA83D"; // REVISI: Hadir > #1FA83D
-      case "Pulang": return "#2F85EB"; // REVISI: Pulang > #2F85EB
+    switch (status.toLowerCase()) {
+      case "alfa": return "#D90000"; // REVISI: alfa > #D90000
+      case "izin": return "#ACA40D"; // REVISI: Izin > #ACA40D
+      case "sakit": return "#520C8F"; // REVISI: Sakit > #520C8F
+      case "hadir": return "#1FA83D"; // REVISI: Hadir > #1FA83D
+      case "pulang": return "#2F85EB"; // REVISI: Pulang > #2F85EB
+      case "dispen": return "#E45A92"; // Dispen pink
       default: return "#6B7280";
     }
   };
 
   // Helper function untuk mendapatkan label status
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "Alfa": return "Alfa";
-      case "Izin": return "Izin";
-      case "Sakit": return "Sakit";
-      case "Hadir": return "Hadir";
-      case "Pulang": return "Pulang";
+    switch (status.toLowerCase()) {
+      case "alfa": return "Alfa";
+      case "izin": return "Izin";
+      case "sakit": return "Sakit";
+      case "hadir": return "Hadir";
+      case "pulang": return "Pulang";
+      case "dispen": return "Dispen";
       default: return status;
     }
   };
@@ -554,6 +563,7 @@ export default function AbsensiSiswa({
             <SummaryCard label="Alfa" value={summary.alfa} color="#D90000" /> {/* REVISI: alfa > #D90000 */}
             <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" /> {/* REVISI: Izin > #ACA40D */}
             <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" /> {/* REVISI: Sakit > #520C8F */}
+            <SummaryCard label="Dispen" value={summary.dispen} color="#E45A92" />
             <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" /> {/* REVISI: Pulang > #2F85EB */}
           </div>
 

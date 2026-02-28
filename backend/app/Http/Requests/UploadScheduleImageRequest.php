@@ -14,7 +14,7 @@ class UploadScheduleImageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'image', 'max:2048'], // 2MB Max
+            'file' => ['required', 'image', 'max:5000'], // 5MB Max
         ];
     }
 
@@ -23,7 +23,7 @@ class UploadScheduleImageRequest extends FormRequest
         return [
             'file.required' => 'File gambar wajib diunggah',
             'file.image' => 'File harus berupa gambar',
-            'file.max' => 'Ukuran file maksimal 2MB',
+            'file.max' => 'Ukuran file maksimal 5MB',
         ];
     }
 }

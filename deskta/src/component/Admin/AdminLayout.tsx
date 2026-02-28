@@ -61,7 +61,11 @@ export default function AdminLayout({
       loadLogoSekolah();
     };
     window.addEventListener('schoolDataUpdated', handleUpdate);
-    return () => window.removeEventListener('schoolDataUpdated', handleUpdate);
+    window.addEventListener('schoolSettingsUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('schoolDataUpdated', handleUpdate);
+      window.removeEventListener('schoolSettingsUpdated', handleUpdate);
+    };
   }, []);
 
   const handleToggleSidebar = () => {

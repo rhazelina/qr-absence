@@ -1116,11 +1116,51 @@
                                             "minItems": 0,
                                             "maxItems": 0,
                                             "additionalItems": false
+                                        },
+                                        "partial_save": {
+                                            "type": "string"
                                         }
                                     },
                                     "required": [
                                         "message",
-                                        "data"
+                                        "data",
+                                        "partial_save"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Lengkapi semua status siswa sebelum menyimpan"
+                                        },
+                                        "partial_save": {
+                                            "type": "boolean"
+                                        },
+                                        "missing_count": {
+                                            "type": "string"
+                                        },
+                                        "total_students": {
+                                            "type": "integer",
+                                            "minimum": 0
+                                        },
+                                        "submitted_count": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "partial_save",
+                                        "missing_count",
+                                        "total_students",
+                                        "submitted_count"
                                     ]
                                 }
                             }
@@ -1276,7 +1316,7 @@
                                         "message": {
                                             "type": "string",
                                             "description": "Error overview.",
-                                            "example": "Tidak boleh mengubah presensi jadwal ini"
+                                            "example": "Anda tidak memiliki hak untuk mengubah presensi ini."
                                         }
                                     },
                                     "required": [
@@ -1391,7 +1431,7 @@
                                         "message": {
                                             "type": "string",
                                             "description": "Error overview.",
-                                            "example": "Tidak boleh mengubah presensi jadwal ini"
+                                            "example": "Anda tidak memiliki hak untuk mengubah presensi ini."
                                         }
                                     },
                                     "required": [
@@ -2956,6 +2996,33 @@
                             ],
                             "format": "date-time"
                         }
+                    },
+                    {
+                        "name": "months",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 24
+                        }
+                    },
+                    {
+                        "name": "group_by",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "day",
+                                "week",
+                                "month"
+                            ]
+                        }
                     }
                 ],
                 "responses": {
@@ -2966,6 +3033,57 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "success"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "trend": {
+                                                    "type": "string"
+                                                },
+                                                "statistik": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "hadir": {
+                                                            "type": "integer"
+                                                        },
+                                                        "izin": {
+                                                            "type": "integer"
+                                                        },
+                                                        "sakit": {
+                                                            "type": "integer"
+                                                        },
+                                                        "alpha": {
+                                                            "type": "integer"
+                                                        },
+                                                        "pulang": {
+                                                            "type": "integer"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "hadir",
+                                                        "izin",
+                                                        "sakit",
+                                                        "alpha",
+                                                        "pulang"
+                                                    ]
+                                                },
+                                                "group_by": {
+                                                    "type": "string"
+                                                },
+                                                "months": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "trend",
+                                                "statistik",
+                                                "group_by",
+                                                "months"
+                                            ]
+                                        },
                                         "status_summary": {
                                             "type": "string"
                                         },
@@ -2974,6 +3092,8 @@
                                         }
                                     },
                                     "required": [
+                                        "status",
+                                        "data",
                                         "status_summary",
                                         "daily_summary"
                                     ]
@@ -3525,7 +3645,18 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "object"
+                                        },
+                                        {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -3613,7 +3744,18 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Classes"
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "object"
+                                        },
+                                        {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -3874,11 +4016,19 @@
                         }
                     },
                     "200": {
-                        "description": "",
+                        "description": "`ClassResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Classes"
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ClassResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
                                 }
                             }
                         }
@@ -4959,19 +5109,12 @@
                                                     "type": [
                                                         "string",
                                                         "null"
-                                                    ],
-                                                    "maxLength": 100
+                                                    ]
                                                 },
                                                 "jabatan": {
                                                     "type": [
                                                         "string",
                                                         "null"
-                                                    ],
-                                                    "enum": [
-                                                        "Guru",
-                                                        "Waka",
-                                                        "Kapro",
-                                                        "Wali Kelas"
                                                     ]
                                                 },
                                                 "bidang": {
@@ -7569,6 +7712,9 @@
                                                     "items": {
                                                         "type": "object",
                                                         "properties": {
+                                                            "id": {
+                                                                "type": "integer"
+                                                            },
                                                             "day": {
                                                                 "type": "string"
                                                             },
@@ -7579,9 +7725,45 @@
                                                                 "type": "string"
                                                             },
                                                             "class": {
-                                                                "type": "string"
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
+                                                                    },
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "-"
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "class_name": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
+                                                                    },
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "-"
+                                                                        ]
+                                                                    }
+                                                                ]
                                                             },
                                                             "subject": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
+                                                                    },
+                                                                    {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                            "N/A"
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "subject_name": {
                                                                 "anyOf": [
                                                                     {
                                                                         "type": "string"
@@ -7599,15 +7781,44 @@
                                                                     "string",
                                                                     "null"
                                                                 ]
+                                                            },
+                                                            "teacher": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "integer"
+                                                                    },
+                                                                    "name": {
+                                                                        "anyOf": [
+                                                                            {
+                                                                                "type": "string"
+                                                                            },
+                                                                            {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "Guru"
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "id",
+                                                                    "name"
+                                                                ]
                                                             }
                                                         },
                                                         "required": [
+                                                            "id",
                                                             "day",
                                                             "start_time",
                                                             "end_time",
                                                             "class",
+                                                            "class_name",
                                                             "subject",
-                                                            "room"
+                                                            "subject_name",
+                                                            "room",
+                                                            "teacher"
                                                         ]
                                                     }
                                                 }
@@ -8577,6 +8788,21 @@
                         }
                     },
                     {
+                        "name": "grade",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "enum": [
+                                "10",
+                                "11",
+                                "12"
+                            ]
+                        }
+                    },
+                    {
                         "name": "per_page",
                         "in": "query",
                         "schema": {
@@ -8894,6 +9120,232 @@
                                                 "$ref": "#/components/schemas/Attendance"
                                             }
                                         }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/me/dashboard/schedule-today": {
+            "get": {
+                "operationId": "studentDashboard.scheduleToday",
+                "summary": "Today's Schedule for Student",
+                "tags": [
+                    "StudentDashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "date": {
+                                            "type": "string"
+                                        },
+                                        "day": {
+                                            "type": "string"
+                                        },
+                                        "items": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "mapel": {
+                                                        "type": "string"
+                                                    },
+                                                    "guru": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "N/A"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    "start": {
+                                                        "type": "string"
+                                                    },
+                                                    "end": {
+                                                        "type": "string"
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "none"
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    "checked_in_at": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "id",
+                                                    "mapel",
+                                                    "guru",
+                                                    "start",
+                                                    "end",
+                                                    "status",
+                                                    "checked_in_at"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "date",
+                                        "day",
+                                        "items"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Student profile not found"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/me/dashboard/attendance-stats": {
+            "get": {
+                "operationId": "studentDashboard.attendanceStats",
+                "summary": "Attendance Statistics for Charts",
+                "tags": [
+                    "StudentDashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "monthly_chart": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "date": {
+                                                        "type": "string"
+                                                    },
+                                                    "day_label": {
+                                                        "type": "string"
+                                                    },
+                                                    "present": {
+                                                        "type": "string"
+                                                    },
+                                                    "late": {
+                                                        "type": "string"
+                                                    },
+                                                    "sick": {
+                                                        "type": "string"
+                                                    },
+                                                    "excused": {
+                                                        "type": "string"
+                                                    },
+                                                    "absent": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "date",
+                                                    "day_label",
+                                                    "present",
+                                                    "late",
+                                                    "sick",
+                                                    "excused",
+                                                    "absent"
+                                                ]
+                                            }
+                                        },
+                                        "weekly_stats": {
+                                            "type": "object",
+                                            "properties": {
+                                                "present": {
+                                                    "type": "string"
+                                                },
+                                                "late": {},
+                                                "sick": {},
+                                                "excused": {
+                                                    "type": "string"
+                                                },
+                                                "absent": {},
+                                                "total": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "present",
+                                                "late",
+                                                "sick",
+                                                "excused",
+                                                "absent",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "monthly_chart",
+                                        "weekly_stats"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Student profile not found"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }
@@ -10494,6 +10946,52 @@
                 }
             }
         },
+        "/available-homeroom-teachers": {
+            "get": {
+                "operationId": "teacher.availableHomeroomTeachers",
+                "description": "Retrieve teachers who are not currently assigned to a class, or the current homeroom teacher for a given class.",
+                "summary": "Get available homeroom teachers",
+                "tags": [
+                    "Teacher"
+                ],
+                "parameters": [
+                    {
+                        "name": "class_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `TeacherResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/TeacherResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/me/schedule-image": {
             "post": {
                 "operationId": "teacher.uploadMyScheduleImage",
@@ -10604,10 +11102,20 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ScheduleItem"
-                                    }
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "success"
+                                        },
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "items"
+                                    ]
                                 }
                             }
                         }
@@ -10920,6 +11428,9 @@
                                                 "absent": {
                                                     "type": "integer"
                                                 },
+                                                "return": {
+                                                    "type": "integer"
+                                                },
                                                 "on_leave": {
                                                     "type": "integer"
                                                 },
@@ -10935,6 +11446,7 @@
                                                 "sick",
                                                 "izin",
                                                 "absent",
+                                                "return",
                                                 "on_leave",
                                                 "total_students"
                                             ]
@@ -10987,6 +11499,7 @@
                                                                     "Izin",
                                                                     "Alpha",
                                                                     "Dinas",
+                                                                    "Pulang",
                                                                     "Belum Absen"
                                                                 ]
                                                             },
@@ -11004,6 +11517,46 @@
                                                             "checked_in_at",
                                                             "reason"
                                                         ]
+                                                    },
+                                                    "last_status_today": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "status_label": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "Hadir",
+                                                                    "Terlambat",
+                                                                    "Sakit",
+                                                                    "Izin",
+                                                                    "Alpha",
+                                                                    "Dinas",
+                                                                    "Pulang",
+                                                                    "Belum Absen"
+                                                                ]
+                                                            },
+                                                            "time": {
+                                                                "type": "string"
+                                                            },
+                                                            "reason": {
+                                                                "type": "string"
+                                                            },
+                                                            "is_pulang": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "status",
+                                                            "status_label",
+                                                            "time",
+                                                            "reason",
+                                                            "is_pulang"
+                                                        ]
                                                     }
                                                 },
                                                 "required": [
@@ -11011,7 +11564,8 @@
                                                     "name",
                                                     "nis",
                                                     "nisn",
-                                                    "attendance"
+                                                    "attendance",
+                                                    "last_status_today"
                                                 ]
                                             }
                                         },
@@ -11189,13 +11743,54 @@
                                                     },
                                                     "nisn": {
                                                         "type": "string"
+                                                    },
+                                                    "last_status_today": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "status": {
+                                                                "type": "string"
+                                                            },
+                                                            "status_label": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                    "Hadir",
+                                                                    "Terlambat",
+                                                                    "Sakit",
+                                                                    "Izin",
+                                                                    "Alpha",
+                                                                    "Dinas",
+                                                                    "Pulang",
+                                                                    "Belum Absen"
+                                                                ]
+                                                            },
+                                                            "time": {
+                                                                "type": "string"
+                                                            },
+                                                            "reason": {
+                                                                "type": "string"
+                                                            },
+                                                            "is_pulang": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "status",
+                                                            "status_label",
+                                                            "time",
+                                                            "reason",
+                                                            "is_pulang"
+                                                        ]
                                                     }
                                                 },
                                                 "required": [
                                                     "id",
                                                     "name",
                                                     "nis",
-                                                    "nisn"
+                                                    "nisn",
+                                                    "last_status_today"
                                                 ]
                                             }
                                         },
@@ -12743,7 +13338,10 @@
                         ]
                     },
                     "schedule_image_url": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "created_at": {
                         "type": "string"
@@ -12782,7 +13380,7 @@
                         "type": "integer"
                     },
                     "year": {
-                        "type": "integer"
+                        "type": "string"
                     },
                     "is_active": {
                         "type": "integer"
@@ -13052,6 +13650,12 @@
                             "null"
                         ]
                     },
+                    "bidang": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
                     "created_at": {
                         "type": [
                             "string",
@@ -13065,6 +13669,24 @@
                             "null"
                         ],
                         "format": "date-time"
+                    },
+                    "department": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "program_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bidang_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -13072,8 +13694,12 @@
                     "code",
                     "name",
                     "category",
+                    "bidang",
                     "created_at",
-                    "updated_at"
+                    "updated_at",
+                    "department",
+                    "program_keahlian",
+                    "bidang_keahlian"
                 ],
                 "title": "Major"
             },
@@ -13090,18 +13716,46 @@
                         "type": "string"
                     },
                     "name": {
-                        "type": "string",
-                        "description": "Alias for DataJurusan.jsx"
+                        "type": "string"
                     },
                     "namaJurusan": {
                         "type": "string"
+                    },
+                    "department": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "program_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "programKeahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bidang_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "bidangKeahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "category": {
                         "type": [
                             "string",
                             "null"
-                        ],
-                        "description": "Alias for DataJurusan.jsx"
+                        ]
                     },
                     "created_at": {
                         "type": [
@@ -13124,6 +13778,11 @@
                     "kodeJurusan",
                     "name",
                     "namaJurusan",
+                    "department",
+                    "program_keahlian",
+                    "programKeahlian",
+                    "bidang_keahlian",
+                    "bidangKeahlian",
                     "category",
                     "created_at",
                     "updated_at"
@@ -13408,7 +14067,7 @@
                     },
                     "label": {
                         "type": "string",
-                        "maxLength": 20
+                        "maxLength": 100
                     },
                     "major_id": {
                         "type": [
@@ -13535,6 +14194,41 @@
                     },
                     "name": {
                         "type": "string",
+                        "maxLength": 100
+                    },
+                    "department": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "program_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "programKeahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "bidang_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "bidangKeahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 100
                     },
                     "category": {
@@ -13801,10 +14495,7 @@
                         "minLength": 6
                     },
                     "nip": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "string"
                     },
                     "phone": {
                         "type": [
@@ -13824,25 +14515,6 @@
                         "type": [
                             "integer",
                             "null"
-                        ]
-                    },
-                    "subject": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 100
-                    },
-                    "jabatan": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "enum": [
-                            "Guru",
-                            "Waka",
-                            "Kapro",
-                            "Wali Kelas"
                         ]
                     },
                     "bidang": {
@@ -13865,10 +14537,34 @@
                             "null"
                         ],
                         "maxLength": 50
+                    },
+                    "subject": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 100
+                        }
+                    },
+                    "jabatan": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "Guru",
+                                "Waka",
+                                "Kapro",
+                                "Wali Kelas"
+                            ]
+                        }
                     }
                 },
                 "required": [
-                    "name"
+                    "name",
+                    "nip",
+                    "jabatan"
                 ],
                 "title": "StoreTeacherRequest"
             },
@@ -14099,6 +14795,14 @@
                         "type": "string"
                     },
                     "class_name": {
+                        "type": "string",
+                        "description": "the full combined name (grade + label) is kept for backward compatibility"
+                    },
+                    "class_grade": {
+                        "type": "string",
+                        "description": "expose separate pieces for grade/tingkatan and kelas label"
+                    },
+                    "class_label": {
                         "type": "string"
                     },
                     "major_id": {
@@ -14216,9 +14920,10 @@
                     },
                     "subject": {
                         "type": [
-                            "string",
+                            "array",
                             "null"
-                        ]
+                        ],
+                        "items": {}
                     },
                     "schedule_image_path": {
                         "type": [
@@ -14227,7 +14932,11 @@
                         ]
                     },
                     "jabatan": {
-                        "type": "string"
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {}
                     },
                     "bidang": {
                         "type": [
@@ -14307,14 +15016,22 @@
                         "type": "string",
                         "description": "Alias untuk Mobile"
                     },
-                    "waka_field": {
+                    "jabatan": {
                         "type": "string"
+                    },
+                    "waka_field": {
+                        "type": "string",
+                        "description": "Keep for Deskta"
                     },
                     "major_expertise": {
                         "type": "string"
                     },
-                    "homeroom_class_id": {
+                    "konsentrasi_keahlian": {
                         "type": "string"
+                    },
+                    "homeroom_class_id": {
+                        "type": "string",
+                        "description": "Keep for Deskta"
                     },
                     "homeroom_class": {
                         "type": "object",
@@ -14350,21 +15067,11 @@
                             "null"
                         ]
                     },
-                    "schedule_image_path": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "string",
-                                "enum": [
-                                    "schedules/defaults/default_schedule.jpg"
-                                ]
-                            }
-                        ]
-                    },
                     "schedule_image_url": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "classes_count": {
                         "type": "integer",
@@ -14390,11 +15097,12 @@
                     "subject",
                     "subject_name",
                     "role",
+                    "jabatan",
                     "waka_field",
                     "major_expertise",
+                    "konsentrasi_keahlian",
                     "homeroom_class_id",
                     "photo_url",
-                    "schedule_image_path",
                     "schedule_image_url",
                     "classes_count",
                     "created_at",
@@ -14451,7 +15159,7 @@
                     },
                     "label": {
                         "type": "string",
-                        "maxLength": 20
+                        "maxLength": 100
                     },
                     "major_id": {
                         "type": [
@@ -14554,6 +15262,41 @@
                     },
                     "name": {
                         "type": "string",
+                        "maxLength": 100
+                    },
+                    "department": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "program_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "programKeahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "bidang_keahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 100
+                    },
+                    "bidangKeahlian": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "maxLength": 100
                     },
                     "category": {
@@ -14726,7 +15469,16 @@
                             "string",
                             "null"
                         ],
-                        "maxLength": 50
+                        "description": "allow each type explicitly so MA, MTS, MI can be stored individually",
+                        "enum": [
+                            "SMK",
+                            "SMA",
+                            "MA",
+                            "SMP",
+                            "MTS",
+                            "SD",
+                            "MI"
+                        ]
                     }
                 },
                 "title": "UpdateSettingRequest"
@@ -14874,31 +15626,12 @@
                             "null"
                         ]
                     },
-                    "subject": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 100
-                    },
                     "nip": {
                         "type": "string"
                     },
                     "username": {
                         "type": "string",
                         "maxLength": 50
-                    },
-                    "jabatan": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "enum": [
-                            "Guru",
-                            "Waka",
-                            "Kapro",
-                            "Wali Kelas"
-                        ]
                     },
                     "bidang": {
                         "type": [
@@ -14920,6 +15653,31 @@
                             "null"
                         ],
                         "maxLength": 50
+                    },
+                    "subject": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "maxLength": 100
+                        }
+                    },
+                    "jabatan": {
+                        "type": [
+                            "array",
+                            "null"
+                        ],
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "Guru",
+                                "Waka",
+                                "Kapro",
+                                "Wali Kelas"
+                            ]
+                        }
                     }
                 },
                 "title": "UpdateTeacherRequest"
@@ -14946,7 +15704,7 @@
                         "type": "string",
                         "format": "binary",
                         "contentMediaType": "application/octet-stream",
-                        "maxLength": 2048
+                        "maxLength": 5000
                     }
                 },
                 "required": [

@@ -69,6 +69,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   const [searchValue, setSearchValue] = useState('');
   const [selectedJurusan, setSelectedJurusan] = useState('');
   const [selectedTingkatan, setSelectedTingkatan] = useState('');
+  const [selectedKelasLabel, setSelectedKelasLabel] = useState('');
 
   // Dropdown & Modal State
   const [openActionId, setOpenActionId] = useState<string | null>(null);
@@ -90,6 +91,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     jurusanId: string;
     tingkatan: string;
     kelasId: string;
+    kelasLabel: string;
     noTelp: string;
     tahunMulai: string;
     tahunAkhir: string;
@@ -107,6 +109,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     jurusanId: '',
     tingkatan: '',
     kelasId: '',
+    kelasLabel: '',
     noTelp: '',
     tahunMulai: currentYear.toString(),
     tahunAkhir: (currentYear + 3).toString()
@@ -186,7 +189,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     const controller = new AbortController();
     fetchStudents();
     return () => controller.abort();
-  }, [searchValue, pageIndex, selectedJurusan, selectedTingkatan]);
+  }, [searchValue, pageIndex, selectedJurusan, selectedTingkatan, selectedKelasLabel]);
 
   const fetchMasterData = async () => {
     try {
@@ -290,6 +293,10 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       if (selectedTingkatan) {
         params.grade = selectedTingkatan;
       }
+      if (selectedKelasLabel) {
+        const classId = resolveClassIdByLabel(selectedKelasLabel, selectedJurusan, selectedTingkatan);
+        if (classId) params.class_id = classId;
+      }
 
       const response = await studentService.getStudents(params as any);
 
@@ -319,8 +326,34 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classes, majors]);
 
-  // Remote filtering handles this now
-  const filteredData = students;
+  useEffect(() => {
+    const handleSiswaUpdated = (event: Event) => {
+      const detail = (event as CustomEvent).detail as Partial<Siswa> | undefined;
+      if (!detail?.id) return;
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id !== String(detail.id)) return s;
+          return {
+            ...s,
+            namaSiswa: detail.namaSiswa ?? s.namaSiswa,
+            nisn: detail.nisn ?? s.nisn,
+            jurusan: detail.jurusan ?? s.jurusan,
+            kelasId: detail.kelasId ?? s.kelasId,
+            kelasLabel: detail.kelasLabel ?? s.kelasLabel,
+            kelasGrade: detail.kelasGrade ?? s.kelasGrade,
+          };
+        })
+      );
+    };
+
+    window.addEventListener('siswaUpdated', handleSiswaUpdated as EventListener);
+    return () => window.removeEventListener('siswaUpdated', handleSiswaUpdated as EventListener);
+  }, []);
+
+  // Remote filtering handles this now (client-side fallback for class filter)
+  const filteredData = selectedKelasLabel
+    ? students.filter((s) => (s.kelasLabel || '').toString() === selectedKelasLabel)
+    : students;
 
   // Validation
   const validateField = (name: string, value: string) => {
@@ -382,6 +415,10 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     if (!validateForm()) return;
 
     try {
+      if (!formData.kelasId) {
+        alert('Kelas belum tersedia di data master. Tambahkan terlebih dahulu di Data Kelas.');
+        return;
+      }
       const payload: any = {
         name: formData.namaSiswa,
         nisn: formData.nisn,
@@ -623,7 +660,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                 <td>${index + 1}</td>
                 <td>${siswa.namaSiswa}</td>
                 <td>${siswa.nisn}</td>
-                <td>${siswa.jurusan}</td>
+                <td>${getMajorDisplayName(siswa.jurusan)}</td>
                 <td>${siswa.kelasGrade}</td>
                 <td>${siswa.kelasLabel}</td>
                 <td>${siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
@@ -653,7 +690,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     const rows = filteredData.map((siswa) => [
       siswa.namaSiswa,
       siswa.nisn,
-      siswa.jurusan,
+      getMajorDisplayName(siswa.jurusan),
       siswa.kelasGrade,
       siswa.kelasLabel,
       siswa.jenisKelamin === 'L' ? 'Laki-Laki' : 'Perempuan'
@@ -681,14 +718,107 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     border: 'none',
   } as const;
 
+  // Mapping nama jurusan lengkap
+  const MAJOR_NAMES: Record<string, string> = {
+    'RPL': 'Rekayasa Perangkat Lunak',
+    'DKV': 'Desain Komunikasi Visual',
+    'TKJ': 'Teknik Komputer dan Jaringan'
+  };
+
+  const MAJOR_CODE_BY_NAME: Record<string, string> = {
+    'Rekayasa Perangkat Lunak': 'RPL',
+    'Desain Komunikasi Visual': 'DKV',
+    'Teknik Komputer & Jaringan': 'TKJ',
+    'Teknik Komputer dan Jaringan': 'TKJ'
+  };
+
+  const CLASS_LABELS = [
+    'RPL 1', 'RPL 2', 'RPL 3',
+    'DKV 1', 'DKV 2', 'DKV 3',
+    'TAV 1', 'TAV 2',
+    'TKJ 1', 'TKJ 2', 'TKJ 3',
+    'TMT 1', 'TMT 2', 'TMT 3',
+    'TEI 1', 'TEI 2',
+    'AN 1', 'AN 2',
+    'BC 1', 'BC 2',
+  ];
+
+  const ALLOWED_CLASS_LABELS = new Set([
+    'RPL 1', 'RPL 2', 'RPL 3',
+    'DKV 1', 'DKV 2', 'DKV 3',
+    'TAV 1', 'TAV 2',
+    'TKJ 1', 'TKJ 2', 'TKJ 3',
+    'TMT 1', 'TMT 2', 'TMT 3',
+    'TEI 1', 'TEI 2',
+    'AN 1', 'AN 2',
+    'BC 1', 'BC 2',
+  ]);
+
+  const getMajorCode = (raw?: string) => {
+    const value = String(raw || '').trim();
+    if (!value) return '';
+    if (MAJOR_NAMES[value]) return value;
+    if (MAJOR_CODE_BY_NAME[value]) return MAJOR_CODE_BY_NAME[value];
+    return value;
+  };
+
+  const getMajorDisplayName = (raw?: string) => {
+    const code = getMajorCode(raw);
+    const display = MAJOR_NAMES[code] || raw || '-';
+    return String(display).replace(/\s*&\s*/g, ' dan ');
+  };
+
+  const getClassLabel = (c: ClassRoom) => c.label || c.name || '';
+
+  const resolveClassIdByLabel = (label: string, majorId?: string, grade?: string) => {
+    const trimmed = String(label || '').trim();
+    if (!trimmed) return '';
+    const found = classes.find((c) => {
+      const classLabel = getClassLabel(c);
+      if (!classLabel) return false;
+      const matchesLabel =
+        classLabel === trimmed ||
+        c.name === trimmed ||
+        (c.name && c.name.endsWith(trimmed));
+      if (!matchesLabel) return false;
+      if (majorId && c.major_id?.toString() !== majorId) return false;
+      if (grade && c.grade?.toString() !== grade) return false;
+      return true;
+    });
+    return found ? found.id.toString() : '';
+  };
+
+  const filterClassLabels = (majorCode?: string, grade?: string) => {
+    if (!majorCode && !grade) return CLASS_LABELS;
+    let labels = CLASS_LABELS;
+    if (majorCode) {
+      labels = labels.filter((l) => l.startsWith(`${majorCode} `));
+    }
+    if (grade && majorCode) {
+      const strictKey = `${grade}_${majorCode}`;
+      const allowedKelas = STRICT_KELAS_MAP[strictKey];
+      if (allowedKelas) {
+        labels = labels.filter((l) => allowedKelas.includes(l));
+      }
+    }
+    return labels;
+  };
+
+  // Strict validasi relasi grade dan jurusan
+  const STRICT_KELAS_MAP: Record<string, string[]> = {
+    "12_RPL": ["RPL 1", "RPL 2"],
+    "12_TKJ": ["TKJ 1", "TKJ 2"],
+    "11_RPL": ["RPL 3"],
+    "11_TKJ": ["TKJ 3"],
+  };
+
   // Options for Select
   // deduplicate options to avoid double entries
   const jurusanOptions = majors
-    .map(m => ({ label: m.name, value: m.id.toString() }))
-    .filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
-  const kelasOptions = classes
-    .map(c => ({ label: c.label || c.name, value: c.id.toString(), grade: c.grade }))
-    .filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx);
+    .map(m => ({ label: MAJOR_NAMES[m.name] || m.name, value: m.id.toString(), rawName: m.name }))
+    .filter((opt, idx, arr) => arr.findIndex(o => o.value === opt.value) === idx)
+    .filter(opt => opt.value);
+  const kelasLabelOptions = CLASS_LABELS.map((label) => ({ label, value: label }));
 
   return (
     <AdminLayout
@@ -747,7 +877,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '200px 1fr auto auto auto auto',
+            gridTemplateColumns: '200px 200px 200px 1fr auto auto auto auto',
             gap: '12px',
             alignItems: 'flex-end',
           }}
@@ -757,8 +887,11 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             <Select
               label="Konsentrasi Keahlian"
               value={selectedJurusan}
-              onChange={setSelectedJurusan}
-              options={[{ label: 'Semua', value: '' }, ...jurusanOptions]}
+              onChange={(value) => {
+                setSelectedJurusan(value);
+                setSelectedKelasLabel('');
+              }}
+              options={jurusanOptions}
               placeholder="Semua"
             />
           </div>
@@ -769,9 +902,11 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             <Select
               label="Tingkatan"
               value={selectedTingkatan}
-              onChange={setSelectedTingkatan}
+              onChange={(value) => {
+                setSelectedTingkatan(value);
+                setSelectedKelasLabel('');
+              }}
               options={[
-                { label: 'Semua', value: '' },
                 { label: '10', value: '10' },
                 { label: '11', value: '11' },
                 { label: '12', value: '12' },
@@ -780,8 +915,64 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             />
           </div>
 
-          {/* Empty space */}
-          <div></div>
+          {/* Kelas */}
+          <div>
+            <Select
+              label="Kelas"
+              value={selectedKelasLabel}
+              onChange={setSelectedKelasLabel}
+              options={kelasLabelOptions.filter((opt) => {
+                const major = majors.find((m) => m.id.toString() === selectedJurusan);
+                const majorCode = getMajorCode(major?.code || major?.name);
+                const allowedLabels = filterClassLabels(majorCode, selectedTingkatan);
+                return allowedLabels.includes(opt.label);
+              })}
+              placeholder="Semua"
+            />
+          </div>
+
+          {/* Search */}
+          <div style={{ position: 'relative' }}>
+            <label
+              style={{
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#252525',
+                display: 'block',
+                marginBottom: '4px',
+              }}
+            >
+              Cari Siswa
+            </label>
+            <Search
+              size={16}
+              color="#9CA3AF"
+              style={{
+                position: 'absolute',
+                left: '10px',
+                bottom: '10px',
+                pointerEvents: 'none',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Cari Siswa..."
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '6px 10px 6px 32px',
+                border: '1px solid #D1D5DB',
+                borderRadius: '6px',
+                fontSize: '13px',
+                outline: 'none',
+                transition: 'all 0.2s',
+                backgroundColor: '#D9D9D9',
+                height: '32px',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
 
           {/* Buttons */}
           <Button
@@ -902,57 +1093,6 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
           </div>
         </div>
 
-        {/* ============ SEARCH INPUT ============ */}
-        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '400px' }}>
-          <label
-            style={{
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#252525',
-              display: 'block',
-              marginBottom: '4px',
-            }}
-          >
-            Cari Siswa
-          </label>
-          <div
-            style={{
-              position: 'relative',
-              display: 'inline-flex',
-              alignItems: 'center',
-              width: '100%',
-            }}
-          >
-            <Search
-              size={16}
-              color="#9CA3AF"
-              style={{
-                position: 'absolute',
-                left: '10px',
-                pointerEvents: 'none',
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Cari Siswa..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '6px 10px 6px 32px',
-                border: '1px solid #D1D5DB',
-                borderRadius: '6px',
-                fontSize: '13px',
-                outline: 'none',
-                transition: 'all 0.2s',
-                backgroundColor: '#D9D9D9',
-                height: '32px',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-        </div>
-
         {/* ============ DATA TABLE ============ */}
         <div style={{
           borderRadius: 12,
@@ -1003,7 +1143,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.nisn}</td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>
                           <span style={{ backgroundColor: '#EFF6FF', color: '#2563EB', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>
-                            {siswa.jurusan}
+                            {getMajorDisplayName(siswa.jurusan)}
                           </span>
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151', textAlign: 'center', borderRight: '1px solid #E5E7EB' }}>{siswa.kelasGrade}</td>
@@ -1064,10 +1204,10 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                 cursor: pageIndex === 1 ? 'not-allowed' : 'pointer',
               }}
             >
-              Previous
+              Sebelumnya
             </button>
             <span style={{ fontSize: '14px', color: '#6B7280' }}>
-              Page {pageIndex} of {totalPages}
+              Halaman {pageIndex} dari {totalPages}
             </span>
             <button
               onClick={() => setPageIndex(prev => Math.min(totalPages, prev + 1))}
@@ -1081,7 +1221,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                 cursor: pageIndex >= totalPages ? 'not-allowed' : 'pointer',
               }}
             >
-              Next
+              Selanjutnya
             </button>
           </div>
         </div>
@@ -1142,7 +1282,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
-                    <select value={formData.jurusanId} onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                    <select value={formData.jurusanId} onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', kelasLabel: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
                       <option value="">Pilih</option>
                       {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
@@ -1151,7 +1291,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Tingkatan *</label>
-                    <select value={formData.tingkatan} onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '' }); validateField('tingkatan', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                    <select value={formData.tingkatan} onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '', kelasLabel: '' }); validateField('tingkatan', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
                       <option value="">Pilih</option>
                       <option value="10">10</option>
                       <option value="11">11</option>
@@ -1162,17 +1302,23 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
-                    <select value={formData.kelasId} onChange={e => { setFormData({ ...formData, kelasId: e.target.value }); validateField('kelasId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                    <select
+                      value={formData.kelasLabel}
+                      onChange={(e) => {
+                        const label = e.target.value;
+                        const classId = resolveClassIdByLabel(label, formData.jurusanId, formData.tingkatan);
+                        setFormData({ ...formData, kelasLabel: label, kelasId: classId });
+                        validateField('kelasId', classId);
+                      }}
+                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}
+                    >
                       <option value="">Pilih</option>
-                      {kelasOptions
-                        .filter(o => {
-                          if (!formData.jurusanId) return true;
-                          const cls = classes.find(c => c.id.toString() === o.value);
-                          if (!cls || cls.major_id?.toString() !== formData.jurusanId) return false;
-                          if (formData.tingkatan && cls.grade?.toString() !== formData.tingkatan) return false;
-                          return true;
-                        })
-                        .map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {filterClassLabels(
+                        getMajorCode(jurusanOptions.find(j => j.value === formData.jurusanId)?.rawName),
+                        formData.tingkatan
+                      ).map((label) => (
+                        <option key={label} value={label}>{label}</option>
+                      ))}
                     </select>
                     {formErrors.kelasId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.kelasId}</p>}
                   </div>

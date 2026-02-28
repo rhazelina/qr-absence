@@ -71,7 +71,36 @@ function NavbarAdmin() {
         >
           Profil Sekolah
         </NavLink>
-        
+        <NavLink 
+          to="/admin/rooms" 
+          className={({ isActive }) => isActive ? "active" : ""}
+        >
+          Data Ruangan
+        </NavLink>
+        <NavLink 
+          to="/admin/subjects" 
+          className={({ isActive }) => isActive ? "active" : ""}
+        >
+          Data Mata Pelajaran
+        </NavLink>
+        <NavLink 
+          to="/admin/time-slots" 
+          className={({ isActive }) => isActive ? "active" : ""}
+        >
+          Data Time Slots
+        </NavLink>
+        <NavLink 
+          to="/admin/approve-absence" 
+          className={({ isActive }) => isActive ? "active" : ""}
+        >
+          Persetujuan Izin
+        </NavLink>
+        <NavLink 
+          to="/admin/attendance-export" 
+          className={({ isActive }) => isActive ? "active" : ""}
+        >
+          Ekspor Absensi
+        </NavLink>
         {/* Button Logout */}
         <button onClick={handleLogout} className="btn-logoutt">
           <i className="fas fa-sign-out-alt"></i>

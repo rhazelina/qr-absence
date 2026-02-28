@@ -27,8 +27,8 @@ class SubjectSeeder extends Seeder
             ['code' => 'MPKK', 'name' => 'Projek Kreatif dan Kewirausahaan'],
             ['code' => 'B.JAWA', 'name' => 'Muatan Lokal / Bahasa Daerah'],
             ['code' => 'BK', 'name' => 'Bimbingan Konseling'],
-            ['code' => 'MPP', 'name' => 'Projek Penguatan Profil Pelajar Pancasila'],
-            ['code' => 'PKDK', 'name' => 'Projek Penguatan Profil Pelajar Pancasila'],
+            ['code' => 'MPP', 'name' => 'Mata Pelajaran Pilihan'],
+            ['code' => 'PKDK', 'name' => 'Projek Kreatif dan Kewirausahaan'],
         ];
 
         foreach ($subjects as $subject) {

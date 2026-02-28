@@ -126,6 +126,7 @@ export default function DashboardPengurusKelas({
     sakit: 0,
     alpha: 0,
     pulang: 0,
+    dispen: 0,
   });
   const [schoolHours, setSchoolHours] = useState({
     start: "07:00:00",
@@ -177,6 +178,7 @@ export default function DashboardPengurusKelas({
             sakit: ds.sakit || 0,
             alpha: ds.alpha || 0,
             pulang: ds.pulang || 0,
+            dispen: ds.dispen || 0,
           });
         }
       } catch (error) {
@@ -667,7 +669,7 @@ function TimePill({ label }: { label: string }) {
 function MonthlyLineChart({
   data,
 }: {
-  data: Array<{ month: string; hadir: number; izin: number; sakit: number; alpha: number; pulang: number }>;
+  data: Array<{ month: string; hadir: number; izin: number; sakit: number; alpha: number; pulang: number; dispen: number }>;
 }) {
   const chartData = {
     labels: data.map((d) => d.month),
@@ -742,6 +744,20 @@ function MonthlyLineChart({
         tension: 0.4,
         fill: true,
       },
+      {
+        label: "Dispen",
+        data: data.map((d) => d.dispen),
+        borderColor: "#E45A92",
+        backgroundColor: "rgba(194, 24, 91, 0.1)",
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#E45A92",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        tension: 0.4,
+        fill: true,
+      }
     ],
   };
 
@@ -826,19 +842,20 @@ function MonthlyLineChart({
 function WeeklyDonutChart({
   data,
 }: {
-  data: { hadir: number; izin: number; sakit: number; alpha: number; pulang: number };
+  data: { hadir: number; izin: number; sakit: number; alpha: number; pulang: number; dispen: number };
 }) {
   const chartData = {
-    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang"],
+    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Dispen"],
     datasets: [
       {
-        data: [data.hadir, data.izin, data.sakit, data.alpha, data.pulang],
+        data: [data.hadir, data.izin, data.sakit, data.alpha, data.pulang, data.dispen],
         backgroundColor: [
           "#1FA83D", // HIJAU - Hadir
           "#ACA40D", // KUNING - Izin
           "#520C8F", // UNGU - Sakit
           "#D90000", // MERAH - Alfa
-          "#2F85EB"  // BIRU - Pulang
+          "#2F85EB", // BIRU - Pulang
+          "#E45A92"  // Dispen
         ],
         borderColor: "#ffffff",
         borderWidth: 2,

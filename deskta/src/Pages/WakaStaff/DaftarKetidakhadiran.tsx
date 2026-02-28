@@ -4,7 +4,7 @@ import { User, ArrowLeft, Eye, X, Loader2 } from "lucide-react";
 import { Modal } from "../../component/Shared/Modal";
 import { API_BASE_URL, handleResponse } from "../../services/api";
 
-type StatusKehadiran = "Izin" | "Sakit" | "Alfa" | "Pulang";
+type StatusKehadiran = "Izin" | "Sakit" | "Alfa" | "Pulang" | "Dispen";
 
 type RowKehadiran = {
   no: number;
@@ -34,6 +34,9 @@ const mapBackendStatus = (status: string): StatusKehadiran | null => {
     case "izin": return "Izin";
     case "sick": return "Sakit";
     case "absent": return "Alfa";
+    case "dispensation":
+    case "dispensasi":
+    case "dispen": return "Dispen";
     case "return": return "Pulang";
     default: return null;
   }
@@ -52,7 +55,8 @@ export default function DaftarKetidakhadiran({
     IZIN: "#ACA40D",
     PULANG: "#2F85EB",
     TIDAK_HADIR: "#D90000",
-    SAKIT: "#520C8F"
+    SAKIT: "#520C8F",
+    DISPEN: "#E45A92",
   };
 
   const [selectedRecord, setSelectedRecord] = useState<RowKehadiran | null>(null);
@@ -115,6 +119,7 @@ export default function DaftarKetidakhadiran({
     sakit: rows.filter((r) => r.status === "Sakit").length,
     tidakHadir: rows.filter((r) => r.status === "Alfa").length,
     pulang: rows.filter((r) => r.status === "Pulang").length,
+    dispen: rows.filter((r) => r.status === "Dispen").length,
   };
 
   const getStatusColor = (status: StatusKehadiran) => {
@@ -123,6 +128,7 @@ export default function DaftarKetidakhadiran({
       case "Sakit": return COLORS.SAKIT;
       case "Alfa": return COLORS.TIDAK_HADIR;
       case "Pulang": return COLORS.PULANG;
+      case "Dispen": return COLORS.DISPEN;
       default: return "#6B7280";
     }
   };
@@ -299,6 +305,21 @@ export default function DaftarKetidakhadiran({
               </div>
               <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.SAKIT }}>
                 {stats.sakit}
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: "12px",
+              padding: "20px",
+              border: `2px solid ${COLORS.DISPEN}`,
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
+            }}>
+              <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px", fontWeight: 500 }}>
+                Dispen
+              </div>
+              <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.DISPEN }}>
+                {stats.dispen}
               </div>
             </div>
 

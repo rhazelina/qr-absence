@@ -20,7 +20,7 @@ interface Siswa {
   id: string;
   nisn: string;
   nama: string;
-  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'terlambat' | 'pulang' | null;
+  status: 'hadir' | 'sakit' | 'izin' | 'alfa' | 'terlambat' | 'pulang' | 'dispen' | null;
   keterangan?: string;
 }
 
@@ -172,6 +172,7 @@ export default function InputManualGuru({
     alfa: '#D90000',
     sakit: '#520C8F',
     terlambat: '#F59E0B',
+    dispen: '#E45A92',
   };
 
   const handleStatusChange = (id: string, status: Siswa['status']) => {
@@ -258,9 +259,10 @@ export default function InputManualGuru({
       hadir: { label: 'Hadir', color: statusColors.hadir, textColor: '#FFFFFF' },
       sakit: { label: 'Sakit', color: statusColors.sakit, textColor: '#FFFFFF' },
       izin: { label: 'Izin', color: statusColors.izin, textColor: '#FFFFFF' },
-      alfa: { label: 'alfa', color: statusColors.alfa, textColor: '#FFFFFF' },
-      pulang: { label: 'pulang', color: statusColors.pulang, textColor: '#FFFFFF' },
+      alfa: { label: 'Alfa', color: statusColors.alfa, textColor: '#FFFFFF' },
+      pulang: { label: 'Pulang', color: statusColors.pulang, textColor: '#FFFFFF' },
       terlambat: { label: 'Terlambat', color: statusColors.terlambat, textColor: '#FFFFFF' },
+      dispen: { label: 'Dispen', color: statusColors.dispen, textColor: '#FFFFFF' },
     } as const;
 
     const config = statusConfig[siswa.status as keyof typeof statusConfig];
@@ -315,6 +317,8 @@ export default function InputManualGuru({
         return "Siswa hadir tepat waktu";
       case "pulang":
         return "Siswa pulang lebih awal karena ada kepentingan";
+      case "dispen":
+        return "Siswa dispen lebih awal karena ada kepentingan";
       default:
         return status;
     }
@@ -444,8 +448,9 @@ export default function InputManualGuru({
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Hadir</th>
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Sakit</th>
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Izin</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '90px' }}>alfa</th>
-                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>pulang</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '90px' }}>Alfa</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Pulang</th>
+                    <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '80px' }}>Dispen</th>
                     <th style={{ padding: '16px', textAlign: 'center', fontSize: '14px', fontWeight: '700', color: '#111827', letterSpacing: '0.5px', width: '120px' }}>Status</th>
                   </tr>
                 </thead>
@@ -549,6 +554,24 @@ export default function InputManualGuru({
                             height: '18px',
                             cursor: 'pointer',
                             accentColor: statusColors.pulang,
+                            border: '2px solid #D1D5DB',
+                            borderRadius: '50%',
+                          }}
+                        />
+                      </td>
+
+                      {/* Radio Button Dispen */}
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <input
+                          type="radio"
+                          name={`status-${siswa.id}`}
+                          checked={siswa.status === 'dispen'}
+                          onChange={() => handleStatusChange(siswa.id, 'dispen')}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer',
+                            accentColor: statusColors.dispen,
                             border: '2px solid #D1D5DB',
                             borderRadius: '50%',
                           }}
@@ -736,7 +759,7 @@ export default function InputManualGuru({
                     gridTemplateColumns: "repeat(2, 1fr)",
                     gap: "10px",
                   }}>
-                    {(['hadir', 'sakit', 'izin', 'alfa', 'pulang'] as const).map((status) => (
+                    {(['hadir', 'sakit', 'izin', 'alfa', 'pulang', 'dispen'] as const).map((status) => (
                       <button
                         key={status}
                         onClick={() => setEditStatus(status)}
@@ -762,7 +785,7 @@ export default function InputManualGuru({
                           backgroundColor: editStatus === status ? statusColors[status] : '#D1D5DB',
                           marginRight: "8px",
                         }} />
-                        {status === 'alfa' ? 'alfa' :
+                        {status === 'alfa' ? 'Alfa' :
                           status === 'pulang' ? 'Pulang' :
                             status.charAt(0).toUpperCase() + status.slice(1)}
                       </button>
