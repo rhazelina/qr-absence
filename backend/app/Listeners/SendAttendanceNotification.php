@@ -2,10 +2,7 @@
 
 namespace App\Listeners;
 
-use App\Enums\AttendanceStatus;
 use App\Events\AttendanceRecorded;
-use App\Jobs\SendWhatsAppNotification;
-use App\Services\WhatsAppTemplates;
 use App\Support\DashboardCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -23,24 +20,7 @@ class SendAttendanceNotification implements ShouldQueue
         // 1. Clear Dashboard Cache
         $this->clearDashboardCache($event);
 
-        // 2. Send WhatsApp Notification (only for students)
-        $attendance = $event->attendance;
-        if ($attendance->attendee_type === 'student' && $attendance->student && config('whatsapp.notifications.attendance_success')) {
-            $student = $attendance->student->load('user');
-
-            if ($student->parent_phone) {
-                $statusLabel = $attendance->status === AttendanceStatus::LATE->value ? 'Hadir (Terlambat)' : 'Hadir';
-                $time = $attendance->checked_in_at->format('H:i');
-
-                $message = WhatsAppTemplates::attendanceSuccess(
-                    $student->user->name,
-                    $time,
-                    $statusLabel
-                );
-
-                SendWhatsAppNotification::dispatch($student->parent_phone, $message);
-            }
-        }
+        // 2. WhatsApp Notification logic removed as feature is deprecated.
     }
 
     private function clearDashboardCache(AttendanceRecorded $event): void

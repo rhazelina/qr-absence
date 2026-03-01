@@ -1004,7 +1004,7 @@ function MonthlyLineChart({
       {
         label: "Hadir",
         data: data.map((d) => d.hadir),
-        borderColor: "#1FA83D", // REVISI: Hadir > #1FA83D
+        borderColor: "#1FA83D",
         backgroundColor: "rgba(31, 168, 61, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
@@ -1018,7 +1018,7 @@ function MonthlyLineChart({
       {
         label: "Izin",
         data: data.map((d) => d.izin),
-        borderColor: "#ACA40D", // REVISI: Izin > #ACA40D
+        borderColor: "#ACA40D",
         backgroundColor: "rgba(172, 164, 13, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
@@ -1032,7 +1032,7 @@ function MonthlyLineChart({
       {
         label: "Sakit",
         data: data.map((d) => d.sakit),
-        borderColor: "#520C8F", // REVISI: Sakit > #520C8F
+        borderColor: "#520C8F",
         backgroundColor: "rgba(82, 12, 143, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
@@ -1046,7 +1046,7 @@ function MonthlyLineChart({
       {
         label: "Alfa",
         data: data.map((d) => d.alpha),
-        borderColor: "#D90000", // REVISI: Alfa> #D90000
+        borderColor: "#D90000",
         backgroundColor: "rgba(217, 0, 0, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
@@ -1058,9 +1058,9 @@ function MonthlyLineChart({
         fill: true,
       },
       {
-        label: "Pulang", // Mengganti Dispen dengan Pulang
+        label: "Pulang",
         data: data.map((d) => d.pulang),
-        borderColor: "#2F85EB", // REVISI: Pulang > #2F85EB
+        borderColor: "#2F85EB",
         backgroundColor: "rgba(47, 133, 235, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
@@ -1075,7 +1075,7 @@ function MonthlyLineChart({
         label: "Dispen",
         data: data.map((d) => d.dispen),
         borderColor: "#E45A92",
-        backgroundColor: "rgba(194, 24, 91, 0.1)",
+        backgroundColor: "rgba(228, 90, 146, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
         pointHoverRadius: 7,
@@ -1185,17 +1185,17 @@ function WeeklyDonutChart({
   }
 
   const chartData = {
-    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Dispen"], // Ditambah Dispen
+    labels: ["Hadir", "Izin", "Sakit", "Alfa", "Pulang", "Dispen"],
     datasets: [
       {
         data: [data.hadir, data.izin, data.sakit, data.alpha, data.pulang, data.dispen],
         backgroundColor: [
-          "#1FA83D", // REVISI: Hadir > #1FA83D
-          "#ACA40D", // REVISI: Izin > #ACA40D
-          "#520C8F", // REVISI: Sakit > #520C8F
-          "#D90000", // REVISI: Alfa > #D90000
-          "#2F85EB", // REVISI: Pulang > #2F85EB
-          "#E45A92", // Dispen
+          "#1FA83D",
+          "#ACA40D",
+          "#520C8F",
+          "#D90000",
+          "#2F85EB",
+          "#E45A92",
         ],
         borderColor: "#ffffff",
         borderWidth: 2,

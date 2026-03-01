@@ -1,7 +1,5 @@
 <?php
 
-use App\Jobs\SendDailyAttendanceReport;
-use App\Jobs\SendWeeklyParentReport;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -13,13 +11,7 @@ Artisan::command('inspire', function () {
 // 1. Close daily attendance
 Schedule::command('attendance:close-daily')->dailyAt('16:00');
 
-// 2. Send daily summary report to Waka
-Schedule::job(new SendDailyAttendanceReport)->dailyAt('17:00');
-
-// 3. Send weekly parent summary report (every Friday afternoon)
-Schedule::job(new SendWeeklyParentReport)->weeklyOn(5, '16:30');
-
-// 4. Prune Telescope entries
+// 2. Prune Telescope entries
 Schedule::command('telescope:prune --hours=48')->daily();
 
 // 5. Prune expired Sanctum tokens

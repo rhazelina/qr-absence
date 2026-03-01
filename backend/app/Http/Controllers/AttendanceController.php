@@ -9,7 +9,6 @@ use App\Models\ScheduleItem;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Services\AttendanceService;
-use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -20,13 +19,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttendanceController extends Controller
 {
-    protected WhatsAppService $whatsapp;
-
     protected AttendanceService $service;
 
-    public function __construct(WhatsAppService $whatsapp, AttendanceService $service)
+    public function __construct(AttendanceService $service)
     {
-        $this->whatsapp = $whatsapp;
         $this->service = $service;
     }
 
@@ -322,45 +318,27 @@ class AttendanceController extends Controller
             ->groupBy('status')
             ->get();
 
-        $dateSelect = config('database.default') === 'sqlite' ? 'DATE(date)' : 'DATE(date)'; // SQLite supports DATE(), MySQL supports DATE()
+        $dateFormat = match ($groupBy) {
+            'day' => '%Y-%m-%d',
+            'week' => '%x-%v', // ISO Year and Week
+            default => '%Y-%m',
+        };
 
-        $dailySummary = (clone $baseQuery)
-            ->selectRaw("{$dateSelect} as day, status, count(*) as total")
-            ->groupBy('day', 'status')
-            ->orderBy('day')
+        $trendQuery = (clone $baseQuery)
+            ->selectRaw("
+                DATE_FORMAT(date, '{$dateFormat}') as bucket,
+                status,
+                SUM(1) as total
+            ")
+            ->groupBy('bucket', 'status')
+            ->orderBy('bucket')
             ->get();
 
-        $weeklyStats = [
-            'hadir' => 0,
-            'izin' => 0,
-            'sakit' => 0,
-            'alpha' => 0,
-            'pulang' => 0,
-        ];
-
-        foreach ($statusSummary as $row) {
-            $frontendStatus = $this->mapStatusToFrontend($row->status);
-            if (array_key_exists($frontendStatus, $weeklyStats)) {
-                $weeklyStats[$frontendStatus] += (int) $row->total;
-            }
-        }
-
-        $trendBuckets = $dailySummary->groupBy(function ($row) use ($groupBy) {
-            $date = Carbon::parse($row->day);
-
-            return match ($groupBy) {
-                'day' => $date->format('Y-m-d'),
-                'week' => $date->startOfWeek()->format('Y-m-d'),
-                default => $date->format('Y-m'),
-            };
-        });
+        $trendBuckets = $trendQuery->groupBy('bucket');
 
         $trend = $trendBuckets->map(function ($rows, $bucketKey) use ($groupBy) {
-            $bucketDate = Carbon::parse($bucketKey);
             $item = [
-                'month' => $groupBy === 'day'
-                    ? $bucketDate->format('d M')
-                    : ($groupBy === 'week' ? 'Minggu '.$bucketDate->weekOfYear : $bucketDate->locale('id')->translatedFormat('M')),
+                'month' => $this->getBucketLabel($bucketKey, $groupBy),
                 'hadir' => 0,
                 'izin' => 0,
                 'sakit' => 0,
@@ -862,10 +840,10 @@ class AttendanceController extends Controller
 
         $items = $teachers->getCollection()->map(function (TeacherProfile $teacher) use ($attendanceByTeacher, $timeSlots): array {
             $attendances = $attendanceByTeacher->get($teacher->id) ?? collect([]);
-            
+
             // Map attendances to slots (1-10)
             $slots = array_fill(0, 10, null);
-            
+
             foreach ($attendances as $attendance) {
                 $schedule = $attendance->schedule;
                 if ($schedule) {
@@ -1604,6 +1582,21 @@ class AttendanceController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.attendance_report', compact('attendances', 'date'));
 
         return $pdf->download('attendance_report.pdf');
+    }
+
+    private function getBucketLabel(string $bucket, string $groupBy): string
+    {
+        if ($groupBy === 'day') {
+            return Carbon::parse($bucket)->format('d M');
+        }
+
+        if ($groupBy === 'week') {
+            [$year, $week] = explode('-', $bucket);
+
+            return "Minggu {$week} ({$year})";
+        }
+
+        return Carbon::parse($bucket . '-01')->locale('id')->translatedFormat('M Y');
     }
 
     private function resolvePerPage(Request $request): ?int

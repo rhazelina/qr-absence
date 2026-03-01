@@ -206,7 +206,6 @@ export function KehadiranSiswaWakel({
   const totalSakit = filteredRows.filter((r) => r.status === 'sakit').length;
   const totalAlfa = filteredRows.filter((r) => r.status === 'alfa').length;
   const totalPulang = filteredRows.filter((r) => r.status === 'pulang').length;
-  const totalDispen = filteredRows.filter((r) => r.status === 'dispen').length;
 
 
 
@@ -234,7 +233,7 @@ export function KehadiranSiswaWakel({
         status === 'izin' ? 'Izin' :
           status === 'hadir' ? 'Hadir' :
             status === 'dispen' ? 'Dispen' :
-            'Pulang';
+              'Pulang';
 
     return (
       <div

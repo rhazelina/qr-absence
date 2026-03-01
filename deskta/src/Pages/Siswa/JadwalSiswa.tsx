@@ -3,6 +3,7 @@ import SiswaLayout from "../../component/Siswa/SiswaLayout";
 import { scheduleService } from "../../services/scheduleService";
 import { authService } from "../../services/authService";
 import classService from "../../services/classService";
+import JadwalImg from "../../assets/Icon/DummyJadwal.png";
 
 // Helper: convert common Roman numerals I..X to Arabic numerals in a string
 function convertRoman(text: string | undefined) {
@@ -142,8 +143,24 @@ export default function JadwalSiswa({
                     </div>
                 </div>
 
-                {/* Embbed gambar jadwal for fallback */}
                 <div style={{
+                    background: "#FFFFFF",
+                    borderRadius: 12,
+                    padding: 16,
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
+                }}>
+                    <img
+                        src={JadwalImg}
+                        alt="Jadwal Pelajaran"
+                        style={{
+                            width: "100%",
+                            borderRadius: 8,
+                            display: "block"
+                        }}
+                    />
+                </div>
+
+                {/* <div style={{
                     background: "#FFFFFF",
                     borderRadius: 12,
                     padding: 16,
@@ -165,7 +182,7 @@ export default function JadwalSiswa({
                             Belum ada gambar jadwal kelas yang diunggah.
                         </div>
                     )}
-                </div>
+                </div> */}
 
 
                 {loading ? (
@@ -192,7 +209,7 @@ export default function JadwalSiswa({
                                 <div style={{ padding: "0 10px" }}>
                                     {groupedSchedules[day]
                                         .sort((a: any, b: any) => a.start_time.localeCompare(b.start_time))
-                                                        .map((item: any, idx: number) => (
+                                        .map((item: any, idx: number) => (
                                             <div key={idx} style={{
                                                 padding: "16px 10px",
                                                 borderBottom: idx === groupedSchedules[day].length - 1 ? "none" : "1px solid #F1F5F9",
@@ -244,6 +261,7 @@ export default function JadwalSiswa({
                             </div>
                         )}
                     </div>
+                    // )}
                 )}
             </div>
         </SiswaLayout >

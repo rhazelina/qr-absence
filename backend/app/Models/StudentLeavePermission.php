@@ -105,6 +105,17 @@ class StudentLeavePermission extends Model
      */
     public function shouldHideFromAttendance(ScheduleItem $schedule): bool
     {
+        return $this->shouldHideFromAttendanceOptimized(
+            Carbon::parse($schedule->start_time),
+            Carbon::parse($schedule->end_time)
+        );
+    }
+
+    /**
+     * Optimized version that avoids redundant parsing
+     */
+    public function shouldHideFromAttendanceOptimized(Carbon $scheduleStart, Carbon $scheduleEnd): bool
+    {
         if ($this->status !== 'active') {
             return false;
         }
@@ -114,18 +125,10 @@ class StudentLeavePermission extends Model
             return true;
         }
 
-        // For izin_pulang and dispensasi, check time overlap
-        if (! $schedule->start_time || ! $schedule->end_time) {
-            return false;
-        }
-
         $permissionStart = Carbon::parse($this->start_time);
         $permissionEnd = $this->end_time
             ? Carbon::parse($this->end_time)
             : Carbon::parse('23:59:59'); // End of day if no end time
-
-        $scheduleStart = Carbon::parse($schedule->start_time);
-        $scheduleEnd = Carbon::parse($schedule->end_time);
 
         // Check if schedule time overlaps with permission time
         return $scheduleStart->lte($permissionEnd) && $scheduleEnd->gte($permissionStart);

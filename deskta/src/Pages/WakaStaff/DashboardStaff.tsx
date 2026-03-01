@@ -505,6 +505,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
                       selectedStat={selectedStat}
                       onSelectStat={setSelectedStat}
                       mode={filterMode}
+                    // mode="guru"
+
                     />
                     {selectedStat && (
                       <StatisticDetail stat={selectedStat} />
@@ -588,6 +590,7 @@ function LinkStatsGrid({
   stats: any;
   selectedStat: StatisticType;
   onSelectStat: (stat: StatisticType) => void;
+  mode: "guru" | "siswa";
 }) {
   // default to guru cards; caller can pass mode prop to switch to siswa
   const statCardsGuru = [
@@ -965,12 +968,12 @@ function MonthlyLineChart({
       {
         label: "Hadir",
         data: data.map((d) => d.hadir),
-        borderColor: COLORS.HADIR,
-        backgroundColor: `${COLORS.HADIR}20`,
+        borderColor: "#1FA83D", // REVISI: Hadir > #1FA83D
+        backgroundColor: "rgba(31, 168, 61, 0.1)",
         borderWidth: 3,
         pointRadius: 5,
         pointHoverRadius: 7,
-        pointBackgroundColor: COLORS.HADIR,
+        pointBackgroundColor: "#1FA83D",
         pointBorderColor: "#fff",
         pointBorderWidth: 2,
         tension: 0.4,

@@ -95,6 +95,9 @@ class TeacherScheduleDetailController extends Controller
         $studentList = [];
         $hiddenStudents = []; // Students hidden due to leave
 
+        $scheduleStart = Carbon::parse($schedule->start_time);
+        $scheduleEnd = Carbon::parse($schedule->end_time);
+
         foreach ($students as $student) {
             $attendance = $attendances->get($student->id);
             $leavePermission = $activeLeavePermissions->get($student->id);
@@ -109,7 +112,7 @@ class TeacherScheduleDetailController extends Controller
                     $isHidden = true;
                     $hideReason = $leavePermission->type === 'sakit' ? 'Sakit (Hari Penuh)' : 'Izin (Hari Penuh)';
                     $stats[$leavePermission->type === 'sakit' ? 'sick' : 'izin']++;
-                } elseif ($leavePermission->shouldHideFromAttendance($schedule)) {
+                } elseif ($leavePermission->shouldHideFromAttendanceOptimized($scheduleStart, $scheduleEnd)) {
                     // Temporary leave - hidden during leave period
                     $isHidden = true;
                     $hideReason = $leavePermission->type === 'dispensasi' ? 'Dispensasi' : 'Izin Pulang';
@@ -231,6 +234,9 @@ class TeacherScheduleDetailController extends Controller
         $eligibleStudents = [];
         $onLeaveStudents = [];
 
+        $scheduleStart = Carbon::parse($schedule->start_time);
+        $scheduleEnd = Carbon::parse($schedule->end_time);
+
         foreach ($students as $student) {
             // Check full-day leave
             if (in_array($student->id, $fullDayLeaves)) {
@@ -239,7 +245,7 @@ class TeacherScheduleDetailController extends Controller
 
             // Check temporary leave overlap
             $tempLeave = $temporaryLeaves->firstWhere('student_id', $student->id);
-            if ($tempLeave && $tempLeave->shouldHideFromAttendance($schedule)) {
+            if ($tempLeave && $tempLeave->shouldHideFromAttendanceOptimized($scheduleStart, $scheduleEnd)) {
                 $onLeaveStudents[] = [
                     'id' => $student->id,
                     'name' => $student->user->name ?? 'N/A',

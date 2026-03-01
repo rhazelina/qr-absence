@@ -18,17 +18,6 @@ const MAJOR_CODE_BY_NAME: Record<string, string> = {
   'Teknik Komputer dan Jaringan': 'TKJ'
 };
 
-const ALLOWED_CLASS_LABELS = new Set([
-  'RPL 1', 'RPL 2', 'RPL 3',
-  'DKV 1', 'DKV 2', 'DKV 3',
-  'TAV 1', 'TAV 2',
-  'TKJ 1', 'TKJ 2', 'TKJ 3',
-  'TMT 1', 'TMT 2', 'TMT 3',
-  'TEI 1', 'TEI 2',
-  'AN 1', 'AN 2',
-  'BC 1', 'BC 2',
-]);
-
 const getMajorCode = (raw?: string) => {
   const value = String(raw || '').trim();
   if (!value) return '';
@@ -768,15 +757,15 @@ export default function DetailSiswa({
                   }}>
                     Konsentrasi Keahlian
                   </label>
-                    <select
-                      value={selectedMajorId}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setSelectedMajorId(value);
-                        setSelectedGrade('');
-                        setSelectedClassLabel('');
-                        handleFieldChange('class_id', '');
-                      }}
+                  <select
+                    value={selectedMajorId}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setSelectedMajorId(value);
+                      setSelectedGrade('');
+                      setSelectedClassLabel('');
+                      handleFieldChange('class_id', '');
+                    }}
                     disabled={!isEditMode}
                     style={{
                       width: '100%',
@@ -809,13 +798,13 @@ export default function DetailSiswa({
                   }}>
                     Tingkat Kelas
                   </label>
-                    <select
-                      value={selectedGrade}
-                      onChange={(e) => {
-                        setSelectedGrade(e.target.value);
-                        setSelectedClassLabel('');
-                        handleFieldChange('class_id', '');
-                      }}
+                  <select
+                    value={selectedGrade}
+                    onChange={(e) => {
+                      setSelectedGrade(e.target.value);
+                      setSelectedClassLabel('');
+                      handleFieldChange('class_id', '');
+                    }}
                     disabled={!isEditMode}
                     style={{
                       width: '100%',

@@ -1,7 +1,0 @@
-http://localhost:5180/wakel/dashboard
-Total Siswa ke Rekap Kehadiran Siswa ke Daftar Ketidakhadiran
-
-datanya tidak sinkron dan harusnya saat kondisi 0 dia tidak ada data untuk izin, sakit dan alfa dan saat mengajukan di "Buat Perizinan"  harusnya kalau dilihat pun cuma ada 1 data pulang itu saja
-
-
-

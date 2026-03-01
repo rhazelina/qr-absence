@@ -19,7 +19,6 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\TimeSlotController;
-use App\Http\Controllers\WhatsAppController;
 // use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -108,8 +107,6 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('rooms', RoomController::class);
         Route::apiResource('subjects', SubjectController::class)->except(['index']);
         Route::apiResource('time-slots', TimeSlotController::class);
-        // Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
-        // Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
         Route::get('/settings', [SettingController::class, 'index']);
         Route::post('/settings/bulk', [SettingController::class, 'bulkUpdate']);
         Route::post('/settings', [SettingController::class, 'update']);

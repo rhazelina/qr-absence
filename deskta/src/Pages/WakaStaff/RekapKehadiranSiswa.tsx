@@ -58,7 +58,7 @@ export default function RekapKehadiranSiswa({
     PULANG: "#2F85EB",
     TIDAK_HADIR: "#D90000",
     SAKIT: "#520C8F"
-  , DISPEN: "#FF3E9B"
+    , DISPEN: "#FF3E9B"
   };
 
   // Inject CSS untuk ubah icon kalender jadi putih
@@ -90,7 +90,7 @@ export default function RekapKehadiranSiswa({
   useEffect(() => {
     const controller = new AbortController();
     if (kelasId) {
-        fetchData();
+      fetchData();
     }
     return () => controller.abort();
   }, [kelasId, startDate, endDate]);
@@ -99,48 +99,48 @@ export default function RekapKehadiranSiswa({
     if (!kelasId) return;
     setLoading(true);
     try {
-        const response = await attendanceService.getWakaClassAttendanceSummary(kelasId, {
-            from: startDate,
-            to: endDate
-        });
-        
-        // Response is array of { student: {}, totals: { present: 1, ... } }
-        const rows: SiswaRow[] = (response || []).map((item: any, index: number) => {
-            const totals = item.totals || {};
-            // Map backend status to frontend keys
-            // Backend: present, sick, permission, alpha, late?
-            // Frontend: hadir, sakit, izin, alpha, pulang
-            
-            // Note: 'late' is usually counted as 'hadir' in simple recap, or separate.
-            // Based on previous code, 'hadir' includes 'present' and maybe 'late'.
-            // Let's assume 'late' contributes to 'hadir' or shows separately.
-            // The previous mock data had 'hadir'. 
-            // Let's sum 'present' + 'late'.
-            
-            const hadir = (totals.present || 0) + (totals.late || 0);
-            const dispenCount = totals.dispen || totals.dispensasi || totals.dispensation || totals.dispense || 0;
+      const response = await attendanceService.getWakaClassAttendanceSummary(kelasId, {
+        from: startDate,
+        to: endDate
+      });
 
-            return {
-              no: index + 1,
-              nisn: item.student?.nisn || "-",
-              namaSiswa: item.student?.user?.name || item.student?.name || "-",
-              hadir: hadir,
-              sakit: totals.sick || 0,
-              izin: totals.permission || 0,
-              alpha: totals.alpha || totals.absent || 0, // 'absent' usually means alpha if not otherwise specified
-              pulang: 0, // Backend doesn't seem to have 'pulang' status explicitly in totals? 
-                    // If 'pulang' is a status, it should be in totals.
-                    // 'pulang' usually means 'permission to go home'.
-              dispen: dispenCount,
-            };
-        });
+      // Response is array of { student: {}, totals: { present: 1, ... } }
+      const rows: SiswaRow[] = (response || []).map((item: any, index: number) => {
+        const totals = item.totals || {};
+        // Map backend status to frontend keys
+        // Backend: present, sick, permission, alpha, late?
+        // Frontend: hadir, sakit, izin, alpha, pulang
 
-        setSiswaData(rows);
+        // Note: 'late' is usually counted as 'hadir' in simple recap, or separate.
+        // Based on previous code, 'hadir' includes 'present' and maybe 'late'.
+        // Let's assume 'late' contributes to 'hadir' or shows separately.
+        // The previous mock data had 'hadir'. 
+        // Let's sum 'present' + 'late'.
+
+        const hadir = (totals.present || 0) + (totals.late || 0);
+        const dispenCount = totals.dispen || totals.dispensasi || totals.dispensation || totals.dispense || 0;
+
+        return {
+          no: index + 1,
+          nisn: item.student?.nisn || "-",
+          namaSiswa: item.student?.user?.name || item.student?.name || "-",
+          hadir: hadir,
+          sakit: totals.sick || 0,
+          izin: totals.permission || 0,
+          alpha: totals.alpha || totals.absent || 0, // 'absent' usually means alpha if not otherwise specified
+          pulang: 0, // Backend doesn't seem to have 'pulang' status explicitly in totals? 
+          // If 'pulang' is a status, it should be in totals.
+          // 'pulang' usually means 'permission to go home'.
+          dispen: dispenCount,
+        };
+      });
+
+      setSiswaData(rows);
     } catch (error: any) {
-        if (error.name === 'AbortError' || error.message === 'canceled') return;
-        console.error("Failed to fetch recap:", error);
+      if (error.name === 'AbortError' || error.message === 'canceled') return;
+      console.error("Failed to fetch recap:", error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -257,7 +257,7 @@ export default function RekapKehadiranSiswa({
     // Buat Blob dan download
     const blob = new Blob([htmlContent], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    
+
     // Buka di tab baru untuk print to PDF
     const printWindow = window.open(url, "_blank");
     if (printWindow) {
@@ -277,16 +277,16 @@ export default function RekapKehadiranSiswa({
 
   const columns = useMemo(
     () => [
-      { 
-        key: "nisn", 
+      {
+        key: "nisn",
         label: <div style={{ textAlign: "center" }}>NISN</div>,
         render: (value: string) => (
           <div style={{ textAlign: "center" }}>{value}</div>
         ),
       },
       { key: "namaSiswa", label: "Nama Siswa" },
-      { 
-        key: "hadir", 
+      {
+        key: "hadir",
         label: <div style={{ textAlign: "center" }}>Hadir</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -294,8 +294,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      { 
-        key: "sakit", 
+      {
+        key: "sakit",
         label: <div style={{ textAlign: "center" }}>Sakit</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -303,8 +303,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      { 
-        key: "izin", 
+      {
+        key: "izin",
         label: <div style={{ textAlign: "center" }}>Izin</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -312,8 +312,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      { 
-        key: "alpha", 
+      {
+        key: "alpha",
         label: <div style={{ textAlign: "center" }}>Alfa</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -321,8 +321,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      { 
-        key: "pulang", 
+      {
+        key: "pulang",
         label: <div style={{ textAlign: "center" }}>Pulang</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -330,8 +330,8 @@ export default function RekapKehadiranSiswa({
           </div>
         ),
       },
-      { 
-        key: "dispen", 
+      {
+        key: "dispen",
         label: <div style={{ textAlign: "center" }}>Dispen</div>,
         render: (value: number) => (
           <div style={{ textAlign: "center" }}>
@@ -448,15 +448,15 @@ export default function RekapKehadiranSiswa({
                 justifyContent: "center",
               }}
             >
-              <svg 
-                width="22" 
-                height="22" 
-                viewBox="0 0 24 24" 
-                fill="white" 
-                stroke="white" 
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="white"
+                stroke="white"
                 strokeWidth="0.5"
               >
-                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
+                <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
               </svg>
             </div>
             <div>
@@ -502,14 +502,14 @@ export default function RekapKehadiranSiswa({
                   borderRadius: 6,
                 }}
               >
-                <svg 
-                  width="18" 
-                  height="18" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="white" 
-                  strokeWidth="2.5" 
-                  strokeLinecap="round" 
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

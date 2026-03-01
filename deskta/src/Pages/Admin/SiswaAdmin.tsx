@@ -397,6 +397,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       jurusanId: '',
       tingkatan: '',
       kelasId: '',
+      kelasLabel: '',
       noTelp: '',
       tahunMulai: currentYear.toString(),
       tahunAkhir: (currentYear + 3).toString()
@@ -742,17 +743,6 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     'AN 1', 'AN 2',
     'BC 1', 'BC 2',
   ];
-
-  const ALLOWED_CLASS_LABELS = new Set([
-    'RPL 1', 'RPL 2', 'RPL 3',
-    'DKV 1', 'DKV 2', 'DKV 3',
-    'TAV 1', 'TAV 2',
-    'TKJ 1', 'TKJ 2', 'TKJ 3',
-    'TMT 1', 'TMT 2', 'TMT 3',
-    'TEI 1', 'TEI 2',
-    'AN 1', 'AN 2',
-    'BC 1', 'BC 2',
-  ]);
 
   const getMajorCode = (raw?: string) => {
     const value = String(raw || '').trim();

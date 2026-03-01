@@ -432,14 +432,16 @@ class DashboardController extends Controller
                 $query->whereBetween('date', [$rangeStart->format('Y-m-d'), $today]);
             }
 
-            $monthlyData = $query->selectRaw('DATE(date) as date_only, status, count(*) as count')
-                ->groupBy('date_only', 'status')
+            $monthlyData = $query->selectRaw("
+                    DATE_FORMAT(date, '%Y-%m') as month_key,
+                    status,
+                    COUNT(*) as count
+                ")
+                ->groupBy('month_key', 'status')
                 ->get();
 
             $trend = [];
-            $dataByMonth = $monthlyData->groupBy(function ($item) {
-                return \Carbon\Carbon::parse($item->date_only)->format('Y-m');
-            });
+            $dataByMonth = $monthlyData->groupBy('month_key');
 
             // Iterate over the months in the range
             $currentMonth = $rangeStart->copy()->startOfMonth();
@@ -455,11 +457,11 @@ class DashboardController extends Controller
                     'full_month' => $currentMonth->locale('id')->translatedFormat('F Y'),
                     'percentage' => $total > 0 ? round(($present / $total) * 100) : 0,
                     'total_logs' => $total,
-                    'present' => $present,
-                    'absent' => $monthRecords->where('status', AttendanceStatus::ABSENT->value)->sum('count'),
-                    'sick' => $monthRecords->where('status', AttendanceStatus::SICK->value)->sum('count'),
-                    'izin' => $monthRecords->whereIn('status', [AttendanceStatus::EXCUSED->value, AttendanceStatus::PERMISSION->value])->sum('count'),
-                    'return' => $monthRecords->where('status', AttendanceStatus::RETURN->value)->sum('count'),
+                    'present' => (int) $present,
+                    'absent' => (int) $monthRecords->where('status', AttendanceStatus::ABSENT->value)->sum('count'),
+                    'sick' => (int) $monthRecords->where('status', AttendanceStatus::SICK->value)->sum('count'),
+                    'izin' => (int) $monthRecords->whereIn('status', [AttendanceStatus::EXCUSED->value, AttendanceStatus::PERMISSION->value])->sum('count'),
+                    'return' => (int) $monthRecords->where('status', AttendanceStatus::RETURN->value)->sum('count'),
                 ];
 
                 $currentMonth->addMonth();
@@ -554,28 +556,36 @@ class DashboardController extends Controller
                 ->whereHas('student', function ($query) use ($classId) {
                     $query->where('class_id', $classId);
                 })
-                ->selectRaw('DATE(date) as date_only, status, count(*) as count')
-                ->groupBy('date_only', 'status')
+                ->selectRaw("
+                    DATE_FORMAT(date, '%Y-%m') as month_key,
+                    SUM(CASE WHEN status IN ('".AttendanceStatus::PRESENT->value."', '".AttendanceStatus::LATE->value."') THEN 1 ELSE 0 END) as present,
+                    SUM(CASE WHEN status = '".AttendanceStatus::ABSENT->value."' THEN 1 ELSE 0 END) as absent,
+                    SUM(CASE WHEN status = '".AttendanceStatus::SICK->value."' THEN 1 ELSE 0 END) as sick,
+                    SUM(CASE WHEN status IN ('".AttendanceStatus::PERMISSION->value."', '".AttendanceStatus::EXCUSED->value."') THEN 1 ELSE 0 END) as izin,
+                    SUM(CASE WHEN status = '".AttendanceStatus::LATE->value."' THEN 1 ELSE 0 END) as terlambat,
+                    SUM(CASE WHEN status = '".AttendanceStatus::RETURN->value."' THEN 1 ELSE 0 END) as pulang,
+                    COUNT(*) as total
+                ")
+                ->groupBy('month_key')
+                ->orderBy('month_key')
                 ->get();
 
             $trend = [];
-            $dataByMonth = $monthlyData->groupBy(function ($item) {
-                return \Carbon\Carbon::parse($item->date_only)->format('Y-m');
-            });
+            $dataByMonth = $monthlyData->keyBy('month_key');
 
             for ($i = 5; $i >= 0; $i--) {
                 $monthDate = now()->subMonths($i);
                 $monthKey = $monthDate->format('Y-m');
-                $monthRecords = $dataByMonth->get($monthKey, collect([]));
+                $monthRecords = $dataByMonth->get($monthKey);
 
                 $trend[] = [
                     'month' => $monthDate->locale('id')->translatedFormat('M'),
-                    'hadir' => $monthRecords->whereIn('status', [AttendanceStatus::PRESENT->value, AttendanceStatus::LATE->value])->sum('count'),
-                    'sakit' => $monthRecords->where('status', AttendanceStatus::SICK->value)->sum('count'),
-                    'izin' => $monthRecords->whereIn('status', [AttendanceStatus::PERMISSION->value, AttendanceStatus::EXCUSED->value])->sum('count'),
-                    'alpha' => $monthRecords->where('status', AttendanceStatus::ABSENT->value)->sum('count'),
-                    'terlambat' => $monthRecords->where('status', AttendanceStatus::LATE->value)->sum('count'),
-                    'pulang' => $monthRecords->where('status', AttendanceStatus::RETURN->value)->sum('count'),
+                    'hadir' => (int) ($monthRecords->present ?? 0),
+                    'sakit' => (int) ($monthRecords->sick ?? 0),
+                    'izin' => (int) ($monthRecords->izin ?? 0),
+                    'alpha' => (int) ($monthRecords->absent ?? 0),
+                    'terlambat' => (int) ($monthRecords->terlambat ?? 0),
+                    'pulang' => (int) ($monthRecords->pulang ?? 0),
                 ];
             }
 

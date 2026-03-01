@@ -1,0 +1,270 @@
+/* Jadwal.css - IMPROVED DESIGN */
+
+.jadwal-container {
+  min-height: 100vh;
+  padding: 110px 40px 40px;
+  background-image: url('../../assets/bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.jadwal-title {
+  text-align: left;
+  color: white;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 0;
+}
+
+.jadwal-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.jadwal-layout {
+  display: flex;
+  align-items: stretch;
+  min-height: 600px;
+}
+
+/* Sidebar Profile */
+.jadwal-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #003d73 0%, #001a33 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 30px;
+}
+
+.jadwal-profile-card {
+  text-align: center;
+  width: 100%;
+}
+
+.jadwal-avatar {
+  width: 140px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+  color: #003d73;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.jadwal-avatar svg {
+  width: 70px;
+  height: 70px;
+}
+
+.jadwal-teacher-info {
+  width: 100%;
+}
+
+.jadwal-teacher-name {
+  color: white;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.jadwal-teacher-nip {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Main Content */
+.jadwal-main {
+  flex: 1;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.schedule-image-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jadwal-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .jadwal-wrapper {
+    max-width: 1200px;
+  }
+  
+  .jadwal-title {
+    max-width: 1200px;
+    font-size: 28px;
+  }
+  
+  .jadwal-sidebar {
+    width: 280px;
+  }
+  
+  .jadwal-avatar {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .jadwal-avatar svg {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .jadwal-teacher-name {
+    font-size: 20px;
+  }
+  
+  .jadwal-teacher-nip {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .jadwal-sidebar {
+    width: 260px;
+  }
+  
+  .jadwal-main {
+    padding: 30px;
+  }
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .jadwal-container {
+    padding: 90px 20px 30px;
+  }
+
+  .jadwal-wrapper {
+    border-radius: 25px;
+  }
+  
+  .jadwal-layout {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .jadwal-sidebar {
+    width: 100%;
+    padding: 30px;
+  }
+
+  .jadwal-profile-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 25px;
+    text-align: left;
+  }
+
+  .jadwal-avatar {
+    width: 100px;
+    height: 100px;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .jadwal-avatar svg {
+    width: 50px;
+    height: 50px;
+  }
+
+  .jadwal-teacher-name {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  .jadwal-teacher-nip {
+    font-size: 16px;
+  }
+
+  .jadwal-title {
+    font-size: 26px;
+    margin-bottom: 25px;
+  }
+
+  .jadwal-main {
+    padding: 30px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .jadwal-container {
+    padding: 80px 15px 25px;
+  }
+
+  .jadwal-wrapper {
+    border-radius: 20px;
+  }
+
+  .jadwal-sidebar {
+    padding: 25px 20px;
+  }
+
+  .jadwal-profile-card {
+    gap: 20px;
+  }
+
+  .jadwal-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .jadwal-avatar svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .jadwal-teacher-name {
+    font-size: 18px;
+  }
+
+  .jadwal-teacher-nip {
+    font-size: 14px;
+  }
+
+  .jadwal-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .jadwal-main {
+    padding: 20px;
+  }
+}

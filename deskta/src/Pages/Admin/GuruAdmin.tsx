@@ -374,22 +374,7 @@ export default function GuruAdmin({
     }
   };
 
-  /* ... Biarkan Handle Export dan Import persis sama dengan kode sebelumnya ... */
-  // (Fungsi Export/Import bisa kamu paste dari kodemu sebelumnya agar file tidak terlalu raksasa)
-  const buttonBaseStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    borderRadius: '6px',
-    fontWeight: 600,
-    fontSize: '13px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    height: '36px',
-    border: 'none',
-  } as const;
+
 
   const handleExportPDF = () => {
     const htmlContent = `

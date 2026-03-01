@@ -133,65 +133,65 @@ export default function AbsensiSiswa({
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   const [selectedRecord, setSelectedRecord] = useState<AbsensiRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const [attendanceData, setAttendanceData] = useState<AbsensiRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
-       setLoading(true);
-       try {
-         const response = await attendanceService.getHistory({
-            from: startDate,
-            to: endDate
-         });
+      setLoading(true);
+      try {
+        const response = await attendanceService.getHistory({
+          from: startDate,
+          to: endDate
+        });
 
-         if (response && response.data) {
-            const mappedData = response.data.map((item: any) => ({
-                id: item.id.toString(),
-                tanggal: new Date(item.date).toLocaleDateString("id-ID"),
-                jamPelajaran: item.schedule ? `${item.schedule.start_time.substring(0,5)} - ${item.schedule.end_time.substring(0,5)}` : "-",
-                mataPelajaran: item.schedule?.subject_name || "-",
-                guru: item.teacher?.user?.name || "-",
-                status: mapBackendStatus(item.status),
-                keterangan: item.reason 
-            }));
-            setAttendanceData(mappedData);
-         }
-       } catch (error) {
-         console.error("Error fetching history:", error);
-       } finally {
-         setLoading(false);
-       }
+        if (response && response.data) {
+          const mappedData = response.data.map((item: any) => ({
+            id: item.id.toString(),
+            tanggal: new Date(item.date).toLocaleDateString("id-ID"),
+            jamPelajaran: item.schedule ? `${item.schedule.start_time.substring(0, 5)} - ${item.schedule.end_time.substring(0, 5)}` : "-",
+            mataPelajaran: item.schedule?.subject_name || "-",
+            guru: item.teacher?.user?.name || "-",
+            status: mapBackendStatus(item.status),
+            keterangan: item.reason
+          }));
+          setAttendanceData(mappedData);
+        }
+      } catch (error) {
+        console.error("Error fetching history:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    
+
     fetchHistory();
   }, [startDate, endDate]);
 
   const mapBackendStatus = (status: string): AbsensiRecord['status'] => {
-     switch(status) {
-        case 'present': return 'hadir';
-        case 'late': return 'hadir';
-        case 'sick': return 'sakit';
-        case 'excused':
-        case 'izin': return 'izin';
-        case 'dispensasi':
-        case 'dispensation':
-        case 'dispen':
-        case 'dispense':
-         return 'dispen';
-        case 'absent': return 'alfa';
-        case 'return':
-        case 'pulang': return 'pulang';
-        default: return 'alfa';
-     }
+    switch (status) {
+      case 'present': return 'hadir';
+      case 'late': return 'hadir';
+      case 'sick': return 'sakit';
+      case 'excused':
+      case 'izin': return 'izin';
+      case 'dispensasi':
+      case 'dispensation':
+      case 'dispen':
+      case 'dispense':
+        return 'dispen';
+      case 'absent': return 'alfa';
+      case 'return':
+      case 'pulang': return 'pulang';
+      default: return 'alfa';
+    }
   };
 
-    // Filter local (status only)
-    const filteredData = useMemo(() => {
-      if (statusFilter === 'semua') return attendanceData;
-      return attendanceData.filter(item => item.status === statusFilter);
-    }, [attendanceData, statusFilter]);
+  // Filter local (status only)
+  const filteredData = useMemo(() => {
+    if (statusFilter === 'semua') return attendanceData;
+    return attendanceData.filter(item => item.status === statusFilter);
+  }, [attendanceData, statusFilter]);
 
   // Hitung summary berdasarkan data filtered
   const summary = useMemo(() => {
@@ -213,7 +213,7 @@ export default function AbsensiSiswa({
     setSelectedRecord(record);
     setIsModalOpen(true);
   };
-    
+
   // Custom Status Renderer dengan icon mata - SEMUA STATUS bisa diklik
   const StatusButton = ({ status, row }: { status: string; row: AbsensiRecord }) => {
     let bgColor = "#D90000"; // REVISI: alfa > #D90000
@@ -226,12 +226,12 @@ export default function AbsensiSiswa({
     } else if (status === "sakit") {
       bgColor = "#520C8F"; // REVISI: Sakit > #520C8F
       label = "Sakit";
-    } else if (status === "dispen") {
-      bgColor = "#E45A92"; // Dispen pink
-      label = "Dispen";
     } else if (status === "pulang") {
       bgColor = "#2F85EB"; // REVISI: Pulang > #2F85EB
       label = "Pulang";
+    } else if (status === "dispen") {
+      bgColor = "#E45A92"; // Dispen > pink
+      label = "Dispen";
     } else if (status === "hadir") {
       bgColor = "#1FA83D"; // REVISI: Hadir > #1FA83D
       label = "Hadir";
@@ -321,8 +321,9 @@ export default function AbsensiSiswa({
     { label: "Alfa", value: "alfa" },
     { label: "Izin", value: "izin" },
     { label: "Sakit", value: "sakit" },
-    { label: "Pulang", value: "pulang" },
     { label: "Dispen", value: "dispen" },
+    { label: "Pulang", value: "pulang" },
+    { label: "Hadir", value: "hadir" },
   ];
 
   // Fungsi untuk mendapatkan teks status
@@ -338,6 +339,8 @@ export default function AbsensiSiswa({
         return "Siswa hadir tepat waktu";
       case "pulang":
         return "Siswa pulang lebih awal karena ada kepentingan";
+      case "dispen":
+        return "Siswa mendapat dispensasi dari sekolah";
       default:
         return status;
     }
@@ -351,14 +354,14 @@ export default function AbsensiSiswa({
       case "sakit": return "#520C8F"; // REVISI: Sakit > #520C8F
       case "hadir": return "#1FA83D"; // REVISI: Hadir > #1FA83D
       case "pulang": return "#2F85EB"; // REVISI: Pulang > #2F85EB
-      case "dispen": return "#E45A92"; // Dispen pink
+      case "dispen": return "#E45A92"; // Dispen > pink
       default: return "#6B7280";
     }
   };
 
   // Helper function untuk mendapatkan label status
   const getStatusLabel = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status) {
       case "alfa": return "Alfa";
       case "izin": return "Izin";
       case "sakit": return "Sakit";
@@ -405,6 +408,7 @@ export default function AbsensiSiswa({
       >
         {summary.total}
       </div>
+      ```
     </div>
   );
 
@@ -560,11 +564,11 @@ export default function AbsensiSiswa({
             }}
           >
             <TotalCard />
-            <SummaryCard label="Alfa" value={summary.alfa} color="#D90000" /> {/* REVISI: alfa > #D90000 */}
-            <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" /> {/* REVISI: Izin > #ACA40D */}
-            <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" /> {/* REVISI: Sakit > #520C8F */}
+            <SummaryCard label="alfa" value={summary.alfa} color="#D90000" />
+            <SummaryCard label="Izin" value={summary.izin} color="#ACA40D" />
+            <SummaryCard label="Sakit" value={summary.sakit} color="#520C8F" />
             <SummaryCard label="Dispen" value={summary.dispen} color="#E45A92" />
-            <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" /> {/* REVISI: Pulang > #2F85EB */}
+            <SummaryCard label="Pulang" value={summary.pulang} color="#2F85EB" />
           </div>
 
           {/* Tabel Absensi - MAIN CONTENT */}
@@ -652,11 +656,11 @@ export default function AbsensiSiswa({
                               textAlign: col.align || "left",
                             }}
                           >
-                            {col.key === "no" 
+                            {col.key === "no"
                               ? index + 1
                               : col.render
-                              ? col.render(row[col.key as keyof AbsensiRecord], row)
-                              : row[col.key as keyof AbsensiRecord]}
+                                ? col.render(row[col.key as keyof AbsensiRecord], row)
+                                : row[col.key as keyof AbsensiRecord]}
                           </td>
                         ))}
                       </tr>
@@ -778,7 +782,7 @@ export default function AbsensiSiswa({
             </div>
 
             {/* Content Modal */}
-            <div style={{ 
+            <div style={{
               padding: 24,
               overflowY: "auto",
               flex: 1,
@@ -802,9 +806,11 @@ export default function AbsensiSiswa({
                 marginBottom: 24,
                 paddingBottom: 12,
                 borderBottom: "1px solid #E5E7EB",
+                gap: 8,
               }}>
-                <div style={{ fontWeight: 600, color: "#374151" }}>Status :</div>
-                <div>
+                <div style={{ fontWeight: 600, color: "#374151", flex: 1 }}>Status</div>
+                <div style={{ fontWeight: 600, color: "#374151", flexShrink: 0 }}>:</div>
+                <div style={{ flex: 1, textAlign: "right" }}>
                   <span style={{
                     backgroundColor: getStatusColor(selectedRecord.status),
                     color: "#FFFFFF",
@@ -813,32 +819,33 @@ export default function AbsensiSiswa({
                     fontSize: 13,
                     fontWeight: 600,
                   }}>
-                    {/* ✅ FIXED: Gunakan helper function untuk mendapatkan label status */}
                     {getStatusLabel(selectedRecord.status)}
                   </span>
                 </div>
               </div>
 
-              {/* Info Box - Ditampilkan untuk SEMUA status */}
-              <div style={{
-                backgroundColor: "#EFF6FF",
-                border: "1px solid #BFDBFE",
-                borderRadius: 8,
-                padding: 16,
-                textAlign: "center",
-                marginBottom: (selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && selectedRecord.keterangan ? 24 : 0,
-              }}>
+              {/* Info Box - Ditampilkan untuk SEMUA status KECUALI dispen (sudah ada di Keterangan) */}
+              {selectedRecord.status !== "dispen" && (
                 <div style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#1E40AF",
+                  backgroundColor: "#EFF6FF",
+                  border: "1px solid #BFDBFE",
+                  borderRadius: 8,
+                  padding: 16,
+                  textAlign: "center",
+                  marginBottom: (selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && selectedRecord.keterangan ? 24 : 0,
                 }}>
-                  {getStatusText(selectedRecord.status)}
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1E40AF",
+                  }}>
+                    {getStatusText(selectedRecord.status)}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Keterangan untuk izin, sakit, DAN PULANG */}
-              {(selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && selectedRecord.keterangan && (
+              {/* Keterangan untuk izin, sakit, pulang, DAN DISPEN */}
+              {(selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang" || selectedRecord.status === "dispen") && selectedRecord.keterangan && (
                 <div>
                   <div style={{
                     fontSize: 14,
@@ -866,8 +873,8 @@ export default function AbsensiSiswa({
                 </div>
               )}
 
-              {/* Area Bukti Foto untuk izin, sakit, DAN PULANG */}
-              {(selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang") && (
+              {/* Area Bukti Foto untuk izin, sakit, pulang, DAN DISPEN */}
+              {(selectedRecord.status === "izin" || selectedRecord.status === "sakit" || selectedRecord.status === "pulang" || selectedRecord.status === "dispen") && (
                 <div style={{ marginTop: selectedRecord.keterangan ? 24 : 0 }}>
                   <div style={{
                     fontSize: 14,
@@ -893,8 +900,8 @@ export default function AbsensiSiswa({
                       color: "#9CA3AF",
                       textAlign: "center",
                     }}>
-                      {selectedRecord.status === "sakit" || selectedRecord.status === "izin" 
-                        ? (selectedRecord.keterangan?.includes("http") ? <img src={selectedRecord.keterangan} alt="Bukti" style={{maxWidth: '100%', maxHeight: '200px'}} /> : "[Bukti Foto]")
+                      {selectedRecord.status === "sakit" || selectedRecord.status === "izin"
+                        ? (selectedRecord.keterangan?.includes("http") ? <img src={selectedRecord.keterangan} alt="Bukti" style={{ maxWidth: '100%', maxHeight: '200px' }} /> : "[Bukti Foto]")
                         : "[Area untuk menampilkan bukti foto]"}
                     </p>
                   </div>
@@ -903,7 +910,7 @@ export default function AbsensiSiswa({
 
               {/* Catatan untuk status Hadir */}
               {selectedRecord.status === "hadir" && (
-                <div style={{ 
+                <div style={{
                   marginTop: 24,
                   padding: "12px 16px",
                   backgroundColor: "#F0FDF4",
@@ -978,9 +985,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       marginBottom: 16,
       paddingBottom: 12,
       borderBottom: "1px solid #E5E7EB",
+      gap: 8,
     }}>
-      <div style={{ fontWeight: 600, color: "#374151" }}>{label} :</div>
-      <div style={{ fontWeight: 500, color: "#1F2937" }}>
+      <div style={{ fontWeight: 600, color: "#374151", flex: 1 }}>{label}</div>
+      <div style={{ fontWeight: 600, color: "#374151", flexShrink: 0 }}>:</div>
+      <div style={{ fontWeight: 500, color: "#1F2937", flex: 1, textAlign: "right" }}>
         {value}
       </div>
     </div>

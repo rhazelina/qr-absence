@@ -143,7 +143,8 @@ export default function DetailSiswaStaff({
       year: "numeric",
     })
   );
-
+  // Add new state for detail modal
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedMapel, setSelectedMapel] = useState("");
   const [selectedGuru, setSelectedGuru] = useState("");
   const [jsPDFLoaded, setJsPDFLoaded] = useState(false);
@@ -158,11 +159,9 @@ export default function DetailSiswaStaff({
   };
 
   const [rows, setRows] = useState<KehadiranRow[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchSiswaAttendance = async () => {
-      setLoading(true);
       try {
         // We'll use the attendanceService or a direct fetch to the backend 
         // using the established API_BASE_URL and getHeaders from services/api
@@ -205,8 +204,6 @@ export default function DetailSiswaStaff({
       } catch (error) {
         console.error("Error fetching attendance details:", error);
         // Fallback or show error state
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -215,7 +212,6 @@ export default function DetailSiswaStaff({
 
   // State untuk modal detail
   const [selectedRow, setSelectedRow] = useState<KehadiranRow | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Update tanggal otomatis setiap hari
   useEffect(() => {
@@ -414,13 +410,14 @@ export default function DetailSiswaStaff({
   const getStatusColor = (status: string) => {
     switch (status) {
       case "alpha":
-      case "tidak-hadir": return "#D90000";
-      case "izin": return "#ACA40D";
+      case "tidak-hadir":
+      case "alfa": return "#D90000";
       case "sakit": return "#520C8F";
-      case "hadir": return "#1FA83D";
+      case "izin": return "#ACA40D";
       case "pulang": return "#2F85EB";
+      case "hadir": return "#1FA83D";
       case "dispen": return "#E45A92";
-      default: return "#6B7280";
+      default: return "#D1D5DB";
     }
   };
 
