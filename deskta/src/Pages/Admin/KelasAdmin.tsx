@@ -39,7 +39,13 @@ export default function KelasAdmin({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Import State removed
-  
+
+  // Pagination state
+  const [pageIndex, setPageIndex] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalClassesCount, setTotalClassesCount] = useState(0);
+
   // Form state
   const [formData, setFormData] = useState({
     label: "",
@@ -78,18 +84,40 @@ export default function KelasAdmin({
   /* ===================== FETCH DATA ===================== */
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [pageIndex, selectedKonsentrasi]);
 
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
+      const params: Record<string, any> = {
+        page: pageIndex,
+        per_page: itemsPerPage,
+      };
+
+      if (selectedKonsentrasi !== "Semua Konsentrasi Keahlian") {
+        const major = majors.find(m => m.name === selectedKonsentrasi);
+        if (major) {
+          params.major = major.code || major.id;
+        }
+      }
+
       const [dataClasses, dataMajors, dataTeachers] = await Promise.all([
-        masterService.getClasses(),
+        masterService.getClasses(params as any),
         masterService.getMajors(),
         teacherService.getTeachers()
       ]);
+
       const classesRaw = Array.isArray(dataClasses) ? dataClasses : (dataClasses?.data || []);
       setKelasList((classesRaw || []).map(normalizeClassRoom));
+
+      if (dataClasses?.meta) {
+        setTotalPages(dataClasses.meta.last_page || 1);
+        setTotalClassesCount(dataClasses.meta.total || 0);
+      } else if (dataClasses?.last_page) {
+        setTotalPages(dataClasses.last_page || 1);
+        setTotalClassesCount(dataClasses.total || 0);
+      }
+
       setMajors(Array.isArray(dataMajors) ? dataMajors : (dataMajors.data || []));
       setTeachers(Array.isArray(dataTeachers) ? dataTeachers : (dataTeachers.data || []));
     } catch (error) {
@@ -106,6 +134,7 @@ export default function KelasAdmin({
   const fetchAvailableTeachers = async (classId?: number) => {
     setIsFetchingTeachers(true);
     try {
+      // Pass the classId correctly or leave it empty
       const data = await masterService.getAvailableHomeroomTeachers(classId);
       setAvailableTeachers(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
@@ -118,7 +147,7 @@ export default function KelasAdmin({
   // Konsentrasi options for filter
   const konsentrasiKeahlianOptions = useMemo(() => {
     return ["Semua Konsentrasi Keahlian", ...majors.map(m => m.name)];
-  }, [majors]); 
+  }, [majors]);
 
   // Statistik
   const stats = useMemo(() => ({
@@ -204,13 +233,8 @@ export default function KelasAdmin({
     return { isValid: true, message: "" };
   };
 
-  const filteredData = kelasList.filter((k) => {
-    const konsentrasiMatch = 
-      selectedKonsentrasi === "Semua Konsentrasi Keahlian" || 
-      k.major_name === selectedKonsentrasi;
-    
-    return konsentrasiMatch;
-  });
+  // filteredData logic removed as filtering is now mostly handled via API (except un-fetched changes)
+  const filteredData = kelasList;
 
   const getKelasLabel = (row: ClassRoom) => {
     const label = row.label?.trim();
@@ -239,14 +263,14 @@ export default function KelasAdmin({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isSubmitting) return;
-    
+
     setIsSubmitting(true);
     const isEditMode = !!editingKelas;
-    
+
     const validation = validateKelasData(formData, isEditMode, editingKelas?.id);
-    
+
     if (!validation.isValid) {
       setValidationError(validation.message);
       setIsSubmitting(false);
@@ -354,7 +378,7 @@ export default function KelasAdmin({
                 <span style={iconTextStyle}>🏫</span>
               </div>
             </div>
-            
+
             <div style={statContentStyle}>
               <div style={statNumberStyle}>{stats.totalKelas}</div>
               <div style={statLabelStyle}>Total Kelas</div>
@@ -367,7 +391,7 @@ export default function KelasAdmin({
                 <span style={iconTextStyle}>👨‍🏫</span>
               </div>
             </div>
-            
+
             <div style={statContentStyle}>
               <div style={statNumberStyle}>{stats.totalGuru}</div>
               <div style={statLabelStyle}>Total Guru</div>
@@ -380,7 +404,7 @@ export default function KelasAdmin({
                 <span style={iconTextStyle}>📚</span>
               </div>
             </div>
-            
+
             <div style={statContentStyle}>
               <div style={statNumberStyle}>{stats.totalWaliKelas}</div>
               <div style={statLabelStyle}>Total Wali Kelas</div>
@@ -403,12 +427,12 @@ export default function KelasAdmin({
                 ))}
               </select>
             </div>
-            
+
           </div>
 
           <div style={{ ...buttonContainerStyle, display: 'flex', gap: '8px' }}>
-            <Button 
-              label="Tambahkan" 
+            <Button
+              label="Tambahkan"
               onClick={handleOpenModal}
               style={buttonStyle}
             />
@@ -500,12 +524,12 @@ export default function KelasAdmin({
                   backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
                   transition: 'background-color 0.2s',
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#F0F4FF';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
-                }}>
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#F0F4FF';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
+                  }}>
                   <td style={{
                     padding: '12px 16px',
                     fontSize: '13px',
@@ -612,6 +636,50 @@ export default function KelasAdmin({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <div style={{
+          padding: '12px 24px',
+          borderTop: '1px solid #E5E7EB',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#FFFFFF',
+          borderBottomLeftRadius: '16px',
+          borderBottomRightRadius: '16px',
+        }}>
+          <button
+            onClick={() => setPageIndex(prev => Math.max(1, prev - 1))}
+            disabled={pageIndex === 1}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #D1D5DB',
+              borderRadius: '6px',
+              backgroundColor: pageIndex === 1 ? '#F3F4F6' : '#FFFFFF',
+              color: pageIndex === 1 ? '#9CA3AF' : '#374151',
+              cursor: pageIndex === 1 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Sebelumnya
+          </button>
+          <span style={{ fontSize: '14px', color: '#6B7280' }}>
+            Halaman {pageIndex} dari {totalPages} ({totalClassesCount} total)
+          </span>
+          <button
+            onClick={() => setPageIndex(prev => Math.min(totalPages, prev + 1))}
+            disabled={pageIndex >= totalPages}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid #D1D5DB',
+              borderRadius: '6px',
+              backgroundColor: pageIndex >= totalPages ? '#F3F4F6' : '#FFFFFF',
+              color: pageIndex >= totalPages ? '#9CA3AF' : '#374151',
+              cursor: pageIndex >= totalPages ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Selanjutnya
+          </button>
+        </div>
       </div>
 
       {/* MODAL FORM - IMPROVED STYLING */}
@@ -712,7 +780,7 @@ export default function KelasAdmin({
                   type="text"
                   name="label"
                   value={formData.label}
-                  onChange={(e) => setFormData({...formData, label: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                   placeholder="Contoh: 1, 2, 3 atau A, B, C"
                   style={{
                     width: '100%',
@@ -811,7 +879,7 @@ export default function KelasAdmin({
                 </label>
                 <select
                   value={formData.major_id}
-                  onChange={(e) => setFormData({...formData, major_id: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, major_id: e.target.value })}
                   style={{
                     width: '100%',
                     padding: '12px 14px',
@@ -862,41 +930,41 @@ export default function KelasAdmin({
                     fontWeight: '700',
                   }}>*</span>
                 </label>
-                  <select
-                    value={formData.homeroom_teacher_id}
-                    onChange={(e) => setFormData({...formData, homeroom_teacher_id: e.target.value})}
-                    disabled={isFetchingTeachers}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      border: '2px solid #e2e8f0',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                      cursor: isFetchingTeachers ? 'not-allowed' : 'pointer',
-                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                      backgroundColor: isFetchingTeachers ? '#f1f5f9' : '#f8fafc',
-                      transition: 'all 0.2s ease',
-                    }}
-                    onFocus={(e) => {
-                      if (!isFetchingTeachers) {
-                        e.currentTarget.style.borderColor = '#3b82f6';
-                        e.currentTarget.style.backgroundColor = '#ffffff';
-                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                      }
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#e2e8f0';
-                      e.currentTarget.style.backgroundColor = isFetchingTeachers ? '#f1f5f9' : '#f8fafc';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <option value="">{isFetchingTeachers ? 'Memuat guru...' : 'Pilih Wali Kelas'}</option>
-                    {availableTeachers.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                <select
+                  value={formData.homeroom_teacher_id}
+                  onChange={(e) => setFormData({ ...formData, homeroom_teacher_id: e.target.value })}
+                  disabled={isFetchingTeachers}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    cursor: isFetchingTeachers ? 'not-allowed' : 'pointer',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    backgroundColor: isFetchingTeachers ? '#f1f5f9' : '#f8fafc',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onFocus={(e) => {
+                    if (!isFetchingTeachers) {
+                      e.currentTarget.style.borderColor = '#3b82f6';
+                      e.currentTarget.style.backgroundColor = '#ffffff';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.backgroundColor = isFetchingTeachers ? '#f1f5f9' : '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="">{isFetchingTeachers ? 'Memuat guru...' : 'Pilih Wali Kelas'}</option>
+                  {availableTeachers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Error Message */}

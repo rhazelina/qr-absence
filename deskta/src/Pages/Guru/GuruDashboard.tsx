@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { scheduleService, getTodayScheduleDay, normalizeScheduleDay } from "../../services/scheduleService";
+import { scheduleService, normalizeScheduleDay } from "../../services/scheduleService";
 import { attendanceService } from "../../services/attendanceService";
 import { authService } from "../../services/authService";
-import { teacherService } from "../../services/teacherService";
+import { dashboardService } from "../../services/dashboardService";
 import GuruLayout from "../../component/Guru/GuruLayout";
 import DetailJadwalGuru from "./DetailJadwalGuru";
 import InputAbsenGuru from "./InputManualGuru";
@@ -67,11 +67,8 @@ type GuruPage =
   | "dashboard"
   | "jadwal"
   | "jadwal-anda"
-  | "presensi"
   | "kehadiran"
-  | "input-manual"
-  | "notifikasi"
-  | "pengaturan";
+  | "input-manual";
 
 type ModalType = "schedule" | "metode" | "tidakBisa" | null;
 
@@ -86,16 +83,12 @@ interface ScheduleItem {
   room?: string;
 }
 
-const PAGE_TITLES: Record<GuruPage, string> = {
-  dashboard: "Beranda",
-  jadwal: "Kehadiran Siswa",
-  "jadwal-anda": "Jadwal Kelas",
-  presensi: "Scan QR",
-  kehadiran: "Kehadiran Siswa",
-  "input-manual": "Input Manual",
-  notifikasi: "Notifikasi",
-  pengaturan: "Pengaturan",
-};
+interface TeacherDashboardData {
+  school_hours?: {
+    start_time?: string;
+    end_time?: string;
+  };
+}
 
 const BREAKPOINTS = {
   mobile: 768,
@@ -291,6 +284,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   const [todaySchedule, setTodaySchedule] = useState<ScheduleItem[]>([]);
   const [tomorrowSchedule, setTomorrowSchedule] = useState<ScheduleItem[]>([]);
   const [teacherProfile, setTeacherProfile] = useState<any>(null);
+  const [teacherDashboard, setTeacherDashboard] = useState<TeacherDashboardData | null>(null);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -301,10 +295,54 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
   const [currentDateStr, setCurrentDateStr] = useState("");
   const [currentTimeStr, setCurrentTimeStr] = useState("");
+
   const [iconStates, setIconStates] = useState<Record<string, "qr" | "eye">>({});
   const [isScanning, setIsScanning] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isScheduleImageModalOpen, setIsScheduleImageModalOpen] = useState(false);
+  const [isCameraBlocked, setIsCameraBlocked] = useState(false);
+  const [qrScanHint, setQrScanHint] = useState("");
+
+  const toMinutes = (time?: string): number | null => {
+    if (!time) return null;
+    const [hourRaw, minuteRaw] = time.substring(0, 5).split(":");
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+    return hour * 60 + minute;
+  };
+
+  const isScanWindowOpen = (schedule: ScheduleItem): boolean => {
+    return Boolean(schedule?.start_time && schedule?.end_time);
+  };
+
+  const getScanWindowLabel = (schedule: ScheduleItem): string => {
+    const startMinutes = toMinutes(schedule.start_time);
+    const endMinutes = toMinutes(schedule.end_time);
+    if (startMinutes === null || endMinutes === null) {
+      return "Waktu jadwal tidak valid";
+    }
+    if (isScanWindowOpen(schedule)) {
+      return "Scan aktif";
+    }
+    return "Scan aktif";
+  };
+
+  const activeSchedule = useMemo(() => {
+    return todaySchedule.find((s) => isScanWindowOpen(s));
+  }, [todaySchedule, currentTimeStr]);
+
+  const mapScheduleItems = (items: any[]): ScheduleItem[] =>
+    items.map((item: any) => ({
+      id: item.id.toString(),
+      subject: item.subject,
+      className: item.class,
+      jurusan: item.class,
+      jam: `${item.start_time?.substring(0, 5)} - ${item.end_time?.substring(0, 5)}`,
+      start_time: item.start_time,
+      end_time: item.end_time,
+      room: item.room
+    }));
 
   // ========== EFFECTS ==========
   useEffect(() => {
@@ -331,6 +369,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
     // Fetch Teacher Profile and Schedule
     fetchTeacherProfile();
+    fetchTeacherDashboard();
     fetchSchedule();
 
     return () => {
@@ -342,45 +381,58 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   const fetchTeacherProfile = async () => {
     try {
       const response = await authService.me();
-      // Ensure we have the teacher profile with schedule image
+      // /teachers/{id} can be forbidden for teacher role, so use /me payload directly.
       if (response && response.user_type === 'teacher') {
-        const detail = await teacherService.getTeacherById(response.id.toString());
-        setTeacherProfile(detail);
+        const withCacheBuster = (url?: string | null) => {
+          if (!url) return url || null;
+          if (url.includes("t=") || url.includes("v=")) return url;
+          return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
+        };
+        setTeacherProfile({
+          id: response.id,
+          name: response.name,
+          ...response.profile,
+          schedule_image_url: withCacheBuster((response.profile as any)?.schedule_image_url || null),
+        });
       }
     } catch (error) {
       console.error("Error fetching teacher profile:", error);
     }
   };
 
+  const fetchTeacherDashboard = async () => {
+    try {
+      const data = await dashboardService.getTeacherDashboard();
+      setTeacherDashboard(data || null);
+    } catch (error) {
+      console.error("Error fetching teacher dashboard:", error);
+    }
+  };
+
   const fetchSchedule = async () => {
     setLoadingSchedule(true);
     try {
-      const response = await scheduleService.getMySchedule();
-      const items = response.items || [];
+      const [todayResponse, fullResponse] = await Promise.all([
+        scheduleService.getMyTodaySchedule(),
+        scheduleService.getMySchedule(),
+      ]);
+
+      const todayItems = todayResponse.items || [];
+      const allItems = fullResponse.items || [];
 
       const now = new Date();
       const tomorrow = new Date(now);
       tomorrow.setDate(now.getDate() + 1);
-      const todayName = getTodayScheduleDay();
       const tomorrowName = normalizeScheduleDay(
         tomorrow.toLocaleDateString("en-US", { weekday: "long" })
       );
 
-      const mapItems = (dayName: string) => items
-        .filter((item: any) => normalizeScheduleDay(item.day) === dayName)
-        .map((item: any) => ({
-          id: item.id.toString(),
-          subject: item.subject,
-          className: item.class,
-          jurusan: item.class,
-          jam: `${item.start_time?.substring(0, 5)} - ${item.end_time?.substring(0, 5)}`,
-          start_time: item.start_time,
-          end_time: item.end_time,
-          room: item.room
-        }));
+      const tomorrowItems = allItems.filter(
+        (item: any) => normalizeScheduleDay(item.day) === tomorrowName
+      );
 
-      setTodaySchedule(mapItems(todayName));
-      setTomorrowSchedule(mapItems(tomorrowName));
+      setTodaySchedule(mapScheduleItems(todayItems));
+      setTomorrowSchedule(mapScheduleItems(tomorrowItems));
     } catch (error) {
       console.error("Error fetching schedule:", error);
     } finally {
@@ -402,8 +454,14 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
 
   const handleActionClick = (e: React.MouseEvent, schedule: ScheduleItem) => {
     e.stopPropagation();
+    if (!isScanWindowOpen(schedule)) {
+      alert(getScanWindowLabel(schedule));
+      return;
+    }
     setSelectedSchedule(schedule);
     setIconStates((prev) => ({ ...prev, [schedule.id]: "eye" }));
+    setIsCameraBlocked(false);
+    setQrScanHint("");
     setIsQrModalOpen(true);
   };
 
@@ -422,11 +480,28 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
   };
 
   const handlePilihQR = () => {
-    setActiveModal("schedule");
+    setActiveModal(null);
+    setIsCameraBlocked(false);
+    setQrScanHint("");
+    setIsQrModalOpen(true);
   };
 
   const handlePilihManual = () => {
     setActiveModal(null);
+    setCurrentPage("input-manual");
+  };
+
+  const closeQrModal = () => {
+    setIsQrModalOpen(false);
+    setIsCameraBlocked(false);
+    setQrScanHint("");
+    if (selectedSchedule) {
+      setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
+    }
+  };
+
+  const handleFallbackToManual = () => {
+    closeQrModal();
     setCurrentPage("input-manual");
   };
 
@@ -473,13 +548,19 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
     try {
       const response = await attendanceService.scanQrToken(token);
       alert(response?.message || "Berhasil mencatat kehadiran guru.");
+      setQrScanHint("");
       setIsQrModalOpen(false);
       setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
       setCurrentPage("kehadiran");
     } catch (error: any) {
-      const errorMessage = error?.status === 409
-        ? "Presensi sudah tercatat."
-        : error?.message || "Gagal scan QR pengurus kelas.";
+      const errorMessage = error?.status === 400
+        ? "Anda berada di luar radius lokasi sekolah. Gunakan mode manual jika diperlukan."
+        : error?.status === 403
+          ? "Token QR sudah kadaluarsa. Minta pengurus kelas membuat QR baru."
+          : error?.status === 409
+            ? "Presensi sudah tercatat."
+            : error?.message || "Gagal scan QR pengurus kelas.";
+      setQrScanHint(errorMessage);
       alert(errorMessage);
     } finally {
       setIsScanning(false);
@@ -498,19 +579,6 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
             onMenuClick={handleMenuClick}
             schedule={selectedSchedule}
           />
-        );
-      case "presensi":
-        // Fitur dinonaktifkan
-        return (
-          <GuruLayout
-            pageTitle="Scan QR"
-            currentPage={currentPage}
-            onMenuClick={handleMenuClick}
-            user={user}
-            onLogout={handleLogoutClick}
-          >
-            <div style={styles.comingSoon}>Fitur Scan QR dinonaktifkan</div>
-          </GuruLayout>
         );
       case "input-manual":
         return (
@@ -540,33 +608,6 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
             schedule={selectedSchedule}
           />
         );
-      case "notifikasi":
-      case "pengaturan":
-        return (
-          <GuruLayout
-            pageTitle={PAGE_TITLES[currentPage]}
-            currentPage={currentPage}
-            onMenuClick={handleMenuClick}
-            user={user}
-            onLogout={handleLogoutClick}
-          >
-            <div style={styles.comingSoon}>
-              <h2
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: "#1F2937",
-                  marginBottom: "8px",
-                }}
-              >
-                Coming Soon
-              </h2>
-              <p style={{ color: "#6B7280", fontSize: "16px" }}>
-                Fitur {PAGE_TITLES[currentPage]} sedang dalam pengembangan
-              </p>
-            </div>
-          </GuruLayout>
-        );
       case "dashboard":
       default:
         return (
@@ -578,6 +619,55 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
             onLogout={handleLogoutClick}
           >
             <div style={styles.mainContainer(isMobile)}>
+              {/* ========== ACTIVE SESSION SECTION ========== */}
+              {activeSchedule && (
+                <div style={{
+                  width: isMobile ? "100%" : "75%",
+                  margin: "0 auto",
+                  background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+                  borderRadius: "16px",
+                  padding: "20px",
+                  color: "white",
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "16px",
+                  boxShadow: "0 10px 15px -3px rgba(30, 64, 175, 0.4)",
+                  marginTop: "8px"
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <div className="active-pulse" style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10B981" }}></div>
+                      <span style={{ fontSize: "10px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.9 }}>Sedang Berlangsung</span>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>{activeSchedule.subject}</h3>
+                    <p style={{ margin: 0, fontSize: "14px", opacity: 0.85 }}>{activeSchedule.className} • {activeSchedule.jam}</p>
+                  </div>
+                  <button
+                    onClick={(e) => handleActionClick(e, activeSchedule)}
+                    style={{
+                      padding: "12px 24px",
+                      backgroundColor: "white",
+                      color: "#1e40af",
+                      border: "none",
+                      borderRadius: "10px",
+                      fontWeight: "800",
+                      fontSize: "14px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    <img src={QRCodeIcon} alt="" style={{ width: "18px", height: "18px" }} />
+                    Scan Presensi
+                  </button>
+                </div>
+              )}
+
               {/* ========== TOP SECTION ========== */}
               <div style={styles.topGrid(isMobile)}>
                 {/* User Info Card */}
@@ -694,7 +784,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                       opacity: 0.9,
                     }}
                   >
-                    Semester Genap
+                    Jam Sekolah {teacherDashboard?.school_hours?.start_time || "07:00"} - {teacherDashboard?.school_hours?.end_time || "15:00"}
                   </div>
                 </div>
 
@@ -734,7 +824,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                     <div style={{ ...styles.totalBadge(isMobile), flex: 1 }}>
                       {todaySchedule.length} Kelas
                     </div>
-                    <button 
+                    <button
                       disabled={!teacherProfile?.schedule_image_url}
                       onClick={() => setIsScheduleImageModalOpen(true)}
                       style={{
@@ -771,6 +861,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                   <div style={{ textAlign: "center", padding: 20, color: "#6B7280" }}>Tidak ada jadwal mengajar hari ini.</div>
                 ) : (
                   todaySchedule.map((schedule) => {
+                    const canScan = isScanWindowOpen(schedule);
                     // const jamParts = schedule.jam?.split("(") || [];
                     // const jamKe = jamParts[0]?.trim() || schedule.jam;
                     // const jamWaktu = jamParts.length > 1 ? `(${jamParts[1]}` : "";
@@ -836,6 +927,16 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                             {schedule.jam} <br />
                             Ruang: {schedule.room || "-"}
                           </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              marginTop: 4,
+                              color: canScan ? "#059669" : "#DC2626",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {canScan ? "Scan aktif sekarang" : "Scan belum aktif"}
+                          </div>
                         </div>
 
                         {/* Kelas & Waktu */}
@@ -869,14 +970,23 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                           }}
                         >
                           {/* Toggle Button */}
-                          <div
+                          <button
+                            type="button"
                             onClick={(e) => handleActionClick(e, schedule)}
-                            style={styles.actionButton}
+                            disabled={!canScan}
+                            title={getScanWindowLabel(schedule)}
+                            style={{
+                              ...styles.actionButton,
+                              opacity: canScan ? 1 : 0.45,
+                              cursor: canScan ? "pointer" : "not-allowed",
+                            }}
                             onMouseEnter={(e) => {
+                              if (!canScan) return;
                               e.currentTarget.style.backgroundColor = "#E5E7EB";
                               e.currentTarget.style.transform = "scale(1.05)";
                             }}
                             onMouseLeave={(e) => {
+                              if (!canScan) return;
                               e.currentTarget.style.backgroundColor = "#F3F4F6";
                               e.currentTarget.style.transform = "scale(1)";
                             }}
@@ -894,7 +1004,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                                 objectFit: "contain",
                               }}
                             />
-                          </div>
+                          </button>
                         </div>
                       </div>
                     );
@@ -976,22 +1086,22 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
             {/* ========== MODALS ========== */}
 
             {/* Modal Lihat Jadwal Image */}
-            <Modal 
-              isOpen={isScheduleImageModalOpen} 
+            <Modal
+              isOpen={isScheduleImageModalOpen}
               onClose={() => setIsScheduleImageModalOpen(false)}
             >
               <div style={{ padding: 20, textAlign: "center" }}>
                 <h3 style={{ marginBottom: 16, fontSize: 18, fontWeight: 800, color: "#0B2948" }}>Jadwal Saya</h3>
                 {teacherProfile?.schedule_image_url ? (
-                  <img 
-                    src={teacherProfile.schedule_image_url} 
-                    alt="Jadwal Guru" 
+                  <img
+                    src={teacherProfile.schedule_image_url}
+                    alt="Jadwal Guru"
                     style={{ maxWidth: "100%", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
                   />
                 ) : (
                   <div style={{ padding: 40, color: "#6B7280" }}>Jadwal belum diunggah</div>
                 )}
-                <button 
+                <button
                   onClick={() => setIsScheduleImageModalOpen(false)}
                   style={{
                     marginTop: 20,
@@ -1033,7 +1143,6 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
               onPilihQR={handlePilihQR}
               onPilihManual={handlePilihManual}
               onTidakBisaMengajar={handleTidakBisaMengajar}
-              onScanSuccess={handleScanSuccess}
             />
 
             <TidakBisaMengajar
@@ -1056,12 +1165,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
             {/* Scan QR Pengurus Kelas */}
             <Modal
               isOpen={isQrModalOpen}
-              onClose={() => {
-                setIsQrModalOpen(false);
-                if (selectedSchedule) {
-                  setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
-                }
-              }}
+              onClose={closeQrModal}
             >
               <div style={{
                 backgroundColor: "#FFFFFF",
@@ -1079,7 +1183,7 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                 <p style={{ fontSize: 14, color: "#6B7280", marginTop: 0, marginBottom: 16 }}>
                   {selectedSchedule?.subject} - {selectedSchedule?.className}
                 </p>
-                
+
                 <div style={{
                   border: "1px dashed #D1D5DB",
                   borderRadius: 16,
@@ -1092,22 +1196,62 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                   ) : (
                     <CameraScanner
                       onScanSuccess={handleScanSuccess}
-                      onScanError={() => { }}
+                      onScanError={(errorMessage) => {
+                        if (errorMessage) {
+                          setQrScanHint(errorMessage);
+                        }
+                      }}
+                      onCameraBlocked={() => {
+                        setIsCameraBlocked(true);
+                        setQrScanHint("Akses kamera diblokir browser/perangkat.");
+                      }}
                     />
                   )}
                 </div>
+
+                {qrScanHint && (
+                  <div
+                    style={{
+                      marginBottom: 12,
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      backgroundColor: "#FEF2F2",
+                      border: "1px solid #FECACA",
+                      color: "#991B1B",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {qrScanHint}
+                  </div>
+                )}
 
                 <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
                   Arahkan kamera ke QR dari Pengurus Kelas.
                 </p>
 
+                {isCameraBlocked && (
+                  <button
+                    onClick={handleFallbackToManual}
+                    style={{
+                      width: "100%",
+                      padding: "12px 24px",
+                      background: "#2563EB",
+                      color: "#FFFFFF",
+                      border: "none",
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      marginBottom: 8
+                    }}
+                  >
+                    Fallback ke Mode Manual
+                  </button>
+                )}
+
                 <button
-                  onClick={() => {
-                    setIsQrModalOpen(false);
-                    if (selectedSchedule) {
-                      setIconStates((prev) => ({ ...prev, [selectedSchedule.id]: "qr" }));
-                    }
-                  }}
+                  onClick={closeQrModal}
                   style={{
                     width: "100%",
                     padding: "12px 24px",
@@ -1125,6 +1269,16 @@ export default function DashboardGuru({ user, onLogout }: DashboardGuruProps) {
                 </button>
               </div>
             </Modal>
+            <style>{`
+              .active-pulse {
+                animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+              }
+              @keyframes pulse-ring {
+                0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+                100% { transform: scale(0.8); }
+              }
+            `}</style>
           </GuruLayout>
         );
     }

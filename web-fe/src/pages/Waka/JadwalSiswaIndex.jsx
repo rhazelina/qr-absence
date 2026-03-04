@@ -9,6 +9,7 @@ import {
   FaBriefcase,
   FaDoorOpen,
 } from "react-icons/fa";
+import api from '../../utils/api';
 
 function JadwalSiswaIndex() {
   const [dataSiswa, setDataSiswa] = useState([]);
@@ -34,21 +35,17 @@ function JadwalSiswaIndex() {
   const fetchJadwalSiswa = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/jadwal-siswa', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDataSiswa(data);
-        setFilteredData(data);
-      } else {
-        console.error('Gagal memuat data jadwal siswa');
-        alert('Gagal memuat data jadwal siswa');
-      }
+      const response = await api.get('/classes', { per_page: 1000 });
+      const rows = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+      const data = rows.map((item) => ({
+        id: item.id,
+        kompetensi_keahlian: item.major || item.major_name || '-',
+        wali_kelas: item.homeroom_teacher_name || '-',
+        kelas: item.class_name || item.name || '-',
+        gambar_jadwal: item.schedule_image_url || null,
+      }));
+      setDataSiswa(data);
+      setFilteredData(data);
     } catch (error) {
       console.error('Error fetching jadwal siswa:', error);
       alert('Terjadi kesalahan saat memuat data');

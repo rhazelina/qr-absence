@@ -15,6 +15,7 @@ export interface UserProfile {
     nip?: string;
     class_name?: string;
     photo_url?: string;
+    schedule_image_url?: string | null;
   };
 }
 

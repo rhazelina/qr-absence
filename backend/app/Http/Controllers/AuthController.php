@@ -204,6 +204,9 @@ class AuthController extends Controller
             $profile = [
                 'nip' => $user->teacherProfile->nip,
                 'photo_url' => $user->photo_url ?? null,
+                'schedule_image_url' => $user->teacherProfile->schedule_image_path
+                    ? asset('storage/'.$user->teacherProfile->schedule_image_path)
+                    : null,
             ];
         }
 

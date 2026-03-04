@@ -612,7 +612,7 @@ const DashboardKelas = () => {
 
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
       localStorage.removeItem('userData');
       localStorage.removeItem('userRole');
       window.location.href = '/';

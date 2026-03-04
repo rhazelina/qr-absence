@@ -18,6 +18,7 @@ import { SmoothScroll } from "./component/Shared/SmoothScroll";
 // import { SmoothScroll } from "./Shared/SmoothScroll";
 
 import { authService } from "./services/authService";
+import { settingService } from "./services/settingService";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<{
@@ -29,6 +30,22 @@ export default function App() {
 
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Global System Status State
+  const [systemStatus, setSystemStatus] = useState<'normal' | 'maintenance' | 'error'>('normal');
+
+  useEffect(() => {
+    const handleMaintenance = () => setSystemStatus('maintenance');
+    const handleError = () => setSystemStatus('error');
+
+    window.addEventListener('server-maintenance', handleMaintenance);
+    window.addEventListener('server-error', handleError);
+
+    return () => {
+      window.removeEventListener('server-maintenance', handleMaintenance);
+      window.removeEventListener('server-error', handleError);
+    };
+  }, []);
 
   const normalizeRole = useCallback((backendRole?: string, userType?: string, isClassOfficer?: boolean, selectionRole?: string) => {
     const b = (backendRole || "").toLowerCase();
@@ -66,6 +83,19 @@ export default function App() {
     const storedUserSession = sessionStorage.getItem("currentUser");
     const storedRole = localStorage.getItem("selectedRole");
     const token = localStorage.getItem("token");
+    const hasStoredUser = Boolean(storedUserLocal || storedUserSession);
+    const tokenInvalid = !token || token === "null" || token === "undefined";
+
+    if (hasStoredUser && tokenInvalid) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("selectedRole");
+      sessionStorage.removeItem("currentUser");
+      setCurrentUser(null);
+      setSelectedRole(null);
+      setIsLoading(false);
+      return;
+    }
 
     const syncProfile = async (initialUser: any) => {
       if (!token) {
@@ -123,6 +153,28 @@ export default function App() {
       setIsLoading(false);
     }
   }, [normalizeRole]);
+
+  useEffect(() => {
+    const syncPublicSchoolSettings = async () => {
+      try {
+        const settings = await settingService.getPublicSettings();
+        const schoolData = {
+          nama_sekolah: settings.school_name || "",
+          logo_sekolah: settings.school_logo_url || "",
+          maskot_sekolah: settings.school_mascot_url || "",
+          school_name: settings.school_name || "",
+          school_logo_url: settings.school_logo_url || "",
+          school_mascot_url: settings.school_mascot_url || "",
+        };
+        localStorage.setItem("schoolData", JSON.stringify(schoolData));
+        window.dispatchEvent(new Event("schoolSettingsUpdated"));
+      } catch (error) {
+        console.error("Failed to sync school settings:", error);
+      }
+    };
+
+    syncPublicSchoolSettings();
+  }, []);
 
   const handleRoleSelect = useCallback((role: string) => {
     setSelectedRole(role);
@@ -203,6 +255,55 @@ export default function App() {
   const isValidRole = currentUser?.role && [
     'admin', 'guru', 'siswa', 'pengurus_kelas', 'waka', 'wakel'
   ].includes(currentUser.role);
+
+  // Render System Alert if active
+  if (systemStatus !== 'normal') {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: '#F3F4F6', fontFamily: 'system-ui, sans-serif', textAlign: 'center', padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: '#FFFFFF', padding: '40px', borderRadius: '16px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.1)', maxWidth: '500px', width: '100%'
+        }}>
+          <div style={{
+            width: '80px', height: '80px', borderRadius: '50%',
+            backgroundColor: systemStatus === 'maintenance' ? '#FEF3C7' : '#FEE2E2',
+            color: systemStatus === 'maintenance' ? '#D97706' : '#DC2626',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px', fontSize: '40px'
+          }}>
+            {systemStatus === 'maintenance' ? '🛠️' : '⚠️'}
+          </div>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827', marginBottom: '16px' }}>
+            {systemStatus === 'maintenance' ? 'Sedang Dalam Pemeliharaan' : 'Terjadi Kesalahan Sistem'}
+          </h1>
+          <p style={{ color: '#4B5563', fontSize: '16px', lineHeight: '1.6', marginBottom: '32px' }}>
+            {systemStatus === 'maintenance'
+              ? 'Mohon maaf, sistem saat ini sedang dalam peningkatan performa atau perbaikan rutin. Kami akan segera kembali, mohon tunggu beberapa saat dan coba lagi nanti.'
+              : 'Oops! Kami mendeteksi adanya gangguan pada peladen (server). Tim teknis kami sedang berupaya memperbaikinya secepat mungkin.'}
+          </p>
+          <button
+            onClick={() => {
+              setSystemStatus('normal');
+              window.location.reload();
+            }}
+            style={{
+              padding: '12px 24px', backgroundColor: '#3B82F6', color: 'white',
+              border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold',
+              cursor: 'pointer', transition: 'background-color 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3B82F6'}
+          >
+            Coba Muat Ulang
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>

@@ -16,6 +16,7 @@ import {
   FaCheckCircle,
   FaExclamationCircle
 } from "react-icons/fa";
+import api from '../../utils/api';
 
 
 function JadwalGuruIndex() {
@@ -33,21 +34,20 @@ function JadwalGuruIndex() {
   const fetchJadwalGuru = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/jadwal-guru', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDataGuru(data);
-        setFilteredData(data);
-      } else {
-        console.error('Gagal memuat data jadwal guru');
-        alert('Gagal memuat data jadwal guru');
-      }
+      const response = await api.get('/teachers', { per_page: 1000 });
+      const rows = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+      const mapped = rows.map((guru) => ({
+        id: guru.id,
+        kode_guru: guru.kode_guru || guru.nip || '-',
+        nama_guru: guru.nama_guru || guru.name || '-',
+        mata_pelajaran: guru.subject_name || '-',
+        email: guru.email || '-',
+        no_hp: guru.phone || guru.contact || '-',
+        jumlah_kelas: guru.classes_count || 0,
+        gambar_jadwal: guru.schedule_image_url || null,
+      }));
+      setDataGuru(mapped);
+      setFilteredData(mapped);
     } catch (error) {
       console.error('Error fetching jadwal guru:', error);
       alert('Terjadi kesalahan saat memuat data');

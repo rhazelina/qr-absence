@@ -21,8 +21,6 @@ interface DashboardWalliKelasProps {
 
 type WalikelasPage =
   | "Beranda"
-  | "jadwal-anda"
-  | "notifikasi"
   | "input-manual"
   | "kehadiran-siswa"
   | "jadwal-pengurus"
@@ -38,17 +36,6 @@ interface ScheduleItem {
   jurusan?: string;
   jam?: string;
 }
-
-const PAGE_TITLES: Record<WalikelasPage, string> = {
-  Beranda: "Beranda",
-  "jadwal-anda": "Jadwal Anda",
-  notifikasi: "Notifikasi",
-  "input-manual": "Input Manual",
-  "kehadiran-siswa": "Kehadiran Siswa",
-  "jadwal-pengurus": "Jadwal Kelas",
-  "rekap-kehadiran-siswa": "Rekap Kehadiran Siswa",
-  "daftar-ketidakhadiran-walikelas": "Daftar Ketidakhadiran",
-};
 
 const BREAKPOINTS = {
   mobile: 768,
@@ -286,7 +273,6 @@ export default function DashboardWalliKelas({
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
   const [iconStates, setIconStates] = useState<Record<string, "qr" | "eye">>({});
-  const [isScanning, setIsScanning] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
@@ -346,7 +332,7 @@ export default function DashboardWalliKelas({
             id: String(item.id),
             subject: item.subject || item.subject_name || "-",
             className: item.class_name || item.class || "-",
-            jurusan: item.major_name || item.major || '-',
+            jurusan: item.major_name || item.major?.name || item.major?.code || '-',
             jam: `${(item.start_time || '').substring(0, 5)} - ${(item.end_time || '').substring(0, 5)}`
           }));
         setSchedules(mappedSchedules);
@@ -375,7 +361,7 @@ export default function DashboardWalliKelas({
     try {
       setIsGeneratingQr(true);
       const response = await attendanceService.generateQrCode(schedule.id, 'student');
-      
+
       if (response && response.token) {
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(response.token)}`;
         setQrCode(qrUrl);
@@ -429,26 +415,6 @@ export default function DashboardWalliKelas({
   const handlePilihManual = () => {
     setActiveModal(null);
     setCurrentPage("input-manual");
-  };
-
-  const handleScanSuccess = async (text: string) => {
-    if (!selectedSchedule || isScanning) return;
-    
-    setIsScanning(true);
-    
-    try {
-      await attendanceService.scanStudent(text, selectedSchedule.id);
-      alert("Berhasil mencatat kehadiran siswa!");
-      setActiveModal(null);
-      setCurrentPage("input-manual");
-    } catch (error: any) {
-      const errorMessage = error.response?.status === 409 
-        ? "Siswa ini sudah melakukan absensi!"
-        : error.message || "Gagal mencatat kehadiran.";
-      alert(errorMessage);
-    } finally {
-      setIsScanning(false);
-    }
   };
 
   const handlePilihMetodeDariTidakBisaMengajar = () => {
@@ -516,26 +482,6 @@ export default function DashboardWalliKelas({
             siswaName={siswaData?.siswaName}
             siswaIdentitas={siswaData?.siswaIdentitas}
           />
-        );
-      case "jadwal-anda":
-      case "notifikasi":
-        return (
-          <WalikelasLayout
-            pageTitle={PAGE_TITLES[currentPage]}
-            currentPage={currentPage}
-            onMenuClick={handleMenuClick}
-            user={user}
-            onLogout={onLogout}
-          >
-            <div style={styles.comingSoon}>
-              <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1F2937", marginBottom: "8px" }}>
-                Coming Soon
-              </h2>
-              <p style={{ color: "#6B7280", fontSize: "16px" }}>
-                Fitur {PAGE_TITLES[currentPage]} sedang dalam pengembangan
-              </p>
-            </div>
-          </WalikelasLayout>
         );
       case "Beranda":
       default:
@@ -732,7 +678,6 @@ export default function DashboardWalliKelas({
                 onPilihQR={handlePilihQR}
                 onPilihManual={handlePilihManual}
                 onTidakBisaMengajar={handleTidakBisaMengajar}
-                onScanSuccess={handleScanSuccess}
               />
 
               {/* Modal Tidak Bisa Mengajar */}
@@ -753,84 +698,84 @@ export default function DashboardWalliKelas({
                 onPilihMetode={handlePilihMetodeDariTidakBisaMengajar}
               />
 
-            {/* QR Code Display Modal */}
-            <Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)}>
-              <div style={{
-                backgroundColor: "#FFFFFF",
-                borderRadius: 24,
-                padding: 28,
-                maxWidth: 400,
-                width: "100%",
-                margin: "0 auto",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-                textAlign: "center"
-              }}>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0, marginBottom: 8 }}>
-                  QR Code Absensi
-                </h2>
-                <p style={{ fontSize: 14, color: "#6B7280", marginTop: 0, marginBottom: 16 }}>
-                  {selectedSchedule?.subject} - {selectedSchedule?.className}
-                </p>
-                
+              {/* QR Code Display Modal */}
+              <Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)}>
                 <div style={{
-                  border: "1px dashed #D1D5DB",
-                  borderRadius: 16,
-                  padding: 20,
-                  marginBottom: 20,
-                  background: "#fff"
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: 24,
+                  padding: 28,
+                  maxWidth: 400,
+                  width: "100%",
+                  margin: "0 auto",
+                  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+                  textAlign: "center"
                 }}>
-                  {isGeneratingQr ? (
-                    <div style={{ padding: 40 }}>Membuat QR Code...</div>
-                  ) : qrCode ? (
-                    <img src={qrCode} alt="QR Code" style={{ width: 250, height: 250 }} />
-                  ) : (
-                    <div style={{ padding: 40 }}>Tidak ada QR</div>
-                  )}
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: "#111827", margin: 0, marginBottom: 8 }}>
+                    QR Code Absensi
+                  </h2>
+                  <p style={{ fontSize: 14, color: "#6B7280", marginTop: 0, marginBottom: 16 }}>
+                    {selectedSchedule?.subject} - {selectedSchedule?.className}
+                  </p>
+
+                  <div style={{
+                    border: "1px dashed #D1D5DB",
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 20,
+                    background: "#fff"
+                  }}>
+                    {isGeneratingQr ? (
+                      <div style={{ padding: 40 }}>Membuat QR Code...</div>
+                    ) : qrCode ? (
+                      <img src={qrCode} alt="QR Code" style={{ width: 250, height: 250 }} />
+                    ) : (
+                      <div style={{ padding: 40 }}>Tidak ada QR</div>
+                    )}
+                  </div>
+
+                  <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
+                    QR Code berlaku selama 2 jam
+                  </p>
+
+                  <button
+                    onClick={() => {
+                      setIsQrModalOpen(false);
+                      setCurrentPage("input-manual");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px 24px",
+                      background: "#2563EB",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Mulai Presensi Manual
+                  </button>
+
+                  <button
+                    onClick={() => setIsQrModalOpen(false)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 24px",
+                      background: "#F3F4F6",
+                      color: "#374151",
+                      border: "none",
+                      borderRadius: 10,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      marginTop: 8
+                    }}
+                  >
+                    Tutup
+                  </button>
                 </div>
-
-                <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 16 }}>
-                  QR Code berlaku selama 2 jam
-                </p>
-
-                <button
-                  onClick={() => {
-                    setIsQrModalOpen(false);
-                    setCurrentPage("input-manual");
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "12px 24px",
-                    background: "#2563EB",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 10,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    cursor: "pointer"
-                  }}
-                >
-                  Mulai Presensi Manual
-                </button>
-
-                <button
-                  onClick={() => setIsQrModalOpen(false)}
-                  style={{
-                    width: "100%",
-                    padding: "12px 24px",
-                    background: "#F3F4F6",
-                    color: "#374151",
-                    border: "none",
-                    borderRadius: 10,
-                    fontWeight: 600,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    marginTop: 8
-                  }}
-                >
-                  Tutup
-                </button>
-              </div>
-            </Modal>
+              </Modal>
             </div>
           </WalikelasLayout>
         );

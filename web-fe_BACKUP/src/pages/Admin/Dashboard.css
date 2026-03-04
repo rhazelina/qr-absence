@@ -1,0 +1,234 @@
+.dashboard-wrapper {
+  min-height: 100vh;
+  background-image: url('../../assets/bg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 40px 60px 80px;
+}
+
+/* KONTEN */
+.dashboard-content {
+  margin-top: 30px;
+}
+
+/* HEADER */
+.dashboard-header-section {
+  margin-bottom: 20px;
+  margin-top: 20px;
+}
+
+.page-title {
+  color: white;
+  font-size: 46px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  margin-top: 150px;
+}
+
+/* STAT CARDS */
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+.stat-card-item {
+  background: white;
+  border-radius: 20px;
+  padding: 35px 30px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease;
+}
+
+.stat-card-item:hover {
+  transform: translateY(-8px);
+}
+
+.stat-dots {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  font-size: 22px;
+  color: #94a3b8;
+}
+
+.stat-number {
+  font-size: 56px;
+  font-weight: 700;
+}
+
+.stat-label {
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* WARNA STAT */
+.card-blue { border-left: 6px solid #3b82f6; }
+.card-blue .stat-number { color: #3b82f6; }
+.card-orange { border-left: 6px solid #f97316; }
+.card-orange .stat-number { color: #f97316; }
+.card-cyan { border-left: 6px solid #06b6d4; }
+.card-cyan .stat-number { color: #06b6d4; }
+.card-gray { border-left: 6px solid #64748b; }
+.card-gray .stat-number { color: #1e293b; }
+
+/* ================================
+   AKSES CEPAT
+================================ */
+.quick-access-wrapper {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 25px;
+  padding: 35px 40px 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.quick-access-title {
+  text-align: left;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Flexbox — baris 2 otomatis center karena justify-content: center */
+.quick-access-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+
+.quick-access-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 20px 22px;
+  /* flex-basis: agar 3 card muat di baris 1, sisanya center di baris 2 */
+  flex: 0 0 calc(33.333% - 14px);
+  max-width: calc(33.333% - 14px);
+  background: white;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+  border-bottom: 4px solid var(--accent-color);
+  text-align: center;
+}
+
+.quick-access-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-color);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  border-radius: 18px;
+}
+
+.quick-access-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+}
+
+.quick-access-card:hover::before {
+  opacity: 0.07;
+}
+
+.quick-access-card:active {
+  transform: translateY(-2px);
+}
+
+.quick-access-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-radius: 14px;
+  padding: 12px;
+  transition: background 0.25s ease, transform 0.25s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-access-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.quick-access-card:hover .quick-access-icon {
+  background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+  transform: scale(1.1);
+}
+
+.quick-access-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-access-arrow {
+  font-size: 16px;
+  color: var(--accent-color);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  position: relative;
+  z-index: 1;
+  font-weight: 700;
+}
+
+.quick-access-card:hover .quick-access-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* RESPONSIVE */
+@media (max-width: 1100px) {
+  .stats-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .quick-access-card {
+    flex: 0 0 calc(50% - 10px);
+    max-width: calc(50% - 10px);
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-wrapper {
+    padding: 20px 20px 60px;
+  }
+  .stats-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .quick-access-card {
+    flex: 0 0 calc(50% - 10px);
+    max-width: calc(50% - 10px);
+  }
+  .page-title {
+    font-size: 32px;
+    margin-top: 40px;
+  }
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HalamanUtama from '../assets/Icon/HalamanUtama.png';
-import DefaultMascot from '../assets/Icon/Inorasi.png';
+import DefaultMascot from '../assets/Icon/INORASI2.png';
 import { settingService } from '../services/settingService';
 
 // ==================== INTERFACE DEFINITIONS ====================

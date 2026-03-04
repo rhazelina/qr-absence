@@ -12,6 +12,7 @@ import {
   FaTimes,
   FaTrash
 } from 'react-icons/fa';
+import api from '../../utils/api';
 
 function JadwalGuruShow() {
   const { id } = useParams();
@@ -29,21 +30,13 @@ function JadwalGuruShow() {
   const fetchJadwalGuru = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/jadwal-guru/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const data = await api.get(`/teachers/${id}`);
+      setJadwal({
+        ...data,
+        gambar_jadwal: data?.schedule_image_url || null,
+        mata_pelajaran: data?.subject_name || '-',
+        no_hp: data?.phone || data?.contact || '-',
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setJadwal(data);
-      } else {
-        console.error('Gagal memuat data jadwal guru');
-        alert('Gagal memuat data jadwal guru');
-        navigate('/waka/jadwal-guru');
-      }
     } catch (error) {
       console.error('Error fetching jadwal guru:', error);
       alert('Terjadi kesalahan saat memuat data');
@@ -58,24 +51,9 @@ function JadwalGuruShow() {
 
     setDeleteLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/jadwal-guru/${id}/delete-image`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        alert('Jadwal berhasil dihapus');
-        setJadwal(prev => ({
-          ...prev,
-          gambar_jadwal: null
-        }));
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Gagal menghapus jadwal');
-      }
+      await api.del(`/teachers/${id}/schedule-image`);
+      alert('Jadwal berhasil dihapus');
+      setJadwal(prev => ({ ...prev, gambar_jadwal: null }));
     } catch (error) {
       console.error('Error deleting image:', error);
       alert('Terjadi kesalahan saat menghapus jadwal');
@@ -107,9 +85,7 @@ function JadwalGuruShow() {
     );
   }
 
-  const imageUrl = jadwal.gambar_jadwal
-    ? `http://localhost:5000${jadwal.gambar_jadwal}`
-    : null;
+  const imageUrl = jadwal.gambar_jadwal || null;
 
   return (
     <div className="jadwal-guru-show-root">

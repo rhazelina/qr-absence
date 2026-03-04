@@ -52,11 +52,14 @@ export default function JadwalKelasStaff({
     setLoading(true);
     try {
       const response = await masterService.getClasses();
+      const classPayload = Array.isArray(response?.data)
+        ? response.data
+        : (Array.isArray(response?.data?.data) ? response.data.data : []);
       // Map API response to Component state
-      const mappedData: KelasItem[] = response.data.map((cls: any) => ({
+      const mappedData: KelasItem[] = classPayload.map((cls: any) => ({
         ...cls,
         namaKelas: cls.class_name || cls.name,
-        jurusan: cls.major_name || cls.major || '-',
+        jurusan: cls.major_name || cls.major?.name || cls.major?.code || '-',
         waliKelas: cls.homeroom_teacher_name || '-',
         tingkat: cls.grade,
         schedule_image_url: cls.schedule_image_url
@@ -125,21 +128,29 @@ export default function JadwalKelasStaff({
         try {
             const response = await classService.uploadScheduleImage(String(row.id), file);
             console.log('UPLOAD SUCCESS RESPONSE:', response);
-            
-            const newImageUrl = `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
-            console.log('NEW IMAGE URL SET TO:', newImageUrl);
+
+            if (response?.url) {
+              const newImageUrl = `${response.url}${response.url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+              console.log('NEW IMAGE URL SET TO:', newImageUrl);
+
+              setKelasData(prev => prev.map(item =>
+                  item.id === row.id
+                  ? { ...item, schedule_image_url: newImageUrl }
+                  : item
+              ));
+            } else {
+              await fetchClasses();
+            }
 
             showNotification('success', 'Jadwal berhasil diupload');
-            
-            // Update local state with new image URL
-            setKelasData(prev => prev.map(item => 
-                item.id === row.id 
-                ? { ...item, schedule_image_url: newImageUrl } 
-                : item
-            ));
-        } catch (error) {
-            console.error("Upload failed", error);
-            showNotification('error', 'Gagal mengupload jadwal');
+        } catch (err: any) {
+            console.error("Upload failed", err);
+            const validationMessage =
+              err?.validationMessages?.join(", ") ||
+              err?.fieldErrors?.file?.[0] ||
+              err?.message ||
+              'Gagal mengupload jadwal';
+            showNotification('error', validationMessage);
         }
       }
     };

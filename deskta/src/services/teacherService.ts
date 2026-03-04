@@ -31,13 +31,73 @@ export interface Teacher {
   konsentrasi_keahlian?: string;
 }
 
+const buildQuery = (params?: Record<string, unknown>) => {
+  const searchParams = new URLSearchParams();
+  if (!params) return searchParams.toString();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    searchParams.set(key, String(value));
+  });
+  return searchParams.toString();
+};
+
+const extractPageData = (payload: any): any[] => {
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
 export const teacherService = {
   getTeachers: async (params?: any) => {
-    const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_BASE_URL}/teachers?${query}`, {
+    const wantsAll = params?.per_page === -1 || params?.all === true;
+    if (!wantsAll) {
+      const query = buildQuery(params || {});
+      const response = await fetch(`${API_BASE_URL}/teachers${query ? `?${query}` : ''}`, {
+        headers: getHeaders()
+      });
+      return handleResponse(response);
+    }
+
+    const baseParams = { ...(params || {}) };
+    delete (baseParams as any).all;
+    const perPage = typeof baseParams.per_page === 'number' && baseParams.per_page > 0
+      ? baseParams.per_page
+      : 1000;
+    baseParams.per_page = perPage;
+    baseParams.page = 1;
+
+    const firstQuery = buildQuery(baseParams);
+    const firstResponse = await fetch(`${API_BASE_URL}/teachers?${firstQuery}`, {
       headers: getHeaders()
     });
-    return handleResponse(response);
+    const firstPayload = await handleResponse(firstResponse);
+    const merged = extractPageData(firstPayload);
+
+    const meta = firstPayload?.meta || {};
+    const lastPage = typeof meta?.last_page === 'number' ? meta.last_page : 1;
+
+    if (lastPage > 1) {
+      for (let page = 2; page <= lastPage; page += 1) {
+        const pageQuery = buildQuery({ ...baseParams, page });
+        const pageResponse = await fetch(`${API_BASE_URL}/teachers?${pageQuery}`, {
+          headers: getHeaders()
+        });
+        const pagePayload = await handleResponse(pageResponse);
+        merged.push(...extractPageData(pagePayload));
+      }
+    }
+
+    return {
+      ...firstPayload,
+      data: merged,
+      meta: {
+        ...meta,
+        current_page: 1,
+        per_page: perPage,
+        last_page: lastPage,
+        total: typeof meta?.total === 'number' ? meta.total : merged.length,
+      },
+    };
   },
 
   getTeacherById: async (id: string) => {

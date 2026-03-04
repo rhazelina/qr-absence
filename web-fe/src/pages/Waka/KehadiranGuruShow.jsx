@@ -12,6 +12,7 @@ import {
   FaChevronDown,
   FaSpinner,
 } from "react-icons/fa";
+import api from '../../utils/api';
 
 function KehadiranGuruShow() {
   const { id } = useParams();
@@ -22,17 +23,29 @@ function KehadiranGuruShow() {
   const [selectedStatus, setSelectedStatus] = useState("");
 
   useEffect(() => {
-    // TODO: Ganti dengan API call untuk fetch data guru berdasarkan ID
-    // Contoh:
-    // fetchKehadiranGuru(id).then(data => {
-    //   setGuruData(data);
-    //   setLoading(false);
-    // }).catch(error => {
-    //   console.error('Error fetching data:', error);
-    //   setLoading(false);
-    // });
-    
-    setLoading(false);
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await api.get(`/teachers/${id}/attendance-history`);
+        const history = Array.isArray(data?.history) ? data.history : [];
+        const jam = history.slice(0, 10).map((item) => item.status || 'Tidak Ada Jam Mengajar');
+        while (jam.length < 10) jam.push('Tidak Ada Jam Mengajar');
+        setGuruData({
+          guru: {
+            nama: data?.teacher?.user?.name || '-',
+            kode_guru: data?.teacher?.kode_guru || data?.teacher?.nip || '-',
+            kelas: data?.teacher?.homeroom_class?.name || '-',
+          },
+          jam,
+        });
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setGuruData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [id]);
 
   const handleEditClick = (item) => {
@@ -42,23 +55,7 @@ function KehadiranGuruShow() {
   };
 
   const handleUpdate = () => {
-    // TODO: Ganti dengan API call untuk update status kehadiran
-    // Contoh:
-    // updateKehadiranGuru(guruData.guru.id, selectedItem, selectedStatus)
-    //   .then(response => {
-    //     // Update local state setelah berhasil
-    //     const updatedJam = [...guruData.jam];
-    //     updatedJam[selectedItem] = selectedStatus;
-    //     setGuruData({
-    //       ...guruData,
-    //       jam: updatedJam,
-    //     });
-    //     setShowEditModal(false);
-    //   })
-    //   .catch(error => {
-    //     console.error('Error updating status:', error);
-    //   });
-
+    alert('Ubah status per jam belum tersedia pada endpoint backend saat ini.');
     setShowEditModal(false);
   };
 

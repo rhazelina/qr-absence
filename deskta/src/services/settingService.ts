@@ -1,4 +1,4 @@
-import { API_BASE_URL, handleResponse } from './api';
+import { API_BASE_URL, fetchWithAuth, getHeaders, handleResponse } from './api';
 
 export interface PublicSettings {
   school_name: string;
@@ -32,32 +32,22 @@ export const settingService = {
     const response = await fetch(`${API_BASE_URL}/settings/public`, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json'
-      },
+        'Accept': 'application/json',
+      }
     });
     return handleResponse(response);
   },
 
   getSettings: async (): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/settings`, {
+    return fetchWithAuth(`${API_BASE_URL}/settings`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Accept': 'application/json'
-      },
     });
-    return handleResponse(response);
   },
 
   getSyncSettings: async (): Promise<SyncSettingsResponse> => {
-    const response = await fetch(`${API_BASE_URL}/settings/sync`, {
+    return fetchWithAuth(`${API_BASE_URL}/settings/sync`, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Accept': 'application/json'
-      },
     });
-    return handleResponse(response);
   },
 
   updateSettings: async (data: any): Promise<any> => {
@@ -69,13 +59,12 @@ export const settingService = {
       }
     });
 
+    const headers = getHeaders() as Record<string, string>;
+    delete headers['Content-Type'];
+
     const response = await fetch(`${API_BASE_URL}/settings`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Accept': 'application/json',
-        // 'Content-Type': 'multipart/form-data' // Fetch will set this automatically with boundary
-      },
+      headers,
       body: formData
     });
     return handleResponse(response);

@@ -4,12 +4,24 @@ import { Html5QrcodeScanner, Html5QrcodeScannerState } from 'html5-qrcode';
 interface CameraScannerProps {
     onScanSuccess: (decodedText: string) => void;
     onScanError?: (errorMessage: string) => void;
+    onCameraBlocked?: () => void;
 }
 
-export function CameraScanner({ onScanSuccess, onScanError }: CameraScannerProps) {
+const isCameraPermissionError = (message: string): boolean => {
+    const normalized = message.toLowerCase();
+    return (
+        normalized.includes("notallowederror") ||
+        normalized.includes("permission denied") ||
+        normalized.includes("permissiondismissederror") ||
+        normalized.includes("camera permission")
+    );
+};
+
+export function CameraScanner({ onScanSuccess, onScanError, onCameraBlocked }: CameraScannerProps) {
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
     const [isScanning, setIsScanning] = useState(false);
     const containerId = "qr-reader";
+    const hasReportedCameraBlocked = useRef(false);
     
     const stopScanner = useCallback(async () => {
         if (scannerRef.current) {
@@ -83,9 +95,17 @@ export function CameraScanner({ onScanSuccess, onScanError }: CameraScannerProps
                     onScanSuccess(decodedText);
                 },
                 (error) => {
+                    const errorMessage = error?.toString() || "";
+
+                    if (!hasReportedCameraBlocked.current && isCameraPermissionError(errorMessage)) {
+                        hasReportedCameraBlocked.current = true;
+                        onCameraBlocked?.();
+                        return;
+                    }
+
                     // Filter out noisy errors
-                    if (onScanError && error?.toString()?.includes('NotFoundException') === false) {
-                        onScanError(error.toString());
+                    if (onScanError && errorMessage.includes('NotFoundException') === false) {
+                        onScanError(errorMessage);
                     }
                 }
             );

@@ -1,9 +1,7 @@
-import { useMemo, useState, useEffect } from "react";
-import { User, SquarePen, ArrowLeft, Eye, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, ArrowLeft, Eye, X } from "lucide-react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import { FormModal } from "../../component/Shared/FormModal";
-import { Select } from "../../component/Shared/Select";
 import { attendanceService } from "../../services/attendanceService";
 import { masterService } from "../../services/masterService";
 
@@ -50,6 +48,7 @@ export default function DetailKehadiranGuru({
   
   const [rows, setRows] = useState<RowKehadiran[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Date filter state
   const [startDate, setStartDate] = useState(
@@ -59,23 +58,7 @@ export default function DetailKehadiranGuru({
     new Date().toISOString().slice(0, 10)
   );
 
-  const statusOptions = useMemo(
-    () => [
-      { label: "Hadir", value: "Hadir" },
-      { label: "Izin", value: "Izin" },
-      { label: "Sakit", value: "Sakit" },
-      { label: "Alfa", value: "Alfa" },
-      { label: "Pulang", value: "Pulang" },
-      { label: "Terlambat", value: "Terlambat" },
-      { label: "Tidak Hadir", value: "Tidak Hadir" },
-    ],
-    []
-  );
-
-  const [editingRow, setEditingRow] = useState<RowKehadiran | null>(null);
-  const [editStatus, setEditStatus] = useState<StatusKehadiran>("Hadir");
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dateRangeError = startDate > endDate ? "Rentang tanggal tidak valid. Tanggal mulai tidak boleh melebihi tanggal akhir." : null;
 
   // State untuk modal detail
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -89,16 +72,22 @@ export default function DetailKehadiranGuru({
   }, [location.state?.guruName, guruName]);
 
   useEffect(() => {
+    if (dateRangeError) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
     if (resolvedTeacherId) {
       fetchData(String(resolvedTeacherId));
     } else {
       setRows([]);
       setLoading(false);
     }
-  }, [resolvedTeacherId, startDate, endDate]);
+  }, [resolvedTeacherId, startDate, endDate, dateRangeError]);
 
   const fetchData = async (teacherId: string) => {
     setLoading(true);
+    setError(null);
     try {
       const [historyResponse, timeSlotsResponse] = await Promise.all([
         attendanceService.getTeacherAttendanceHistory(teacherId, { from: startDate, to: endDate }),
@@ -166,40 +155,18 @@ export default function DetailKehadiranGuru({
       });
 
       setRows(newRows);
-    } catch (error) {
-       console.error("Error fetching detail:", error);
+    } catch (err: any) {
+       console.error("Error fetching detail:", err);
+       setError(err?.message || "Gagal memuat riwayat kehadiran guru.");
+       setRows([]);
     } finally {
        setLoading(false);
     }
   };
 
-
-  const handleOpenEdit = (row: RowKehadiran) => {
-    setEditingRow(row);
-    setEditStatus(row.status);
-    setIsEditOpen(true);
-  };
-
   const handleOpenDetail = (row: RowKehadiran) => {
     setSelectedDetail(row);
     setIsDetailOpen(true);
-  };
-
-  const handleSubmitEdit = () => {
-    if (!editingRow) return;
-    setIsSubmitting(true);
-    // TODO: Implement API update for attendance status
-    // For now update local state
-    setTimeout(() => {
-      setRows((prev) =>
-        prev.map((r) =>
-          r.no === editingRow.no ? { ...r, status: editStatus } : r
-        )
-      );
-      setIsSubmitting(false);
-      setIsEditOpen(false);
-      setEditingRow(null);
-    }, 300);
   };
 
   const getStatusColor = (status: StatusKehadiran) => {
@@ -347,7 +314,7 @@ export default function DetailKehadiranGuru({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "60px 140px 100px 160px 150px 180px 100px",
+            gridTemplateColumns: "60px 140px 100px 160px 150px 200px 80px",
             backgroundColor: "#F9FAFB",
             padding: "16px 24px",
             fontWeight: 700,
@@ -365,12 +332,16 @@ export default function DetailKehadiranGuru({
           <div style={{ textAlign: "center" }}>Mapel</div>
           <div style={{ textAlign: "center" }}>Kelas</div>
           <div style={{ textAlign: "center" }}>Status</div>
-          <div style={{ textAlign: "center" }}>Aksi</div>
+          <div style={{ textAlign: "center" }}>Detail</div>
         </div>
 
         {/* BODY ROWS */}
-        {loading ? (
+        {dateRangeError ? (
+             <div style={{ padding: "40px", textAlign: "center", color: "#B91C1C", fontWeight: 700 }}>{dateRangeError}</div>
+        ) : loading ? (
              <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Memuat riwayat kehadiran...</div>
+        ) : error ? (
+             <div style={{ padding: "40px", textAlign: "center", color: "#B91C1C", fontWeight: 700 }}>{error}</div>
         ) : rows.length === 0 ? (
              <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Tidak ada data kehadiran pada rentang tanggal ini.</div>
         ) : (
@@ -382,7 +353,7 @@ export default function DetailKehadiranGuru({
                 key={row.no}
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "60px 140px 100px 160px 150px 180px 100px",
+                    gridTemplateColumns: "60px 140px 100px 160px 150px 200px 80px",
                     padding: "14px 24px",
                     borderBottom: "1px solid #F3F4F6",
                     alignItems: "center",
@@ -453,7 +424,7 @@ export default function DetailKehadiranGuru({
                     </button>
                 </div>
 
-                    {/* Aksi */}
+                    {/* Detail */}
                     <div
                         style={{
                         display: "flex",
@@ -463,26 +434,20 @@ export default function DetailKehadiranGuru({
                         }}
                     >
                         <button
-                        onClick={() => handleOpenEdit(row)}
-                        style={{
+                          type="button"
+                          onClick={() => handleOpenDetail(row)}
+                          title="Lihat detail"
+                          style={{
                             background: "none",
                             border: "none",
                             cursor: "pointer",
-                            padding: 4,
-                            borderRadius: 4,
-                            display: "flex",
+                            padding: 0,
+                            display: "inline-flex",
                             alignItems: "center",
-                            transition: "background-color 0.2s",
-                        }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor = "#E5E7EB")
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = "transparent")
-                        }
-                        title="Edit Status"
+                            justifyContent: "center",
+                          }}
                         >
-                        <SquarePen size={18} color="#10B981" />
+                          <Eye size={16} color="#1F2937" />
                         </button>
                     </div>
                 </div>
@@ -490,36 +455,6 @@ export default function DetailKehadiranGuru({
             })
         )}
       </div>
-
-      {/* EDIT MODAL */}
-      <FormModal
-        isOpen={isEditOpen}
-        onClose={() => setIsEditOpen(false)}
-        title="Edit Status Kehadiran"
-        onSubmit={handleSubmitEdit}
-        submitLabel="Simpan"
-        isSubmitting={isSubmitting}
-      >
-        <div style={{ marginBottom: 20 }}>
-          <label
-            style={{
-              display: "block",
-              fontWeight: 600,
-              marginBottom: 8,
-              fontSize: 14,
-              color: "#374151",
-            }}
-          >
-            Status Kehadiran
-          </label>
-          <Select
-            options={statusOptions}
-            value={editStatus}
-            onChange={(val) => setEditStatus(val as StatusKehadiran)}
-            placeholder="Pilih Status"
-          />
-        </div>
-      </FormModal>
 
       {/* DETAIL MODAL */}
       {isDetailOpen && selectedDetail && (

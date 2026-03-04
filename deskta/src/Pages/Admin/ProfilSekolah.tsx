@@ -92,7 +92,7 @@ export default function ProfilSekolah({
       try {
         const response = await settingService.getSettings();
         const settings = response.data; // Response is { status: 'success', data: { ... } }
-        
+
         const mappedData: SchoolData = {
           nama_sekolah: settings.school_name || DEFAULT_SCHOOL_DATA.nama_sekolah,
           npsn: settings.school_npsn || DEFAULT_SCHOOL_DATA.npsn,
@@ -269,7 +269,7 @@ export default function ProfilSekolah({
         school_headmaster_nip: editFormData.nip_kepala_sekolah,
         school_phone: editFormData.nomor_telepon,
       };
-      
+
       // Only send school_type if it matches expected values (backend validation)
       const validSchoolTypes = ['SMK/SMA/MA', 'SMP/MTS', 'SD/MI'];
       if (validSchoolTypes.includes(editFormData.jenis_sekolah)) {
@@ -294,7 +294,7 @@ export default function ProfilSekolah({
       // Refresh data
       const response = await settingService.getSettings();
       const settings = response.data;
-      
+
       const updatedData: SchoolData = {
         nama_sekolah: settings.school_name || editFormData.nama_sekolah,
         npsn: settings.school_npsn || editFormData.npsn,
@@ -343,7 +343,7 @@ export default function ProfilSekolah({
       // Dispatch update events so all listeners (layouts, landing page, login) update
       window.dispatchEvent(new Event('schoolDataUpdated'));
       window.dispatchEvent(new Event('schoolSettingsUpdated'));
-      
+
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error: any) {
       console.error('Error saving school data:', error);

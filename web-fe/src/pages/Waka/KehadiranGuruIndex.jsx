@@ -8,6 +8,7 @@ import { FaCalendar, FaClock, FaFileExport, FaFilePdf, FaFileExcel, FaEye } from
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import api from '../../utils/api';
 
 function KehadiranGuruIndex() {
   const navigate = useNavigate();
@@ -43,20 +44,18 @@ function KehadiranGuruIndex() {
   const fetchKehadiranGuru = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/kehadiran-guru?tanggal=${filterTanggal}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setKehadirans(data);
-      } else {
-        console.error('Gagal memuat data kehadiran guru');
-        alert('Gagal memuat data kehadiran guru');
-      }
+      const response = await api.get('/waka/attendance/teachers/daily', { date: filterTanggal, per_page: 1000 });
+      const rows = Array.isArray(response?.items?.data) ? response.items.data : [];
+      const mapped = rows.map((row) => ({
+        id: row?.teacher?.id,
+        guru: {
+          kode_guru: row?.teacher?.kode_guru || row?.teacher?.nip || '-',
+          nama: row?.teacher?.user?.name || row?.teacher?.name || '-',
+          kelas: row?.teacher?.homeroom_class?.name || '-',
+        },
+        jam: Array.isArray(row?.slots) ? row.slots.map((s) => s || 'Tidak Mengajar') : Array(10).fill('Tidak Mengajar'),
+      }));
+      setKehadirans(mapped);
     } catch (error) {
       console.error('Error fetching kehadiran guru:', error);
       alert('Terjadi kesalahan saat memuat data');
@@ -67,20 +66,8 @@ function KehadiranGuruIndex() {
 
   const handleDelete = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/kehadiran-guru/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        setKehadirans(prev => prev.filter(k => k.id !== id));
-        alert('Data kehadiran berhasil dihapus');
-      } else {
-        alert('Gagal menghapus data kehadiran');
-      }
+      await Promise.resolve(id);
+      alert('Hapus data kehadiran guru tidak tersedia pada endpoint backend saat ini.');
     } catch (error) {
       console.error('Error deleting kehadiran:', error);
       alert('Terjadi kesalahan saat menghapus data');

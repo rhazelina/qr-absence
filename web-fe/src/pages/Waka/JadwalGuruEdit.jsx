@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import './JadwalGuruEdit.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaArrowLeft, FaEdit } from 'react-icons/fa';
+import api from '../../utils/api';
 
 function JadwalGuruEdit() {
   const navigate = useNavigate();
@@ -27,27 +28,17 @@ function JadwalGuruEdit() {
 
   const fetchJadwalGuru = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/jadwal-guru/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const data = await api.get(`/teachers/${id}`);
+      setFormData({
+        kode_guru: data.kode_guru || '',
+        nama_guru: data.nama_guru || data.name || '',
+        mata_pelajaran: data.subject_name || '',
+        email: data.email || '',
+        no_hp: data.phone || data.contact || '',
+        gambar_jadwal: null
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          kode_guru: data.kode_guru || '',
-          nama_guru: data.nama_guru || '',
-          mata_pelajaran: data.mata_pelajaran || '',
-          email: data.email || '',
-          no_hp: data.no_hp || '',
-          gambar_jadwal: null
-        });
-
-        if (data.gambar_jadwal) {
-          setPreviewImage(`http://localhost:5000${data.gambar_jadwal}`);
-        }
+      if (data.schedule_image_url) {
+        setPreviewImage(data.schedule_image_url);
       }
     } catch (error) {
       console.error('Error fetching jadwal guru:', error);
@@ -90,34 +81,22 @@ function JadwalGuruEdit() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const formDataToSend = new FormData();
-
-      formDataToSend.append('kode_guru', formData.kode_guru);
-      formDataToSend.append('nama_guru', formData.nama_guru);
-      formDataToSend.append('mata_pelajaran', formData.mata_pelajaran);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('no_hp', formData.no_hp);
-
-      if (formData.gambar_jadwal) {
-        formDataToSend.append('gambar_jadwal', formData.gambar_jadwal);
-      }
-
-      const response = await fetch(`http://localhost:5000/api/jadwal-guru/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formDataToSend
+      await api.put(`/teachers/${id}`, {
+        name: formData.nama_guru,
+        kode_guru: formData.kode_guru,
+        subject: formData.mata_pelajaran,
+        email: formData.email,
+        phone: formData.no_hp,
       });
 
-      if (response.ok) {
-        alert('Jadwal guru berhasil diperbarui');
-        navigate('/waka/jadwal-guru');
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Gagal memperbarui jadwal guru');
+      if (formData.gambar_jadwal) {
+        const upload = new FormData();
+        upload.append('file', formData.gambar_jadwal);
+        await api.post(`/teachers/${id}/schedule-image`, upload);
       }
+
+      alert('Jadwal guru berhasil diperbarui');
+      navigate('/waka/jadwal-guru');
     } catch (error) {
       console.error('Error updating jadwal guru:', error);
       alert('Terjadi kesalahan saat memperbarui jadwal guru');

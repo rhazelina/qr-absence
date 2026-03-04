@@ -68,8 +68,8 @@ export default function KonsentrasiKeahlianAdmin({
   const checkDuplicate = (code: string, name: string, excludeId?: number) => {
     return konsentrasiKeahlianList.some(
       (k) =>
-        (k.code.toLowerCase() === code.toLowerCase() || 
-         k.name.toLowerCase() === name.toLowerCase()) &&
+        (k.code.toLowerCase() === code.toLowerCase() ||
+          k.name.toLowerCase() === name.toLowerCase()) &&
         k.id !== excludeId
     );
   };
@@ -112,7 +112,7 @@ export default function KonsentrasiKeahlianAdmin({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validasi input
     if (!formData.name.trim() || !formData.code.trim() || !formData.bidang_keahlian.trim() || !formData.program_keahlian.trim()) {
       setErrorMessage("Nama, kode, bidang keahlian, dan program keahlian harus diisi");
@@ -128,8 +128,8 @@ export default function KonsentrasiKeahlianAdmin({
 
     // Validasi duplikasi
     const isDuplicate = checkDuplicate(
-      formData.code, 
-      formData.name, 
+      formData.code,
+      formData.name,
       editingKonsentrasiKeahlian?.id
     );
 
@@ -163,7 +163,7 @@ export default function KonsentrasiKeahlianAdmin({
         return;
       }
     }
-    
+
     handleClosePopup();
   };
 
@@ -181,7 +181,7 @@ export default function KonsentrasiKeahlianAdmin({
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error message when user starts typing
     if (errorMessage) {
       setErrorMessage("");
@@ -246,14 +246,14 @@ export default function KonsentrasiKeahlianAdmin({
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
             transition: "transform 0.2s ease, box-shadow 0.2s ease",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-4px)";
-            e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
-          }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-4px)";
+              e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+            }}
           >
             <div style={{
               width: "56px",
@@ -275,7 +275,7 @@ export default function KonsentrasiKeahlianAdmin({
           </div>
 
           <div style={{
-             backgroundColor: "#FFFFFF",
+            backgroundColor: "#FFFFFF",
             borderRadius: "16px",
             padding: "24px",
             display: "flex",
@@ -284,14 +284,14 @@ export default function KonsentrasiKeahlianAdmin({
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
             transition: "transform 0.2s ease, box-shadow 0.2s ease",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-4px)";
-            e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
-          }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-4px)";
+              e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+            }}
           >
             <div style={{
               width: "56px",
@@ -304,7 +304,7 @@ export default function KonsentrasiKeahlianAdmin({
             }}>
               <span style={{ fontSize: "28px" }}>🏷️</span>
             </div>
-             <div>
+            <div>
               <div style={{ fontSize: "28px", fontWeight: "700", color: "#1F2937", lineHeight: "1.2" }}>
                 {new Set(konsentrasiKeahlianList.map(k => k.bidang_keahlian || k.program_keahlian)).size}
               </div>
@@ -418,12 +418,12 @@ export default function KonsentrasiKeahlianAdmin({
                     backgroundColor: index % 2 === 0 ? '#FFFFFF' : '#F9FAFB',
                     transition: 'background-color 0.2s',
                   }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#F0F4FF';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
-                  }}>
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#F0F4FF';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#FFFFFF' : '#F9FAFB';
+                    }}>
                     <td style={{
                       padding: '12px 16px',
                       fontSize: '13px',
@@ -524,118 +524,111 @@ export default function KonsentrasiKeahlianAdmin({
         </div>
       </div>
 
-      {/* POPUP FORM - Header dengan warna #1e293b */}
+      {/* POPUP FORM */}
       {showPopup && (
-        <div style={popupOverlayStyle}>
-          <div style={popupStyle}>
-            {/* Header popup dengan background #1e293b */}
-            <div style={popupHeaderStyle}>
-              <div style={headerContentStyle}>
-                <h2 style={popupTitleStyle}>
-                  {isEditMode ? "Ubah Konsentrasi Keahlian" : "Tambah Konsentrasi Keahlian"}
-                </h2>
-              </div>
-              <button
-                onClick={handleClosePopup}
-                style={closeButtonStyle}
-              >
-                <X size={20} color="#FFFFFF" />
-              </button>
-            </div>
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-5"
+          onClick={handleClosePopup}
+        >
+          <div
+            className="bg-[#0052A4] rounded-[25px] p-[40px_45px] w-full max-w-[550px] shadow-[0_15px_50px_rgba(0,0,0,0.5)] transform transition-all"
+            onClick={(e) => e.stopPropagation()}
+            style={{ animation: 'slideDownJurusan 0.3s ease-out' }}
+          >
+            {/* Header popup */}
+            <h2 className="text-white text-[32px] font-bold mt-[1px] mb-[30px] text-center">
+              {isEditMode ? "Ubah Data Konsentrasi Keahlian" : "Tambah Konsentrasi Keahlian"}
+            </h2>
 
             {/* Form content */}
             <form onSubmit={handleSubmit}>
-              <div style={popupContentStyle}>
-                {/* Nama Konsentrasi Keahlian */}
-                <div style={formGroupStyle}>
-                  <label style={labelStyle}>
-                    Nama Konsentrasi Keahlian<span style={requiredStarStyle}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleFormChange}
-                    placeholder="Masukan nama konsentrasi keahlian"
-                    style={inputStyle}
-                    autoFocus
-                  />
-                </div>
-
-                {/* Kode Konsentrasi Keahlian */}
-                <div style={formGroupStyle}>
-                  <label style={labelStyle}>
-                    Kode Konsentrasi Keahlian<span style={requiredStarStyle}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="code"
-                    value={formData.code}
-                    onChange={handleFormChange}
-                    placeholder="Masukan kode konsentrasi keahlian"
-                    style={inputStyle}
-                    maxLength={20}
-                  />
-                  <div style={characterInfoStyle}>
-                    <span style={characterHintStyle}>Huruf dan angka saja, maks. 20 karakter</span>
-                    <span style={characterCounterStyle}>
-                      {formData.code.length}/20
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bidang Keahlian */}
-                <div style={formGroupStyle}>
-                  <label style={labelStyle}>
-                    Bidang Keahlian<span style={requiredStarStyle}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="bidang_keahlian"
-                    value={formData.bidang_keahlian}
-                    onChange={handleFormChange}
-                    placeholder="Masukan bidang keahlian"
-                    style={inputStyle}
-                  />
-                </div>
-
-                {/* Program Keahlian */}
-                <div style={formGroupStyle}>
-                  <label style={labelStyle}>
-                    Program Keahlian<span style={requiredStarStyle}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="program_keahlian"
-                    value={formData.program_keahlian}
-                    onChange={handleFormChange}
-                    placeholder="Masukan program keahlian"
-                    style={inputStyle}
-                  />
-                </div>
-
-                {/* Error message */}
-                {errorMessage && (
-                  <div style={errorStyle}>
-                    {errorMessage}
-                  </div>
-                )}
+              {/* Nama Konsentrasi Keahlian */}
+              <div className="mb-[25px]">
+                <label className="block text-white text-[17px] font-semibold mb-[10px]">
+                  Nama Konsentrasi Keahlian
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                  placeholder="Nama Konsentrasi Keahlian..."
+                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
+                  autoFocus
+                  required
+                />
               </div>
 
+              {/* Kode Konsentrasi Keahlian */}
+              <div className="mb-[25px]">
+                <label className="block text-white text-[17px] font-semibold mb-[10px]">
+                  Kode Konsentrasi Keahlian
+                </label>
+                <input
+                  type="text"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleFormChange}
+                  placeholder="Kode Konsentrasi Keahlian..."
+                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
+                  maxLength={20}
+                  required
+                />
+              </div>
+
+              {/* Bidang Keahlian */}
+              <div className="mb-[25px]">
+                <label className="block text-white text-[17px] font-semibold mb-[10px]">
+                  Bidang Keahlian
+                </label>
+                <input
+                  type="text"
+                  name="bidang_keahlian"
+                  value={formData.bidang_keahlian}
+                  onChange={handleFormChange}
+                  placeholder="Bidang Keahlian..."
+                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
+                  required
+                />
+              </div>
+
+              {/* Program Keahlian */}
+              <div className="mb-[25px]">
+                <label className="block text-white text-[17px] font-semibold mb-[10px]">
+                  Program Keahlian
+                </label>
+                <input
+                  type="text"
+                  name="program_keahlian"
+                  value={formData.program_keahlian}
+                  onChange={handleFormChange}
+                  placeholder="Program Keahlian..."
+                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
+                  required
+                />
+              </div>
+
+              {/* Error message */}
+              {errorMessage && (
+                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-[12px] text-[15px] mt-4 font-semibold text-center border border-red-200">
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Footer popup */}
-              <div style={popupFooterStyle}>
+              <div className="flex gap-[15px] mt-[35px]">
                 <button
                   type="button"
                   onClick={handleClosePopup}
-                  style={cancelButtonStyle}
+                  className="flex-1 px-[28px] py-[14px] border-none rounded-[12px] text-[17px] font-semibold cursor-pointer transition-all duration-300 bg-white text-[#333] hover:bg-[#f0f0f0] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.2)]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  style={submitButtonStyle}
+                  className="flex-1 px-[28px] py-[14px] border-none rounded-[12px] text-[17px] font-semibold cursor-pointer transition-all duration-300 bg-[#00254C] text-white hover:bg-[#000d1a] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
                 >
-                  {isEditMode ? "Perbarui" : "Tambahkan"}
+                  {isEditMode ? "Simpan" : "Tambahkan"}
                 </button>
               </div>
             </form>
@@ -645,35 +638,12 @@ export default function KonsentrasiKeahlianAdmin({
 
       <style>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        input:focus {
-          outline: none;
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        ${closeButtonStyle}:hover {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        ${cancelButtonStyle}:hover {
-          background-color: #f3f4f6;
-          border-color: #9ca3af;
-        }
-
-        ${submitButtonStyle}:hover {
-          background-color: #1d4ed8;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        @keyframes slideDownJurusan {
+          from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
     </AdminLayout>
@@ -714,169 +684,4 @@ const bgRight: React.CSSProperties = {
   width: 220,
   zIndex: 0,
   pointerEvents: "none",
-};
-
-/* ===================== POPUP STYLE ===================== */
-const popupOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-  backdropFilter: "blur(2px)",
-};
-
-const popupStyle: React.CSSProperties = {
-  backgroundColor: "#FFFFFF",
-  borderRadius: "12px",
-  width: "500px",
-  maxWidth: "90%",
-  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.25)",
-  overflow: "hidden",
-  animation: "fadeIn 0.2s ease-out",
-  border: "1px solid #e5e7eb",
-};
-
-const popupHeaderStyle: React.CSSProperties = {
-  padding: "24px 32px",
-  backgroundColor: "#1e293b",
-  color: "#FFFFFF",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  position: "relative",
-};
-
-const headerContentStyle: React.CSSProperties = {
-  flex: 1,
-};
-
-const popupTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "20px",
-  fontWeight: "600",
-  color: "#FFFFFF",
-  letterSpacing: "0.5px",
-};
-
-const closeButtonStyle: React.CSSProperties = {
-  background: "transparent",
-  border: "none",
-  cursor: "pointer",
-  padding: "6px",
-  borderRadius: "6px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  transition: "all 0.2s ease",
-  marginLeft: "16px",
-};
-
-const popupContentStyle: React.CSSProperties = {
-  padding: "32px",
-  backgroundColor: "#FFFFFF",
-};
-
-const formGroupStyle: React.CSSProperties = {
-  marginBottom: "28px",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "10px",
-  fontWeight: "600",
-  fontSize: "14px",
-  color: "#374151",
-  fontFamily: "'Inter', sans-serif",
-};
-
-const requiredStarStyle: React.CSSProperties = {
-  color: "#ef4444",
-  marginLeft: "4px",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "14px 16px",
-  border: "2px solid #d1d5db",
-  borderRadius: "8px",
-  fontSize: "15px",
-  color: "#1f2937",
-  boxSizing: "border-box",
-  transition: "all 0.2s ease",
-  backgroundColor: "#FFFFFF",
-  fontFamily: "'Inter', sans-serif",
-};
-
-const characterInfoStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginTop: "8px",
-  fontSize: "13px",
-  color: "#6b7280",
-  fontFamily: "'Inter', sans-serif",
-};
-
-const characterHintStyle: React.CSSProperties = {
-  color: "#6b7280",
-};
-
-const characterCounterStyle: React.CSSProperties = {
-  color: "#6b7280",
-  fontWeight: "500",
-};
-
-const errorStyle: React.CSSProperties = {
-  backgroundColor: "#fef2f2",
-  color: "#dc2626",
-  padding: "12px 16px",
-  borderRadius: "8px",
-  fontSize: "14px",
-  marginTop: "16px",
-  border: "1px solid #fecaca",
-  fontFamily: "'Inter', sans-serif",
-};
-
-const popupFooterStyle: React.CSSProperties = {
-  padding: "24px 32px",
-  backgroundColor: "#FFFFFF",
-  borderTop: "1px solid #e5e7eb",
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: "16px",
-};
-
-const cancelButtonStyle: React.CSSProperties = {
-  padding: "12px 28px",
-  backgroundColor: "#FFFFFF",
-  color: "#374151",
-  border: "2px solid #d1d5db",
-  borderRadius: "8px",
-  fontSize: "15px",
-  fontWeight: "600",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  fontFamily: "'Inter', sans-serif",
-  minWidth: "100px",
-};
-
-const submitButtonStyle: React.CSSProperties = {
-  padding: "12px 28px",
-  backgroundColor: "#2563eb",
-  color: "#FFFFFF",
-  border: "none",
-  borderRadius: "8px",
-  fontSize: "15px",
-  fontWeight: "600",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  fontFamily: "'Inter', sans-serif",
-  minWidth: "120px",
-  boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
 };

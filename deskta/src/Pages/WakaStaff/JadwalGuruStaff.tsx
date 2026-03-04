@@ -39,6 +39,7 @@ export default function JadwalGuruStaff({
   const [guruData, setGuruData] = useState<GuruJadwal[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Deduplicated list of all subjects across all teachers
   const allSubjectOptions = Array.from(
@@ -58,6 +59,7 @@ export default function JadwalGuruStaff({
 
   const fetchTeachers = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await teacherService.getTeachers({ per_page: -1 });
       const teachers: Teacher[] = response.data || [];
@@ -78,8 +80,9 @@ export default function JadwalGuruStaff({
       });
 
       setGuruData(mappedData);
-    } catch (error) {
-      console.error("Failed to fetch teachers:", error);
+    } catch (err: any) {
+      console.error("Failed to fetch teachers:", err);
+      setError(err?.message || "Gagal memuat data guru.");
     } finally {
       setLoading(false);
     }
@@ -122,10 +125,15 @@ export default function JadwalGuruStaff({
             console.log('NO URL IN RESPONSE, REFRESHING TEACHERS');
             fetchTeachers(); // Refresh to be sure
           }
-          alert("Jadwal berhasil diunggah");
-        } catch (error) {
-          console.error("Upload failed", error);
-          alert("Gagal mengunggah jadwal");
+          alert("Jadwal berhasil diunggah.");
+        } catch (err: any) {
+          console.error("Upload failed", err);
+          const validationMessage =
+            err?.validationMessages?.join("\n") ||
+            err?.fieldErrors?.file?.[0] ||
+            err?.message ||
+            "Gagal mengunggah jadwal.";
+          alert(validationMessage);
         } finally {
           setUploadingId(null);
         }
@@ -263,6 +271,8 @@ export default function JadwalGuruStaff({
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "20px", color: "#6B7280" }}>Memuat data guru...</div>
+        ) : error ? (
+          <div style={{ textAlign: "center", padding: "20px", color: "#B91C1C", fontWeight: 700 }}>{error}</div>
         ) : (
           <Table
             columns={columns}

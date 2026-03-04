@@ -77,7 +77,7 @@ class AttendanceService
             }
         }
 
-        // Schedule Day and Time Validation
+        // Schedule Day Validation
         $scheduleDay = $qr->schedule->dailySchedule->day;
         $today = $now->format('l');
         $demoMode = config('app.demo_mode', env('APP_DEMO_MODE', false));
@@ -85,12 +85,6 @@ class AttendanceService
         if (! $demoMode) {
             if (strcasecmp($scheduleDay, $today) !== 0) {
                 throw new \Exception("QR hanya valid pada hari {$scheduleDay}", 422);
-            }
-
-            $nowTime = $now->format('H:i:s');
-            $startTimeAllowed = (clone $now)->setTimeFromTimeString($qr->schedule->start_time)->subMinutes(15)->format('H:i:s');
-            if ($nowTime < $startTimeAllowed || $nowTime > $qr->schedule->end_time) {
-                throw new \Exception("Sesi presensi diluar jam aktif pelajaran ({$qr->schedule->start_time} - {$qr->schedule->end_time})", 422);
             }
         }
 
@@ -196,8 +190,13 @@ class AttendanceService
         $time = $now->format('H:i:s');
         $demoMode = config('app.demo_mode', env('APP_DEMO_MODE', false));
 
-        if ($demoMode && $scheduleId) {
-            $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')->find($scheduleId);
+        if ($scheduleId) {
+            $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')
+                ->where('teacher_id', $teacher->teacherProfile->id)
+                ->whereHas('dailySchedule.classSchedule', function ($query) {
+                    $query->where('is_active', true);
+                })
+                ->find($scheduleId);
         } else {
             $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')
                 ->where('teacher_id', $teacher->teacherProfile->id)
@@ -578,8 +577,7 @@ class AttendanceService
         // Ensure same date
         $scheduledDateTime->setDate($checkInTime->year, $checkInTime->month, $checkInTime->day);
 
-        $settings = $this->cachedSettings();
-        $gracePeriod = (int) ($settings['grace_period'] ?? 15);
+        $gracePeriod = 0;
         $lateThreshold = $scheduledDateTime->copy()->addMinutes($gracePeriod);
 
         if ($checkInTime->gt($lateThreshold)) {

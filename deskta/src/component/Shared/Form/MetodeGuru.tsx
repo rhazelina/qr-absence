@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { Modal } from '../Modal';
 import QRCodeIcon from '../../../assets/Icon/qr_code.png';
 
-import { CameraScanner } from './../CameraScanner';
-
 interface MetodeGuruProps {
   isOpen: boolean;
   onClose: () => void;
@@ -11,7 +9,6 @@ interface MetodeGuruProps {
   onPilihManual: () => void;
   onTidakBisaMengajar?: () => void;
   onSubmitDispensasi?: (data: { alasan: string; tanggal?: string; jamMulai?: string; jamSelesai?: string; keterangan?: string; bukti?: File; }) => void;
-  onScanSuccess?: (text: string) => void;
 }
 
 export function MetodeGuru({
@@ -20,10 +17,8 @@ export function MetodeGuru({
   onPilihQR,
   onPilihManual,
   onSubmitDispensasi,
-  onScanSuccess,
 }: MetodeGuruProps) {
   const [showDispensasi, setShowDispensasi] = useState(false);
-  const [liveMode, setLiveMode] = useState(true);
 
   // Dispensasi inputs
   const [dispAlasan, setDispAlasan] = useState("");
@@ -60,10 +55,9 @@ export function MetodeGuru({
     handleClose();
   };
 
-  const handleScanSuccess = (text: string) => {
-    if (onScanSuccess) {
-      onScanSuccess(text);
-    }
+  const handleOpenQrScanner = () => {
+    onPilihQR();
+    handleClose();
   };
 
   return (
@@ -119,16 +113,12 @@ export function MetodeGuru({
               minHeight: 250
             }}
           >
-            {liveMode ? (
-              <CameraScanner onScanSuccess={handleScanSuccess} />
-            ) : (
-              <img
-                src={QRCodeIcon}
-                alt="Kode QR"
-                style={{ width: 200, height: 200, objectFit: "contain", cursor: "pointer" }}
-                onClick={handleScan}
-              />
-            )}
+            <img
+              src={QRCodeIcon}
+              alt="Kode QR"
+              style={{ width: 200, height: 200, objectFit: "contain", cursor: "pointer" }}
+              onClick={handleScan}
+            />
           </div>
 
           <div
@@ -139,6 +129,23 @@ export function MetodeGuru({
             }}
           >
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={handleOpenQrScanner}
+                style={{
+                  border: "1px solid #D1D5DB",
+                  background: "#FFFFFF",
+                  color: "#1F2937",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  width: '100%'
+                }}
+              >
+                Scan QR
+              </button>
               <button
                 type="button"
                 onClick={handleManual}
@@ -155,27 +162,6 @@ export function MetodeGuru({
                 }}
               >
                 Manual
-              </button>
-              <button
-                type="button"
-                onClick={() => setLiveMode(!liveMode)}
-                style={{
-                  border: "1px solid #D1D5DB",
-                  background: "#FFFFFF",
-                  color: "#1F2937",
-                  padding: "10px 16px",
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: "pointer",
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8
-                }}
-              >
-                {liveMode ? "Mode: Live" : "Mode: Statics"}
               </button>
             </div>
 

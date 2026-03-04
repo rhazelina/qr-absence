@@ -86,23 +86,13 @@ export default function AdminLayout({
       {/* BACKGROUND LAYER GLOBAL */}
       {!hideBackground && (
         <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 0,
-            pointerEvents: "none",
-            overflow: "hidden",
-          }}
+          className="absolute inset-0 z-0 pointer-events-none overflow-hidden"
         >
           {/* Background warna dengan opacity rendah */}
           <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundColor: "#F8FAFC",
-            }}
+            className="absolute inset-0 bg-[#0B2948] bg-opacity-[0.03]"
           />
-          
+
           {/* Awan dan dekorasi */}
           <img
             src={AWANKIRI}
@@ -183,20 +173,7 @@ export default function AdminLayout({
       >
         {/* Header - beri background putih solid */}
         <header
-          style={{
-            backgroundColor: "white",
-            height: "72px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 28px",
-            gap: "16px",
-            boxShadow: "0 2px 12px rgba(0, 31, 62, 0.08)",
-            borderBottom: "1px solid #E5E7EB",
-            flexShrink: 0,
-            zIndex: 15,
-            position: "relative",
-          }}
+          className="bg-white h-[72px] flex items-center justify-between px-7 gap-4 shadow-[0_2px_12px_rgba(11,41,72,0.08)] border-b border-gray-200 shrink-0 relative z-15"
         >
           <div style={{ flex: 1 }}>
             <h1
@@ -211,12 +188,7 @@ export default function AdminLayout({
               }}
             >
               <div
-                style={{
-                  width: "4px",
-                  height: "28px",
-                  backgroundColor: "#2563EB",
-                  borderRadius: "2px",
-                }}
+                className="w-1 h-7 bg-[#0B2948] rounded-sm"
               />
               {pageTitle}
             </h1>
@@ -226,14 +198,14 @@ export default function AdminLayout({
               </p>
             )}
           </div>
-          
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
+
+          <div style={{
+            display: "flex",
+            alignItems: "center",
             gap: "16px",
-            flexShrink: 0 
+            flexShrink: 0
           }}>
-            <div style={{ 
+            <div style={{
               textAlign: "right",
               paddingRight: "16px",
               borderRight: "1px solid #E5E7EB"
@@ -250,8 +222,8 @@ export default function AdminLayout({
               <img
                 src={logoSekolah}
                 alt="Logo SMK"
-                style={{ 
-                  width: "48px", 
+                style={{
+                  width: "48px",
                   height: "48px",
                   borderRadius: "8px",
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
@@ -299,13 +271,7 @@ export default function AdminLayout({
             >
               {/* Konten utama dengan background putih dan sedikit transparansi */}
               <div
-                style={{
-                  position: "relative",
-                  zIndex: 5,
-                  backgroundColor: "rgba(255, 255, 255, 0.7)",
-                  borderRadius: "12px",
-                  padding: "0",
-                }}
+                className="relative z-5 bg-white/70 rounded-xl backdrop-blur-md shadow-sm border border-white/50"
               >
                 {children}
               </div>

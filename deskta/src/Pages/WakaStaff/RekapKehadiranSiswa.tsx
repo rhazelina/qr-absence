@@ -18,6 +18,7 @@ interface RekapKehadiranSiswaProps {
 
 interface SiswaRow {
   no: number;
+  studentId: string;
   nisn: string;
   namaSiswa: string;
   hadir: number;
@@ -122,13 +123,14 @@ export default function RekapKehadiranSiswa({
 
         return {
           no: index + 1,
+          studentId: item.student?.id ? String(item.student.id) : "",
           nisn: item.student?.nisn || "-",
           namaSiswa: item.student?.user?.name || item.student?.name || "-",
           hadir: hadir,
           sakit: totals.sick || 0,
-          izin: totals.permission || 0,
+          izin: (totals.permission || 0) + (totals.excused || 0) + (totals.izin || 0),
           alpha: totals.alpha || totals.absent || 0, // 'absent' usually means alpha if not otherwise specified
-          pulang: 0, // Backend doesn't seem to have 'pulang' status explicitly in totals? 
+          pulang: totals.return || totals.leave_early || 0,
           // If 'pulang' is a status, it should be in totals.
           // 'pulang' usually means 'permission to go home'.
           dispen: dispenCount,
@@ -272,6 +274,8 @@ export default function RekapKehadiranSiswa({
     onMenuClick("daftar-ketidakhadiran", {
       siswaName: row.namaSiswa,
       siswaIdentitas: row.nisn,
+      studentId: row.studentId,
+      classId: kelasId,
     });
   };
 

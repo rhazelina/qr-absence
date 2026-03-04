@@ -24,6 +24,13 @@ export default function JadwalPengurus({
     jadwalImage,
     onBack,
 }: JadwalPengurusProps) {
+    const withCacheBuster = (url?: string | null, version?: string) => {
+        if (!url) return url || "";
+        if (url.includes("t=") || url.includes("v=")) return url;
+        const suffix = version ? `v=${encodeURIComponent(version)}` : `t=${Date.now()}`;
+        return `${url}${url.includes("?") ? "&" : "?"}${suffix}`;
+    };
+
     const [kelasInfo, setKelasInfo] = useState({
         namaKelas: namaKelas || "",
         waliKelas: waliKelas || "",
@@ -39,7 +46,7 @@ export default function JadwalPengurus({
                 setKelasInfo({
                     namaKelas: namaKelas || data?.class_name || data?.name || "Kelas Tidak Diketahui",
                     waliKelas: waliKelas || data?.homeroom_teacher_name || "Belum ditentukan",
-                    jadwalImage: jadwalImage || data?.schedule_image_url || "",
+                    jadwalImage: withCacheBuster(data?.schedule_image_url || jadwalImage || "", data?.updated_at),
                 });
             } catch (error) {
                 console.error("Failed to fetch class info", error);

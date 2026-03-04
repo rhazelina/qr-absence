@@ -19,7 +19,7 @@ const API_CONFIG = {
 // ==================== API SERVICE ====================
 const apiService = {
   async request(endpoint, options = {}) {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token');
     const headers = {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -33,7 +33,7 @@ const apiService = {
 
     if (!response.ok) {
       if (response.status === 401) {
-        localStorage.removeItem('authToken');
+        localStorage.removeItem('token');
         window.location.href = '/';
         throw new Error('Unauthorized');
       }

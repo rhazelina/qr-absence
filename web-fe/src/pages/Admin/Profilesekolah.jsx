@@ -1,80 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
-import './Profilesekolah.css';
+import './ProfileSekolah.css';
 import defaultLogo from '../../assets/logo.png';
-
-// ==================== DUMMY DATA SERVICE (NO BACKEND) ====================
-const dummyDataService = {
-  // Get school profile from localStorage or return default dummy data
-  getSchoolProfile() {
-    const savedData = localStorage.getItem('schoolProfile');
-    if (savedData) {
-      return JSON.parse(savedData);
-    }
-
-    // Default dummy data
-    return {
-      namaSekolah: 'SMKN 2 SINGOSARI',
-      npsn: '20517748',
-      akreditasi: 'A',
-      jenisSekolah: 'SMK',
-      kepalaSekolah: 'SUMIJAH, S.Pd., M,Si',
-      nipKepalaSekolah: '97002101998022009',
-      jalan: 'Jl. Perusahaan No.20, Tanjungtirto',
-      kelurahan: 'Tanjungtirto',
-      kecamatan: 'Singosari',
-      kabupatenKota: 'Kab. Malang',
-      provinsi: 'Jawa Timur',
-      kodePos: '65153',
-      nomorTelepon: '(0341) 458823',
-      email: 'smkn2.singosari@yahoo.co.id'
-    };
-  },
-
-  // Save school profile to localStorage
-  updateSchoolProfile(data) {
-    const currentData = this.getSchoolProfile();
-    const updatedData = { ...currentData, ...data };
-    localStorage.setItem('schoolProfile', JSON.stringify(updatedData));
-    return updatedData;
-  },
-
-  // Save logo URL to localStorage
-  uploadLogo(base64Image) {
-    const currentData = this.getSchoolProfile();
-    currentData.logoUrl = base64Image;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  },
-
-  // Save mascot URL to localStorage
-  uploadMascot(base64Image) {
-    const currentData = this.getSchoolProfile();
-    currentData.mascotUrl = base64Image;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  },
-
-  // Reset logo to default
-  resetLogo() {
-    const currentData = this.getSchoolProfile();
-    currentData.logoUrl = null;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  },
-
-  // Delete mascot
-  deleteMascot() {
-    const currentData = this.getSchoolProfile();
-    currentData.mascotUrl = null;
-    localStorage.setItem('schoolProfile', JSON.stringify(currentData));
-    return currentData;
-  }
-};
+import api from '../../utils/api';
+import { API_ENDPOINTS } from '../../utils/apiConfig';
 
 function ProfileSekolah() {
-  const navigate = useNavigate();
   const logoInputRef = useRef(null);
   const maskotInputRef = useRef(null);
 
@@ -105,43 +36,61 @@ function ProfileSekolah() {
   const [maskotFile, setMaskotFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  const normalizeFromSettings = (settings = {}) => ({
+    namaSekolah: settings.school_name || '',
+    npsn: settings.school_npsn || '',
+    akreditasi: settings.school_accreditation || 'A',
+    jenisSekolah: settings.school_type || '',
+    kepalaSekolah: settings.school_headmaster || '',
+    nipKepalaSekolah: settings.school_headmaster_nip || '',
+    jalan: settings.school_address || '',
+    kelurahan: settings.school_subdistrict || '',
+    kecamatan: settings.school_district || '',
+    kabupatenKota: settings.school_city || '',
+    provinsi: settings.school_province || '',
+    kodePos: settings.school_postal_code || '',
+    nomorTelepon: settings.school_phone || '',
+    email: settings.school_email || ''
+  });
+
+  const toSettingsPayload = (data = {}) => ({
+    school_name: data.namaSekolah || '',
+    school_npsn: data.npsn || '',
+    school_accreditation: data.akreditasi || '',
+    school_type: data.jenisSekolah || '',
+    school_headmaster: data.kepalaSekolah || '',
+    school_headmaster_nip: data.nipKepalaSekolah || '',
+    school_address: data.jalan || '',
+    school_subdistrict: data.kelurahan || '',
+    school_district: data.kecamatan || '',
+    school_city: data.kabupatenKota || '',
+    school_province: data.provinsi || '',
+    school_postal_code: data.kodePos || '',
+    school_phone: data.nomorTelepon || '',
+    school_email: data.email || ''
+  });
+
   useEffect(() => {
     fetchSchoolProfile();
   }, []);
 
-  const fetchSchoolProfile = () => {
+  const fetchSchoolProfile = async () => {
     try {
       setLoading(true);
-
-      // Simulate API delay
-      setTimeout(() => {
-        const data = dummyDataService.getSchoolProfile();
-
-        const profileData = {
-          namaSekolah: data.namaSekolah || '',
-          npsn: data.npsn || '',
-          akreditasi: data.akreditasi || 'A',
-          jenisSekolah: data.jenisSekolah || '',
-          kepalaSekolah: data.kepalaSekolah || '',
-          nipKepalaSekolah: data.nipKepalaSekolah || '',
-          jalan: data.jalan || '',
-          kelurahan: data.kelurahan || '',
-          kecamatan: data.kecamatan || '',
-          kabupatenKota: data.kabupatenKota || '',
-          provinsi: data.provinsi || '',
-          kodePos: data.kodePos || '',
-          nomorTelepon: data.nomorTelepon || '',
-          email: data.email || ''
-        };
-
-        setFormData(profileData);
-        setOriginalData(profileData);
-        setLogo(data.logoUrl || defaultLogo);
-        setMaskot(data.mascotUrl || null);
-        setLoading(false);
-      }, 500);
+      const result = await api.get(API_ENDPOINTS.settings);
+      const settings = result?.data || {};
+      const profileData = normalizeFromSettings(settings);
+      setFormData(profileData);
+      setOriginalData(profileData);
+      setLogo(settings.school_logo_url || defaultLogo);
+      setMaskot(settings.school_mascot_url || null);
     } catch (err) {
       console.error('Error fetching school profile:', err);
+      setFormData(normalizeFromSettings({}));
+      setOriginalData(normalizeFromSettings({}));
+      setLogo(defaultLogo);
+      setMaskot(null);
+    } finally {
       setLoading(false);
     }
   };
@@ -161,7 +110,7 @@ function ProfileSekolah() {
         alert('File harus berupa gambar!');
         return;
       }
-
+      
       if (file.size > 5 * 1024 * 1024) {
         alert('Ukuran file maksimal 5MB!');
         return;
@@ -183,7 +132,7 @@ function ProfileSekolah() {
         alert('File harus berupa gambar!');
         return;
       }
-
+      
       if (file.size > 5 * 1024 * 1024) {
         alert('Ukuran file maksimal 5MB!');
         return;
@@ -200,13 +149,10 @@ function ProfileSekolah() {
 
   const handleResetLogo = () => {
     if (!window.confirm('Kembalikan logo ke default?')) return;
-
+    
     try {
       setSaving(true);
-
-      // Simulate API delay
-      setTimeout(() => {
-        dummyDataService.resetLogo();
+      api.post(API_ENDPOINTS.settings, { delete_school_logo: true }).then(() => {
         setLogo(defaultLogo);
         setLogoFile(null);
         if (logoInputRef.current) {
@@ -214,7 +160,11 @@ function ProfileSekolah() {
         }
         alert('Logo berhasil direset ke default!');
         setSaving(false);
-      }, 300);
+      }).catch((error) => {
+        console.error('Error resetting logo:', error);
+        alert('Gagal mereset logo. Silakan coba lagi.');
+        setSaving(false);
+      });
     } catch (error) {
       console.error('Error resetting logo:', error);
       alert('Gagal mereset logo. Silakan coba lagi.');
@@ -224,13 +174,10 @@ function ProfileSekolah() {
 
   const handleRemoveMaskot = () => {
     if (!window.confirm('Hapus maskot?')) return;
-
+    
     try {
       setSaving(true);
-
-      // Simulate API delay
-      setTimeout(() => {
-        dummyDataService.deleteMascot();
+      api.post(API_ENDPOINTS.settings, { delete_school_mascot: true }).then(() => {
         setMaskot(null);
         setMaskotFile(null);
         if (maskotInputRef.current) {
@@ -238,7 +185,11 @@ function ProfileSekolah() {
         }
         alert('Maskot berhasil dihapus!');
         setSaving(false);
-      }, 300);
+      }).catch((error) => {
+        console.error('Error deleting mascot:', error);
+        alert('Gagal menghapus maskot. Silakan coba lagi.');
+        setSaving(false);
+      });
     } catch (error) {
       console.error('Error deleting mascot:', error);
       alert('Gagal menghapus maskot. Silakan coba lagi.');
@@ -246,38 +197,25 @@ function ProfileSekolah() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!window.confirm('Apakah Anda yakin ingin menyimpan perubahan?')) return;
-
+    
     try {
       setSaving(true);
+      const payload = new FormData();
+      Object.entries(toSettingsPayload(formData)).forEach(([k, v]) => payload.append(k, v));
+      if (logoFile) payload.append('school_logo', logoFile);
+      if (maskotFile) payload.append('school_mascot', maskotFile);
 
-      // Simulate API delay
-      setTimeout(() => {
-        // Upload logo jika ada perubahan
-        if (logoFile && logo !== defaultLogo) {
-          dummyDataService.uploadLogo(logo);
-        }
-
-        // Upload maskot jika ada perubahan
-        if (maskotFile) {
-          dummyDataService.uploadMascot(maskot);
-        }
-
-        // Update profile data
-        dummyDataService.updateSchoolProfile(formData);
-
-        alert('Data berhasil diperbarui!');
-        setIsEditing(false);
-        setLogoFile(null);
-        setMaskotFile(null);
-
-        // Refresh data
-        fetchSchoolProfile();
-        setSaving(false);
-      }, 800);
+      await api.post(API_ENDPOINTS.settings, payload);
+      alert('Data berhasil diperbarui!');
+      setIsEditing(false);
+      setLogoFile(null);
+      setMaskotFile(null);
+      await fetchSchoolProfile();
+      setSaving(false);
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Gagal memperbarui data. Silakan coba lagi.');
@@ -287,15 +225,15 @@ function ProfileSekolah() {
 
   const handleCancel = () => {
     if (!window.confirm('Batalkan perubahan?')) return;
-
+    
     // Reset to original data
     if (originalData) {
       setFormData(originalData);
     }
-
+    
     // Reset images
     fetchSchoolProfile();
-
+    
     // Reset file inputs
     if (logoInputRef.current) {
       logoInputRef.current.value = '';
@@ -303,7 +241,7 @@ function ProfileSekolah() {
     if (maskotInputRef.current) {
       maskotInputRef.current.value = '';
     }
-
+    
     setLogoFile(null);
     setMaskotFile(null);
     setIsEditing(false);
@@ -363,9 +301,9 @@ function ProfileSekolah() {
                   style={{ display: 'none' }}
                   disabled={!isEditing || saving}
                 />
-                <button
-                  type="button"
-                  onClick={handleResetLogo}
+                <button 
+                  type="button" 
+                  onClick={handleResetLogo} 
                   className="profil-btn-reset"
                   disabled={!isEditing || saving}
                 >
@@ -402,9 +340,9 @@ function ProfileSekolah() {
                   disabled={!isEditing || saving}
                 />
                 {maskot && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveMaskot}
+                  <button 
+                    type="button" 
+                    onClick={handleRemoveMaskot} 
                     className="profil-btn-hapus"
                     disabled={!isEditing || saving}
                   >
@@ -484,7 +422,7 @@ function ProfileSekolah() {
 
             <div className="profil-form-bagian">
               <h3 className="profil-bagian-judul">Kepala Sekolah</h3>
-
+              
               <div className="profil-form-baris">
                 <div className="profil-form-grup">
                   <label className="profil-form-label">Nama Kepala Sekolah</label>
@@ -516,7 +454,7 @@ function ProfileSekolah() {
 
             <div className="profil-form-bagian">
               <h3 className="profil-bagian-judul">Alamat & Kontak</h3>
-
+              
               <div className="profil-form-grup lebar-penuh">
                 <label className="profil-form-label">Alamat Jalan</label>
                 <input
@@ -631,9 +569,9 @@ function ProfileSekolah() {
             {/* Action Buttons */}
             <div className="profil-form-aksi">
               {!isEditing ? (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
+                <button 
+                  type="button" 
+                  onClick={() => setIsEditing(true)} 
                   className="profil-btn-edit"
                   disabled={saving}
                 >
@@ -642,17 +580,17 @@ function ProfileSekolah() {
                 </button>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={handleCancel}
+                  <button 
+                    type="button" 
+                    onClick={handleCancel} 
                     className="profil-btn-batal"
                     disabled={saving}
                   >
                     <i className="fas fa-times"></i>
                     Batal
                   </button>
-                  <button
-                    type="submit"
+                  <button 
+                    type="submit" 
                     className="profil-btn-simpan"
                     disabled={saving}
                   >

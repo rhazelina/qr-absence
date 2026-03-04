@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './KehadiranSiswaIndex.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaBriefcase, FaChevronDown, FaDoorOpen, FaEye, FaInbox, FaSpinner, FaTable, FaUser } from 'react-icons/fa';
+import api from '../../utils/api';
 
 function KehadiranSiswaIndex() {
   const navigate = useNavigate();
@@ -13,88 +14,28 @@ function KehadiranSiswaIndex() {
 
   const jurusanList = ['RPL', 'TKJ', 'MM', 'AN', 'BC', 'EI', 'MT', 'AV'];
   const kelasOptions = ['X', 'XI', 'XII'];
-  
-
-  // Dummy data sesuai screenshot
-  const dummyData = [
-    // RPL
-    { id: 1, nama_kelas: "X RPL 1", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "" },
-    { id: 2, nama_kelas: "X RPL 2", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "" },
-    { id: 3, nama_kelas: "X RPL 3", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "" },
-    { id: 4, nama_kelas: "XI RPL 1", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "" },
-    { id: 5, nama_kelas: "XI RPL 2", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "" },
-    { id: 6, nama_kelas: "XI RPL 3", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "" },
-    { id: 7, nama_kelas: "XII RPL 1", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "RR. Henning Gratyanis Anggraeni, S.Pd" },
-    { id: 8, nama_kelas: "XII RPL 2", jurusan: { nama_jurusan: "RPL" }, wali_kelas: "Triana Andriani, S.Pd" },
-
-    // TKJ
-    { id: 9, nama_kelas: "X TKJ 1", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 10, nama_kelas: "X TKJ 2", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 11, nama_kelas: "X TKJ 3", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 12, nama_kelas: "XI TKJ 1", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 13, nama_kelas: "XI TKJ 2", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 14, nama_kelas: "XI TKJ 3", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 15, nama_kelas: "XII TKJ 1", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-    { id: 16, nama_kelas: "XII TKJ 2", jurusan: { nama_jurusan: "TKJ" }, wali_kelas: "" },
-
-    // DKV
-    { id: 17, nama_kelas: "X DKV 1", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 18, nama_kelas: "X DKV 2", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 19, nama_kelas: "X DKV 3", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 20, nama_kelas: "XI DKV 1", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 21, nama_kelas: "XI DKV 2", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 22, nama_kelas: "XI DKV 3", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 23, nama_kelas: "XII DKV 1", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 24, nama_kelas: "XII DKV 2", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-    { id: 25, nama_kelas: "XII DKV 3", jurusan: { nama_jurusan: "DKV" }, wali_kelas: "" },
-
-    // AN
-    { id: 26, nama_kelas: "X AN 1", jurusan: { nama_jurusan: "AN" }, wali_kelas: "" },
-    { id: 27, nama_kelas: "X AN 2", jurusan: { nama_jurusan: "AN" }, wali_kelas: "" },
-    { id: 28, nama_kelas: "XI AN 1", jurusan: { nama_jurusan: "AN" }, wali_kelas: "" },
-    { id: 29, nama_kelas: "XI AN 2", jurusan: { nama_jurusan: "AN" }, wali_kelas: "" },
-    { id: 30, nama_kelas: "XII AN 1", jurusan: { nama_jurusan: "AN" }, wali_kelas: "" },
-    { id: 31, nama_kelas: "XII AN 2", jurusan: { nama_jurusan: "AN" }, wali_kelas: "" },
-
-    // BC
-    { id: 32, nama_kelas: "X BC 1", jurusan: { nama_jurusan: "BC" }, wali_kelas: "" },
-    { id: 33, nama_kelas: "X BC 2", jurusan: { nama_jurusan: "BC" }, wali_kelas: "" },
-    { id: 34, nama_kelas: "XI BC 1", jurusan: { nama_jurusan: "BC" }, wali_kelas: "" },
-    { id: 35, nama_kelas: "XI BC 2", jurusan: { nama_jurusan: "BC" }, wali_kelas: "" },
-    { id: 36, nama_kelas: "XII BC 1", jurusan: { nama_jurusan: "BC" }, wali_kelas: "" },
-    { id: 37, nama_kelas: "XII BC 2", jurusan: { nama_jurusan: "BC" }, wali_kelas: "" },
-
-    // EI
-    { id: 38, nama_kelas: "X EI 1", jurusan: { nama_jurusan: "EI" }, wali_kelas: "" },
-    { id: 39, nama_kelas: "X EI 2", jurusan: { nama_jurusan: "EI" }, wali_kelas: "" },
-    { id: 40, nama_kelas: "XI EI 1", jurusan: { nama_jurusan: "EI" }, wali_kelas: "" },
-    { id: 41, nama_kelas: "XI EI 2", jurusan: { nama_jurusan: "EI" }, wali_kelas: "" },
-    { id: 42, nama_kelas: "XII EI 1", jurusan: { nama_jurusan: "EI" }, wali_kelas: "" },
-    { id: 43, nama_kelas: "XII EI 2", jurusan: { nama_jurusan: "EI" }, wali_kelas: "" },
-
-    // MT
-    { id: 44, nama_kelas: "X MT 1", jurusan: { nama_jurusan: "MT" }, wali_kelas: "" },
-    { id: 45, nama_kelas: "X MT 2", jurusan: { nama_jurusan: "MT" }, wali_kelas: "" },
-    { id: 46, nama_kelas: "XI MT 1", jurusan: { nama_jurusan: "MT" }, wali_kelas: "" },
-    { id: 47, nama_kelas: "XI MT 2", jurusan: { nama_jurusan: "MT" }, wali_kelas: "" },
-    { id: 48, nama_kelas: "XII MT 1", jurusan: { nama_jurusan: "MT" }, wali_kelas: "" },
-    { id: 49, nama_kelas: "XII MT 2", jurusan: { nama_jurusan: "MT" }, wali_kelas: "" },
-
-    // AV 
-    { id: 50, nama_kelas: "X AV 1", jurusan: { nama_jurusan: "AV" }, wali_kelas: "" },
-    { id: 51, nama_kelas: "X AV 2", jurusan: { nama_jurusan: "AV" }, wali_kelas: "" },
-    { id: 52, nama_kelas: "XI AV 1", jurusan: { nama_jurusan: "AV" }, wali_kelas: "" },
-    { id: 53, nama_kelas: "XI AV 2", jurusan: { nama_jurusan: "AV" }, wali_kelas: "" },
-    { id: 54, nama_kelas: "XII AV 1", jurusan: { nama_jurusan: "AV" }, wali_kelas: "" },
-    { id: 55, nama_kelas: "XII AV 2", jurusan: { nama_jurusan: "AV" }, wali_kelas: "" }
-];
 
   useEffect(() => {
-    // Simulasi loading data
-    setTimeout(() => {
-      setKelasList(dummyData);
-      setLoading(false);
-    }, 500);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get('/classes', { per_page: 1000 });
+        const rows = Array.isArray(response?.data) ? response.data : [];
+        const mapped = rows.map((item) => ({
+          id: item.id,
+          nama_kelas: item.class_name || item.name || '-',
+          jurusan: { nama_jurusan: item.major || item.major_name || '-' },
+          wali_kelas: item.homeroom_teacher_name || '-',
+        }));
+        setKelasList(mapped);
+      } catch (error) {
+        console.error('Error loading kelas:', error);
+        setKelasList([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   const filteredKelasList = kelasList.filter(kelas => {

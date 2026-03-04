@@ -10,7 +10,9 @@ import {
   FileText,
   Download,
   Search,
-  X
+  X,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { masterService, type Major, type ClassRoom } from '../../services/masterService';
 import { studentService } from '../../services/studentService';
@@ -447,7 +449,20 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       alert(`Berhasil ${editingId ? 'memperbarui' : 'menambahkan'} data siswa.`);
     } catch (err: any) {
       console.error('Failed to save student:', err);
-      alert('Gagal menyimpan data siswa: ' + (err.response?.data?.message || err.message));
+      const backendErrors = (err?.fieldErrors || {}) as Record<string, string[]>;
+      const mappedErrors: Record<string, string> = {};
+
+      if (backendErrors.name?.[0]) mappedErrors.namaSiswa = backendErrors.name[0];
+      if (backendErrors.nisn?.[0]) mappedErrors.nisn = backendErrors.nisn[0];
+      if (backendErrors.gender?.[0]) mappedErrors.jenisKelamin = backendErrors.gender[0];
+      if (backendErrors.class_id?.[0]) mappedErrors.kelasId = backendErrors.class_id[0];
+      if (backendErrors.parent_phone?.[0]) mappedErrors.noTelp = backendErrors.parent_phone[0];
+
+      if (Object.keys(mappedErrors).length > 0) {
+        setFormErrors((prev) => ({ ...prev, ...mappedErrors }));
+      } else {
+        alert('Gagal menyimpan data siswa: ' + err.message);
+      }
     }
   };
 
@@ -1219,79 +1234,110 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
       <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept=".csv,.xlsx" />
 
-      {/* MODAL */}
+      {/* MODAL TAMBAH/EDIT SISWA */}
       {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
-          padding: '20px'
-        }} onClick={handleCloseModal}>
-          <div style={{
-            backgroundColor: '#0B1221', borderRadius: '16px', padding: '24px',
-            maxWidth: '500px', width: '100%', maxHeight: '90vh', display: 'flex',
-            flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#FFFFFF' }}>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-5 pt-20 overflow-y-auto"
+          onClick={handleCloseModal}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)] mb-20"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+              <h2 className="m-0 text-xl font-bold text-[#0B2948]">
                 {editingId ? 'Edit Data Siswa' : 'Tambah Data Siswa'}
               </h2>
-              <button onClick={handleCloseModal} style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: '6px', display: 'flex' }}>
-                <X size={18} color="#FFFFFF" />
+              <button
+                onClick={handleCloseModal}
+                className="bg-gray-100/80 hover:bg-gray-200 border-none cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center text-gray-500 hover:text-gray-700"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '10px', padding: '18px', overflowY: 'auto' }}>
+            <div className="bg-white rounded-lg overflow-y-visible">
               <form onSubmit={handleSubmitForm}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Nama Siswa *</label>
-                    <input type="text" value={formData.namaSiswa} onChange={e => { setFormData({ ...formData, namaSiswa: e.target.value }); validateField('namaSiswa', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    {formErrors.namaSiswa && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.namaSiswa}</p>}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nama Siswa <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={formData.namaSiswa}
+                      onChange={e => { setFormData({ ...formData, namaSiswa: e.target.value }); validateField('namaSiswa', e.target.value) }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
+                      placeholder="Masukkan nama lengkap"
+                    />
+                    {formErrors.namaSiswa && <p className="text-red-500 text-[10px] mt-1">{formErrors.namaSiswa}</p>}
                   </div>
 
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>NISN *</label>
-                    <input type="text" value={formData.nisn} onChange={e => { setFormData({ ...formData, nisn: e.target.value }); validateField('nisn', e.target.value) }} placeholder="10 digit NISN" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    {formErrors.nisn && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.nisn}</p>}
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">NISN <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={formData.nisn}
+                      onChange={e => { setFormData({ ...formData, nisn: e.target.value }); validateField('nisn', e.target.value) }}
+                      placeholder="10 digit NISN"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
+                    />
+                    {formErrors.nisn && <p className="text-red-500 text-[10px] mt-1">{formErrors.nisn}</p>}
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Jenis Kelamin *</label>
-                    <select value={formData.jenisKelamin} onChange={e => setFormData({ ...formData, jenisKelamin: e.target.value as 'L' | 'P' })} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jenis Kelamin <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.jenisKelamin}
+                      onChange={e => setFormData({ ...formData, jenisKelamin: e.target.value as 'L' | 'P' })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
+                    >
                       <option value="L">Laki-Laki</option>
                       <option value="P">Perempuan</option>
                     </select>
+                    {formErrors.jenisKelamin && <p className="text-red-500 text-[10px] mt-1">{formErrors.jenisKelamin}</p>}
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>No. Telepon</label>
-                    <input type="text" value={formData.noTelp} onChange={e => { setFormData({ ...formData, noTelp: e.target.value }); validateField('noTelp', e.target.value) }} placeholder="Maks 15 digit" style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }} />
-                    {formErrors.noTelp && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.noTelp}</p>}
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">No. Telepon</label>
+                    <input
+                      type="text"
+                      value={formData.noTelp}
+                      onChange={e => { setFormData({ ...formData, noTelp: e.target.value }); validateField('noTelp', e.target.value) }}
+                      placeholder="Maks 15 digit"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
+                    />
+                    {formErrors.noTelp && <p className="text-red-500 text-[10px] mt-1">{formErrors.noTelp}</p>}
                   </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Konsentrasi Keahlian *</label>
-                    <select value={formData.jurusanId} onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', kelasLabel: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
-                      <option value="">Pilih</option>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Konsentrasi Keahlian <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.jurusanId}
+                      onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', kelasLabel: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
+                    >
+                      <option value="">Pilih Konsentrasi Keahlian</option>
                       {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    {formErrors.jurusanId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.jurusanId}</p>}
+                    {formErrors.jurusanId && <p className="text-red-500 text-[10px] mt-1">{formErrors.jurusanId}</p>}
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Tingkatan *</label>
-                    <select value={formData.tingkatan} onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '', kelasLabel: '' }); validateField('tingkatan', e.target.value) }} style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tingkatan <span className="text-red-500">*</span></label>
+                    <select
+                      value={formData.tingkatan}
+                      onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '', kelasLabel: '' }); validateField('tingkatan', e.target.value) }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
+                    >
                       <option value="">Pilih</option>
                       <option value="10">10</option>
                       <option value="11">11</option>
                       <option value="12">12</option>
                     </select>
-                    {formErrors.tingkatan && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.tingkatan}</p>}
+                    {formErrors.tingkatan && <p className="text-red-500 text-[10px] mt-1">{formErrors.tingkatan}</p>}
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '5px' }}>Kelas *</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Kelas <span className="text-red-500">*</span></label>
                     <select
                       value={formData.kelasLabel}
                       onChange={(e) => {
@@ -1300,9 +1346,9 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                         setFormData({ ...formData, kelasLabel: label, kelasId: classId });
                         validateField('kelasId', classId);
                       }}
-                      style={{ width: '100%', padding: '9px 12px', border: '1px solid #D1D5DB', borderRadius: '6px' }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
                     >
-                      <option value="">Pilih</option>
+                      <option value="">Pilih Kelas</option>
                       {filterClassLabels(
                         getMajorCode(jurusanOptions.find(j => j.value === formData.jurusanId)?.rawName),
                         formData.tingkatan
@@ -1310,14 +1356,71 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
                         <option key={label} value={label}>{label}</option>
                       ))}
                     </select>
-                    {formErrors.kelasId && <p style={{ color: '#EF4444', fontSize: '10px' }}>{formErrors.kelasId}</p>}
+                    {formErrors.kelasId && <p className="text-red-500 text-[10px] mt-1">{formErrors.kelasId}</p>}
+                  </div>
+
+                  {/* Year Stepper (Tahun Angkatan) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Mulai Angkatan</label>
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        readOnly
+                        value={formData.tahunMulai}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-default text-sm text-gray-900 bg-gray-50 group-hover:border-blue-400 transition-colors"
+                      />
+                      <div className="absolute right-1 top-1 bottom-1 flex flex-col justify-between p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, tahunMulai: (parseInt(p.tahunMulai) + 1).toString(), tahunAkhir: (parseInt(p.tahunAkhir) + 1).toString() }))}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pb-0.5 flex items-center justify-center transition-colors h-[12px]"
+                        >
+                          <ChevronUp size={12} strokeWidth={3} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, tahunMulai: (parseInt(p.tahunMulai) - 1).toString(), tahunAkhir: (parseInt(p.tahunAkhir) - 1).toString() }))}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pt-0.5 flex items-center justify-center transition-colors h-[12px]"
+                        >
+                          <ChevronDown size={12} strokeWidth={3} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Akhir Angkatan</label>
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        readOnly
+                        value={formData.tahunAkhir}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-default text-sm text-gray-900 bg-gray-50 group-hover:border-blue-400 transition-colors"
+                      />
+                      <div className="absolute right-1 top-1 bottom-1 flex flex-col justify-between p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, tahunAkhir: (parseInt(p.tahunAkhir) + 1).toString() }))}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pb-0.5 flex items-center justify-center transition-colors h-[12px]"
+                        >
+                          <ChevronUp size={12} strokeWidth={3} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, tahunAkhir: (parseInt(p.tahunAkhir) - 1).toString() }))}
+                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pt-0.5 flex items-center justify-center transition-colors h-[12px]"
+                        >
+                          <ChevronDown size={12} strokeWidth={3} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                 </div>
 
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={handleCloseModal} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #D1D5DB', background: '#FFFFFF', cursor: 'pointer' }}>Batal</button>
-                  <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFFFFF', cursor: 'pointer' }}>Simpan</button>
+                <div className="mt-8 flex gap-3 justify-end border-t border-gray-100 pt-5">
+                  <button type="button" onClick={handleCloseModal} className="px-5 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold cursor-pointer transition-colors focus:ring-2 focus:ring-gray-200 outline-none">Batal</button>
+                  <button type="submit" className="px-5 py-2 rounded-lg border-none bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none">Simpan Data</button>
                 </div>
               </form>
             </div>

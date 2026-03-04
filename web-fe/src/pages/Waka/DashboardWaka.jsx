@@ -12,22 +12,16 @@ import {
 import "./DashboardWaka.css";
 import { useNavigate } from "react-router-dom";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
+import api from "../../utils/api";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-// ============================================================
-// ⚙️  DUMMY DATA & MOCK (untuk testing) — hapus saat production
-// ============================================================
-
-// 🧪 Rekap statistik per semester — ganti dengan data dari API saat production
-// Dihitung berdasarkan _DUMMY_REKAP dari KehadiranSiswaRekap (36 siswa XII RPL 1)
-const _DUMMY_STATISTIK = {
-  ganjil: { hadir: 612, izin: 22, sakit: 31, alfa: 9, pulang: 5,  dispen: 6  },
-  genap:  { hadir: 588, izin: 18, sakit: 27, alfa: 6, pulang: 8,  dispen: 12 },
+const DEFAULT_STATISTIK = {
+  ganjil: { hadir: 0, izin: 0, sakit: 0, alfa: 0, pulang: 0, dispen: 0 },
+  genap: { hadir: 0, izin: 0, sakit: 0, alfa: 0, pulang: 0, dispen: 0 },
 };
 
-// 🧪 Data chart per bulan — ganti dengan data dari API saat production
-const _DUMMY_CHART = {
+const DEFAULT_CHART = {
   ganjil: {
     labels: ["Jul", "Agu", "Sep", "Okt", "Nov", "Des"],
     datasets: [
@@ -112,10 +106,6 @@ const _DUMMY_CHART = {
   },
 };
 
-// ============================================================
-// 🔚 AKHIR DUMMY DATA
-// ============================================================
-
 export default function DashboardWaka() {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
@@ -129,13 +119,57 @@ export default function DashboardWaka() {
   }, []);
 
   useEffect(() => {
-    // 🧪 Gunakan dummy data — ganti dengan API call saat production
-    // Contoh:
-    // fetchStatistikData().then(data => setStatistikData(data));
-    // fetchChartData().then(data => setChartData(data));
+    const load = async () => {
+      try {
+        const summary = await api.get('/waka/dashboard/summary');
+        const stats = {
+          hadir: summary?.hadir || 0,
+          izin: summary?.izin || 0,
+          sakit: summary?.sakit || 0,
+          alfa: summary?.alpha || summary?.alfa || 0,
+          pulang: summary?.pulang || 0,
+          dispen: summary?.dispen || 0,
+        };
+        setStatistikData({ ganjil: stats, genap: stats });
+      } catch {
+        setStatistikData(DEFAULT_STATISTIK);
+      }
 
-    setStatistikData(_DUMMY_STATISTIK);
-    setChartData(_DUMMY_CHART);
+      try {
+        const summary = await api.get('/waka/attendance/summary');
+        const statusRows = Array.isArray(summary?.status_summary) ? summary.status_summary : [];
+        const stat = { hadir: 0, izin: 0, sakit: 0, alfa: 0, pulang: 0, dispen: 0 };
+        statusRows.forEach((row) => {
+          const key = String(row.status || '').toLowerCase();
+          const total = Number(row.total || 0);
+          if (key === 'present') stat.hadir += total;
+          if (key === 'late') stat.hadir += total;
+          if (key === 'izin' || key === 'excused') stat.izin += total;
+          if (key === 'sick') stat.sakit += total;
+          if (key === 'absent') stat.alfa += total;
+          if (key === 'return') stat.pulang += total;
+          if (key === 'dinas') stat.dispen += total;
+        });
+        const buildSeries = (labels) => ({
+          labels,
+          datasets: [
+            { label: "Hadir", data: labels.map(() => stat.hadir), backgroundColor: "#22c55e", borderRadius: 6 },
+            { label: "Sakit", data: labels.map(() => stat.sakit), backgroundColor: "#a855f7", borderRadius: 6 },
+            { label: "Izin", data: labels.map(() => stat.izin), backgroundColor: "#eab308", borderRadius: 6 },
+            { label: "Alfa", data: labels.map(() => stat.alfa), backgroundColor: "#ef4444", borderRadius: 6 },
+            { label: "Pulang", data: labels.map(() => stat.pulang), backgroundColor: "#3b82f6", borderRadius: 6 },
+            { label: "Dispen", data: labels.map(() => stat.dispen), backgroundColor: "#ec4899", borderRadius: 6 },
+          ]
+        });
+        setChartData({
+          ganjil: buildSeries(["Jul", "Agu", "Sep", "Okt", "Nov", "Des"]),
+          genap: buildSeries(["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"]),
+        });
+      } catch {
+        setChartData(DEFAULT_CHART);
+      }
+    };
+    load();
   }, []);
 
   const statistik = statistikData[selectedSemester] || {};

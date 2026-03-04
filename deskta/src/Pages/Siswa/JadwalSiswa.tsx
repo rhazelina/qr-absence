@@ -74,6 +74,15 @@ export default function JadwalSiswa({
 
     // Group items by day
     const dayOrder: any = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 7 };
+    const DAY_LABEL_ID: Record<string, string> = {
+        'Monday': 'Senin',
+        'Tuesday': 'Selasa',
+        'Wednesday': 'Rabu',
+        'Thursday': 'Kamis',
+        'Friday': 'Jumat',
+        'Saturday': 'Sabtu',
+        'Sunday': 'Minggu'
+    };
     const groupedSchedules = schedules.reduce((acc: any, item: any) => {
         const day = item.day || 'Unknown';
         if (!acc[day]) acc[day] = [];
@@ -204,7 +213,7 @@ export default function JadwalSiswa({
                                     color: "#334155",
                                     borderBottom: "1px solid #E2E8F0"
                                 }}>
-                                    {day}
+                                    {DAY_LABEL_ID[day] || day}
                                 </div>
                                 <div style={{ padding: "0 10px" }}>
                                     {groupedSchedules[day]

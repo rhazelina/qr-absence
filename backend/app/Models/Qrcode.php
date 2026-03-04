@@ -43,6 +43,7 @@ class Qrcode extends Model
             $expires = Carbon::parse($expires);
         }
 
-        return $expires instanceof Carbon && $expires->isPast();
+        // Tambahkan toleransi 15 menit untuk masa berlaku QR
+        return $expires instanceof Carbon && $expires->addMinutes(15)->isPast();
     }
 }

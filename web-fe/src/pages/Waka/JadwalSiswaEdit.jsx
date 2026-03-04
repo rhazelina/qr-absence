@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import './JadwalSiswaEdit.css';
 import NavbarWaka from '../../components/Waka/NavbarWaka';
 import { FaEdit, FaArrowLeft } from 'react-icons/fa';
+import api from '../../utils/api';
 
 function JadwalSiswaEdit() {
   const navigate = useNavigate();
@@ -25,28 +26,15 @@ function JadwalSiswaEdit() {
 
   const fetchJadwalSiswa = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/jadwal-siswa/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const data = await api.get(`/classes/${id}`);
+      setFormData({
+        kompetensi_keahlian: data?.major || data?.major_name || '',
+        wali_kelas: data?.homeroom_teacher_name || '',
+        kelas: data?.class_name || data?.name || '',
+        gambar_jadwal: null
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          kompetensi_keahlian: data.kompetensi_keahlian || '',
-          wali_kelas: data.wali_kelas || '',
-          kelas: data.kelas || '',
-          gambar_jadwal: null
-        });
-
-        if (data.gambar_jadwal) {
-          setPreviewImage(`http://localhost:5000${data.gambar_jadwal}`);
-        }
-      } else {
-        console.error('Gagal memuat data jadwal siswa');
-        alert('Gagal memuat data jadwal siswa');
+      if (data?.schedule_image_url) {
+        setPreviewImage(data.schedule_image_url);
       }
     } catch (error) {
       console.error('Error fetching jadwal siswa:', error);
@@ -89,37 +77,18 @@ function JadwalSiswaEdit() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const formDataToSend = new FormData();
-
-      formDataToSend.append('kompetensi_keahlian', formData.kompetensi_keahlian);
-      formDataToSend.append('wali_kelas', formData.wali_kelas);
-      formDataToSend.append('kelas', formData.kelas);
-
       if (formData.gambar_jadwal) {
-        formDataToSend.append('gambar_jadwal', formData.gambar_jadwal);
+        const formDataToSend = new FormData();
+        formDataToSend.append('file', formData.gambar_jadwal);
+        await api.post(`/classes/${id}/schedule-image`, formDataToSend);
       }
-
-      const response = await fetch(`http://localhost:5000/api/jadwal-siswa/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formDataToSend
+      alert('Jadwal siswa berhasil diperbarui');
+      navigate('/waka/jadwal-siswa', {
+        state: {
+          message: 'Jadwal siswa berhasil diperbarui',
+          type: 'success'
+        }
       });
-
-      if (response.ok) {
-        alert('Jadwal siswa berhasil diperbarui');
-        navigate('/waka/jadwal-siswa', {
-          state: {
-            message: 'Jadwal siswa berhasil diperbarui',
-            type: 'success'
-          }
-        });
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Gagal memperbarui jadwal siswa');
-      }
     } catch (error) {
       console.error('Error updating jadwal siswa:', error);
       alert('Terjadi kesalahan saat memperbarui jadwal siswa');

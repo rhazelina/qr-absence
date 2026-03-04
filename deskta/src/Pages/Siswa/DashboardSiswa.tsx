@@ -193,12 +193,12 @@ export default function DashboardSiswa({ user, onLogout }: DashboardSiswaProps) 
             return acc;
           }, {});
           setWeeklyStats({
-            hadir: (summaryMap.present || 0) + (summaryMap.late || 0),
+            hadir: (summaryMap.present || 0) + (summaryMap.late || 0) + (summaryMap.hadir || 0),
             izin: (summaryMap.excused || 0) + (summaryMap.permission || 0) + (summaryMap.izin || 0),
-            sakit: summaryMap.sick || 0,
-            alpha: summaryMap.absent || 0,
-            pulang: summaryMap.return || 0,
-            dispen: summaryMap.dispen || 0
+            sakit: (summaryMap.sick || 0) + (summaryMap.sakit || 0),
+            alpha: (summaryMap.absent || 0) + (summaryMap.alfa || 0),
+            pulang: (summaryMap.return || 0) + (summaryMap.pulang || 0),
+            dispen: (summaryMap.dispen || 0) + (summaryMap.dispensasi || 0)
           });
         }
 

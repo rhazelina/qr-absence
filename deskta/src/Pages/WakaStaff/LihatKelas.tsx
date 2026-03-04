@@ -1,15 +1,18 @@
 // src/Pages/WakaStaff/LihatKelas.tsx
 import { useState, useEffect } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import DummyJadwal from "../../assets/Icon/DummyJadwal.png";
+import { masterService } from "../../services/masterService";
 
 interface Props {
   user: { name: string; role: string };
   onLogout: () => void;
   currentPage: string;
   onMenuClick: (page: string) => void;
+  kelasId?: string;
   kelas?: string;
+  waliKelas?: string;
   jadwalImage?: string;
   onBack?: () => void;
 }
@@ -19,19 +22,58 @@ export default function LihatKelas({
   onLogout,
   currentPage,
   onMenuClick,
+  kelasId,
   kelas = "X Mekatronika 1",
+  waliKelas = "-",
   jadwalImage,
   onBack,
 }: Props) {
   const [imageError, setImageError] = useState(false);
+  const [classData, setClassData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!kelasId) return;
+
+    const fetchClassDetail = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await masterService.getClassById(kelasId);
+        setClassData(response?.data || response || null);
+      } catch (err: any) {
+        setError(err?.message || "Gagal memuat detail kelas.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClassDetail();
+  }, [kelasId]);
 
   useEffect(() => {
     setImageError(false);
-  }, [jadwalImage]);
+  }, [jadwalImage, classData]);
 
   const handleImageError = () => {
     setImageError(true);
   };
+
+  const withCacheBuster = (url?: string | null, version?: string) => {
+    if (!url) return url;
+    if (url.includes("t=") || url.includes("v=")) return url;
+    const suffix = version ? `v=${encodeURIComponent(version)}` : `t=${Date.now()}`;
+    return `${url}${url.includes("?") ? "&" : "?"}${suffix}`;
+  };
+
+  const resolvedClassName = classData?.name || classData?.class_name || kelas;
+  const resolvedHomeroom = classData?.homeroom_teacher_name || waliKelas || "-";
+  const resolvedMajor = classData?.major_name || classData?.major?.name || classData?.major?.code || "-";
+  const resolvedImage = withCacheBuster(
+    classData?.schedule_image_url || jadwalImage,
+    classData?.updated_at
+  );
 
   return (
     <StaffLayout
@@ -85,15 +127,72 @@ export default function LihatKelas({
             fontSize: 18,
           }}
         >
-          {kelas}
+          {resolvedClassName}
         </div>
 
-        <div style={{ fontSize: 13, color: "#64748B" }}>
-          Jadwal ditampilkan sebagai gambar (PNG / JPG / JPEG).
+        <div
+          style={{
+            background: "#FFFFFF",
+            border: "1px solid #E5E7EB",
+            borderRadius: 12,
+            padding: "14px 16px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, color: "#64748B" }}>
+            Wali Kelas
+            <div style={{ fontSize: 14, color: "#111827", fontWeight: 700, marginTop: 2 }}>
+              {resolvedHomeroom}
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: "#64748B" }}>
+            Konsentrasi Keahlian
+            <div style={{ fontSize: 14, color: "#111827", fontWeight: 700, marginTop: 2 }}>
+              {resolvedMajor}
+            </div>
+          </div>
+          <div style={{ fontSize: 13, color: "#64748B" }}>
+            Catatan
+            <div style={{ fontSize: 14, color: "#111827", fontWeight: 600, marginTop: 2 }}>
+              Jadwal ditampilkan sebagai gambar (PNG / JPG / JPEG)
+            </div>
+          </div>
         </div>
 
         <div style={{ background: "#FFFFFF", borderRadius: 14, padding: 16 }}>
-          {imageError || !jadwalImage ? (
+          {loading ? (
+            <div
+              style={{
+                width: "100%",
+                minHeight: 300,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "column",
+                gap: 10,
+                color: "#6B7280",
+              }}
+            >
+              <Loader2 size={28} className="animate-spin" />
+              <span>Memuat detail kelas...</span>
+            </div>
+          ) : error ? (
+            <div
+              style={{
+                width: "100%",
+                minHeight: 200,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#B91C1C",
+                fontWeight: 700,
+              }}
+            >
+              {error}
+            </div>
+          ) : imageError || !resolvedImage ? (
             <div
               style={{
                 width: "100%",
@@ -116,7 +215,7 @@ export default function LihatKelas({
             </div>
           ) : (
             <img
-              src={`${jadwalImage}${jadwalImage.includes('?') ? '&' : '?'}t=${Date.now()}`}
+              src={`${resolvedImage}${resolvedImage.includes('?') ? '&' : '?'}t=${Date.now()}`}
               alt="Jadwal Kelas"
               style={{
                 width: "100%",

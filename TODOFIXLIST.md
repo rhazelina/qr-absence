@@ -423,3 +423,4 @@
   - **Issue:** The "Jadwal Hari Ini" feature used for scanning and recording daily attendance is missing from the Guru dashboard.
   - **Action:** Implement the "Jadwal Hari Ini" section on the Guru dashboard in Deskta, including functionality for QR scanning and attendance recording.
   - **Fix:** GuruDashboard.tsx has Jadwal Hari Ini section with schedule display and scan button.
+Update Waka Integration Status\n

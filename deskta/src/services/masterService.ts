@@ -29,8 +29,28 @@ export const masterService = {
     return handleResponse(response);
   },
 
-  getClasses: async () => {
-    const response = await fetch(`${API_BASE_URL}/classes`, {
+  getClasses: async (params?: Record<string, any>) => {
+    let url = `${API_BASE_URL}/classes`;
+    if (params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      const queryString = searchParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+    }
+    const response = await fetch(url, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  getClassById: async (id: string | number) => {
+    const response = await fetch(`${API_BASE_URL}/classes/${id}`, {
       headers: getHeaders()
     });
     return handleResponse(response);
@@ -38,6 +58,13 @@ export const masterService = {
 
   getSubjects: async () => {
     const response = await fetch(`${API_BASE_URL}/subjects`, {
+      headers: getHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  getRooms: async () => {
+    const response = await fetch(`${API_BASE_URL}/rooms`, {
       headers: getHeaders()
     });
     return handleResponse(response);
@@ -114,7 +141,7 @@ export const masterService = {
   },
 
   getAvailableHomeroomTeachers: async (classId?: number) => {
-    const url = classId 
+    const url = classId
       ? `${API_BASE_URL}/available-homeroom-teachers?class_id=${classId}`
       : `${API_BASE_URL}/available-homeroom-teachers`;
     const response = await fetch(url, {

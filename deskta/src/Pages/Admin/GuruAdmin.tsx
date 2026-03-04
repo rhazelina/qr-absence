@@ -299,7 +299,22 @@ export default function GuruAdmin({
       fetchTeachers();
     } catch (err: any) {
       console.error(err);
-      alert('Gagal menambahkan guru: ' + (err.message || 'Unknown error'));
+      const backendErrors = (err?.fieldErrors || {}) as Record<string, string[]>;
+      const mappedErrors: Record<string, string> = {};
+
+      if (backendErrors.name?.[0]) mappedErrors.namaGuru = backendErrors.name[0];
+      if (backendErrors.nip?.[0]) mappedErrors.kodeGuru = backendErrors.nip[0];
+      if (backendErrors.jabatan?.[0]) mappedErrors.roles = backendErrors.jabatan[0];
+      if (backendErrors.subject?.[0]) mappedErrors.subjects = backendErrors.subject[0];
+      if (backendErrors.homeroom_class_id?.[0]) mappedErrors.waliKelasId = backendErrors.homeroom_class_id[0];
+      if (backendErrors.bidang?.[0]) mappedErrors.wakaField = backendErrors.bidang[0];
+      if (backendErrors.konsentrasi_keahlian?.[0]) mappedErrors.kaproField = backendErrors.konsentrasi_keahlian[0];
+
+      if (Object.keys(mappedErrors).length > 0) {
+        setFormErrors(prev => ({ ...prev, ...mappedErrors }));
+      } else {
+        alert('Gagal menambahkan guru: ' + (err.message || 'Unknown error'));
+      }
     }
   };
 

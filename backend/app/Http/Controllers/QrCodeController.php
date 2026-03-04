@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode as QrCodeFacade;
 
-
 class QrCodeController extends Controller
 {
     /**
@@ -113,7 +112,7 @@ class QrCodeController extends Controller
             }
         }
 
-        $expiresAt = now()->addMinutes($data['expires_in_minutes'] ?? 15);
+        $expiresAt = now()->addMinutes($data['expires_in_minutes'] ?? 45);
 
         // Prevent concurrent active QR generation
         $qr = \Illuminate\Support\Facades\DB::transaction(function () use ($schedule, $data, $request, $expiresAt) {

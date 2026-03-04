@@ -101,15 +101,25 @@ export default function DaftarKetidakhadiranWaliKelas({
         setIsLoading(true);
         setError(null);
 
-        // Get homeroom class info + time slots
-        const [classData, timeSlotResponse] = await Promise.all([
+        // Get homeroom class info + time slots (time slots may be forbidden for non-admin)
+        const [classResult, timeSlotResult] = await Promise.allSettled([
           classService.getMyClass(),
           masterService.getTimeSlots(),
         ]);
 
-        const slotRaw = Array.isArray(timeSlotResponse?.data)
-          ? timeSlotResponse.data
-          : (timeSlotResponse?.data?.data || []);
+        if (classResult.status === 'rejected') {
+          throw classResult.reason;
+        }
+
+        const classData = classResult.value as any;
+
+        const timeSlotPayload = timeSlotResult.status === 'fulfilled'
+          ? timeSlotResult.value
+          : null;
+
+        const slotRaw = Array.isArray(timeSlotPayload?.data)
+          ? timeSlotPayload.data
+          : (timeSlotPayload?.data?.data || []);
 
         const classId = classData.id;
         // const className = classData.name || classData.class_name || 'Kelas Tidak Diketahui';

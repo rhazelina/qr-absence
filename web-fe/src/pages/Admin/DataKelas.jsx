@@ -6,15 +6,6 @@ import NavbarAdmin from '../../components/Admin/NavbarAdmin';
 const baseURL = import.meta.env.VITE_API_URL;
 const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
 
-// [PERUBAHAN 3] Data dummy wali kelas sementara
-const DUMMY_TEACHERS = [
-  { id: 'dummy-1', name: 'Budi Santoso' },
-  { id: 'dummy-2', name: 'Siti Aminah' },
-  { id: 'dummy-3', name: 'Ahmad Fauzi' },
-  { id: 'dummy-4', name: 'Dewi Lestari' },
-  { id: 'dummy-5', name: 'Rina Kartika' },
-];
-
 // API Service
 const apiService = {
   // Get all classes
@@ -37,7 +28,7 @@ const apiService = {
   // Get available teachers (only with role 'Guru' or 'Wali Kelas')
   getAvailableTeachers: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/teachers/available`, {
+      const response = await fetch(`${API_BASE_URL}/available-homeroom-teachers`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -150,12 +141,7 @@ function DataKelas() {
 
   const loadTeachers = async () => {
     const result = await apiService.getAvailableTeachers();
-    // [PERUBAHAN 3] Gunakan dummy jika API kosong / gagal
-    if (result.data && result.data.length > 0) {
-      setAvailableTeachers(result.data);
-    } else {
-      setAvailableTeachers(DUMMY_TEACHERS);
-    }
+    setAvailableTeachers(result.data || []);
   };
 
   // Reset form when modal opens/closes
@@ -263,35 +249,9 @@ function DataKelas() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Cek apakah sedang pakai dummy teacher
-  const isDummyTeacher = (id) => typeof id === 'string' && id.startsWith('dummy-');
-
-  // Ambil nama guru dari ID (untuk dummy)
-  const getTeacherNameById = (id) => {
-    const found = availableTeachers.find(t => t.id === id);
-    return found ? found.name : id;
-  };
-
   // Add Class
   const handleAddKelas = async () => {
     if (!validate()) return;
-
-    // [DUMMY MODE] Jika wali kelas adalah dummy, simpan ke local state saja
-    if (isDummyTeacher(formData.waliKelas)) {
-      const newKelas = {
-        id: `local-${Date.now()}`,
-        class_name: formData.namaKelas,
-        major: formData.jurusan,
-        grade: formData.kelas,
-        homeroom_teacher_id: formData.waliKelas,
-        homeroom_teacher_name: getTeacherNameById(formData.waliKelas)
-      };
-      setKelas(prev => [...prev, newKelas]);
-      alert('Data kelas berhasil ditambahkan! (mode dummy)');
-      setIsModalOpen(false);
-      setEditData(null);
-      return;
-    }
 
     try {
       const classData = {
@@ -316,26 +276,6 @@ function DataKelas() {
   const handleEditKelas = async () => {
     if (!validate()) return;
 
-    // [DUMMY MODE] Jika wali kelas adalah dummy, update local state saja
-    if (isDummyTeacher(formData.waliKelas) || (editData && String(editData.id).startsWith('local-'))) {
-      setKelas(prev => prev.map(k => 
-        k.id === editData.id
-          ? {
-              ...k,
-              class_name: formData.namaKelas,
-              major: formData.jurusan,
-              grade: formData.kelas,
-              homeroom_teacher_id: formData.waliKelas,
-              homeroom_teacher_name: getTeacherNameById(formData.waliKelas)
-            }
-          : k
-      ));
-      alert('Data kelas berhasil diperbarui! (mode dummy)');
-      setEditData(null);
-      setIsModalOpen(false);
-      return;
-    }
-
     try {
       const classData = {
         class_name: formData.namaKelas,
@@ -358,13 +298,6 @@ function DataKelas() {
   // Delete Class
   const handleDeleteKelas = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus data kelas ini?')) {
-      // [DUMMY MODE] Jika ID lokal, hapus dari state saja
-      if (typeof id === 'string' && id.startsWith('local-')) {
-        setKelas(prev => prev.filter(k => k.id !== id));
-        alert('Data kelas berhasil dihapus! (mode dummy)');
-        return;
-      }
-
       try {
         await apiService.deleteClass(id);
         alert('Data kelas berhasil dihapus!\nJabatan guru telah dikembalikan ke Guru.');

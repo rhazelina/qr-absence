@@ -124,6 +124,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
   const [selectedSiswa, setSelectedSiswa] = useState<{
     name: string;
     identitas: string;
+    studentId?: string;
+    classId?: string;
   } | null>(null);
   const [selectedStat, setSelectedStat] = useState<StatisticType>(null);
   const [currentDate, setCurrentDate] = useState("");
@@ -153,6 +155,24 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      const token = localStorage.getItem("token");
+      const rawUser = localStorage.getItem("currentUser");
+      const tokenInvalid = !token || token === "null" || token === "undefined";
+      let storedRole: string | null = null;
+      if (rawUser) {
+        try {
+          storedRole = JSON.parse(rawUser)?.role || null;
+        } catch {
+          storedRole = null;
+        }
+      }
+
+      if (tokenInvalid || storedRole !== "waka") {
+        onLogout();
+        navigate("/login", { replace: true });
+        return;
+      }
+
       try {
         setIsLoading(true);
         const data = await dashboardService.getWakaDashboard();
@@ -198,7 +218,7 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
     if (currentPage === "dashboard") {
       fetchDashboardData();
     }
-  }, [currentPage]);
+  }, [currentPage, navigate, onLogout]);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -261,6 +281,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
       setSelectedSiswa({
         name: payload.siswaName,
         identitas: payload.siswaIdentitas,
+        studentId: payload.studentId ? String(payload.studentId) : undefined,
+        classId: payload.classId ? String(payload.classId) : selectedKelasId || undefined,
       });
     }
   };
@@ -319,7 +341,9 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
         return (
           <DetailKelas
             {...commonProps}
+            kelasId={selectedKelasDetail?.kelasId}
             kelas={selectedKelasDetail?.namaKelas || selectedKelas || undefined}
+            waliKelas={selectedKelasDetail?.waliKelas}
             jadwalImage={selectedKelasDetail?.jadwalImage}
             onBack={() => handleMenuClick("jadwal-kelas")}
           />
@@ -387,6 +411,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
             {...commonProps}
             siswaName={selectedSiswa?.name}
             siswaIdentitas={selectedSiswa?.identitas}
+            studentId={selectedSiswa?.studentId}
+            classId={selectedSiswa?.classId || selectedKelasId || undefined}
             onBack={() => handleMenuClick("rekap-kehadiran-siswa")}
           />
         );
@@ -630,28 +656,22 @@ function LinkStatsGrid({
           key={item.id}
           onClick={() => onSelectStat(selectedStat === item.id ? null : (item.id as StatisticType))}
           style={{
-            border: `2px solid ${selectedStat === item.id ? item.color : item.color + "20"}`,
-            borderRadius: "12px",
-            padding: "14px 12px",
-            textAlign: "center",
-            backgroundColor: selectedStat === item.id ? item.color + "15" : item.color + "08",
-            transition: "all 0.2s ease",
-            cursor: "pointer",
-            position: "relative",
-            overflow: "hidden",
-            transform: selectedStat === item.id ? "scale(1.05)" : "scale(1)",
+            borderColor: selectedStat === item.id ? item.color : item.color + "40",
+            backgroundColor: selectedStat === item.id ? item.color + "15" : item.color + "05",
           }}
+          className={`border-2 rounded-xl py-3.5 px-3 text-center cursor-pointer relative overflow-hidden transition-all duration-200 transform ${selectedStat === item.id ? 'scale-105 shadow-md' : 'hover:-translate-y-1 hover:shadow-lg'
+            }`}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = item.color + "20";
-            e.currentTarget.style.borderColor = item.color;
-            e.currentTarget.style.transform = "translateY(-2px)";
+            if (selectedStat !== item.id) {
+              e.currentTarget.style.backgroundColor = item.color + "15";
+              e.currentTarget.style.borderColor = item.color + "80";
+            }
           }}
           onMouseLeave={(e) => {
             if (selectedStat !== item.id) {
-              e.currentTarget.style.backgroundColor = item.color + "08";
-              e.currentTarget.style.borderColor = item.color + "20";
+              e.currentTarget.style.backgroundColor = item.color + "05";
+              e.currentTarget.style.borderColor = item.color + "40";
             }
-            e.currentTarget.style.transform = selectedStat === item.id ? "scale(1.05)" : "translateY(0)";
           }}
         >
           <p

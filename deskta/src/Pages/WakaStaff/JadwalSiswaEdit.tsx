@@ -21,7 +21,7 @@ import {
 import { masterService } from '../../services/masterService';
 import { scheduleService } from '../../services/scheduleService';
 import { teacherService } from '../../services/teacherService';
-import { API_BASE_URL } from '../../services/api';
+import classService from '../../services/classService';
 import './JadwalSiswaEdit.css';
 
 interface JadwalHeader {
@@ -48,6 +48,25 @@ const DAY_OPTIONS = [
   'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'
 ];
 
+const normalizeDayForUi = (day?: string): string => {
+  if (!day) return DAY_OPTIONS[0];
+  const value = day.toLowerCase().trim();
+  const map: Record<string, string> = {
+    monday: 'Senin',
+    senin: 'Senin',
+    tuesday: 'Selasa',
+    selasa: 'Selasa',
+    wednesday: 'Rabu',
+    rabu: 'Rabu',
+    thursday: 'Kamis',
+    kamis: 'Kamis',
+    friday: 'Jumat',
+    jumat: 'Jumat',
+    "jum'at": 'Jumat',
+  };
+  return map[value] || day;
+};
+
 const SEMESTER_OPTIONS = [
   { label: 'Ganjil', value: '1' },
   { label: 'Genap', value: '2' }
@@ -69,9 +88,33 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
   const [classes, setClasses] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+  const [submitSuccess, setSubmitSuccess] = useState('');
+  const [masterDataErrors, setMasterDataErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const extractList = (payload: any): any[] => {
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.data?.data)) return payload.data.data;
+    if (Array.isArray(payload)) return payload;
+    return [];
+  };
+
+  const extractErrorMessages = (error: any): string[] => {
+    const fieldErrors = error?.fieldErrors && typeof error.fieldErrors === 'object'
+      ? (error.fieldErrors as Record<string, string[]>)
+      : {};
+    const fromField = Object.values(fieldErrors).flat().filter(Boolean);
+    if (fromField.length > 0) return fromField;
+    if (Array.isArray(error?.validationMessages) && error.validationMessages.length > 0) {
+      return error.validationMessages;
+    }
+    if (error?.message) return [error.message];
+    return ['Gagal menyimpan jadwal.'];
+  };
 
   useEffect(() => {
     fetchMasterData();
@@ -85,17 +128,33 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
 
   const fetchMasterData = async () => {
     try {
-      const [classRes, subjectRes, teacherRes] = await Promise.all([
+      setMasterDataErrors([]);
+      const [classRes, subjectRes, teacherRes, roomRes] = await Promise.all([
         masterService.getClasses(),
         masterService.getSubjects(),
-        teacherService.getTeachers()
+        teacherService.getTeachers({ per_page: -1 }),
+        masterService.getRooms()
       ]);
 
-      setClasses(classRes.data || classRes);
-      setSubjects(subjectRes.data || subjectRes);
-      setTeachers(teacherRes.data || teacherRes);
-    } catch (error) {
+      const classList = extractList(classRes);
+      const subjectList = extractList(subjectRes);
+      const teacherList = extractList(teacherRes);
+      const roomList = extractList(roomRes);
+
+      setClasses(classList);
+      setSubjects(subjectList);
+      setTeachers(teacherList);
+      setRooms(roomList);
+
+      const missingMessages: string[] = [];
+      if (classList.length === 0) missingMessages.push('Master kelas belum tersedia.');
+      if (subjectList.length === 0) missingMessages.push('Master mata pelajaran belum tersedia.');
+      if (teacherList.length === 0) missingMessages.push('Master guru belum tersedia.');
+      if (roomList.length === 0) missingMessages.push('Master ruangan belum tersedia.');
+      setMasterDataErrors(missingMessages);
+    } catch (error: any) {
       console.error('Error fetching master data:', error);
+      setMasterDataErrors([error?.message || 'Gagal memuat master data jadwal.']);
     } finally {
       setInitialLoading(false);
     }
@@ -116,7 +175,7 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
 
         // Map existing daily schedules and items
         const mappedDays = data.daily_schedules.map((day: any) => ({
-          day: day.day,
+          day: normalizeDayForUi(day.day),
           items: day.schedule_items.map((item: any) => ({
             subject_id: item.subject_id.toString(),
             teacher_id: item.teacher_id.toString(),
@@ -130,8 +189,8 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
 
         // Fetch class instance for schedule image
         if (data.class_id) {
-          const classList = await masterService.getClasses();
-          const currentClass = (classList.data || classList).find((c: any) => c.id === data.class_id);
+          const classRes = await masterService.getClassById(data.class_id);
+          const currentClass = classRes?.data || classRes;
           if (currentClass?.schedule_image_url) {
             setPreviewImage(`${currentClass.schedule_image_url}?t=${Date.now()}`);
           }
@@ -151,6 +210,15 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        setSubmitErrors(['File visual jadwal harus format PNG/JPG/JPEG.']);
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setSubmitErrors(['Ukuran file visual jadwal maksimal 5MB.']);
+        return;
+      }
       setScheduleImage(file);
       const reader = new FileReader();
       reader.onload = (event) => setPreviewImage(event.target?.result as string);
@@ -168,7 +236,7 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
   };
 
   const addDay = () => {
-    setDays([...days, { day: 'Monday', items: [] }]);
+    setDays([...days, { day: DAY_OPTIONS[0], items: [] }]);
   };
 
   const removeDay = (index: number) => {
@@ -210,8 +278,51 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitErrors([]);
+    setSubmitSuccess('');
+
     if (!headerData.class_id) {
-      alert('Pilih kelas terlebih dahulu');
+      setSubmitErrors(['Pilih kelas terlebih dahulu.']);
+      return;
+    }
+    if (masterDataErrors.length > 0) {
+      setSubmitErrors(['Master data belum lengkap. Lengkapi data mapel/guru/ruang terlebih dahulu.']);
+      return;
+    }
+    if (days.length === 0) {
+      setSubmitErrors(['Tambahkan minimal 1 hari jadwal sebelum menyimpan.']);
+      return;
+    }
+
+    const uniqueDaySet = new Set<string>();
+    const validationErrors: string[] = [];
+
+    days.forEach((day) => {
+      if (uniqueDaySet.has(day.day)) {
+        validationErrors.push(`Hari ${day.day} terduplikasi. Setiap hari hanya boleh satu blok.`);
+      } else {
+        uniqueDaySet.add(day.day);
+      }
+
+      if (!Array.isArray(day.items) || day.items.length === 0) {
+        validationErrors.push(`Hari ${day.day} belum memiliki jam pelajaran.`);
+        return;
+      }
+
+      day.items.forEach((item, itemIndex) => {
+        const label = `Hari ${day.day}, baris ${itemIndex + 1}`;
+        if (!item.subject_id) validationErrors.push(`${label}: mata pelajaran wajib dipilih.`);
+        if (!item.teacher_id) validationErrors.push(`${label}: guru wajib dipilih.`);
+        if (!item.room) validationErrors.push(`${label}: ruang wajib dipilih.`);
+        if (!item.start_time || !item.end_time) validationErrors.push(`${label}: jam mulai dan selesai wajib diisi.`);
+        if (item.start_time && item.end_time && item.start_time >= item.end_time) {
+          validationErrors.push(`${label}: jam selesai harus lebih besar dari jam mulai.`);
+        }
+      });
+    });
+
+    if (validationErrors.length > 0) {
+      setSubmitErrors(validationErrors);
       return;
     }
 
@@ -223,32 +334,20 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
     };
 
     try {
+      const classId = headerData.class_id;
       // 1. Digital Schedule Structure - Always use bulkUpsert for class-based schedules
-      await scheduleService.bulkUpsert(id, payload);
+      await scheduleService.bulkUpsert(classId, payload);
 
       // 2. Schedule Image (Optional)
-      if (scheduleImage && headerData.class_id) {
-        const imageFormData = new FormData();
-        imageFormData.append('file', scheduleImage);
-        // Using fetch directly as masterService might not have this yet
-        // TODO: Move this to a service call eventually
-        const token = localStorage.getItem('token');
-
-        await fetch(`${API_BASE_URL}/classes/${headerData.class_id}/schedule-image`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          },
-          body: imageFormData
-        });
+      if (scheduleImage) {
+        await classService.uploadScheduleImage(String(classId), scheduleImage);
       }
 
-      alert(`Jadwal berhasil ${isEditMode ? 'diperbarui' : 'dibuat'}`);
+      setSubmitSuccess(`Jadwal berhasil ${isEditMode ? 'diperbarui' : 'dibuat'}.`);
       onMenuClick('jadwal-kelas');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting schedule:', error);
-      alert('Gagal menyimpan jadwal');
+      setSubmitErrors(extractErrorMessages(error));
     } finally {
       setLoading(false);
     }
@@ -319,6 +418,34 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
           </div>
         </div>
 
+        {submitSuccess && (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+            {submitSuccess}
+          </div>
+        )}
+
+        {submitErrors.length > 0 && (
+          <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="text-sm font-bold text-rose-800 mb-1">Validasi gagal:</p>
+            <ul className="list-disc list-inside text-sm font-medium text-rose-700 space-y-1">
+              {submitErrors.map((message, index) => (
+                <li key={`${message}-${index}`}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {masterDataErrors.length > 0 && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-bold text-amber-800 mb-1">Master data belum lengkap:</p>
+            <ul className="list-disc list-inside text-sm font-medium text-amber-700 space-y-1">
+              {masterDataErrors.map((message, index) => (
+                <li key={`${message}-${index}`}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 flex flex-col gap-8">
             {/* INFORMATION CARD */}
@@ -340,7 +467,7 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
                   >
                     <option value="">-- Pilih Kelas --</option>
                     {classes.map(c => (
-                      <option key={c.id} value={c.id}> {c.label}</option>
+                      <option key={c.id} value={c.id}>{c.name || c.class_name || c.label || '-'}</option>
                     ))}
                   </select>
                 </div>
@@ -496,13 +623,26 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
                               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                                 <MapPin size={10} /> Ruang
                               </label>
-                              <input
-                                type="text"
-                                placeholder="Cth: A1"
+                              <select
                                 value={item.room}
                                 onChange={(e) => updateItem(dayIndex, itemIndex, 'room', e.target.value)}
-                                className="premium-input !py-2"
-                              />
+                                className="premium-input premium-select !py-2"
+                                required
+                                disabled={rooms.length === 0}
+                              >
+                                <option value="">Pilih Ruang</option>
+                                {rooms.map((room) => {
+                                  const roomName = room.name || room.room_name || room.code || room.label || `Ruang ${room.id}`;
+                                  return (
+                                    <option key={room.id} value={roomName}>
+                                      {roomName}
+                                    </option>
+                                  );
+                                })}
+                                {!rooms.some((room) => (room.name || room.room_name || room.code || room.label) === item.room) && item.room && (
+                                  <option value={item.room}>{item.room}</option>
+                                )}
+                              </select>
                             </div>
                             <button
                               type="button"
@@ -599,7 +739,7 @@ export default function JadwalSiswaEdit({ user, onLogout, onMenuClick, id }: any
                     ref={fileInputRef}
                     className="hidden"
                     onChange={handleFileChange}
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg"
                   />
                 </label>
 

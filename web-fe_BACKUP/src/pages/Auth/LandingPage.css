@@ -1,0 +1,260 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+}
+
+.container {
+  width: 100vw;
+  min-height: 100vh;
+  background: url('../../assets/bglogin.png') no-repeat center center;
+  background-size: cover;
+  background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+  padding: 100px 20px 40px;
+  overflow-y: auto;
+}
+
+/* Logo sekolah - BULAT OTOMATIS */
+.school-logo {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  width: 85px;
+  height: 85px;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+/* Judul */
+.title {
+  margin-bottom: 40px;
+  z-index: 5;
+  position: relative;
+}
+
+.title h2:first-of-type {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Nama sekolah */
+.title h2:last-child {
+  font-size: 2.2rem;
+  font-weight: bold;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Container maskot - dinamis berdasarkan ukuran gambar */
+.maskot-container {
+  position: relative;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  max-width: 90vw;
+}
+
+/* Gambar maskot - responsive */
+.maskot-image {
+  max-width: 100%;
+  max-height: 50vh;
+  height: auto;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.5));
+}
+
+/* Dropdown Masuk Sebagai */
+.login-dropdown {
+  position: relative;
+  margin-bottom: 20px;
+  margin-top: 20px;
+  z-index: 100;
+}
+
+.dropdown-button {
+  padding: 15px 60px;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(to bottom, #0074D9, #001f3f);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  position: relative;
+  z-index: 101;
+}
+
+.dropdown-button:hover {
+  transform: scale(1.1);
+}
+
+.dropdown-button::after {
+  content: '▼';
+  font-size: 1.2rem;
+  transition: transform 0.3s;
+  margin-left: 10px;
+}
+
+.dropdown-button.active::after {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+  max-height: 300px;
+  min-width: 280px;
+  z-index: 200;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.dropdown-item {
+  padding: 20px 30px;
+  font-size: 1.5rem;
+  color: #001f3f;
+  cursor: pointer;
+  transition: background 0.3s;
+  border-bottom: 1px solid #e0e0e0;
+  text-align: center;
+  font-weight: 600;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: #e3f2fd;
+  color: #0074D9;
+}
+
+/* Footer */
+.footer {
+  position: relative;
+  margin-top: 20px;
+  font-size: 1.2rem;
+  opacity: 0.8;
+  z-index: 5;
+}
+
+/* Responsif untuk mobile */
+@media (max-width: 768px) {
+  .school-logo {
+    width: 65px;
+    height: 65px;
+    top: 20px;
+    right: 20px;
+  }
+
+  .title h2:first-of-type { 
+    font-size: 2rem; 
+  }
+  
+  .title h2:last-child { 
+    font-size: 1.6rem; 
+  }
+  
+  .maskot-image {
+    max-height: 40vh;
+  }
+  
+  .dropdown-button { 
+    font-size: 1.5rem; 
+    padding: 12px 40px; 
+  }
+
+  .container {
+    padding: 80px 15px 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .school-logo {
+    width: 55px;
+    height: 55px;
+    top: 15px;
+    right: 15px;
+  }
+
+  .title h2:first-of-type {
+    font-size: 1.8rem;
+  }
+
+  .title h2:last-child {
+    font-size: 1.4rem;
+  }
+
+  .dropdown-button {
+    font-size: 1.3rem;
+    padding: 10px 35px;
+  }
+
+  .maskot-image {
+    max-height: 35vh;
+  }
+}
+
+/* Untuk layar dengan tinggi kecil */
+@media (max-height: 700px) {
+  .container {
+    padding: 60px 20px 30px;
+  }
+
+  .maskot-image {
+    max-height: 30vh;
+  }
+
+  .title {
+    margin-bottom: 20px;
+  }
+
+  .login-dropdown {
+    margin-top: 10px;
+  }
+}

@@ -432,8 +432,11 @@ class DashboardController extends Controller
                 $query->whereBetween('date', [$rangeStart->format('Y-m-d'), $today]);
             }
 
+            $isSqlite = config('database.default') === 'sqlite';
+            $monthSelect = $isSqlite ? "strftime('%Y-%m', date)" : "DATE_FORMAT(date, '%Y-%m')";
+
             $monthlyData = $query->selectRaw("
-                    DATE_FORMAT(date, '%Y-%m') as month_key,
+                    {$monthSelect} as month_key,
                     status,
                     COUNT(*) as count
                 ")
@@ -552,12 +555,15 @@ class DashboardController extends Controller
             // 2. Tren Bulanan (Last 6 Months Trend for the Class)
             $sixMonthsAgo = now()->subMonths(5)->startOfMonth()->format('Y-m-d');
 
+            $isSqlite = config('database.default') === 'sqlite';
+            $monthSelect = $isSqlite ? "strftime('%Y-%m', date)" : "DATE_FORMAT(date, '%Y-%m')";
+
             $monthlyData = Attendance::whereBetween('date', [$sixMonthsAgo, $today])
                 ->whereHas('student', function ($query) use ($classId) {
                     $query->where('class_id', $classId);
                 })
                 ->selectRaw("
-                    DATE_FORMAT(date, '%Y-%m') as month_key,
+                    {$monthSelect} as month_key,
                     SUM(CASE WHEN status IN ('".AttendanceStatus::PRESENT->value."', '".AttendanceStatus::LATE->value."') THEN 1 ELSE 0 END) as present,
                     SUM(CASE WHEN status = '".AttendanceStatus::ABSENT->value."' THEN 1 ELSE 0 END) as absent,
                     SUM(CASE WHEN status = '".AttendanceStatus::SICK->value."' THEN 1 ELSE 0 END) as sick,

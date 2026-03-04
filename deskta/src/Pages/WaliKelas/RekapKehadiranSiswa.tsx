@@ -279,7 +279,7 @@ export function RekapKehadiranSiswa({
               nisn: item.student?.nisn || '-',
               namaSiswa: item.student?.user?.name || item.student?.name || '-',
               hadir: hadirCount,
-              izin: totals.permission || totals.izin || 0,
+              izin: totals.permission || totals.izin || totals.excused || 0,
               sakit: totals.sick || 0,
               alfa: totals.alpha || totals.absent || totals.alfa || 0,
               pulang: totals.return || totals.leave_early || totals.pulang || 0,
@@ -837,9 +837,18 @@ export function RekapKehadiranSiswa({
   };
 
   const handleSubmitPerizinan = async () => {
-    if (!perizinanData.nisn || !perizinanData.alasanPulang || !perizinanData.tanggal ||
-      !perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.jamPelajaran || !perizinanData.file1) {
+    const isFullDay =
+      perizinanData.alasanPulang === 'sakit' ||
+      (perizinanData.alasanPulang === 'izin' &&
+        (!perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.jamPelajaran));
+
+    if (!perizinanData.nisn || !perizinanData.alasanPulang || !perizinanData.tanggal || !perizinanData.file1) {
       alert('⚠️ Mohon isi semua field yang diperlukan, termasuk foto bukti');
+      return;
+    }
+
+    if (!isFullDay && (!perizinanData.mapel || !perizinanData.namaGuru || !perizinanData.jamPelajaran)) {
+      alert('⚠️ Mohon isi mapel, guru, dan jam pelajaran untuk perizinan pulang awal');
       return;
     }
 
@@ -850,24 +859,30 @@ export function RekapKehadiranSiswa({
     }
 
     try {
-      const selectedTimeRange = timeRangeOptions.find(
-        (option) => option.value === perizinanData.jamPelajaran
-      );
+      const now = new Date();
+      const pad = (value: number) => value.toString().padStart(2, '0');
+      const nowHHmm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+      const selectedTimeRange = isFullDay
+        ? (timeRangeOptions[0] || { startTime: nowHHmm, endTime: nowHHmm })
+        : timeRangeOptions.find((option) => option.value === perizinanData.jamPelajaran);
 
       if (!selectedTimeRange) {
-        alert('⚠️ Jam pelajaran tidak valid, silakan pilih dari daftar yang tersedia');
+        alert('⚠️ Jam pelajaran belum tersedia untuk membuat perizinan');
         return;
       }
 
-      const selectedSchedule = homeroomSchedules.find(
-        (schedule) =>
-          schedule.mapel === perizinanData.mapel &&
-          schedule.guru === perizinanData.namaGuru &&
-          schedule.startTime === selectedTimeRange.startTime &&
-          schedule.endTime === selectedTimeRange.endTime
-      );
+      const selectedSchedule = !isFullDay
+        ? homeroomSchedules.find(
+            (schedule) =>
+              schedule.mapel === perizinanData.mapel &&
+              schedule.guru === perizinanData.namaGuru &&
+              schedule.startTime === selectedTimeRange.startTime &&
+              schedule.endTime === selectedTimeRange.endTime
+          )
+        : null;
 
-      if (!selectedSchedule && homeroomSchedules.length > 0) {
+      if (!isFullDay && !selectedSchedule && homeroomSchedules.length > 0) {
         alert('⚠️ Kombinasi mapel, guru, dan jam belum sesuai jadwal aktif kelas');
         return;
       }
@@ -876,12 +891,16 @@ export function RekapKehadiranSiswa({
         ? selectedSchedule.id
         : undefined;
 
+      const apiType = isFullDay
+        ? perizinanData.alasanPulang
+        : (perizinanData.alasanPulang === 'dispensasi' ? 'dispensasi' : 'izin_pulang');
+
       await attendanceService.createLeavePermission({
         student_id: siswa.id,
         schedule_id: scheduleId,
-        type: perizinanData.alasanPulang as any,
+        type: apiType as any,
         start_time: selectedTimeRange.startTime,
-        end_time: selectedTimeRange.endTime,
+        end_time: isFullDay ? undefined : selectedTimeRange.endTime,
         reason: perizinanData.alasanDetail || perizinanData.keterangan || `Izin ${perizinanData.alasanPulang}`,
         file: perizinanData.file1
       });

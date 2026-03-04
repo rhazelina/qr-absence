@@ -1,4 +1,4 @@
-import { API_BASE_URL, handleResponse } from './api';
+import { API_BASE_URL, fetchWithAuth, getHeaders } from './api';
 
 export interface ScheduleItem {
   id: number | string;
@@ -47,10 +47,7 @@ export const normalizeScheduleDay = (day?: string): string => {
 export const getTodayScheduleDay = (): string =>
   normalizeScheduleDay(new Date().toLocaleDateString("en-US", { weekday: "long" }));
 
-const getAuthHeaders = () => ({
-  "Authorization": `Bearer ${localStorage.getItem("token")}`,
-  "Accept": "application/json",
-});
+const getAuthHeaders = () => getHeaders();
 
 const getCurrentRole = (): string | null => {
   const rawUser = localStorage.getItem("currentUser");
@@ -166,6 +163,17 @@ const normalizeScheduleResponse = (payload: any): ScheduleResponse => {
 };
 
 export const scheduleService = {
+  getTodaySchedules: async (): Promise<{ data: any[] }> => {
+    const payload = await fetchWithAuth(`${API_BASE_URL}/me/schedules/today`, {
+      method: "GET",
+    });
+
+    if (Array.isArray(payload)) return { data: payload };
+    if (Array.isArray(payload?.data)) return { data: payload.data };
+    if (Array.isArray(payload?.items)) return { data: payload.items };
+    return { data: [] };
+  },
+
   getMySchedule: async (): Promise<ScheduleResponse> => {
     const response = await fetch(`${API_BASE_URL}/me/schedules`, {
       method: "GET",
@@ -206,75 +214,56 @@ export const scheduleService = {
     throw new Error(primaryMessage);
   },
 
-  getMyHomeroomSchedules: async (): Promise<ScheduleResponse> => {
-    const response = await fetch(`${API_BASE_URL}/me/homeroom/schedules`, {
+  getMyTodaySchedule: async (): Promise<ScheduleResponse> => {
+    const payload = await fetchWithAuth(`${API_BASE_URL}/me/schedules/today`, {
       method: "GET",
-      headers: getAuthHeaders(),
     });
-    const payload = await handleResponse(response);
+    return normalizeScheduleResponse(payload);
+  },
+
+  getMyHomeroomSchedules: async (): Promise<ScheduleResponse> => {
+    const payload = await fetchWithAuth(`${API_BASE_URL}/me/homeroom/schedules`, {
+      method: "GET",
+    });
     return normalizeScheduleResponse(payload);
   },
 
   getSchedule: async (id: string | number): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/schedules/${id}`, {
+    return fetchWithAuth(`${API_BASE_URL}/schedules/${id}`, {
       method: "GET",
-      headers: getAuthHeaders(),
     });
-    return handleResponse(response);
   },
 
   getScheduleByClass: async (classId: string | number): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/classes/${classId}/schedules/active`, {
+    return fetchWithAuth(`${API_BASE_URL}/classes/${classId}/schedules/active`, {
       method: "GET",
-      headers: getAuthHeaders(),
     });
-    return handleResponse(response);
   },
 
   createSchedule: async (data: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/schedules`, {
+    return fetchWithAuth(`${API_BASE_URL}/schedules`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
       body: JSON.stringify(data),
     });
-    return handleResponse(response);
   },
 
   updateSchedule: async (id: string | number, data: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/schedules/${id}`, {
+    return fetchWithAuth(`${API_BASE_URL}/schedules/${id}`, {
       method: "PUT",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
       body: JSON.stringify(data),
     });
-    return handleResponse(response);
   },
 
   bulkUpsert: async (classId: string | number, data: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/classes/${classId}/schedules/bulk`, {
+    return fetchWithAuth(`${API_BASE_URL}/classes/${classId}/schedules/bulk`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
       body: JSON.stringify(data),
     });
-    return handleResponse(response);
   },
 
   deleteSchedule: async (id: string | number): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/schedules/${id}`, {
+    return fetchWithAuth(`${API_BASE_URL}/schedules/${id}`, {
       method: "DELETE",
-      headers: getAuthHeaders(),
     });
-    return handleResponse(response);
   },
 };

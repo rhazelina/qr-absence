@@ -3,7 +3,8 @@ import { attendanceService } from "../../services/attendanceService";
 import SiswaLayout from "../../component/Siswa/SiswaLayout";
 import { Select } from "../../component/Shared/Select";
 import { Modal } from "../../component/Shared/Modal";
-import { Loader2 } from "lucide-react";
+import { LeaveRequestModal } from "../../component/Siswa/LeaveRequestModal";
+import { Loader2, Plus } from "lucide-react";
 
 interface AbsensiRecord {
   id: string;
@@ -133,46 +134,50 @@ export default function AbsensiSiswa({
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   const [selectedRecord, setSelectedRecord] = useState<AbsensiRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const [attendanceData, setAttendanceData] = useState<AbsensiRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      setLoading(true);
-      try {
-        const response = await attendanceService.getHistory({
-          from: startDate,
-          to: endDate
-        });
-
-        if (response && response.data) {
-          const mappedData = response.data.map((item: any) => ({
-            id: item.id.toString(),
-            tanggal: new Date(item.date).toLocaleDateString("id-ID"),
-            jamPelajaran: item.schedule ? `${item.schedule.start_time.substring(0, 5)} - ${item.schedule.end_time.substring(0, 5)}` : "-",
-            mataPelajaran: item.schedule?.subject_name || "-",
-            guru: item.teacher?.user?.name || "-",
-            status: mapBackendStatus(item.status),
-            keterangan: item.reason
-          }));
-          setAttendanceData(mappedData);
-        }
-      } catch (error) {
-        console.error("Error fetching history:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHistory();
   }, [startDate, endDate]);
 
+  const fetchHistory = async () => {
+    setLoading(true);
+    try {
+      const response = await attendanceService.getHistory({
+        from: startDate,
+        to: endDate
+      });
+
+      if (response && response.data) {
+        const mappedData = response.data.map((item: any) => ({
+          id: item.id.toString(),
+          tanggal: new Date(item.date).toLocaleDateString("id-ID"),
+          jamPelajaran: item.schedule ? `${item.schedule.start_time.substring(0, 5)} - ${item.schedule.end_time.substring(0, 5)}` : "-",
+          mataPelajaran: item.schedule?.subject_name || "-",
+          guru: item.teacher?.user?.name || "-",
+          status: mapBackendStatus(item.status),
+          keterangan: item.reason
+        }));
+        setAttendanceData(mappedData);
+      }
+    } catch (error) {
+      console.error("Error fetching history:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const mapBackendStatus = (status: string): AbsensiRecord['status'] => {
     switch (status) {
-      case 'present': return 'hadir';
+      case 'present':
+      case 'hadir': return 'hadir';
       case 'late': return 'hadir';
-      case 'sick': return 'sakit';
+      case 'sick':
+      case 'sakit': return 'sakit';
       case 'excused':
       case 'izin': return 'izin';
       case 'dispensasi':
@@ -180,7 +185,8 @@ export default function AbsensiSiswa({
       case 'dispen':
       case 'dispense':
         return 'dispen';
-      case 'absent': return 'alfa';
+      case 'absent':
+      case 'alfa': return 'alfa';
       case 'return':
       case 'pulang': return 'pulang';
       default: return 'alfa';
@@ -549,9 +555,39 @@ export default function AbsensiSiswa({
                 value={statusFilter}
                 onChange={setStatusFilter}
                 options={statusOptions}
-                placeholder="Filter Status"
               />
             </div>
+
+            {/* Tombol Ajukan Izin */}
+            <button
+              onClick={() => setIsLeaveModalOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "10px 20px",
+                backgroundColor: "#1e40af",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 4px 6px -1px rgba(30, 64, 175, 0.3)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#1e3a8a";
+                e.currentTarget.style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#1e40af";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <Plus size={18} />
+              <span>Tambah Perizinan</span>
+            </button>
           </div>
 
           {/* Summary Cards */}
@@ -933,6 +969,44 @@ export default function AbsensiSiswa({
           </div>
         )}
       </Modal>
+
+      <LeaveRequestModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        onSuccess={(msg) => {
+          setToast({ message: msg, type: 'success' });
+          fetchHistory();
+          setTimeout(() => setToast(null), 3000);
+        }}
+        onError={(msg) => {
+          setToast({ message: msg, type: 'error' });
+          setTimeout(() => setToast(null), 3000);
+        }}
+      />
+
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          backgroundColor: toast.type === 'success' ? '#10B981' : '#EF4444',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          zIndex: 100,
+          fontWeight: '600',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          {toast.message}
+          <style>{`
+            @keyframes slideIn {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
     </>
   );
 }

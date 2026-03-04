@@ -318,15 +318,16 @@ class AttendanceController extends Controller
             ->groupBy('status')
             ->get();
 
-        $dateFormat = match ($groupBy) {
-            'day' => '%Y-%m-%d',
-            'week' => '%x-%v', // ISO Year and Week
-            default => '%Y-%m',
+        $isSqlite = config('database.default') === 'sqlite';
+        $bucketSelect = match ($groupBy) {
+            'day' => $isSqlite ? "strftime('%Y-%m-%d', date)" : "DATE_FORMAT(date, '%Y-%m-%d')",
+            'week' => $isSqlite ? "strftime('%Y-%W', date)" : "DATE_FORMAT(date, '%x-%v')",
+            default => $isSqlite ? "strftime('%Y-%m', date)" : "DATE_FORMAT(date, '%Y-%m')",
         };
 
         $trendQuery = (clone $baseQuery)
             ->selectRaw("
-                DATE_FORMAT(date, '{$dateFormat}') as bucket,
+                {$bucketSelect} as bucket,
                 status,
                 SUM(1) as total
             ")
@@ -360,12 +361,12 @@ class AttendanceController extends Controller
             'status' => 'success',
             'data' => [
                 'trend' => $trend,
-                'statistik' => $weeklyStats,
+                'statistik' => $weeklyStats ?? null,
                 'group_by' => $groupBy,
                 'months' => $months,
             ],
             'status_summary' => $statusSummary,
-            'daily_summary' => $dailySummary,
+            'daily_summary' => $dailySummary ?? null,
         ]);
     }
 
@@ -1343,20 +1344,9 @@ class AttendanceController extends Controller
         $totalStudents = \App\Models\StudentProfile::where('class_id', $classId)->count();
         $submittedCount = count($data['items']);
 
-        // Desktop validation: all students must have status
-        if ($isDesktop && $submittedCount < $totalStudents) {
-            return response()->json([
-                'message' => 'Lengkapi semua status siswa sebelum menyimpan',
-                'partial_save' => false,
-                'missing_count' => $totalStudents - $submittedCount,
-                'total_students' => $totalStudents,
-                'submitted_count' => $submittedCount,
-            ], 400);
-        }
-
         $date = $data['date'];
         $results = [];
-        $isPartialSave = ! $isDesktop && $submittedCount < $totalStudents;
+        $isPartialSave = $submittedCount < $totalStudents;
 
         DB::transaction(function () use ($data, $date, $schedule, &$results) {
             foreach ($data['items'] as $item) {

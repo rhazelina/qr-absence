@@ -1,4 +1,5 @@
-﻿import { Home, BookOpen, Users, GraduationCap, LogOut, Calendar, Building2 } from 'lucide-react';
+﻿import { useEffect, useState } from 'react';
+import { Home, BookOpen, Users, GraduationCap, LogOut, Calendar, Building2 } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -69,9 +70,33 @@ export default function Sidebar({
   onToggle,
   userRole = "admin",
 }: SidebarProps) {
+  const [schoolName, setSchoolName] = useState('Sekolah');
+  const [schoolLogo, setSchoolLogo] = useState('');
   const fonts = "'Plus Jakarta Sans', 'Space Grotesk', system-ui, sans-serif";
   let MENU_ITEMS = MENU_ITEMS_ADMIN;
   let roleLabel = "Admin";
+
+  useEffect(() => {
+    const syncSchoolData = () => {
+      try {
+        const raw = localStorage.getItem('schoolData');
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        setSchoolName(parsed.nama_sekolah || parsed.school_name || 'Sekolah');
+        setSchoolLogo(parsed.logo_sekolah || parsed.school_logo_url || '');
+      } catch (error) {
+        console.error('Failed to parse schoolData:', error);
+      }
+    };
+
+    syncSchoolData();
+    window.addEventListener('schoolDataUpdated', syncSchoolData);
+    window.addEventListener('schoolSettingsUpdated', syncSchoolData);
+    return () => {
+      window.removeEventListener('schoolDataUpdated', syncSchoolData);
+      window.removeEventListener('schoolSettingsUpdated', syncSchoolData);
+    };
+  }, []);
 
   // select menu berdasarkan role
   if (userRole === "guru") {
@@ -167,7 +192,7 @@ export default function Sidebar({
           </button>
           
           {isOpen && (
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
               <span
                 style={{
                   fontSize: "18px",
@@ -178,23 +203,47 @@ export default function Sidebar({
               >
                 {roleLabel}
               </span>
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "#94A3B8",
+                  maxWidth: "150px",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={schoolName}
+              >
+                {schoolName}
+              </span>
             </div>
           )}
         </div>
-        
+
         {!isOpen && (
           <div
             style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "8px",
+              overflow: "hidden",
+              border: "1px solid rgba(148, 163, 184, 0.3)",
+              background: "rgba(15, 23, 42, 0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               fontSize: "12px",
               color: "#94A3B8",
               fontWeight: 800,
-              border: "1px solid rgba(148, 163, 184, 0.3)",
-              borderRadius: "8px",
-              padding: "4px 8px",
-              background: "rgba(15, 23, 42, 0.7)",
             }}
+            title={schoolName}
           >
-            {roleLabel.charAt(0)}
+            {schoolLogo ? (
+              <img src={schoolLogo} alt={schoolName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              roleLabel.charAt(0)
+            )}
           </div>
         )}
       </div>

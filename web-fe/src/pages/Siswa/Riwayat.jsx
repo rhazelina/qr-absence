@@ -2,67 +2,47 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Eye, X, ZoomIn } from 'lucide-react';
 import './Riwayat.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
-
-// ==================== API CONFIGURATION ====================
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-const API_CONFIG = {
-  BASE_URL: API_BASE_URL,
-  ENDPOINTS: {
-    PROFILE: '/student/profile',
-    ATTENDANCE_RECORDS: '/student/attendance/records',
-    ATTENDANCE_STATS: '/student/attendance/stats'
-  }
-};
+import api from '../../utils/api';
 
 // ==================== API SERVICE ====================
 const apiService = {
-  async request(endpoint, options = {}) {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers
-    };
-
-    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        window.location.href = '/';
-        throw new Error('Unauthorized');
-      }
-      throw new Error(`API Error: ${response.status}`);
-    }
-
-    return response.json();
-  },
-
   async getProfile() {
-    return this.request(API_CONFIG.ENDPOINTS.PROFILE);
+    const me = await api.get('/me');
+    return {
+      studentId: me?.student?.id || me?.id || null,
+      name: me?.name || '',
+      id: me?.student?.nisn || me?.student?.nis || me?.id || '',
+    };
   },
 
-  async getAttendanceRecords(studentId, startDate, endDate) {
-    const params = new URLSearchParams({
-      studentId,
-      startDate,
-      endDate
-    });
-    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE_RECORDS}?${params}`);
+  async getAttendanceRecords(_studentId, startDate, endDate) {
+    const res = await api.get('/me/attendance', { from: startDate, to: endDate });
+    const list = Array.isArray(res) ? res : (res?.data || []);
+    return list.map((item) => ({
+      date: item.date || item.attendance_date || '',
+      period: item.period || item.session || '',
+      subject: item.subject_name || item.subject?.name || '',
+      teacher: item.teacher_name || item.teacher?.name || '',
+      status: item.status_label || item.status || '',
+      reason: item.reason || item.notes || null,
+      proofDocument: item.document_url || null,
+      proofImageUrl: item.document_url || null,
+      studentId: item.student_id || null,
+      studentName: item.student_name || '',
+      nis: item.student_nis || '',
+    }));
   },
 
-  async getAttendanceStats(studentId, startDate, endDate) {
-    const params = new URLSearchParams({
-      studentId,
-      startDate,
-      endDate
-    });
-    return this.request(`${API_CONFIG.ENDPOINTS.ATTENDANCE_STATS}?${params}`);
+  async getAttendanceStats(_studentId, startDate, endDate) {
+    const res = await api.get('/me/attendance/summary', { from: startDate, to: endDate });
+    return {
+      hadir: res?.hadir || res?.present || 0,
+      terlambat: res?.terlambat || res?.late || 0,
+      izin: res?.izin || res?.permit || 0,
+      sakit: res?.sakit || res?.sick || 0,
+      alpha: res?.alpha || res?.absent || 0,
+      pulang: res?.pulang || 0,
+    };
   }
 };
 

@@ -59,6 +59,18 @@ export default function LihatGuru({
     setImageError(true);
   };
 
+  const withCacheBuster = (url?: string | null, version?: string) => {
+    if (!url) return url;
+    if (url.includes("t=") || url.includes("v=")) return url;
+    const suffix = version ? `v=${encodeURIComponent(version)}` : `t=${Date.now()}`;
+    return `${url}${url.includes("?") ? "&" : "?"}${suffix}`;
+  };
+
+  const resolvedScheduleImage = withCacheBuster(
+    teacherData?.schedule_image_url || jadwalImage,
+    teacherData?.updated_at
+  );
+
   return (
     <StaffLayout
       pageTitle="Detail Guru"
@@ -179,14 +191,14 @@ export default function LihatGuru({
                   Jadwal Mengajar
                 </h3>
                 <div style={{ display: "flex", justifyContent: "center", backgroundColor: "#F9FAFB", borderRadius: 8, padding: 20, border: "1px dashed #D1D5DB", position: "relative" }}>
-                  {imageError || (!jadwalImage && !teacherData?.schedule_image_url) ? (
+                  {imageError || !resolvedScheduleImage ? (
                     <div style={{ textAlign: "center", padding: "40px 0" }}>
                       <img src={DummyJadwal} alt="No Schedule" style={{ width: 120, opacity: 0.5, marginBottom: 16 }} />
                       <p style={{ color: "#6B7280", fontSize: "14px" }}>Belum ada gambar jadwal yang diunggah.</p>
                     </div>
                   ) : (
                     <img
-                      src={teacherData?.schedule_image_url || jadwalImage}
+                      src={resolvedScheduleImage}
                       alt={`Jadwal ${namaGuru}`}
                       style={{ maxWidth: "100%", height: "auto", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
                       onError={handleImageError}

@@ -2,132 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardWakel.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
-
-// ============================================================
-// ⚙️  DUMMY DATA & MOCK (untuk testing) — hapus saat production
-// ============================================================
-const _STORAGE_KEY = 'absensi_history';
-
-const isJadwalCompleted = (jadwalId, tanggal) => {
-  try {
-    const stored = localStorage.getItem(_STORAGE_KEY);
-    const history = stored ? JSON.parse(stored) : {};
-    return !!history[`${jadwalId}_${tanggal}`];
-  } catch { return false; }
-};
-
-// 🧪 Dummy data wali kelas — ganti dengan data dari API/backend saat production
-const _DUMMY_WAKEL = {
-  nama: 'Nama Wali Kelas',
-  nip: '198001012005012001',
-  role: 'Wali Kelas XII RPL 1',
-};
-
-// 🧪 Dummy jadwal — ganti dengan data dari API/backend saat production
-const _DUMMY_JADWAL = [
-  {
-    id: 'jadwal_wk_001',
-    mataPelajaran: 'Pemrograman Web',
-    kelas: 'XII RPL 1',
-    jamKe: '3',
-    waktu: '08:30 - 09:15',
-  },
-  {
-    id: 'jadwal_wk_002',
-    mataPelajaran: 'Basis Data',
-    kelas: 'XII RPL 1',
-    jamKe: '5',
-    waktu: '10:15 - 11:00',
-  },
-  {
-    id: 'jadwal_wk_003',
-    mataPelajaran: 'Pemrograman Mobile',
-    kelas: 'XII RPL 1',
-    jamKe: '7',
-    waktu: '12:30 - 13:15',
-  },
-];
-
-// 🧪 Dummy siswa per kelas — ganti dengan data dari API/backend saat production
-const _DUMMY_SISWA = {
-  'XII RPL 1': [
-    { nisn: '7115/1006.063', nama: 'Abrory Akbar Al Batami' },
-    { nisn: '7116/1007.063', nama: 'Afif Firmansyah' },
-    { nisn: '7117/1008.063', nama: 'Agies Widyawati' },
-    { nisn: '7118/1009.063', nama: 'Agil Rifatul Haq' },
-    { nisn: '7119/1010.063', nama: 'Akh. Septian Ramadhan' },
-    { nisn: '7120/1011.063', nama: 'Alya Fitri Larasati' },
-    { nisn: '7122/1013.063', nama: 'Anastasya Dyah Ayu Proboningrum' },
-    { nisn: '7123/1014.063', nama: 'Anisa Puspitasari' },
-    { nisn: '7124/1015.063', nama: 'Anissa Prisilvia Tahara' },
-    { nisn: '7125/1016.063', nama: 'Aqilla Maulidyah' },
-    { nisn: '7126/1017.063', nama: 'Aqlina Failia Lifara Aizani' },
-    { nisn: '7127/1018.063', nama: 'Aristia Faren Rafaela' },
-    { nisn: '7128/1019.063', nama: 'Asyharli Kahfi Dewanda' },
-    { nisn: '7129/1020.063', nama: 'Athaar Putra Ruhenda' },
-    { nisn: '7130/1021.063', nama: 'Avriliana Anjani' },
-    { nisn: '7131/1022.063', nama: 'Azhar Anisatul Jannah' },
-    { nisn: '7132/1023.063', nama: 'Bintang Firman Ardana' },
-    { nisn: '7133/1024.063', nama: 'Callista Shafa Ramadhani' },
-    { nisn: '7134/1025.063', nama: 'Chevy Aprilia Hutabarat' },
-    { nisn: '7135/1026.063', nama: 'Cindi Tri Prasetyo' },
-    { nisn: '7136/1027.063', nama: 'Cintya Karina Putri' },
-    { nisn: '7137/1028.063', nama: 'Dhia Mirza Fandhiono' },
-    { nisn: '7138/1029.063', nama: 'Diandhika Dwi Pranata' },
-    { nisn: '7139/1030.063', nama: 'Fairuz Quds Zahran Firdaus' },
-    { nisn: '7140/1031.063', nama: 'Fardan Rasyah Islami' },
-    { nisn: '7141/1032.063', nama: 'Fatchur Rohman Rofian' },
-    { nisn: '7142/1033.063', nama: 'Fidatul Avina' },
-    { nisn: '7143/1034.063', nama: 'Firil Zulfa Azzahra' },
-    { nisn: '7144/1035.063', nama: 'Hapsari Ismartoyo' },
-    { nisn: '7145/1036.063', nama: 'Havid Abdilah Surahmad' },
-    { nisn: '7146/1037.063', nama: 'Ignacia Zandra' },
-    { nisn: '7147/1038.063', nama: 'Iqbal Lazuardi' },
-    { nisn: '7148/1039.063', nama: 'Iqlimahda Tanzilla Finan Diva' },
-    { nisn: '7149/1040.063', nama: 'Irdina Marsya Mazarina' },
-    { nisn: '7150/1041.063', nama: 'Isabel Cahaya Hati' },
-    { nisn: '7151/1042.063', nama: "Khoirun Ni'Mah Nurul Hidayah" },
-  ],
-  'XII RPL 2': [
-    { nisn: '7152/1043.063', nama: 'Laura Lavida Loca' },
-    { nisn: '7153/1044.063', nama: 'Lely Sagita' },
-    { nisn: '7154/1045.063', nama: 'Maya Mellinda Wijayanti' },
-    { nisn: '7156/1047.063', nama: 'Moch. Abyl Gustian' },
-    { nisn: '7157/1048.063', nama: 'Muhammad Aminullah' },
-    { nisn: '7158/1049.063', nama: 'Muhammad Azka Fadli Atthaya' },
-    { nisn: '7159/1050.063', nama: 'Muhammad Hadi Firmansyah' },
-    { nisn: '7160/1051.063', nama: 'Muhammad Harris Maulana Saputra' },
-    { nisn: '7161/1052.063', nama: 'Muhammad Ibnu Raffi Ahdan' },
-    { nisn: '7162/1053.063', nama: 'Muhammad Reyhan Alhadiansyah' },
-    { nisn: '7163/1054.063', nama: 'Muhammad Wisnu Dewandaru' },
-    { nisn: '7164/1055.063', nama: 'Nabila Ramadhani' },
-    { nisn: '7165/1056.063', nama: 'Nadia Sinta Devi Oktavia' },
-    { nisn: '7166/1057.063', nama: 'Nadjwa Kirana Firdaus' },
-    { nisn: '7167/1058.063', nama: 'Nindi Narita Maulidya' },
-    { nisn: '7168/1059.063', nama: 'Niswatul Khoiriyah' },
-    { nisn: '7169/1060.063', nama: 'Noverita Pascalia Rahma' },
-    { nisn: '7170/1061.063', nama: 'Novita Andriani' },
-    { nisn: '7171/1062.063', nama: 'Novita Azzahra' },
-    { nisn: '7172/1063.063', nama: 'Nurul Khasanah' },
-    { nisn: '7173/1064.063', nama: 'Rachel Aluna Meizha' },
-    { nisn: '7174/1065.063', nama: 'Raena Westi Dheanofa Herliani' },
-    { nisn: '7175/1066.063', nama: 'Rayhanun' },
-    { nisn: '7176/1067.063', nama: 'Rayyan Daffa Al Affani' },
-    { nisn: '7177/1068.063', nama: 'Rhameyzha Alea Chalila Putri Edward' },
-    { nisn: '7178/1069.063', nama: 'Rheisya Mauliddiva Putri' },
-    { nisn: '7179/1070.063', nama: 'Rheyyan Ramadhan I.P' },
-    { nisn: '7180/1071.063', nama: 'Risky Ramadhani' },
-    { nisn: '7181/1072.063', nama: 'Rita Aura Agustina' },
-    { nisn: '7182/1073.063', nama: 'Rizky Ramadhani' },
-    { nisn: '7184/1075.063', nama: "Sa'idhatul Hasana" },
-    { nisn: '7185/1076.063', nama: 'Shisilia Ismu Putri' },
-    { nisn: '7186/1077.063', nama: 'Suci Ramadani Indriansyah' },
-    { nisn: '7187/1078.063', nama: 'Talitha Nudia Rismatullah' },
-  ],
-};
-// ============================================================
-// 🔚 AKHIR DUMMY DATA
-// ============================================================
+import api from '../../utils/api';
+import { clearAuth } from '../../utils/auth';
 
 const DashboardWakel = () => {
   const navigate = useNavigate();
@@ -136,53 +12,12 @@ const DashboardWakel = () => {
   const [currentFormattedDate, setCurrentFormattedDate] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [qrVerified, setQrVerified] = useState(false);
-
-  // 🧪 Gunakan dummy data — ganti dengan data dari API saat production
-  const waliKelas = _DUMMY_WAKEL;
-  const allJadwal = _DUMMY_JADWAL;
-  const siswaPerKelas = _DUMMY_SISWA;
-
-  const totalSiswa = (siswaPerKelas[waliKelas.role.split(' ').slice(-2).join(' ')] || []).length;
-
-  // State untuk melacak jadwal yang sudah selesai absensi
+  const [waliKelas, setWaliKelas] = useState({ nama: '-', nip: '-', role: 'Wali Kelas -' });
+  const [allJadwal, setAllJadwal] = useState([]);
+  const [siswaPerKelas, setSiswaPerKelas] = useState({});
   const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
-
-  // Load completed absensi saat mount dan saat kembali dari presensi
-  useEffect(() => {
-    const loadCompletedAbsensi = () => {
-      const completed = new Set();
-      allJadwal.forEach(jadwal => {
-        if (isJadwalCompleted(jadwal.id, currentFormattedDate)) {
-          completed.add(jadwal.id);
-        }
-      });
-      setCompletedAbsensi(completed);
-    };
-
-    if (currentFormattedDate) {
-      loadCompletedAbsensi();
-    }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden && currentFormattedDate) {
-        loadCompletedAbsensi();
-      }
-    };
-
-    const handleFocus = () => {
-      if (currentFormattedDate) {
-        loadCompletedAbsensi();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [currentFormattedDate]);
+  const currentClassName = waliKelas.role.replace('Wali Kelas ', '');
+  const totalSiswa = (siswaPerKelas[currentClassName] || []).length;
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -214,6 +49,60 @@ const DashboardWakel = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const [me, homeroom, schedulesRes, studentsRes] = await Promise.all([
+          api.get('/me'),
+          api.get('/me/homeroom'),
+          api.get('/me/homeroom/schedules', { date: today }),
+          api.get('/me/homeroom/students'),
+        ]);
+
+        const className = homeroom?.name || '-';
+        setWaliKelas({
+          nama: me?.name || '-',
+          nip: me?.teacher?.nip || '-',
+          role: `Wali Kelas ${className}`,
+        });
+
+        const mappedStudents = (Array.isArray(studentsRes) ? studentsRes : (studentsRes?.data || [])).map((s) => ({
+          id: s.id,
+          nisn: s.nisn || s.nis || '-',
+          nama: s.name || s.user?.name || '-',
+        }));
+        setSiswaPerKelas({ [className]: mappedStudents });
+
+        const rawSchedules = Array.isArray(schedulesRes) ? schedulesRes : (schedulesRes?.data || []);
+        const mappedSchedules = rawSchedules.map((s) => ({
+          id: s.id,
+          mataPelajaran: s.subject_name || s.subject?.name || '-',
+          kelas: s.class_name || className || '-',
+          jamKe: s.session || '-',
+          waktu: `${(s.start_time || '-').slice(0, 5)} - ${(s.end_time || '-').slice(0, 5)}`,
+        }));
+        setAllJadwal(mappedSchedules);
+
+        const completionChecks = await Promise.all(
+          mappedSchedules.map(async (item) => {
+            try {
+              const rows = await api.get(`/attendance/schedules/${item.id}`, { date: today, per_page: 1 });
+              const count = Array.isArray(rows?.data) ? rows.data.length : (Array.isArray(rows) ? rows.length : 0);
+              return count > 0 ? item.id : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        setCompletedAbsensi(new Set(completionChecks.filter(Boolean)));
+      } catch (error) {
+        console.error('Gagal memuat dashboard wali kelas:', error);
+      }
+    };
+    load();
+  }, []);
+
   const handleIconClick = (jadwal) => {
     setSelectedSchedule(jadwal);
     setQrVerified(false);
@@ -228,7 +117,6 @@ const DashboardWakel = () => {
 
   const handleAbsensiSelesai = () => {
     if (selectedSchedule) {
-      const isCompleted = isJadwalCompleted(selectedSchedule.id, currentFormattedDate);
       const daftarSiswaYangDipilih = siswaPerKelas[selectedSchedule.kelas] || [];
       handleCloseModal();
       navigate('/walikelas/presensi', {
@@ -243,7 +131,7 @@ const DashboardWakel = () => {
           nipGuru: waliKelas.nip,
           daftarSiswa: daftarSiswaYangDipilih,
           totalSiswa: daftarSiswaYangDipilih.length,
-          isEdit: isCompleted,
+          isEdit: completedAbsensi.has(selectedSchedule.id),
         }
       });
     }
@@ -254,8 +142,7 @@ const DashboardWakel = () => {
   const handleLogout = () => {
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
     if (confirmLogout) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuth();
       sessionStorage.clear();
       navigate('/login');
       alert('Anda telah berhasil keluar');

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import './NavbarWaka.css';
 import defaultLogo from '../../assets/logo.png';
 
 function NavbarWaka() {
-  const navigate = useNavigate();
   const [logo, setLogo] = useState(defaultLogo);
   const [namaSekolah, setNamaSekolah] = useState('SMKN 2 SINGOSARI');
 

@@ -2,68 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, BookOpen, ArrowLeft, PieChart, TrendingUp } from 'lucide-react';
 import './DashboardSiswa.css';
 import NavbarSiswa from '../../components/Siswa/NavbarSiswa';
-
-// ==================== API CONFIGURATION ====================
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-const API_CONFIG = {
-  BASE_URL: API_BASE_URL,
-  ENDPOINTS: {
-    PROFILE: '/student/profile',
-    SCHEDULE: '/student/schedule',
-    WEEKLY_STATS: '/student/attendance/weekly-stats',
-    MONTHLY_TREND: '/student/attendance/monthly-trend'
-  }
-};
+import api from '../../utils/api';
+import { clearAuth } from '../../utils/auth';
 
 // ==================== API SERVICE ====================
 const apiService = {
-  async request(endpoint, options = {}) {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers
-    };
-
-    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        localStorage.removeItem('authToken');
-        window.location.href = '/';
-        throw new Error('Unauthorized');
-      }
-      throw new Error(`API Error: ${response.status}`);
-    }
-
-    return response.json();
-  },
-
   async getProfile() {
-    return this.request(API_CONFIG.ENDPOINTS.PROFILE);
+    const [me, classData] = await Promise.all([
+      api.get('/me'),
+      api.get('/me/class').catch(() => null),
+    ]);
+    return {
+      name: me?.name || '',
+      kelas: classData?.name || me?.class?.name || '',
+      id: me?.student?.nisn || me?.student?.nis || me?.id || '-',
+      gender: me?.student?.gender || 'perempuan',
+      studentId: me?.student?.id || me?.id || null,
+      classId: classData?.id || me?.student?.class_id || null,
+      profileImageUrl: me?.student?.photo_url || null,
+    };
   },
 
-  async getSchedule(classId) {
-    return this.request(`${API_CONFIG.ENDPOINTS.SCHEDULE}/${classId}`);
+  async getSchedule() {
+    const scheduleToday = await api.get('/me/dashboard/schedule-today').catch(() => []);
+    return {
+      weeklySchedule: {},
+      scheduleImageUrl: null,
+      today: Array.isArray(scheduleToday) ? scheduleToday : (scheduleToday?.data || []),
+    };
   },
 
-  async getWeeklyStats(studentId) {
-    return this.request(`${API_CONFIG.ENDPOINTS.WEEKLY_STATS}?studentId=${studentId}`);
+  async getWeeklyStats() {
+    const stats = await api.get('/me/dashboard/attendance-stats').catch(() => ({}));
+    return {
+      hadir: stats?.hadir || 0,
+      terlambat: stats?.terlambat || 0,
+      pulang: stats?.pulang || 0,
+      izin: stats?.izin || 0,
+      sakit: stats?.sakit || 0,
+      alpha: stats?.alpha || 0,
+    };
   },
 
-  async getMonthlyTrend(studentId, months = 6) {
-    return this.request(`${API_CONFIG.ENDPOINTS.MONTHLY_TREND}?studentId=${studentId}&months=${months}`);
+  async getMonthlyTrend() {
+    return [];
   }
 };
 
 // ==================== UTILITY FUNCTIONS ====================
 const getTodaySubjectCount = (scheduleData) => {
-  if (!scheduleData || !scheduleData.weeklySchedule) return 0;
+  if (!scheduleData) return 0;
+  if (Array.isArray(scheduleData.today)) return scheduleData.today.length;
+  if (!scheduleData.weeklySchedule) return 0;
   const today = new Date().getDay();
   return scheduleData.weeklySchedule[today]?.length || 0;
 };
@@ -575,9 +565,7 @@ const Dashboard = () => {
 
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('userRole');
+      clearAuth();
       window.location.href = '/';
     }
   };

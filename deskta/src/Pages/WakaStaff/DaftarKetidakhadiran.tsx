@@ -1,21 +1,19 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffLayout from "../../component/WakaStaff/StaffLayout";
-import { User, ArrowLeft, Eye, X, Loader2 } from "lucide-react";
+import { User, ArrowLeft, Eye } from "lucide-react";
 import { Modal } from "../../component/Shared/Modal";
-import { API_BASE_URL, handleResponse } from "../../services/api";
+import { attendanceService } from "../../services/attendanceService";
 
 type StatusKehadiran = "Izin" | "Sakit" | "Alfa" | "Pulang" | "Dispen";
 
 type RowKehadiran = {
-  no: number;
+  id: string;
   tanggal: string;
   jam: string;
   mapel: string;
   guru: string;
   status: StatusKehadiran;
   keterangan?: string;
-  buktiFoto?: string;
-  waktuKeluar?: string;
 };
 
 interface DaftarKetidakhadiranProps {
@@ -26,30 +24,36 @@ interface DaftarKetidakhadiranProps {
   onBack?: () => void;
   siswaName?: string;
   siswaIdentitas?: string;
+  studentId?: string;
+  classId?: string;
 }
 
 const mapBackendStatus = (status: string): StatusKehadiran | null => {
-  switch (status) {
-    case "excused":
-    case "izin": return "Izin";
-    case "sick": return "Sakit";
-    case "absent": return "Alfa";
-    case "dispensation":
-    case "dispensasi":
-    case "dispen": return "Dispen";
-    case "return": return "Pulang";
-    default: return null;
-  }
+  const value = String(status || "").toLowerCase();
+  if (value === "permission" || value === "excused" || value === "izin") return "Izin";
+  if (value === "sick") return "Sakit";
+  if (value === "absent" || value === "alpha") return "Alfa";
+  if (value === "return" || value === "leave_early") return "Pulang";
+  if (value === "dispensation" || value === "dispensasi" || value === "dispen") return "Dispen";
+  return null;
+};
+
+const formatDate = (date: string): string => {
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return date;
+  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
 export default function DaftarKetidakhadiran({
   user = { name: "Admin", role: "waka" },
   currentPage = "daftar-ketidakhadiran",
-  onMenuClick = () => { },
-  onLogout = () => { },
-  onBack = () => { },
+  onMenuClick = () => {},
+  onLogout = () => {},
+  onBack = () => {},
   siswaName = "Siswa",
   siswaIdentitas = "",
+  studentId,
+  classId,
 }: DaftarKetidakhadiranProps) {
   const COLORS = {
     IZIN: "#ACA40D",
@@ -60,89 +64,84 @@ export default function DaftarKetidakhadiran({
   };
 
   const [selectedRecord, setSelectedRecord] = useState<RowKehadiran | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [rows, setRows] = useState<RowKehadiran[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAbsences = async () => {
-      if (!siswaIdentitas) {
+      if (!classId) {
+        setError("Kelas tidak tersedia untuk memuat ketidakhadiran.");
+        setRows([]);
         setIsLoading(false);
         return;
       }
-      try {
-        setIsLoading(true);
-        const response = await fetch(
-          `${API_BASE_URL}/students/${siswaIdentitas}/attendance?per_page=-1`,
-          {
-            headers: {
-              "Authorization": `Bearer ${localStorage.getItem("token")}`,
-              "Accept": "application/json",
-            }
-          }
-        );
-        const data = await handleResponse(response);
-        const items = Array.isArray(data) ? data : (data?.data || []);
 
-        const mapped: RowKehadiran[] = items
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await attendanceService.getClassStudentsAbsences(classId, { per_page: 200 });
+        const groups = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+
+        const target = groups.find((group: any) => {
+          const student = group?.student || {};
+          const idMatch = studentId ? String(student.id) === String(studentId) : false;
+          const nisnMatch = siswaIdentitas ? String(student.nisn) === String(siswaIdentitas) : false;
+          return idMatch || nisnMatch;
+        });
+
+        const items = Array.isArray(target?.items) ? target.items : [];
+        const mapped = items
           .map((item: any) => {
-            const status = mapBackendStatus(item.status);
+            const status = mapBackendStatus(item?.status);
             if (!status) return null;
-            const date = new Date(item.date);
             return {
-              no: 0,
-              tanggal: date.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" }).replace(/\//g, "-"),
-              jam: item.schedule?.start_time?.substring(0, 5) || "-",
-              mapel: item.schedule?.subject?.name || "-",
-              guru: item.schedule?.teacher?.user?.name || "-",
+              id: item?.id ? String(item.id) : `${item?.date || "-"}-${item?.schedule_id || "-"}`,
+              tanggal: formatDate(item?.date || "-"),
+              jam: item?.schedule?.start_time ? String(item.schedule.start_time).substring(0, 5) : "-",
+              mapel: item?.schedule?.subject?.name || item?.schedule?.keterangan || "-",
+              guru: item?.schedule?.teacher?.user?.name || "-",
               status,
-              keterangan: item.notes || item.reason || `${status} tanpa keterangan`,
-              buktiFoto: item.document_path || undefined,
-              waktuKeluar: status === "Pulang" ? item.check_out_time || undefined : undefined,
-            };
+              keterangan: item?.reason || item?.notes || "-",
+            } as RowKehadiran;
           })
           .filter(Boolean) as RowKehadiran[];
 
-        mapped.forEach((r, i) => { r.no = i + 1; });
         setRows(mapped);
-      } catch (error) {
-        console.error("Failed to fetch absences:", error);
+      } catch (err: any) {
+        setError(err?.message || "Gagal memuat daftar ketidakhadiran.");
+        setRows([]);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchAbsences();
-  }, [siswaIdentitas]);
 
-  const stats = {
-    izin: rows.filter((r) => r.status === "Izin").length,
-    sakit: rows.filter((r) => r.status === "Sakit").length,
-    tidakHadir: rows.filter((r) => r.status === "Alfa").length,
-    pulang: rows.filter((r) => r.status === "Pulang").length,
-    dispen: rows.filter((r) => r.status === "Dispen").length,
-  };
+    fetchAbsences();
+  }, [classId, studentId, siswaIdentitas]);
+
+  const stats = useMemo(() => {
+    return {
+      izin: rows.filter((r) => r.status === "Izin").length,
+      sakit: rows.filter((r) => r.status === "Sakit").length,
+      tidakHadir: rows.filter((r) => r.status === "Alfa").length,
+      pulang: rows.filter((r) => r.status === "Pulang").length,
+      dispen: rows.filter((r) => r.status === "Dispen").length,
+    };
+  }, [rows]);
 
   const getStatusColor = (status: StatusKehadiran) => {
-    switch (status) {
-      case "Izin": return COLORS.IZIN;
-      case "Sakit": return COLORS.SAKIT;
-      case "Alfa": return COLORS.TIDAK_HADIR;
-      case "Pulang": return COLORS.PULANG;
-      case "Dispen": return COLORS.DISPEN;
-      default: return "#6B7280";
-    }
-  };
-
-  const handleStatusClick = (record: RowKehadiran, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setSelectedRecord(record);
-    setIsModalOpen(true);
+    if (status === "Izin") return COLORS.IZIN;
+    if (status === "Sakit") return COLORS.SAKIT;
+    if (status === "Pulang") return COLORS.PULANG;
+    if (status === "Dispen") return COLORS.DISPEN;
+    return COLORS.TIDAK_HADIR;
   };
 
   const StatusButton = ({ status, row }: { status: StatusKehadiran; row: RowKehadiran }) => (
-    <div
-      onClick={(e) => handleStatusClick(row, e)}
+    <button
+      type="button"
+      onClick={() => setSelectedRecord(row)}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -156,37 +155,12 @@ export default function DaftarKetidakhadiran({
         color: "#FFFFFF",
         backgroundColor: getStatusColor(status),
         cursor: "pointer",
-        transition: "all 0.2s ease",
-        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        minHeight: "36px",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.opacity = "0.9";
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.15)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = "1";
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+        border: "none",
       }}
     >
       <Eye size={14} />
       <span>{status}</span>
-    </div>
-  );
-
-  const DetailRow = ({ label, value }: { label: string; value: string }) => (
-    <div style={{
-      display: "flex",
-      justifyContent: "space-between",
-      marginBottom: 24,
-      paddingBottom: 12,
-      borderBottom: "1px solid #E5E7EB",
-    }}>
-      <div style={{ fontWeight: 600, color: "#374151" }}>{label} :</div>
-      <div style={{ color: "#6B7280", textAlign: "right", maxWidth: "60%" }}>{value}</div>
-    </div>
+    </button>
   );
 
   return (
@@ -199,7 +173,6 @@ export default function DaftarKetidakhadiran({
         pageTitle="Daftar Ketidakhadiran"
       >
         <div style={{ padding: "0 24px" }}>
-          {/* Button Kembali di atas sendiri */}
           <div style={{ marginBottom: "24px", display: "flex", justifyContent: "flex-end" }}>
             <button
               onClick={onBack}
@@ -215,16 +188,6 @@ export default function DaftarKetidakhadiran({
                 fontWeight: 600,
                 color: "#2F85EB",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#2F85EB";
-                e.currentTarget.style.color = "#FFFFFF";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#FFFFFF";
-                e.currentTarget.style.color = "#2F85EB";
               }}
             >
               <ArrowLeft size={18} />
@@ -232,45 +195,28 @@ export default function DaftarKetidakhadiran({
             </button>
           </div>
 
-          {/* Card Info Siswa */}
           <div style={{
             backgroundColor: "#0F3A5F",
             borderRadius: "12px",
             padding: "20px 24px",
             marginBottom: "24px",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
             maxWidth: "450px",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <div style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                backgroundColor: "#FFFFFF",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
+              <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <User size={32} color="#0F3A5F" />
               </div>
               <div>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: "18px",
-                  fontWeight: 700,
-                  color: "#FFFFFF",
-                  marginBottom: "4px",
-                }}>
+                <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#FFFFFF", marginBottom: "4px" }}>
                   {siswaName}
                 </h2>
                 <p style={{ margin: 0, fontSize: "14px", color: "#E5E7EB" }}>
-                  {siswaIdentitas}
+                  {siswaIdentitas || "-"}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Summary Cards */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
@@ -278,331 +224,101 @@ export default function DaftarKetidakhadiran({
             marginBottom: "24px",
             maxWidth: "800px",
           }}>
-            <div style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
-              padding: "20px",
-              border: `2px solid ${COLORS.IZIN}`,
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-            }}>
-              <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px", fontWeight: 500 }}>
-                Izin
-              </div>
-              <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.IZIN }}>
-                {stats.izin}
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
-              padding: "20px",
-              border: `2px solid ${COLORS.SAKIT}`,
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-            }}>
-              <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px", fontWeight: 500 }}>
-                Sakit
-              </div>
-              <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.SAKIT }}>
-                {stats.sakit}
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
-              padding: "20px",
-              border: `2px solid ${COLORS.DISPEN}`,
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-            }}>
-              <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px", fontWeight: 500 }}>
-                Dispen
-              </div>
-              <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.DISPEN }}>
-                {stats.dispen}
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
-              padding: "20px",
-              border: `2px solid ${COLORS.TIDAK_HADIR}`,
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-            }}>
-              <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px", fontWeight: 500 }}>
-                Alfa
-              </div>
-              <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.TIDAK_HADIR }}>
-                {stats.tidakHadir}
-              </div>
-            </div>
-
-            <div style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: "12px",
-              padding: "20px",
-              border: `2px solid ${COLORS.PULANG}`,
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-            }}>
-              <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px", fontWeight: 500 }}>
-                Pulang
-              </div>
-              <div style={{ fontSize: "36px", fontWeight: 700, color: COLORS.PULANG }}>
-                {stats.pulang}
-              </div>
-            </div>
+            <SummaryCard label="Izin" value={stats.izin} color={COLORS.IZIN} />
+            <SummaryCard label="Sakit" value={stats.sakit} color={COLORS.SAKIT} />
+            <SummaryCard label="Dispen" value={stats.dispen} color={COLORS.DISPEN} />
+            <SummaryCard label="Alfa" value={stats.tidakHadir} color={COLORS.TIDAK_HADIR} />
+            <SummaryCard label="Pulang" value={stats.pulang} color={COLORS.PULANG} />
           </div>
 
-          {/* Tabel */}
-          <div style={{
-            backgroundColor: "#FFFFFF",
-            borderRadius: "12px",
-            overflow: "hidden",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-            marginBottom: "24px",
-          }}>
-            <div style={{ overflowX: "auto" }}>
-              {isLoading ? (
-                <div style={{ display: "flex", justifyContent: "center", padding: "48px" }}>
-                  <Loader2 className="animate-spin" size={32} color="#2F85EB" />
-                </div>
-              ) : rows.length === 0 ? (
-                <div style={{
-                  textAlign: "center",
-                  padding: "48px 24px",
-                  color: "#6B7280",
-                  fontSize: "14px",
-                }}>
-                  Tidak ada data ketidakhadiran
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "2px solid #E5E7EB" }}>
-                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>No</th>
-                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Tanggal</th>
-                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Jam Pelajaran</th>
-                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Mata Pelajaran</th>
-                      <th style={{ padding: "16px", textAlign: "left", fontWeight: 600, color: "#374151" }}>Guru</th>
-                      <th style={{ padding: "16px", textAlign: "center", fontWeight: 600, color: "#374151" }}>Status</th>
+          <div style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", border: "1px solid #E5E7EB", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#F9FAFB", borderBottom: "1px solid #E5E7EB" }}>
+                  <th style={thStyle}>No</th>
+                  <th style={thStyle}>Tanggal</th>
+                  <th style={thStyle}>Jam</th>
+                  <th style={thStyle}>Mapel</th>
+                  <th style={thStyle}>Guru</th>
+                  <th style={thStyle}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={6} style={emptyStyle}>Memuat data ketidakhadiran...</td></tr>
+                ) : error ? (
+                  <tr><td colSpan={6} style={{ ...emptyStyle, color: "#B91C1C", fontWeight: 700 }}>{error}</td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={6} style={emptyStyle}>Tidak ada data ketidakhadiran siswa ini.</td></tr>
+                ) : (
+                  rows.map((row, index) => (
+                    <tr key={row.id} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                      <td style={tdStyle}>{index + 1}</td>
+                      <td style={tdStyle}>{row.tanggal}</td>
+                      <td style={tdStyle}>{row.jam}</td>
+                      <td style={tdStyle}>{row.mapel}</td>
+                      <td style={tdStyle}>{row.guru}</td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <StatusButton status={row.status} row={row} />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, idx) => (
-                      <tr key={row.no} style={{
-                        borderBottom: "1px solid #E5E7EB",
-                        backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB",
-                      }}>
-                        <td style={{ padding: "16px", color: "#6B7280" }}>{row.no}</td>
-                        <td style={{ padding: "16px", color: "#374151", fontWeight: 500 }}>{row.tanggal}</td>
-                        <td style={{ padding: "16px", color: "#6B7280" }}>{row.jam}</td>
-                        <td style={{ padding: "16px", color: "#374151" }}>{row.mapel}</td>
-                        <td style={{ padding: "16px", color: "#6B7280" }}>{row.guru}</td>
-                        <td style={{ padding: "16px", textAlign: "center" }}>
-                          <StatusButton status={row.status} row={row} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </StaffLayout>
 
-      {/* Modal Detail */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        {selectedRecord && (
-          <div style={{
-            backgroundColor: "#FFFFFF",
-            borderRadius: 12,
-            width: "90%",
-            maxWidth: 600,
-            maxHeight: "90vh",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}>
-            <div style={{
-              backgroundColor: "#0B2948",
-              padding: "16px 20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              color: "#FFFFFF",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Eye size={24} />
-                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>
-                  Detail Ketidakhadiran
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "#FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: 0,
-                }}
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div style={{ padding: 24, overflowY: "auto", flex: 1 }}>
-              <DetailRow label="Tanggal" value={selectedRecord.tanggal} />
-              <DetailRow label="Jam Pelajaran" value={selectedRecord.jam} />
-              <DetailRow label="Mata pelajaran" value={selectedRecord.mapel} />
-
-              {selectedRecord.status === "Pulang" && selectedRecord.waktuKeluar && (
-                <DetailRow label="Waktu Keluar" value={selectedRecord.waktuKeluar} />
-              )}
-
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 24,
-                paddingBottom: 12,
-                borderBottom: "1px solid #E5E7EB",
-              }}>
-                <div style={{ fontWeight: 600, color: "#374151" }}>Status :</div>
-                <div>
-                  <span style={{
-                    backgroundColor: getStatusColor(selectedRecord.status),
-                    color: "#FFFFFF",
-                    padding: "6px 20px",
-                    borderRadius: "20px",
-                    fontSize: "14px",
-                    fontWeight: 700,
-                  }}>
-                    {selectedRecord.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Info Box untuk Alfa */}
-              {selectedRecord.status === "Alfa" && (
-                <div style={{
-                  backgroundColor: "#F3F4F6",
-                  borderRadius: 8,
-                  padding: "16px 20px",
-                  textAlign: "center",
-                  marginBottom: 20,
-                  border: "1px solid #E5E7EB",
-                }}>
-                  <div style={{
-                    fontSize: 14,
-                    fontWeight: 500,
-                    color: "#374151",
-                  }}>
-                    Siswa Alfa tanpa keterangan
-                  </div>
-                </div>
-              )}
-
-              {/* Keterangan dan Bukti Foto - hanya untuk Izin, Sakit, Pulang */}
-              {(selectedRecord.status === "Izin" || selectedRecord.status === "Sakit" || selectedRecord.status === "Pulang") && (
-                <>
-                  {selectedRecord.keterangan && (
-                    <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
-                        Keterangan :
-                      </div>
-                      <div style={{
-                        padding: "12px 16px",
-                        backgroundColor: "#F9FAFB",
-                        borderRadius: 8,
-                        border: "1px solid #E5E7EB",
-                      }}>
-                        <p style={{ margin: 0, fontSize: 14, color: "#4B5563", lineHeight: 1.6 }}>
-                          {selectedRecord.keterangan}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
-                      Bukti Foto :
-                    </div>
-                    <div style={{
-                      padding: "40px 16px",
-                      backgroundColor: "#F9FAFB",
-                      borderRadius: 8,
-                      border: "1px solid #E5E7EB",
-                      minHeight: 100,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexDirection: "column",
-                      gap: 8,
-                    }}>
-                      {selectedRecord.buktiFoto ? (
-                        <>
-                          <div style={{
-                            width: 60,
-                            height: 60,
-                            backgroundColor: getStatusColor(selectedRecord.status),
-                            borderRadius: 8,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}>
-                            <Eye size={24} color="#FFFFFF" />
-                          </div>
-                          <p style={{ margin: 0, fontSize: 14, color: "#6B7280", textAlign: "center", fontWeight: 600 }}>
-                            {selectedRecord.buktiFoto}
-                          </p>
-                          <p style={{ margin: 0, fontSize: 12, color: "#9CA3AF", textAlign: "center" }}>
-                            Klik untuk melihat gambar
-                          </p>
-                        </>
-                      ) : (
-                        <p style={{ margin: 0, fontSize: 14, color: "#9CA3AF", textAlign: "center" }}>
-                          [Belum ada bukti foto yang diupload]
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div style={{
-              padding: "16px 20px",
-              borderTop: "1px solid #E5E7EB",
-              backgroundColor: "#F9FAFB",
-              display: "flex",
-              justifyContent: "flex-end",
-            }}>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  padding: "8px 20px",
-                  backgroundColor: getStatusColor(selectedRecord.status),
-                  color: "#FFFFFF",
-                  border: "none",
-                  borderRadius: 6,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        )}
+      <Modal isOpen={Boolean(selectedRecord)} onClose={() => setSelectedRecord(null)}>
+        <div style={{ padding: 20, minWidth: 320 }}>
+          <h3 style={{ marginTop: 0, marginBottom: 16 }}>Detail Ketidakhadiran</h3>
+          <DetailRow label="Tanggal" value={selectedRecord?.tanggal || "-"} />
+          <DetailRow label="Jam" value={selectedRecord?.jam || "-"} />
+          <DetailRow label="Mata Pelajaran" value={selectedRecord?.mapel || "-"} />
+          <DetailRow label="Guru" value={selectedRecord?.guru || "-"} />
+          <DetailRow label="Status" value={selectedRecord?.status || "-"} />
+          <DetailRow label="Keterangan" value={selectedRecord?.keterangan || "-"} />
+        </div>
       </Modal>
     </>
   );
 }
+
+function SummaryCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "16px", border: `2px solid ${color}` }}>
+      <div style={{ fontSize: "13px", color: "#6B7280", marginBottom: "6px" }}>{label}</div>
+      <div style={{ fontSize: "30px", fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid #E5E7EB" }}>
+      <span style={{ fontWeight: 600 }}>{label}</span>
+      <span style={{ maxWidth: 200, textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
+const thStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  textAlign: "left",
+  fontSize: "13px",
+  fontWeight: 700,
+  color: "#374151",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  fontSize: "13px",
+  color: "#1F2937",
+};
+
+const emptyStyle: React.CSSProperties = {
+  padding: "20px",
+  textAlign: "center",
+  color: "#6B7280",
+};

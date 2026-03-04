@@ -49,8 +49,13 @@ function KehadiranSiswaGuru({
   const [currentDate, setCurrentDate] = useState('');
   const [siswaList, setSiswaList] = useState<SiswaData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isClosingSession, setIsClosingSession] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [pageSuccess, setPageSuccess] = useState<string | null>(null);
 
   const [editingSiswa, setEditingSiswa] = useState<SiswaData | null>(null);
+  const [editReason, setEditReason] = useState('');
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [selectedSiswa, setSelectedSiswa] = useState<SiswaData | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -70,44 +75,53 @@ function KehadiranSiswaGuru({
 
   const fetchStudents = async (scheduleId: string) => {
     setLoading(true);
+    setPageError(null);
     try {
       const data = await attendanceService.getScheduleStudents(scheduleId);
+      const students = Array.isArray(data?.students)
+        ? data.students
+        : Array.isArray(data?.eligible_students)
+          ? data.eligible_students
+          : (Array.isArray(data?.data) ? data.data : []);
 
       // Map backend data to frontend interface
       // Backend returns list of students with 'attendance' relation if exists
-      const mappedStudents = (data.students || []).map((s: any) => {
-        const att = s.attendance; // The attendance record for today/session
+      const mappedStudents = students.map((s: any) => {
+        const att = s.attendance || s.latest_attendance || s.last_status_today; // The attendance record for today/session
         // Status mapping
         let status: SiswaData['status'] = 'unknown';
         if (att) {
           if (att.status === 'present') status = 'hadir';
+          else if (att.status === 'late') status = 'hadir';
           else if (att.status === 'sick') status = 'sakit';
-          else if (att.status === 'permission') status = 'izin';
+          else if (att.status === 'permission' || att.status === 'excused' || att.status === 'izin') status = 'izin';
           else if (att.status === 'alpha') status = 'alfa';
-          else if (att.status === 'leave_early') status = 'pulang';
+          else if (att.status === 'leave_early' || att.status === 'return') status = 'pulang';
+          else if (att.status === 'dispensation' || att.status === 'dispen') status = 'dispen';
+          else if (att.status === 'absent') status = 'alfa';
         } else {
-          // If no attendance record, default to alpha or unknown?
-          // Usually unknown or alpha until marked. Let's use 'unknown' (grey) or 'alfa' (red)
-          // The request says default to alpha?
-          status = 'alfa'; // Default if not present
+          // If no attendance record yet, keep it unknown until teacher sets manual status.
+          status = 'unknown';
         }
 
         return {
-          id: s.id.toString(),
-          nisn: s.nisn || '-',
-          nama: s.name,
-          mapel: schedule.subject,
+          id: String(s.id ?? s.student_id ?? ''),
+          nisn: s.nisn || s.nis || '-',
+          nama: s.name || s.user?.name || '-',
+          mapel: schedule?.subject || '-',
           status: status,
-          keterangan: att?.description,
+          keterangan: att?.reason || att?.description || att?.notes || '',
           attendance_id: att?.id,
           guru: user.name,
           tanggal: currentDate,
-          jamPelajaran: schedule.jam // e.g. "07:00 - 08:30"
+          jamPelajaran: schedule?.jam || `${schedule?.startTime || '-'} - ${schedule?.endTime || '-'}`, // e.g. "07:00 - 08:30"
+          waktuHadir: att?.checked_in_at ? String(att.checked_in_at).slice(11, 16) : (att?.time || undefined),
         };
       });
       setSiswaList(mappedStudents);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching students:", error);
+      setPageError(error?.message || "Gagal memuat daftar siswa untuk jadwal ini.");
     } finally {
       setLoading(false);
     }
@@ -116,45 +130,59 @@ function KehadiranSiswaGuru({
 
   const handleEditClick = (siswa: SiswaData) => {
     setEditingSiswa(siswa);
+    setEditReason(siswa.keterangan || '');
+    setPageError(null);
+    setPageSuccess(null);
   };
 
   const handleSaveStatus = async (newStatus: SiswaData['status']) => {
     if (!editingSiswa || !schedule?.id) return;
+    setPageError(null);
+    setPageSuccess(null);
 
-    // Map status to backend enum
-    const statusMap: Record<string, string> = {
-      'hadir': 'present',
-      'sakit': 'sick',
-      'izin': 'permission',
-      'alfa': 'alpha',
-      'pulang': 'leave_early',
-      'terlambat': 'late'
+    const leaveTypeMap: Record<string, string> = {
+      izin: 'permission',
+      sakit: 'sick',
+      alfa: 'alpha',
+      pulang: 'leave_early',
+      dispen: 'dispensation',
     };
 
-    const backendStatus = statusMap[newStatus];
-    if (!backendStatus) return;
-
     try {
-      await attendanceService.manualAttendance({
-        schedule_id: Number(schedule.id),
-        student_id: Number(editingSiswa.id),
-        status: backendStatus,
-        date: new Date().toISOString().split('T')[0],
-        reason: editingSiswa.keterangan || undefined
-      });
+      setIsSavingStatus(true);
 
-      // Only update state AFTER successful API response
-      setSiswaList(prevList =>
-        prevList.map(s =>
-          s.id === editingSiswa.id ? { ...s, status: newStatus } : s
-        )
-      );
+      if (newStatus === 'hadir') {
+        await attendanceService.manualAttendance({
+          schedule_id: Number(schedule.id),
+          student_id: Number(editingSiswa.id),
+          status: 'present',
+          date: new Date().toISOString().split('T')[0],
+          reason: editReason || undefined
+        });
+      } else {
+        const leaveType = leaveTypeMap[newStatus];
+        if (!leaveType) {
+          setPageError('Status tidak didukung untuk input manual.');
+          return;
+        }
+        await attendanceService.createStudentLeave(String(schedule.id), editingSiswa.id, {
+          type: leaveType,
+          reason: editReason || undefined
+        });
+      }
+
       setEditingSiswa(null);
-      alert("Status berhasil diperbarui");
+      setEditReason('');
+      setPageSuccess(`Status ${editingSiswa.nama} berhasil diperbarui.`);
+      await fetchStudents(String(schedule.id));
     } catch (error: any) {
       console.error('Error updating status:', error);
-      alert(error.message || "Gagal memperbarui status");
-      // State is NOT updated on error - rollback is automatic
+      const messages = Array.isArray(error?.validationMessages) && error.validationMessages.length > 0
+        ? error.validationMessages.join(', ')
+        : (error?.message || "Gagal memperbarui status");
+      setPageError(messages);
+    } finally {
+      setIsSavingStatus(false);
     }
   };
 
@@ -163,20 +191,28 @@ function KehadiranSiswaGuru({
     setIsDetailModalOpen(true);
   };
 
-  const handleSaveDetail = async () => {
-    if (!selectedSiswa || !schedule?.id) return;
+  const handleCloseSession = async () => {
+    if (!schedule?.id) {
+      alert("Pilih jadwal terlebih dahulu.");
+      return;
+    }
 
-    // In a real app, you might want to save the 'keterangan' or 'jamPelajaran' to the backend
-    // Since our manualAttendance API takes 'notes', we can use that for keterangan.
+    if (!window.confirm("Tutup sesi ini? Setelah ditutup, siswa tidak bisa absen lagi.")) {
+      return;
+    }
 
-    setSiswaList(prevList =>
-      prevList.map(s =>
-        s.id === selectedSiswa.id ? selectedSiswa : s
-      )
-    );
-    setIsDetailModalOpen(false);
-    setSelectedSiswa(null);
-    alert("Detail berhasil disimpan (Lokal)");
+    setIsClosingSession(true);
+    setPageError(null);
+    setPageSuccess(null);
+    try {
+      const response = await attendanceService.closeSchedule(schedule.id);
+      setPageSuccess(response?.message || "Sesi berhasil ditutup.");
+      await fetchStudents(schedule.id);
+    } catch (error: any) {
+      setPageError(error?.message || "Gagal menutup sesi.");
+    } finally {
+      setIsClosingSession(false);
+    }
   };
 
   const getStatusText = (status: string, waktuHadir?: string) => {
@@ -276,6 +312,16 @@ function KehadiranSiswaGuru({
       onLogout={onLogout}
     >
       <div style={{ padding: '0 4px' }}>
+        {pageSuccess && (
+          <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, backgroundColor: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0', fontWeight: 700, fontSize: 13 }}>
+            {pageSuccess}
+          </div>
+        )}
+        {pageError && (
+          <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 10, backgroundColor: '#FEF2F2', color: '#991B1B', border: '1px solid #FECACA', fontWeight: 700, fontSize: 13 }}>
+            {pageError}
+          </div>
+        )}
 
         {/* Top Info Section */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
@@ -318,6 +364,27 @@ function KehadiranSiswaGuru({
               <div style={{ fontSize: '13px', opacity: 0.8 }}>{schedule?.subject || '-'}</div>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleCloseSession}
+            disabled={!schedule?.id || isClosingSession}
+            style={{
+              backgroundColor: !schedule?.id || isClosingSession ? '#9CA3AF' : '#DC2626',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '10px 16px',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: !schedule?.id || isClosingSession ? 'not-allowed' : 'pointer',
+              width: 'fit-content',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+            title={!schedule?.id ? 'Pilih jadwal dulu' : 'Kunci absensi sesi ini'}
+          >
+            {isClosingSession ? 'Menutup Sesi...' : 'Tutup Sesi Absensi'}
+          </button>
         </div>
 
         {/* Table Section */}
@@ -438,6 +505,17 @@ function KehadiranSiswaGuru({
 
                 </select>
               </div>
+
+              <div style={{ marginTop: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#6B7280', marginBottom: '8px' }}>KETERANGAN (OPSIONAL)</label>
+                <textarea
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  rows={3}
+                  placeholder="Tulis alasan jika diperlukan..."
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #D1D5DB', resize: 'vertical' }}
+                />
+              </div>
             </div>
 
             {/* Footer */}
@@ -445,8 +523,12 @@ function KehadiranSiswaGuru({
               <button onClick={() => setEditingSiswa(null)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', backgroundColor: 'white', fontWeight: '600', cursor: 'pointer' }}>
                 Batal
               </button>
-              <button onClick={() => handleSaveStatus(editingSiswa.status)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: 'white', fontWeight: '600', cursor: 'pointer' }}>
-                Simpan
+              <button
+                onClick={() => handleSaveStatus(editingSiswa.status)}
+                disabled={isSavingStatus}
+                style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: isSavingStatus ? '#93C5FD' : '#2563EB', color: 'white', fontWeight: '600', cursor: isSavingStatus ? 'not-allowed' : 'pointer' }}
+              >
+                {isSavingStatus ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>
           </div>
@@ -486,33 +568,8 @@ function KehadiranSiswaGuru({
               <DetailRow label="NISN" value={selectedSiswa.nisn} />
               <DetailRow label="Mata Pelajaran" value={selectedSiswa.mapel} />
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
-                <div style={{ fontWeight: 600, color: '#374151' }}>Jam Pelajaran :</div>
-                <select
-                  value={selectedSiswa.jamPelajaran || ""}
-                  onChange={(e) => setSelectedSiswa({ ...selectedSiswa, jamPelajaran: e.target.value })}
-                  style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 14 }}
-                >
-                  <option value="">Pilih Jam</option>
-                  <option value="1-2">1 - 2</option>
-                  <option value="3-4">3 - 4</option>
-                  <option value="5-6">5 - 6</option>
-                  <option value="7-8">7 - 8</option>
-                </select>
-              </div>
-
-              {selectedSiswa.status === 'pulang' && (
-                <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E5E7EB' }}>
-                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: 8 }}>Upload Surat :</div>
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.png"
-                    onChange={(e) => setSelectedSiswa({ ...selectedSiswa, suratPulang: e.target.files?.[0] || null })}
-                    style={{ fontSize: 13, width: '100%' }}
-                  />
-                  {selectedSiswa.suratPulang && <div style={{ fontSize: 12, color: '#2563EB', marginTop: 4 }}>{selectedSiswa.suratPulang.name}</div>}
-                </div>
-              )}
+              <DetailRow label="Jam Pelajaran" value={selectedSiswa.jamPelajaran || '-'} />
+              <DetailRow label="Keterangan" value={selectedSiswa.keterangan || '-'} />
 
               <div style={{ marginTop: 20 }}>
                 <div style={{ padding: '12px 16px', borderRadius: 12, backgroundColor: STATUS_COLORS[selectedSiswa.status as keyof typeof STATUS_COLORS] + '15', border: `1px solid ${STATUS_COLORS[selectedSiswa.status as keyof typeof STATUS_COLORS]}30`, display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -524,8 +581,7 @@ function KehadiranSiswaGuru({
 
             {/* Footer */}
             <div style={{ padding: '20px 24px', backgroundColor: '#F9FAFB', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 12 }}>
-              <button onClick={() => setIsDetailModalOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #D1D5DB', backgroundColor: 'white', fontWeight: '700', cursor: 'pointer' }}>Batal</button>
-              <button onClick={handleSaveDetail} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', backgroundColor: '#2563EB', color: 'white', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 6px rgba(37,99,235,0.2)' }}>Simpan</button>
+              <button onClick={() => setIsDetailModalOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #D1D5DB', backgroundColor: 'white', fontWeight: '700', cursor: 'pointer' }}>Tutup</button>
             </div>
           </div>
         </div>

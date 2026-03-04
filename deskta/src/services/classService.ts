@@ -1,16 +1,11 @@
-import { API_BASE_URL, handleResponse } from './api';
+import { API_BASE_URL, fetchWithAuth, getHeaders, handleResponse } from './api';
 
 
 const classService = {
   getMyClass: async () => {
-    const response = await fetch(`${API_BASE_URL}/me/class`, {
+    const payload = await fetchWithAuth(`${API_BASE_URL}/me/class`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Accept": "application/json",
-      }
     });
-    const payload = await handleResponse(response);
     return payload?.data || payload;
   },
 
@@ -18,12 +13,12 @@ const classService = {
     const formData = new FormData();
     formData.append("file", file);
 
+    const headers = getHeaders() as Record<string, string>;
+    delete headers["Content-Type"];
+
     const response = await fetch(`${API_BASE_URL}/classes/${classId}/schedule-image`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Accept": "application/json",
-      },
+      headers,
       body: formData,
     });
     return handleResponse(response);
@@ -34,10 +29,7 @@ const classService = {
     // But we might need auth token? Use fetch to get blob and create object URL
     const response = await fetch(`${API_BASE_URL}/classes/${classId}/schedule-image`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        // "Accept": "image/*", // Or application/json if it returns json error
-      }
+      headers: getHeaders()
     });
 
     if (!response.ok) {
@@ -49,48 +41,35 @@ const classService = {
   },
 
   deleteScheduleImage: async (classId: string) => {
-    const response = await fetch(`${API_BASE_URL}/classes/${classId}/schedule-image`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/classes/${classId}/schedule-image`, {
       method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Accept": "application/json",
-      }
     });
-    return handleResponse(response);
+    return response;
   },
 
   getMyClassSchedules: async () => {
-    const response = await fetch(`${API_BASE_URL}/me/class/schedules`, {
+    return fetchWithAuth(`${API_BASE_URL}/me/class/schedules`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Accept": "application/json",
-      }
     });
-    return handleResponse(response);
   },
 
   getMyClassAttendance: async (params?: any) => {
-    const query = new URLSearchParams(params).toString();
-    const response = await fetch(`${API_BASE_URL}/me/class/attendance?${query}`, {
+    const query = new URLSearchParams(
+      Object.entries(params || {}).filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .reduce<Record<string, string>>((acc, [key, value]) => {
+          acc[key] = String(value);
+          return acc;
+        }, {})
+    ).toString();
+    return fetchWithAuth(`${API_BASE_URL}/me/class/attendance${query ? `?${query}` : ''}`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Accept": "application/json",
-      }
     });
-    return handleResponse(response);
   },
 
   getMyClassStudents: async () => {
-    const response = await fetch(`${API_BASE_URL}/me/class/students`, {
+    return fetchWithAuth(`${API_BASE_URL}/me/class/students`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Accept": "application/json",
-      }
     });
-    return handleResponse(response);
   }
 };
 

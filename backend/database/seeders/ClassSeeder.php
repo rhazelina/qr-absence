@@ -53,30 +53,6 @@ class ClassSeeder extends Seeder
                         ]);
                     }
 
-                    // Create 5 students per class
-                    for ($s = 1; $s <= 5; $s++) {
-                        $nisn = $faker->unique()->numerify('00#######');
-                        $gender = $faker->randomElement(['L', 'P']);
-                        $name = $faker->firstName($gender == 'L' ? 'male' : 'female').' '.$faker->lastName;
-
-                        $studentUser = User::create([
-                            'username' => $nisn,
-                            'name' => strtoupper($name),
-                            'email' => "{$nisn}@student.example.com",
-                            'password' => Hash::make('password123'),
-                            'user_type' => 'student',
-                            'active' => true,
-                        ]);
-
-                        StudentProfile::create([
-                            'user_id' => $studentUser->id,
-                            'nisn' => $nisn,
-                            'nis' => '20'.$nisn,
-                            'gender' => $gender,
-                            'address' => $faker->address,
-                            'class_id' => $class->id,
-                        ]);
-                    }
                 }
             }
         }

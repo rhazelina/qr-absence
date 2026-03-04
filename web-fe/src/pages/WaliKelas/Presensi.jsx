@@ -2,125 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './Presensi.css';
 import NavbarWakel from '../../components/WaliKelas/NavbarWakel';
+import api from '../../utils/api';
 
-// ============================================================
-// ⚙️  DUMMY DATA & MOCK FUNCTIONS (untuk testing)
-// ============================================================
-
-const _siswaDummy = {
-  'XII RPL 1': [
-    { nisn: '7115/1006.063', nama: 'Abrory Akbar Al Batami' },
-    { nisn: '7116/1007.063', nama: 'Afif Firmansyah' },
-    { nisn: '7117/1008.063', nama: 'Agies Widyawati' },
-    { nisn: '7118/1009.063', nama: 'Agil Rifatul Haq' },
-    { nisn: '7119/1010.063', nama: 'Akh. Septian Ramadhan' },
-    { nisn: '7120/1011.063', nama: 'Alya Fitri Larasati' },
-    { nisn: '7122/1013.063', nama: 'Anastasya Dyah Ayu Proboningrum' },
-    { nisn: '7123/1014.063', nama: 'Anisa Puspitasari' },
-    { nisn: '7124/1015.063', nama: 'Anissa Prisilvia Tahara' },
-    { nisn: '7125/1016.063', nama: 'Aqilla Maulidyah' },
-    { nisn: '7126/1017.063', nama: 'Aqlina Failia Lifara Aizani' },
-    { nisn: '7127/1018.063', nama: 'Aristia Faren Rafaela' },
-    { nisn: '7128/1019.063', nama: 'Asyharli Kahfi Dewanda' },
-    { nisn: '7129/1020.063', nama: 'Athaar Putra Ruhenda' },
-    { nisn: '7130/1021.063', nama: 'Avriliana Anjani' },
-    { nisn: '7131/1022.063', nama: 'Azhar Anisatul Jannah' },
-    { nisn: '7132/1023.063', nama: 'Bintang Firman Ardana' },
-    { nisn: '7133/1024.063', nama: 'Callista Shafa Ramadhani' },
-    { nisn: '7134/1025.063', nama: 'Chevy Aprilia Hutabarat' },
-    { nisn: '7135/1026.063', nama: 'Cindi Tri Prasetyo' },
-    { nisn: '7136/1027.063', nama: 'Cintya Karina Putri' },
-    { nisn: '7137/1028.063', nama: 'Dhia Mirza Fandhiono' },
-    { nisn: '7138/1029.063', nama: 'Diandhika Dwi Pranata' },
-    { nisn: '7139/1030.063', nama: 'Fairuz Quds Zahran Firdaus' },
-    { nisn: '7140/1031.063', nama: 'Fardan Rasyah Islami' },
-    { nisn: '7141/1032.063', nama: 'Fatchur Rohman Rofian' },
-    { nisn: '7142/1033.063', nama: 'Fidatul Avina' },
-    { nisn: '7143/1034.063', nama: 'Firil Zulfa Azzahra' },
-    { nisn: '7144/1035.063', nama: 'Hapsari Ismartoyo' },
-    { nisn: '7145/1036.063', nama: 'Havid Abdilah Surahmad' },
-    { nisn: '7146/1037.063', nama: 'Ignacia Zandra' },
-    { nisn: '7147/1038.063', nama: 'Iqbal Lazuardi' },
-    { nisn: '7148/1039.063', nama: 'Iqlimahda Tanzilla Finan Diva' },
-    { nisn: '7149/1040.063', nama: 'Irdina Marsya Mazarina' },
-    { nisn: '7150/1041.063', nama: 'Isabel Cahaya Hati' },
-    { nisn: '7151/1042.063', nama: "Khoirun Ni'Mah Nurul Hidayah" },
-  ],
-  'XII RPL 2': [
-    { nisn: '7152/1043.063', nama: 'Laura Lavida Loca' },
-    { nisn: '7153/1044.063', nama: 'Lely Sagita' },
-    { nisn: '7154/1045.063', nama: 'Maya Mellinda Wijayanti' },
-    { nisn: '7156/1047.063', nama: 'Moch. Abyl Gustian' },
-    { nisn: '7157/1048.063', nama: 'Muhammad Aminullah' },
-    { nisn: '7158/1049.063', nama: 'Muhammad Azka Fadli Atthaya' },
-    { nisn: '7159/1050.063', nama: 'Muhammad Hadi Firmansyah' },
-    { nisn: '7160/1051.063', nama: 'Muhammad Harris Maulana Saputra' },
-    { nisn: '7161/1052.063', nama: 'Muhammad Ibnu Raffi Ahdan' },
-    { nisn: '7162/1053.063', nama: 'Muhammad Reyhan Alhadiansyah' },
-    { nisn: '7163/1054.063', nama: 'Muhammad Wisnu Dewandaru' },
-    { nisn: '7164/1055.063', nama: 'Nabila Ramadhani' },
-    { nisn: '7165/1056.063', nama: 'Nadia Sinta Devi Oktavia' },
-    { nisn: '7166/1057.063', nama: 'Nadjwa Kirana Firdaus' },
-    { nisn: '7167/1058.063', nama: 'Nindi Narita Maulidya' },
-    { nisn: '7168/1059.063', nama: 'Niswatul Khoiriyah' },
-    { nisn: '7169/1060.063', nama: 'Noverita Pascalia Rahma' },
-    { nisn: '7170/1061.063', nama: 'Novita Andriani' },
-    { nisn: '7171/1062.063', nama: 'Novita Azzahra' },
-    { nisn: '7172/1063.063', nama: 'Nurul Khasanah' },
-    { nisn: '7173/1064.063', nama: 'Rachel Aluna Meizha' },
-    { nisn: '7174/1065.063', nama: 'Raena Westi Dheanofa Herliani' },
-    { nisn: '7175/1066.063', nama: 'Rayhanun' },
-    { nisn: '7176/1067.063', nama: 'Rayyan Daffa Al Affani' },
-    { nisn: '7177/1068.063', nama: 'Rhameyzha Alea Chalila Putri Edward' },
-    { nisn: '7178/1069.063', nama: 'Rheisya Mauliddiva Putri' },
-    { nisn: '7179/1070.063', nama: 'Rheyyan Ramadhan I.P' },
-    { nisn: '7180/1071.063', nama: 'Risky Ramadhani' },
-    { nisn: '7181/1072.063', nama: 'Rita Aura Agustina' },
-    { nisn: '7182/1073.063', nama: 'Rizky Ramadhani' },
-    { nisn: '7184/1075.063', nama: "Sa'idhatul Hasana" },
-    { nisn: '7185/1076.063', nama: 'Shisilia Ismu Putri' },
-    { nisn: '7186/1077.063', nama: 'Suci Ramadani Indriansyah' },
-    { nisn: '7187/1078.063', nama: 'Talitha Nudia Rismatullah' },
-  ],
+const toApiDate = (value) => {
+  if (!value) return new Date().toISOString().slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const m = String(value).match(/^(\d{2})-(\d{2})-(\d{4})/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return new Date().toISOString().slice(0, 10);
 };
 
-const _STORAGE_KEY = 'absensi_history';
-
-const generateSiswaList = (kelas, jadwalId, tanggal, daftarSiswaFromState) => {
-  const stored = localStorage.getItem(_STORAGE_KEY);
-  const history = stored ? JSON.parse(stored) : {};
-  const key = `${jadwalId}_${tanggal}`;
-  if (history[key]) return history[key].dataAbsensi;
-  // Gunakan daftarSiswa dari state jika ada, fallback ke dummy
-  const siswaDasar = daftarSiswaFromState && daftarSiswaFromState.length > 0
-    ? daftarSiswaFromState
-    : (_siswaDummy[kelas] || []);
-  return siswaDasar.map((siswa, index) => ({
-    no: index + 1,
-    nisn: siswa.nisn,
-    nama: siswa.nama,
-    status: '',
-    keterangan: null,
-    dokumen: null,
-  }));
+const mapBackendStatusToUi = (status) => {
+  const s = String(status || '').toLowerCase();
+  if (s === 'present') return 'hadir';
+  if (s === 'late') return 'terlambat';
+  if (s === 'excused' || s === 'izin') return 'izin';
+  if (s === 'sick') return 'sakit';
+  if (s === 'absent') return 'alfa';
+  if (s === 'return' || s === 'pulang') return 'pulang';
+  if (s === 'dinas' || s === 'dispensasi') return 'dispen';
+  return '';
 };
 
-const saveAbsensi = (jadwalId, tanggal, kelas, mataPelajaran, jamKe, dataAbsensi) => {
-  try {
-    const stored = localStorage.getItem(_STORAGE_KEY);
-    const history = stored ? JSON.parse(stored) : {};
-    const key = `${jadwalId}_${tanggal}`;
-    history[key] = { jadwalId, tanggal, kelas, mataPelajaran, jamKe, dataAbsensi, updatedAt: new Date().toISOString() };
-    localStorage.setItem(_STORAGE_KEY, JSON.stringify(history));
-    return true;
-  } catch (e) {
-    return false;
-  }
+const mapUiStatusToBackend = (status) => {
+  if (status === 'hadir') return 'present';
+  if (status === 'terlambat') return 'late';
+  if (status === 'izin') return 'excused';
+  if (status === 'sakit') return 'sick';
+  if (status === 'alfa') return 'absent';
+  if (status === 'pulang') return 'return';
+  if (status === 'dispen') return 'dinas';
+  return status;
 };
-
-// ============================================================
-// 🔚 AKHIR DUMMY DATA
-// ============================================================
 
 // Angka jam ke- 1–10
 const JAM_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -162,10 +75,55 @@ function Presensi() {
   const [siswaList, setSiswaList] = useState([]);
 
   useEffect(() => {
-    if (kelas && jadwalId && tanggal) {
-      const data = generateSiswaList(kelas, jadwalId, tanggal, state.daftarSiswa);
-      setSiswaList(data);
-    }
+    const loadStudents = async () => {
+      if (!jadwalId) return;
+      try {
+        const apiDate = toApiDate(tanggal);
+        let eligible = [];
+        if (Array.isArray(state.daftarSiswa) && state.daftarSiswa.length > 0) {
+          eligible = state.daftarSiswa.map((s) => ({
+            id: s.id,
+            name: s.nama || s.name || '-',
+            nisn: s.nisn || s.nis || '-',
+            nis: s.nis || null,
+          }));
+        } else {
+          const studentsRes = await api.get(`/me/schedules/${jadwalId}/students`);
+          eligible = Array.isArray(studentsRes?.eligible_students) ? studentsRes.eligible_students : [];
+        }
+
+        let base = eligible.map((siswa, index) => ({
+          no: index + 1,
+          studentId: siswa.id,
+          nisn: siswa.nisn || siswa.nis || '-',
+          nama: siswa.name || '-',
+          status: '',
+          keterangan: null,
+          dokumen: null,
+        }));
+
+        if (isEdit) {
+          const attendanceRes = await api.get(`/attendance/schedules/${jadwalId}`, { date: apiDate, per_page: 1000 });
+          const attendanceRows = Array.isArray(attendanceRes?.data) ? attendanceRes.data : [];
+          const byStudentId = new Map(attendanceRows.map((row) => [row?.student?.id, row]));
+          base = base.map((item) => {
+            const row = byStudentId.get(item.studentId);
+            const uiStatus = mapBackendStatusToUi(row?.status);
+            return {
+              ...item,
+              status: uiStatus,
+              keterangan: row?.reason ? { text: row.reason, alasan: row.reason, auto: false } : null,
+            };
+          });
+        }
+
+        setSiswaList(base);
+      } catch (error) {
+        console.error('Gagal memuat data siswa:', error);
+        setSiswaList([]);
+      }
+    };
+    loadStudents();
   }, [kelas, jadwalId, tanggal, isEdit]);
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -264,14 +222,24 @@ function Presensi() {
   };
 
   // ─── Simpan presensi ────────────────────────────────────────────────────────
-  const handleSimpan = () => {
+  const handleSimpan = async () => {
     const belum = siswaList.filter((s) => !s.status || s.status === '');
     if (belum.length > 0) {
       alert(`⚠️ Masih ada ${belum.length} siswa yang belum dipresensi!\n\nSilakan lengkapi presensi untuk semua siswa.`);
       return;
     }
-    const saved = saveAbsensi(jadwalId, tanggal, kelas, mataPelajaran, jamKe, siswaList);
-    if (saved) {
+    try {
+      const apiDate = toApiDate(tanggal);
+      const items = siswaList.map((s) => ({
+        student_id: s.studentId,
+        status: mapUiStatusToBackend(s.status),
+        reason: s.keterangan?.alasan || s.keterangan?.text || null,
+      }));
+      await api.post('/attendance/bulk-manual', {
+        schedule_id: jadwalId,
+        date: apiDate,
+        items,
+      });
       const s = siswaList;
       alert(
         `✅ PRESENSI BERHASIL DISIMPAN!\n\n` +
@@ -289,7 +257,8 @@ function Presensi() {
       );
       setMode('view');
       setTimeout(() => navigate('/walikelas/dashboard'), 2000);
-    } else {
+    } catch (error) {
+      console.error('Gagal menyimpan presensi:', error);
       alert('❌ Gagal menyimpan presensi!\n\nSilakan coba lagi atau hubungi administrator.');
     }
   };

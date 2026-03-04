@@ -13,6 +13,7 @@ import {
   FaSpinner,
   FaChevronRight
 } from 'react-icons/fa';
+import api from '../../utils/api';
 
 function JadwalSiswaShow() {
   const { id } = useParams();
@@ -30,21 +31,14 @@ function JadwalSiswaShow() {
   const fetchJadwalSiswa = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/jadwal-siswa/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const data = await api.get(`/classes/${id}`);
+      setJadwal({
+        ...data,
+        kompetensi_keahlian: data?.major || data?.major_name || '-',
+        wali_kelas: data?.homeroom_teacher_name || '-',
+        kelas: data?.class_name || data?.name || '-',
+        gambar_jadwal: data?.schedule_image_url || null,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setJadwal(data);
-      } else {
-        console.error('Gagal memuat data jadwal siswa');
-        alert('Gagal memuat data jadwal siswa');
-        navigate('/waka/jadwal-siswa');
-      }
     } catch (error) {
       console.error('Error fetching jadwal siswa:', error);
       alert('Terjadi kesalahan saat memuat data');
@@ -59,24 +53,12 @@ function JadwalSiswaShow() {
 
     setDeleteLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/jadwal-siswa/${id}/delete-image`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        alert('Jadwal berhasil dihapus');
-        setJadwal(prev => ({
-          ...prev,
-          gambar_jadwal: null
-        }));
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Gagal menghapus jadwal');
-      }
+      await api.del(`/classes/${id}/schedule-image`);
+      alert('Jadwal berhasil dihapus');
+      setJadwal(prev => ({
+        ...prev,
+        gambar_jadwal: null
+      }));
     } catch (error) {
       console.error('Error deleting image:', error);
       alert('Terjadi kesalahan saat menghapus jadwal');
@@ -108,9 +90,7 @@ function JadwalSiswaShow() {
     );
   }
 
-  const imageUrl = jadwal.gambar_jadwal
-    ? `http://localhost:5000${jadwal.gambar_jadwal}`
-    : null;
+  const imageUrl = jadwal.gambar_jadwal || null;
 
   return (
     <>

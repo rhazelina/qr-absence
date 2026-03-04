@@ -2,51 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardGuru.css';
 import NavbarGuru from '../../components/Guru/NavbarGuru';
-
-// ============================================================
-// ⚙️  DUMMY DATA & MOCK (untuk testing) — hapus saat production
-//     Ganti dengan import asli:
-//     import { isJadwalCompleted, getAbsensiSummary } from '../../utils/dataManager';
-// ============================================================
-const _STORAGE_KEY = 'absensi_history';
-
-const isJadwalCompleted = (jadwalId, tanggal) => {
-  try {
-    const stored = localStorage.getItem(_STORAGE_KEY);
-    const history = stored ? JSON.parse(stored) : {};
-    return !!history[`${jadwalId}_${tanggal}`];
-  } catch { return false; }
-};
-
-const getAbsensiSummary = () => [];
-
-// 🧪 Dummy jadwal — ganti dengan data dari API/backend saat production
-const _DUMMY_JADWAL = [
-  {
-    id: 'jadwal_001',
-    mataPelajaran: 'Pemrograman Web',
-    kelas: 'XII RPL 1',
-    jamKe: '3',
-    waktu: '08:30 - 09:15',
-  },
-  {
-    id: 'jadwal_002',
-    mataPelajaran: 'Basis Data',
-    kelas: 'XII RPL 2',
-    jamKe: '5',
-    waktu: '10:15 - 11:00',
-  },
-  {
-    id: 'jadwal_003',
-    mataPelajaran: 'Pemrograman Mobile',
-    kelas: 'XII RPL 1',
-    jamKe: '7',
-    waktu: '12:30 - 13:15',
-  },
-];
-// ============================================================
-// 🔚 AKHIR DUMMY DATA — hapus sampai sini saat production
-// ============================================================
+import api from '../../utils/api';
+import { clearAuth } from '../../utils/auth';
 
 function DashboardGuru() {
   const navigate = useNavigate();
@@ -56,49 +13,11 @@ function DashboardGuru() {
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [qrVerified, setQrVerified] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [allJadwal, setAllJadwal] = useState([]);
+  const [profileName, setProfileName] = useState('-');
+  const [profileId, setProfileId] = useState('-');
 
-  // State untuk melacak jadwal yang sudah selesai absensi
   const [completedAbsensi, setCompletedAbsensi] = useState(new Set());
-
-  // 🧪 Gunakan dummy jadwal — ganti "allJadwal = _DUMMY_JADWAL" dengan data dari API saat production
-  const allJadwal = _DUMMY_JADWAL;
-
-  // Effect untuk load completed absensi saat component mount dan saat kembali dari presensi
-  useEffect(() => {
-    const loadCompletedAbsensi = () => {
-      const completed = new Set();
-      allJadwal.forEach(jadwal => {
-        if (isJadwalCompleted(jadwal.id, currentFormattedDate)) {
-          completed.add(jadwal.id);
-        }
-      });
-      setCompletedAbsensi(completed);
-    };
-
-    if (currentFormattedDate) {
-      loadCompletedAbsensi();
-    }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden && currentFormattedDate) {
-        loadCompletedAbsensi();
-      }
-    };
-
-    const handleFocus = () => {
-      if (currentFormattedDate) {
-        loadCompletedAbsensi();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [currentFormattedDate]);
 
   useEffect(() => {
     const updateDateTime = () => {
@@ -130,6 +49,47 @@ function DashboardGuru() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [me, schedulesRes] = await Promise.all([
+          api.get('/me'),
+          api.get('/me/schedules/today'),
+        ]);
+        setProfileName(me?.name || '-');
+        setProfileId(me?.teacher?.nip || '-');
+
+        const rawSchedules = Array.isArray(schedulesRes?.data) ? schedulesRes.data : (Array.isArray(schedulesRes) ? schedulesRes : []);
+        const mapped = rawSchedules.map((s) => ({
+          id: s.id,
+          mataPelajaran: s.subject_name || s.subject?.name || '-',
+          kelas: s.class_name || s.class?.name || '-',
+          jamKe: s.session || '-',
+          waktu: `${(s.start_time || '-').slice(0, 5)} - ${(s.end_time || '-').slice(0, 5)}`,
+        }));
+        setAllJadwal(mapped);
+
+        const today = new Date().toISOString().slice(0, 10);
+        const completionChecks = await Promise.all(
+          mapped.map(async (item) => {
+            try {
+              const rows = await api.get(`/attendance/schedules/${item.id}`, { date: today, per_page: 1 });
+              const count = Array.isArray(rows?.data) ? rows.data.length : (Array.isArray(rows) ? rows.length : 0);
+              return count > 0 ? item.id : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        setCompletedAbsensi(new Set(completionChecks.filter(Boolean)));
+      } catch (error) {
+        console.error('Gagal memuat dashboard guru:', error);
+        setAllJadwal([]);
+      }
+    };
+    load();
+  }, []);
+
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const handleIconClick = (jadwal) => {
@@ -146,7 +106,6 @@ function DashboardGuru() {
 
   const handleAbsensiSelesai = () => {
     if (selectedSchedule) {
-      const isCompleted = isJadwalCompleted(selectedSchedule.id, currentFormattedDate);
       handleCloseModal();
       navigate('/guru/presensi', {
         state: {
@@ -156,7 +115,7 @@ function DashboardGuru() {
           kelas: selectedSchedule.kelas,
           waktu: selectedSchedule.waktu,
           tanggal: currentFormattedDate,
-          isEdit: isCompleted,
+          isEdit: completedAbsensi.has(selectedSchedule.id),
         }
       });
     }
@@ -167,8 +126,7 @@ function DashboardGuru() {
   const handleLogout = () => {
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
     if (confirmLogout) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuth();
       sessionStorage.clear();
       navigate('/login');
       alert('Anda telah berhasil keluar');
@@ -201,8 +159,8 @@ function DashboardGuru() {
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>
           </div>
-          <h2 className="profile-name3"></h2>
-          <p className="profile-id"></p>
+          <h2 className="profile-name3">{profileName}</h2>
+          <p className="profile-id">{profileId}</p>
           <button className="btn-logout" onClick={handleLogout}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>

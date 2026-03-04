@@ -90,8 +90,11 @@ class StudentController extends Controller
 
         $perPage = $request->integer('per_page', 10);
 
+        $query->join('users', 'student_profiles.user_id', '=', 'users.id')
+              ->select('student_profiles.*');
+
         return \App\Http\Resources\StudentResource::collection(
-            $query->orderBy('id', 'desc')->paginate($perPage > 0 ? $perPage : 10)->appends($request->all())
+            $query->orderBy('users.name', 'asc')->paginate($perPage > 0 ? $perPage : 10)->appends($request->all())
         )->response();
     }
 

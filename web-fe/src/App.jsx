@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { getDashboardByRole, getUser } from './utils/auth';
 import LandingPage from './pages/Auth/LandingPage';
 import LoginPage from './pages/Auth/LoginPage';
 import Dashboard from './pages/Admin/Dashboard';
@@ -38,6 +39,20 @@ import KehadiranSiswaRekap from './pages/Waka/KehadiranSiswaRekap';
 import KehadiranGuruIndex from './pages/Waka/KehadiranGuruIndex';
 import KehadiranGuruShow from './pages/Waka/KehadiranGuruShow';
 
+function ProtectedRoute({ children, allowedRoles }) {
+  const user = getUser();
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to={getDashboardByRole(user.role)} replace />;
+  }
+
+  return children;
+}
+
 function App() {
   return (
     <Routes>
@@ -49,47 +64,47 @@ function App() {
       <Route path="/login" element={<Navigate to="/" replace />} />
 
       {/* Admin Routes */}
-      <Route path="/admin/dashboard" element={<Dashboard />} />
-      <Route path="/admin/siswa" element={<DataSiswa />} />
-      <Route path="/admin/guru" element={<DataGuru />} />
-      <Route path="/admin/kelas" element={<DataKelas />} />
-      <Route path="/admin/jurusan" element={<DataJurusan />} />
-      <Route path="/admin/profil-sekolah" element={<ProfileSekolah />} />
+      <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><Dashboard /></ProtectedRoute>} />
+      <Route path="/admin/siswa" element={<ProtectedRoute allowedRoles={['admin']}><DataSiswa /></ProtectedRoute>} />
+      <Route path="/admin/guru" element={<ProtectedRoute allowedRoles={['admin']}><DataGuru /></ProtectedRoute>} />
+      <Route path="/admin/kelas" element={<ProtectedRoute allowedRoles={['admin']}><DataKelas /></ProtectedRoute>} />
+      <Route path="/admin/jurusan" element={<ProtectedRoute allowedRoles={['admin']}><DataJurusan /></ProtectedRoute>} />
+      <Route path="/admin/profil-sekolah" element={<ProtectedRoute allowedRoles={['admin']}><ProfileSekolah /></ProtectedRoute>} />
 
       {/* Guru Routes */}
-      <Route path="/guru/dashboard" element={<DashboardGuru />} />
-      <Route path="/guru/jadwal" element={<Jadwal />} />
-      <Route path="/guru/presensi" element={<PresensiSiswa />} />
+      <Route path="/guru/dashboard" element={<ProtectedRoute allowedRoles={['guru', 'wakel']}><DashboardGuru /></ProtectedRoute>} />
+      <Route path="/guru/jadwal" element={<ProtectedRoute allowedRoles={['guru', 'wakel']}><Jadwal /></ProtectedRoute>} />
+      <Route path="/guru/presensi" element={<ProtectedRoute allowedRoles={['guru', 'wakel']}><PresensiSiswa /></ProtectedRoute>} />
 
       {/* Siswa Routes */}
-      <Route path="/siswa/dashboard" element={<DashboardSiswa />} />
-      <Route path="/siswa/riwayat" element={<Riwayat />} />
+      <Route path="/siswa/dashboard" element={<ProtectedRoute allowedRoles={['siswa', 'pengurus_kelas']}><DashboardSiswa /></ProtectedRoute>} />
+      <Route path="/siswa/riwayat" element={<ProtectedRoute allowedRoles={['siswa', 'pengurus_kelas']}><Riwayat /></ProtectedRoute>} />
       
       {/* Pengurus Kelas Routes */}
-      <Route path="/pengurus-kelas/dashboard" element={<DashboardKelas />} />
-      <Route path="/pengurus-kelas/riwayat" element={<RiwayatKelas />} />
-      <Route path="/pengurus-kelas/presensi" element={<PresensiKelas />} />
+      <Route path="/pengurus-kelas/dashboard" element={<ProtectedRoute allowedRoles={['pengurus_kelas']}><DashboardKelas /></ProtectedRoute>} />
+      <Route path="/pengurus-kelas/riwayat" element={<ProtectedRoute allowedRoles={['pengurus_kelas']}><RiwayatKelas /></ProtectedRoute>} />
+      <Route path="/pengurus-kelas/presensi" element={<ProtectedRoute allowedRoles={['pengurus_kelas']}><PresensiKelas /></ProtectedRoute>} />
 
       {/* Wali Kelas Routes */}
-      <Route path="/walikelas/dashboard" element={<DashboardWakel />} />
-      <Route path="/walikelas/datasiswa" element={<Data />} />
-      <Route path="/walikelas/riwayatkehadiran" element={<RiwayatKehadiran />} />
-      <Route path="/walikelas/jadwalwakel" element={<JadwalWakel />} />
-      <Route path="/walikelas/presensi" element={<Presensi />} />
+      <Route path="/walikelas/dashboard" element={<ProtectedRoute allowedRoles={['wakel']}><DashboardWakel /></ProtectedRoute>} />
+      <Route path="/walikelas/datasiswa" element={<ProtectedRoute allowedRoles={['wakel']}><Data /></ProtectedRoute>} />
+      <Route path="/walikelas/riwayatkehadiran" element={<ProtectedRoute allowedRoles={['wakel']}><RiwayatKehadiran /></ProtectedRoute>} />
+      <Route path="/walikelas/jadwalwakel" element={<ProtectedRoute allowedRoles={['wakel']}><JadwalWakel /></ProtectedRoute>} />
+      <Route path="/walikelas/presensi" element={<ProtectedRoute allowedRoles={['wakel']}><Presensi /></ProtectedRoute>} />
 
       {/* Waka Routes */}
-      <Route path="/waka/dashboard" element={<DashboardWaka />} />
-      <Route path="/waka/jadwal-guru" element={<JadwalGuruIndex />} />
-      <Route path="/waka/jadwal-guru/:id" element={<JadwalGuruShow />} />
-      <Route path="/waka/jadwal-guru/:id/edit" element={<JadwalGuruEdit />} />
-      <Route path="/waka/jadwal-siswa" element={<JadwalSiswaIndex />} />
-      <Route path="/waka/jadwal-siswa/:id" element={<JadwalSiswaShow />} />
-      <Route path="/waka/jadwal-siswa/:id/edit" element={<JadwalSiswaEdit />} />
-      <Route path="/waka/kehadiran-siswa" element={<KehadiranSiswaIndex />} />
-      <Route path="/waka/kehadiran-siswa/rekap" element={<KehadiranSiswaRekap />} />
-      <Route path="/waka/kehadiran-siswa/:id" element={<KehadiranSiswaShow />} />
-      <Route path="/waka/kehadiran-guru" element={<KehadiranGuruIndex />} />
-      <Route path="/waka/kehadiran-guru/:id" element={<KehadiranGuruShow />} />
+      <Route path="/waka/dashboard" element={<ProtectedRoute allowedRoles={['waka']}><DashboardWaka /></ProtectedRoute>} />
+      <Route path="/waka/jadwal-guru" element={<ProtectedRoute allowedRoles={['waka']}><JadwalGuruIndex /></ProtectedRoute>} />
+      <Route path="/waka/jadwal-guru/:id" element={<ProtectedRoute allowedRoles={['waka']}><JadwalGuruShow /></ProtectedRoute>} />
+      <Route path="/waka/jadwal-guru/:id/edit" element={<ProtectedRoute allowedRoles={['waka']}><JadwalGuruEdit /></ProtectedRoute>} />
+      <Route path="/waka/jadwal-siswa" element={<ProtectedRoute allowedRoles={['waka']}><JadwalSiswaIndex /></ProtectedRoute>} />
+      <Route path="/waka/jadwal-siswa/:id" element={<ProtectedRoute allowedRoles={['waka']}><JadwalSiswaShow /></ProtectedRoute>} />
+      <Route path="/waka/jadwal-siswa/:id/edit" element={<ProtectedRoute allowedRoles={['waka']}><JadwalSiswaEdit /></ProtectedRoute>} />
+      <Route path="/waka/kehadiran-siswa" element={<ProtectedRoute allowedRoles={['waka']}><KehadiranSiswaIndex /></ProtectedRoute>} />
+      <Route path="/waka/kehadiran-siswa/rekap" element={<ProtectedRoute allowedRoles={['waka']}><KehadiranSiswaRekap /></ProtectedRoute>} />
+      <Route path="/waka/kehadiran-siswa/:id" element={<ProtectedRoute allowedRoles={['waka']}><KehadiranSiswaShow /></ProtectedRoute>} />
+      <Route path="/waka/kehadiran-guru" element={<ProtectedRoute allowedRoles={['waka']}><KehadiranGuruIndex /></ProtectedRoute>} />
+      <Route path="/waka/kehadiran-guru/:id" element={<ProtectedRoute allowedRoles={['waka']}><KehadiranGuruShow /></ProtectedRoute>} />
       
 
       {/* Route lain yang nggak ada, balik ke landing */}

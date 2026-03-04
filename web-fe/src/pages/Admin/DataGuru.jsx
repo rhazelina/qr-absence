@@ -1,14 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './DataGuru.css';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
-// ============================================================
-// DUMMY MODE — semua data disimpan di state lokal (tanpa API)
-// Kelas: setiap jurusan punya beberapa nomor kelas
-// ============================================================
+import api from '../../utils/api';
 
 const KELAS_DATA = {
   TKJ: ['X TKJ 1', 'X TKJ 2', 'XI TKJ 1', 'XI TKJ 2', 'XII TKJ 1', 'XII TKJ 2'],
@@ -23,8 +19,6 @@ const KELAS_DATA = {
 
 const JURUSAN_LIST = Object.keys(KELAS_DATA);
 
-let nextId = 1;
-
 function DataGuru() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -32,6 +26,7 @@ function DataGuru() {
   const [teachers, setTeachers] = useState([]);
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [selectedJurusanWK, setSelectedJurusanWK] = useState(null);
+  const [classesList, setClassesList] = useState([]);
 
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
@@ -51,6 +46,90 @@ function DataGuru() {
 
   const emptyForm = { kodeGuru: '', namaGuru: '', jabatan: [], keterangan: {} };
   const [formData, setFormData] = useState(emptyForm);
+
+  const extractJurusanFromClassName = (className) => {
+    const parts = String(className || '').split(' ');
+    return parts[1] || null;
+  };
+
+  const mapTeacherToForm = (teacher) => {
+    const jabatanRaw = teacher?.jabatan ?? teacher?.role ?? [];
+    const jabatan = Array.isArray(jabatanRaw) ? jabatanRaw : [String(jabatanRaw || 'Guru')];
+    const keterangan = {};
+    if (jabatan.includes('Guru')) {
+      const subjectRaw = teacher?.subject;
+      const subjectArr = Array.isArray(subjectRaw)
+        ? subjectRaw
+        : String(teacher?.subject_name || subjectRaw || '').split(',').map((v) => v.trim()).filter(Boolean);
+      keterangan['Guru'] = subjectArr;
+    }
+    if (jabatan.includes('Waka')) {
+      keterangan['Waka'] = teacher?.waka_field ? [teacher.waka_field] : [];
+    }
+    if (jabatan.includes('Kapro')) {
+      keterangan['Kapro'] = teacher?.konsentrasi_keahlian ? [teacher.konsentrasi_keahlian] : [];
+    }
+    if (jabatan.includes('Wali Kelas')) {
+      const homeroomName = teacher?.homeroom_class?.name || '';
+      keterangan['Wali Kelas'] = homeroomName ? [homeroomName] : [];
+    }
+    return {
+      id: teacher.id,
+      kodeGuru: teacher.kode_guru || teacher.nip || '',
+      namaGuru: teacher.nama_guru || teacher.name || '',
+      jabatan,
+      keterangan,
+    };
+  };
+
+  const resolveHomeroomClassId = (waliKelasText) => {
+    const found = classesList.find((c) => (c.class_name || c.name) === waliKelasText);
+    return found?.id || null;
+  };
+
+  const buildPayload = (f) => {
+    const jabatan = f.jabatan || [];
+    const guruSubjects = f.keterangan?.Guru || [];
+    const wakaField = f.keterangan?.Waka?.[0] || null;
+    const kaproField = f.keterangan?.Kapro?.[0] || null;
+    const waliKelasName = f.keterangan?.['Wali Kelas']?.[0] || null;
+    return {
+      name: f.namaGuru.trim(),
+      kode_guru: f.kodeGuru.trim(),
+      nip: f.kodeGuru.trim(),
+      username: f.kodeGuru.trim(),
+      jabatan,
+      subject: guruSubjects.length ? guruSubjects : null,
+      bidang: wakaField,
+      konsentrasi_keahlian: kaproField,
+      homeroom_class_id: waliKelasName ? resolveHomeroomClassId(waliKelasName) : null,
+    };
+  };
+
+  const loadTeachers = async () => {
+    const res = await api.get('/teachers', { per_page: 1000 });
+    const rows = Array.isArray(res?.data) ? res.data : [];
+    setTeachers(rows.map(mapTeacherToForm));
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [teacherRes, classRes] = await Promise.all([
+          api.get('/teachers', { per_page: 1000 }),
+          api.get('/classes', { per_page: 1000 }),
+        ]);
+        const teacherRows = Array.isArray(teacherRes?.data) ? teacherRes.data : [];
+        const classRows = Array.isArray(classRes?.data) ? classRes.data : [];
+        setTeachers(teacherRows.map(mapTeacherToForm));
+        setClassesList(classRows);
+      } catch (error) {
+        console.error('Gagal memuat data guru:', error);
+        setTeachers([]);
+      }
+    };
+    load();
+  }, []);
 
   // ── Filter ───────────────────────────────────────────────
   const filteredTeachers = teachers.filter(t => {
@@ -93,7 +172,7 @@ function DataGuru() {
     });
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.kodeGuru.trim()) { alert('Kode Guru harus diisi!'); return; }
     if (!formData.namaGuru.trim()) { alert('Nama Guru harus diisi!'); return; }
@@ -107,22 +186,20 @@ function DataGuru() {
       }
     }
 
-    const duplikat = teachers.find(
-      t => t.kodeGuru === formData.kodeGuru.trim() &&
-           (!editingTeacher || t.id !== editingTeacher.id)
-    );
-    if (duplikat) { alert(`Kode Guru "${formData.kodeGuru}" sudah digunakan!`); return; }
-
-    if (editingTeacher) {
-      setTeachers(prev =>
-        prev.map(t => t.id === editingTeacher.id ? { ...formData, id: t.id } : t)
-      );
-      alert('Data guru berhasil diperbarui!');
-    } else {
-      setTeachers(prev => [...prev, { ...formData, id: nextId++ }]);
-      alert('Data guru berhasil ditambahkan!');
+    const payload = buildPayload(formData);
+    try {
+      if (editingTeacher) {
+        await api.put(`/teachers/${editingTeacher.id}`, payload);
+        alert('Data guru berhasil diperbarui!');
+      } else {
+        await api.post('/teachers', payload);
+        alert('Data guru berhasil ditambahkan!');
+      }
+      await loadTeachers();
+      handleCloseModal();
+    } catch (error) {
+      alert(error?.message || 'Gagal menyimpan data guru!');
     }
-    handleCloseModal();
   };
 
   const handleEdit = (teacher) => {
@@ -133,18 +210,21 @@ function DataGuru() {
       jabatan: teacher.jabatan || [],
       keterangan: teacher.keterangan || {}
     });
-    // Restore jurusan WK — ambil dari label kelas: "XI RPL 1" → jurusan = "RPL"
     const wkKet = teacher.keterangan?.['Wali Kelas'] || [];
     if (wkKet.length > 0) {
-      const parts = wkKet[0].split(' ');
-      setSelectedJurusanWK(parts[1] || null);
+      setSelectedJurusanWK(extractJurusanFromClassName(wkKet[0]));
     }
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus data guru ini?')) {
-      setTeachers(prev => prev.filter(t => t.id !== id));
+      try {
+        await api.del(`/teachers/${id}`);
+        await loadTeachers();
+      } catch (error) {
+        alert(error?.message || 'Gagal menghapus data guru!');
+      }
     }
   };
 
@@ -219,18 +299,20 @@ function DataGuru() {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws);
         if (rows.length === 0) { alert('File kosong!'); return; }
-        const imported = rows.map(row => ({
-          id: nextId++,
-          kodeGuru: String(row['Kode Guru'] || '').trim(),
-          namaGuru: String(row['Nama Guru'] || '').trim(),
-          jabatan: [String(row['Jabatan'] || 'Guru').trim()],
-          keterangan: {
-            [String(row['Jabatan'] || 'Guru').trim()]:
-              [String(row['Keterangan'] || '').trim()].filter(Boolean)
-          }
-        })).filter(r => r.kodeGuru && r.namaGuru);
-        setTeachers(prev => [...prev, ...imported]);
-        alert(`✅ Berhasil mengimpor ${imported.length} data guru.`);
+        const items = rows.map(row => ({
+          name: String(row['Nama Guru'] || '').trim(),
+          kode_guru: String(row['Kode Guru'] || '').trim(),
+          nip: String(row['Kode Guru'] || '').trim(),
+          username: String(row['Kode Guru'] || '').trim(),
+          jabatan: String(row['Jabatan'] || 'Guru').split('|').map((j) => j.trim()).filter(Boolean),
+          subject: String(row['Keterangan'] || '').split(',').map((s) => s.trim()).filter(Boolean),
+        })).filter(r => r.kode_guru && r.name);
+        api.post('/import/guru', { items }).then(async (result) => {
+          await loadTeachers();
+          alert(`✅ Berhasil mengimpor ${result?.success_count ?? items.length} data guru.`);
+        }).catch((err) => {
+          alert(`❌ Gagal import: ${err.message}`);
+        });
       } catch (err) { alert('❌ Gagal baca file: ' + err.message); }
     };
     reader.readAsArrayBuffer(file);
@@ -253,16 +335,6 @@ function DataGuru() {
       <line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>
     </svg>
   );
-  const DownloadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ marginRight: '8px' }}>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-      <polyline points="7 10 12 15 17 10"/>
-      <line x1="12" y1="15" x2="12" y2="3"/>
-    </svg>
-  );
-
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="guru-data-container">
@@ -310,7 +382,14 @@ function DataGuru() {
               onChange={handleImportFromExcel} style={{ display: 'none' }} />
             <button className="guru-btn-import" onClick={() => fileInputRef.current?.click()}>Impor</button>
             <button className="guru-btn-download-template" onClick={handleDownloadTemplate}>
-              <DownloadIcon /> Format Excel
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ marginRight: '8px' }}>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Format Excel
             </button>
           </div>
         </div>
