@@ -64,6 +64,17 @@ export default function DetailKehadiranGuru({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<RowKehadiran | null>(null);
 
+  const formatDisplayDate = (raw: string) => {
+    if (!raw) return raw;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return raw;
+    return parsed.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   useEffect(() => {
     const fallbackName = location.state?.guruName || guruName;
     if (fallbackName) {
@@ -145,7 +156,7 @@ export default function DetailKehadiranGuru({
 
         return {
           no: index + 1,
-          tanggal: item.date,
+          tanggal: formatDisplayDate(item.date),
           jam: jamStr,
           mapel: subject.name || schedule.keterangan || "-",
           kelas: classRoom.name || "-",

@@ -38,7 +38,7 @@ class UpdateSettingRequest extends FormRequest
             'school_headmaster' => 'nullable|string|max:255',
             'school_headmaster_nip' => 'nullable|string|max:50',
             // allow each type explicitly so MA, MTS, MI can be stored individually
-            'school_type' => 'nullable|string|in:SMK,SMA,MA,SMP,MTS,SD,MI',
+            'school_type' => 'nullable|string|in:SMK,SMA,MA,SMP,MTS,SD,MI,SMK/SMA/MA,SMP/MTS,SD/MI',
         ];
     }
 }

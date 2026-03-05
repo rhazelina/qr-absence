@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
+import { API_ENDPOINTS } from '../../utils/apiConfig';
+import { getDashboardByRole, normalizeRoleByParam, saveAuth } from '../../utils/auth';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -87,38 +90,25 @@ const LoginPage = () => {
     try {
       setLoading(true);
 
-      // TODO: Ganti dengan endpoint API yang sesuai
-      // const response = await fetch('YOUR_API_ENDPOINT/login', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     role: role,
-      //     identifier: formData.identifier,
-      //     password: formData.password
-      //   }),
-      // });
+      const payload = {
+        login: formData.identifier,
+        password: formData.password || '',
+      };
 
-      // if (!response.ok) {
-      //   throw new Error('Login gagal');
-      // }
+      const data = await api.post(API_ENDPOINTS.login, payload);
 
-      // const data = await response.json();
+      if (!data?.token || !data?.user) {
+        throw new Error('Login gagal. Respon tidak valid.');
+      }
 
-      // Simpan token dan data user ke localStorage
-      // localStorage.setItem('token', data.token);
-      // localStorage.setItem('userRole', role);
-      // localStorage.setItem('userData', JSON.stringify(data.user));
+      const requestedRole = normalizeRoleByParam(role);
+      if (requestedRole && data.user.role && data.user.role !== requestedRole) {
+        throw new Error(`Akun ini bukan role ${config.title}.`);
+      }
 
-      // Sementara untuk development (hapus saat production)
-      console.log('Login berhasil sebagai', role, formData);
-      localStorage.setItem('userRole', role);
-      localStorage.setItem('userIdentifier', formData.identifier);
-      
-      // Navigate ke dashboard
-      navigate(config.dashboard);
+      saveAuth({ token: data.token, user: data.user });
 
+      navigate(getDashboardByRole(data.user.role));
     } catch (err) {
       setError(err.message || 'Terjadi kesalahan saat login');
       console.error('Login error:', err);

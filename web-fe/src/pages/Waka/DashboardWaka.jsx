@@ -13,6 +13,7 @@ import "./DashboardWaka.css";
 import { useNavigate } from "react-router-dom";
 import NavbarWaka from "../../components/Waka/NavbarWaka";
 import api from "../../utils/api";
+import { clearAuth } from "../../utils/auth";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -187,10 +188,9 @@ export default function DashboardWaka() {
   const handleLogout = () => {
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
     if (confirmLogout) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuth();
       sessionStorage.clear();
-      navigate('/');
+      navigate('/login');
       alert('Anda telah berhasil logout');
     }
   };

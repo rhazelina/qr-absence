@@ -48,15 +48,20 @@ export default function KehadiranSiswa({
     setLoading(true);
     try {
         const [majorsResponse, classesResponse] = await Promise.all([
-            masterService.getMajors(),
-            masterService.getClasses()
+          masterService.getMajors(),
+          masterService.getClasses({ per_page: 200 }),
         ]);
 
-        const majors: Major[] = majorsResponse.data || [];
-        const classes: any[] = classesResponse.data || [];
-
-        // Set Majors List
-        setJurusanList(majors.map(m => m.name));
+        const majors: Major[] = Array.isArray(majorsResponse?.data)
+          ? majorsResponse.data
+          : Array.isArray(majorsResponse?.data?.data)
+            ? majorsResponse.data.data
+            : [];
+        const classes: any[] = Array.isArray(classesResponse?.data)
+          ? classesResponse.data
+          : Array.isArray(classesResponse?.data?.data)
+            ? classesResponse.data.data
+            : [];
 
         // Map Classes
         const rows: KelasRow[] = classes.map((c: any) => {
@@ -73,12 +78,24 @@ export default function KehadiranSiswa({
                 id: String(c.id),
                 tingkat: String(c.grade), 
                 namaKelas: c.class_name || c.name, // ClassResource returns 'class_name' which is "X RPL 1"
-                namaJurusan: c.major_name || "-",
+                namaJurusan:
+                  c.major_name ||
+                  c.major?.name ||
+                  c.major?.code ||
+                  (typeof c.major === "string" ? c.major : "-") ||
+                  "-",
                 waliKelas: c.homeroom_teacher_name || "Belum ditentukan"
             };
         });
 
         setKelasData(rows);
+
+        setKelasData(rows);
+
+        // Set jurusan list (combine majors + classes)
+        const jurusanFromMajors = majors.map((m) => m.name).filter(Boolean);
+        const jurusanFromClasses = rows.map((r) => r.namaJurusan).filter(Boolean);
+        setJurusanList(Array.from(new Set([...jurusanFromMajors, ...jurusanFromClasses])));
 
         // Derive unique grades for filter
         const uniqueGrades = Array.from(new Set(rows.map(r => r.tingkat))).sort();

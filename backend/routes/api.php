@@ -35,6 +35,16 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::post('/devices', [DeviceController::class, 'store']); // Match ApiService.kt @POST("devices")
     Route::get('/schedules', [ScheduleController::class, 'index']); // Match @GET("schedules")
     Route::get('/schedules/{schedule}', [ScheduleController::class, 'show']); // Match @GET("schedules/{schedule}")
+    // Tambahkan ini di backend untuk mendukung fitur Tindak Lanjut Guru
+    // Tambahkan route POST ini agar sinkron dengan ApiService di Android
+
+    // Route untuk Tindak Lanjut Guru
+    Route::get('me/students/follow-up', [StudentFollowUpController::class, 'index']);
+    Route::post('me/students/follow-up', [StudentFollowUpController::class, 'store']);
+    
+    Route::post('me/students/follow-up', [StudentFollowUpController::class, 'store']);
+    Route::get('me/students/follow-up', [StudentFollowUpController::class, 'index']); // Existing
+    Route::post('me/students/follow-up', [StudentFollowUpController::class, 'store']); // NEW
 
     // Mobile dashboard endpoints
     Route::get('/me/dashboard/summary', [DashboardController::class, 'studentDashboard'])->middleware('role:student');

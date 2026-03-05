@@ -88,8 +88,11 @@ export default function DetailSiswaStaff({
   kelasId,
   namaKelas = "-",
   waliKelas = "-",
+  selectedKelas,
   onBack,
 }: DetailSiswaStaffProps) {
+  const resolvedNamaKelas = namaKelas !== "-" ? namaKelas : (selectedKelas || "-");
+  const resolvedWaliKelas = waliKelas !== "-" ? waliKelas : "-";
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedMapel, setSelectedMapel] = useState("");
   const [selectedGuru, setSelectedGuru] = useState("");
@@ -137,8 +140,8 @@ export default function DetailSiswaStaff({
             };
           });
         });
-
-        setRows(flatRows);
+        const filtered = flatRows.filter((row) => row.nisn !== "-" || row.namaSiswa !== "-" || row.studentId);
+        setRows(filtered);
       } catch (err: any) {
         setError(err?.message || "Gagal memuat data kehadiran siswa.");
         setRows([]);
@@ -247,7 +250,7 @@ export default function DetailSiswaStaff({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Kehadiran_${namaKelas}_${selectedDate}.csv`;
+    link.download = `Kehadiran_${resolvedNamaKelas}_${selectedDate}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -256,7 +259,7 @@ export default function DetailSiswaStaff({
 
   return (
     <StaffLayout
-      pageTitle={`Detail Kehadiran - ${namaKelas}`}
+      pageTitle={`Detail Kehadiran - ${resolvedNamaKelas}`}
       currentPage={currentPage}
       onMenuClick={onMenuClick}
       user={user}
@@ -334,8 +337,8 @@ export default function DetailSiswaStaff({
         <div style={{ marginBottom: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
           <div style={{ backgroundColor: "#0B2948", color: "#FFFFFF", borderRadius: 10, padding: 12 }}>
             <div style={{ fontSize: 12, opacity: 0.8 }}>Kelas</div>
-            <div style={{ fontWeight: 700 }}>{namaKelas}</div>
-            <div style={{ fontSize: 12, opacity: 0.8 }}>Wali: {waliKelas}</div>
+            <div style={{ fontWeight: 700 }}>{resolvedNamaKelas}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>Wali: {resolvedWaliKelas}</div>
           </div>
 
           <select

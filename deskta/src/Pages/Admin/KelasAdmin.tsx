@@ -40,12 +40,6 @@ export default function KelasAdmin({
 
   // Import State removed
 
-  // Pagination state
-  const [pageIndex, setPageIndex] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalClassesCount, setTotalClassesCount] = useState(0);
-
   // Form state
   const [formData, setFormData] = useState({
     label: "",
@@ -84,40 +78,18 @@ export default function KelasAdmin({
   /* ===================== FETCH DATA ===================== */
   useEffect(() => {
     fetchInitialData();
-  }, [pageIndex, selectedKonsentrasi]);
+  }, []);
 
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const params: Record<string, any> = {
-        page: pageIndex,
-        per_page: itemsPerPage,
-      };
-
-      if (selectedKonsentrasi !== "Semua Konsentrasi Keahlian") {
-        const major = majors.find(m => m.name === selectedKonsentrasi);
-        if (major) {
-          params.major = major.code || major.id;
-        }
-      }
-
       const [dataClasses, dataMajors, dataTeachers] = await Promise.all([
-        masterService.getClasses(params as any),
+        masterService.getClasses(),
         masterService.getMajors(),
         teacherService.getTeachers()
       ]);
-
       const classesRaw = Array.isArray(dataClasses) ? dataClasses : (dataClasses?.data || []);
       setKelasList((classesRaw || []).map(normalizeClassRoom));
-
-      if (dataClasses?.meta) {
-        setTotalPages(dataClasses.meta.last_page || 1);
-        setTotalClassesCount(dataClasses.meta.total || 0);
-      } else if (dataClasses?.last_page) {
-        setTotalPages(dataClasses.last_page || 1);
-        setTotalClassesCount(dataClasses.total || 0);
-      }
-
       setMajors(Array.isArray(dataMajors) ? dataMajors : (dataMajors.data || []));
       setTeachers(Array.isArray(dataTeachers) ? dataTeachers : (dataTeachers.data || []));
     } catch (error) {
@@ -134,7 +106,6 @@ export default function KelasAdmin({
   const fetchAvailableTeachers = async (classId?: number) => {
     setIsFetchingTeachers(true);
     try {
-      // Pass the classId correctly or leave it empty
       const data = await masterService.getAvailableHomeroomTeachers(classId);
       setAvailableTeachers(Array.isArray(data) ? data : (data.data || []));
     } catch (error) {
@@ -233,8 +204,13 @@ export default function KelasAdmin({
     return { isValid: true, message: "" };
   };
 
-  // filteredData logic removed as filtering is now mostly handled via API (except un-fetched changes)
-  const filteredData = kelasList;
+  const filteredData = kelasList.filter((k) => {
+    const konsentrasiMatch =
+      selectedKonsentrasi === "Semua Konsentrasi Keahlian" ||
+      k.major_name === selectedKonsentrasi;
+
+    return konsentrasiMatch;
+  });
 
   const getKelasLabel = (row: ClassRoom) => {
     const label = row.label?.trim();
@@ -635,50 +611,6 @@ export default function KelasAdmin({
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination Controls */}
-        <div style={{
-          padding: '12px 24px',
-          borderTop: '1px solid #E5E7EB',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#FFFFFF',
-          borderBottomLeftRadius: '16px',
-          borderBottomRightRadius: '16px',
-        }}>
-          <button
-            onClick={() => setPageIndex(prev => Math.max(1, prev - 1))}
-            disabled={pageIndex === 1}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #D1D5DB',
-              borderRadius: '6px',
-              backgroundColor: pageIndex === 1 ? '#F3F4F6' : '#FFFFFF',
-              color: pageIndex === 1 ? '#9CA3AF' : '#374151',
-              cursor: pageIndex === 1 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Sebelumnya
-          </button>
-          <span style={{ fontSize: '14px', color: '#6B7280' }}>
-            Halaman {pageIndex} dari {totalPages} ({totalClassesCount} total)
-          </span>
-          <button
-            onClick={() => setPageIndex(prev => Math.min(totalPages, prev + 1))}
-            disabled={pageIndex >= totalPages}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid #D1D5DB',
-              borderRadius: '6px',
-              backgroundColor: pageIndex >= totalPages ? '#F3F4F6' : '#FFFFFF',
-              color: pageIndex >= totalPages ? '#9CA3AF' : '#374151',
-              cursor: pageIndex >= totalPages ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Selanjutnya
-          </button>
         </div>
       </div>
 

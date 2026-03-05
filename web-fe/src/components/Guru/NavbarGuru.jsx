@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import './NavbarGuru.css';
 import defaultLogo from '../../assets/logo.png';
+import { clearAuth } from '../../utils/auth';
 
 function NavbarGuru() {
   const navigate = useNavigate();
@@ -33,8 +34,7 @@ function NavbarGuru() {
     const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
     
     if (confirmLogout) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuth();
       sessionStorage.clear();
       navigate('/login');
       alert('Anda telah berhasil logout');

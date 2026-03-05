@@ -366,6 +366,8 @@ export default function DashboardStaff({ user, onLogout }: DashboardStaffProps) 
           <DetailSiswaStaff
             {...commonProps}
             selectedKelas={selectedKelasInfo?.namaKelas || selectedKelasDetail?.namaKelas || selectedKelas || ""}
+            namaKelas={selectedKelasInfo?.namaKelas || selectedKelasDetail?.namaKelas || selectedKelas || "-"}
+            waliKelas={selectedKelasInfo?.waliKelas || selectedKelasDetail?.waliKelas || "-"}
             kelasId={selectedKelasId || undefined}
             onBack={() => handleMenuClick("kehadiran-siswa")}
             onNavigateToRecap={() => handleMenuClick("rekap-kehadiran-siswa")}

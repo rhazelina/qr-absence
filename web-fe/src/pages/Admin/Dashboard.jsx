@@ -2,29 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import NavbarAdmin from '../../components/Admin/NavbarAdmin';
 import './Dashboard.css';
-
-// API Configuration
-const baseURL = import.meta.env.VITE_API_URL;
-const API_BASE_URL = baseURL ? baseURL : 'http://localhost:8000/api';
-
-// API Service
-const apiService = {
-  getDashboardStats: async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch dashboard stats');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      return { data: null };
-    }
-  }
-};
+import api from '../../utils/api';
+import { API_ENDPOINTS } from '../../utils/apiConfig';
 
 // Quick Access menu items (Beranda dihapus)
 const quickAccessItems = [
@@ -105,16 +84,25 @@ function Dashboard() {
 
   const loadDashboardStats = async () => {
     setLoading(true);
-    const result = await apiService.getDashboardStats();
-    if (result.data) {
+    try {
+      const result = await api.get(API_ENDPOINTS.adminSummary);
       setStats({
-        totalMurid: result.data.total_students || 0,
-        totalGuru: result.data.total_teachers || 0,
-        totalKelas: result.data.total_classes || 0,
-        totalJurusan: result.data.total_majors || 0
+        totalMurid: result?.students_count || 0,
+        totalGuru: result?.teachers_count || 0,
+        totalKelas: result?.classes_count || 0,
+        totalJurusan: result?.majors_count || 0
       });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      setStats({
+        totalMurid: 0,
+        totalGuru: 0,
+        totalKelas: 0,
+        totalJurusan: 0
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

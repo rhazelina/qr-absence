@@ -526,109 +526,200 @@ export default function KonsentrasiKeahlianAdmin({
 
       {/* POPUP FORM */}
       {showPopup && (
-        <div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[1000] p-5"
-          onClick={handleClosePopup}
-        >
-          <div
-            className="bg-[#0052A4] rounded-[25px] p-[40px_45px] w-full max-w-[550px] shadow-[0_15px_50px_rgba(0,0,0,0.5)] transform transition-all"
-            onClick={(e) => e.stopPropagation()}
-            style={{ animation: 'slideDownJurusan 0.3s ease-out' }}
-          >
-            {/* Header popup */}
-            <h2 className="text-white text-[32px] font-bold mt-[1px] mb-[30px] text-center">
-              {isEditMode ? "Ubah Data Konsentrasi Keahlian" : "Tambah Konsentrasi Keahlian"}
-            </h2>
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          zIndex: 9999, backdropFilter: 'blur(4px)',
+          padding: '20px', paddingTop: '100px', overflowY: 'auto', paddingBottom: '40px',
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF', borderRadius: '16px',
+            width: '100%', maxWidth: '420px',
+            overflow: 'auto', maxHeight: '75vh',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 28px', backgroundColor: '#1e293b', color: '#FFFFFF',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              borderRadius: '16px 16px 0 0',
+            }}>
+              <h2 style={{
+                margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.3px',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              }}>
+                {isEditMode ? "Ubah Konsentrasi Keahlian" : "Tambah Konsentrasi Keahlian"}
+              </h2>
+              <button
+                onClick={handleClosePopup}
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  padding: '6px', borderRadius: '8px', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s ease', color: '#FFFFFF',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                <X size={24} strokeWidth={2} />
+              </button>
+            </div>
 
-            {/* Form content */}
-            <form onSubmit={handleSubmit}>
-              {/* Nama Konsentrasi Keahlian */}
-              <div className="mb-[25px]">
-                <label className="block text-white text-[17px] font-semibold mb-[10px]">
-                  Nama Konsentrasi Keahlian
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+              {/* Nama */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Nama Konsentrasi Keahlian<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
                 </label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleFormChange}
-                  placeholder="Nama Konsentrasi Keahlian..."
-                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
+                  placeholder="Masukan nama konsentrasi keahlian"
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
                   autoFocus
-                  required
                 />
               </div>
 
-              {/* Kode Konsentrasi Keahlian */}
-              <div className="mb-[25px]">
-                <label className="block text-white text-[17px] font-semibold mb-[10px]">
-                  Kode Konsentrasi Keahlian
+              {/* Kode */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Kode Konsentrasi Keahlian<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
                 </label>
                 <input
                   type="text"
                   name="code"
                   value={formData.code}
                   onChange={handleFormChange}
-                  placeholder="Kode Konsentrasi Keahlian..."
-                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
+                  placeholder="Masukan kode konsentrasi keahlian"
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
                   maxLength={20}
-                  required
                 />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '11px', color: '#94a3b8' }}>
+                  <span>Huruf dan angka saja, maks. 20 karakter</span>
+                  <span>{formData.code.length}/20</span>
+                </div>
               </div>
 
               {/* Bidang Keahlian */}
-              <div className="mb-[25px]">
-                <label className="block text-white text-[17px] font-semibold mb-[10px]">
-                  Bidang Keahlian
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Bidang Keahlian<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
                 </label>
                 <input
                   type="text"
                   name="bidang_keahlian"
                   value={formData.bidang_keahlian}
                   onChange={handleFormChange}
-                  placeholder="Bidang Keahlian..."
-                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
-                  required
+                  placeholder="Masukan bidang keahlian"
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
               {/* Program Keahlian */}
-              <div className="mb-[25px]">
-                <label className="block text-white text-[17px] font-semibold mb-[10px]">
-                  Program Keahlian
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Program Keahlian<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
                 </label>
                 <input
                   type="text"
                   name="program_keahlian"
                   value={formData.program_keahlian}
                   onChange={handleFormChange}
-                  placeholder="Program Keahlian..."
-                  className="w-full px-[18px] py-[14px] border-none rounded-[12px] text-[15px] outline-none bg-white text-[#333] transition-all duration-300 shadow-[0_3px_10px_rgba(0,0,0,0.15)] focus:shadow-[0_5px_15px_rgba(255,255,255,0.3)] focus:-translate-y-[2px]"
-                  required
+                  placeholder="Masukan program keahlian"
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
 
-              {/* Error message */}
+              {/* Error */}
               {errorMessage && (
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-[12px] text-[15px] mt-4 font-semibold text-center border border-red-200">
+                <div style={{
+                  backgroundColor: '#fef2f2', color: '#dc2626', padding: '10px 12px',
+                  borderRadius: '6px', fontSize: '12px', marginBottom: '18px',
+                  border: '1px solid #fecaca', fontWeight: '500',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
                   {errorMessage}
                 </div>
               )}
 
-              {/* Footer popup */}
-              <div className="flex gap-[15px] mt-[35px]">
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button
                   type="button"
                   onClick={handleClosePopup}
-                  className="flex-1 px-[28px] py-[14px] border-none rounded-[12px] text-[17px] font-semibold cursor-pointer transition-all duration-300 bg-white text-[#333] hover:bg-[#f0f0f0] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.2)]"
+                  style={{
+                    flex: 1, padding: '10px 20px', backgroundColor: '#f1f5f9',
+                    color: '#475569', border: '2px solid #e2e8f0', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e2e8f0'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-[28px] py-[14px] border-none rounded-[12px] text-[17px] font-semibold cursor-pointer transition-all duration-300 bg-[#00254C] text-white hover:bg-[#000d1a] hover:-translate-y-[2px] hover:shadow-[0_5px_15px_rgba(0,0,0,0.3)]"
+                  style={{
+                    flex: 1, padding: '10px 20px', backgroundColor: '#3b82f6',
+                    color: '#FFFFFF', border: 'none', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: '700', cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'; }}
                 >
-                  {isEditMode ? "Simpan" : "Tambahkan"}
+                  {isEditMode ? "Perbarui" : "Tambahkan"}
                 </button>
               </div>
             </form>
@@ -638,12 +729,14 @@ export default function KonsentrasiKeahlianAdmin({
 
       <style>{`
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideDownJurusan {
-          from { opacity: 0; transform: translateY(-50px) scale(0.9); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </AdminLayout>

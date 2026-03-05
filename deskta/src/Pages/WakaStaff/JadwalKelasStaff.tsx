@@ -51,7 +51,7 @@ export default function JadwalKelasStaff({
   const fetchClasses = async () => {
     setLoading(true);
     try {
-      const response = await masterService.getClasses();
+      const response = await masterService.getClasses({ per_page: 200 });
       const classPayload = Array.isArray(response?.data)
         ? response.data
         : (Array.isArray(response?.data?.data) ? response.data.data : []);
@@ -59,7 +59,12 @@ export default function JadwalKelasStaff({
       const mappedData: KelasItem[] = classPayload.map((cls: any) => ({
         ...cls,
         namaKelas: cls.class_name || cls.name,
-        jurusan: cls.major_name || cls.major?.name || cls.major?.code || '-',
+        jurusan:
+          cls.major_name ||
+          cls.major?.name ||
+          cls.major?.code ||
+          (typeof cls.major === 'string' ? cls.major : '-') ||
+          '-',
         waliKelas: cls.homeroom_teacher_name || '-',
         tingkat: cls.grade,
         schedule_image_url: cls.schedule_image_url

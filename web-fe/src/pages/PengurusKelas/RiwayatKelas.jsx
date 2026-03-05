@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, Eye, X, Users, ZoomIn } from 'lucide-react';
 import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
 import './RiwayatKelas.css';
+import { clearAuth } from '../../utils/auth';
 
 // ==================== API CONFIGURATION ====================
 const baseURL = import.meta.env.VITE_API_URL;
@@ -33,8 +34,8 @@ const apiService = {
 
     if (!response.ok) {
       if (response.status === 401) {
-        localStorage.removeItem('token');
-        window.location.href = '/';
+        clearAuth();
+        window.location.href = '/login';
         throw new Error('Unauthorized');
       }
       throw new Error(`API Error: ${response.status}`);

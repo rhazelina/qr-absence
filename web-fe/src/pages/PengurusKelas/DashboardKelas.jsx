@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, BookOpen, ArrowLeft, LogOut, TrendingUp, PieChart, User } from 'lucide-react';
 import './DashboardKelas.css';
+import api from '../../utils/api';
+import { clearAuth } from '../../utils/auth';
 import NavbarPengurus from "../../components/PengurusKelas/NavbarPengurus";
 
 // Constants
@@ -581,9 +583,47 @@ const DashboardKelas = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        // TODO: Replace with actual API endpoints
-        
+        const dashboard = await api.get('/me/class/dashboard');
+
+        const profile = dashboard?.profile || {};
+        setProfileData({
+          name: profile.name || '',
+          kelas: profile.kelas || '',
+          id: profile.id || '',
+          gender: profile.gender || 'perempuan'
+        });
+
+        setDailyStats({
+          hadir: dashboard?.dailyStats?.hadir || 0,
+          izin: dashboard?.dailyStats?.izin || 0,
+          sakit: dashboard?.dailyStats?.sakit || 0,
+          alpha: dashboard?.dailyStats?.alpha || 0,
+          terlambat: dashboard?.dailyStats?.terlambat || 0,
+          pulang: dashboard?.dailyStats?.pulang || 0
+        });
+
+        setMonthlyTrend(Array.isArray(dashboard?.monthlyTrend) ? dashboard.monthlyTrend : []);
+
+        const classId = profile.class_id;
+        if (classId) {
+          const classRes = await api.get(`/classes/${classId}`).catch(() => null);
+          setScheduleImage(
+            classRes?.schedule_image_url ||
+            classRes?.scheduleImageUrl ||
+            null
+          );
+        }
+
+        const today = new Date().getDay();
+        const todaySchedules = await api.get('/me/schedules/today').catch(() => []);
+        const todayList = Array.isArray(todaySchedules?.data)
+          ? todaySchedules.data
+          : (Array.isArray(todaySchedules) ? todaySchedules : []);
+        setScheduleData({
+          weeklySchedule: {
+            [today]: todayList
+          }
+        });
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -612,10 +652,8 @@ const DashboardKelas = () => {
 
   const handleLogout = () => {
     if (window.confirm('Apakah Anda yakin ingin keluar?')) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('userRole');
-      window.location.href = '/';
+      clearAuth();
+      window.location.href = '/login';
     }
   };
 

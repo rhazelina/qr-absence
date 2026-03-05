@@ -44,6 +44,7 @@ const formatDate = (date: string): string => {
   return d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
+
 export default function DaftarKetidakhadiran({
   user = { name: "Admin", role: "waka" },
   currentPage = "daftar-ketidakhadiran",

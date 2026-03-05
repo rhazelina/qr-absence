@@ -78,6 +78,7 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEksporDropdownOpen, setIsEksporDropdownOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
   const currentYear = new Date().getFullYear();
@@ -417,9 +418,11 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
     e.preventDefault();
     if (!validateForm()) return;
 
+    setIsSubmitting(true);
     try {
       if (!formData.kelasId) {
         alert('Kelas belum tersedia di data master. Tambahkan terlebih dahulu di Data Kelas.');
+        setIsSubmitting(false);
         return;
       }
       const payload: any = {
@@ -463,6 +466,8 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
       } else {
         alert('Gagal menyimpan data siswa: ' + err.message);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1236,197 +1241,341 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
 
       {/* MODAL TAMBAH/EDIT SISWA */}
       {isModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-[9999] p-5 pt-20 overflow-y-auto"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)] mb-20"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-              <h2 className="m-0 text-xl font-bold text-[#0B2948]">
-                {editingId ? 'Edit Data Siswa' : 'Tambah Data Siswa'}
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          zIndex: 9999, backdropFilter: 'blur(4px)',
+          padding: '20px', paddingTop: '60px', overflowY: 'auto', paddingBottom: '40px',
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF', borderRadius: '16px',
+            width: '100%', maxWidth: '500px',
+            maxHeight: '85vh', overflow: 'auto',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 28px', backgroundColor: '#1e293b', color: '#FFFFFF',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              borderRadius: '16px 16px 0 0',
+            }}>
+              <h2 style={{
+                margin: 0, fontSize: '18px', fontWeight: '700', letterSpacing: '-0.3px',
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              }}>
+                {editingId ? 'Ubah Data Siswa' : 'Tambah Data Siswa'}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="bg-gray-100/80 hover:bg-gray-200 border-none cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center text-gray-500 hover:text-gray-700"
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  padding: '6px', borderRadius: '8px', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.2s ease', color: '#FFFFFF',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               >
-                <X size={18} />
+                <X size={24} strokeWidth={2} />
               </button>
             </div>
 
-            <div className="bg-white rounded-lg overflow-y-visible">
-              <form onSubmit={handleSubmitForm}>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nama Siswa <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      value={formData.namaSiswa}
-                      onChange={e => { setFormData({ ...formData, namaSiswa: e.target.value }); validateField('namaSiswa', e.target.value) }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                      placeholder="Masukkan nama lengkap"
-                    />
-                    {formErrors.namaSiswa && <p className="text-red-500 text-[10px] mt-1">{formErrors.namaSiswa}</p>}
-                  </div>
+            {/* Form */}
+            <form onSubmit={handleSubmitForm} style={{ padding: '24px' }}>
+              {/* Nama Siswa */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Nama Siswa<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.namaSiswa}
+                  onChange={e => { setFormData({ ...formData, namaSiswa: e.target.value }); validateField('namaSiswa', e.target.value) }}
+                  placeholder="Masukkan nama lengkap siswa"
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                />
+                {formErrors.namaSiswa && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>{formErrors.namaSiswa}</p>}
+              </div>
 
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">NISN <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      value={formData.nisn}
-                      onChange={e => { setFormData({ ...formData, nisn: e.target.value }); validateField('nisn', e.target.value) }}
-                      placeholder="10 digit NISN"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                    />
-                    {formErrors.nisn && <p className="text-red-500 text-[10px] mt-1">{formErrors.nisn}</p>}
-                  </div>
+              {/* NISN */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '8px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  NISN<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.nisn}
+                  onChange={e => { setFormData({ ...formData, nisn: e.target.value }); validateField('nisn', e.target.value) }}
+                  placeholder="10 digit NISN"
+                  style={{
+                    width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                />
+                {formErrors.nisn && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>{formErrors.nisn}</p>}
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jenis Kelamin <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.jenisKelamin}
-                      onChange={e => setFormData({ ...formData, jenisKelamin: e.target.value as 'L' | 'P' })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                    >
-                      <option value="L">Laki-Laki</option>
-                      <option value="P">Perempuan</option>
-                    </select>
-                    {formErrors.jenisKelamin && <p className="text-red-500 text-[10px] mt-1">{formErrors.jenisKelamin}</p>}
-                  </div>
+              {/* 2-col: Jenis Kelamin + No Telp */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
+                <div>
+                  <label style={{
+                    display: 'block', marginBottom: '8px', fontWeight: '700',
+                    fontSize: '14px', color: '#1e293b',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}>
+                    Jenis Kelamin<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
+                  </label>
+                  <select
+                    value={formData.jenisKelamin}
+                    onChange={e => setFormData({ ...formData, jenisKelamin: e.target.value as 'L' | 'P' })}
+                    style={{
+                      width: '100%', padding: '12px 14px', border: '2px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                      outline: 'none', cursor: 'pointer', backgroundColor: '#f8fafc',
+                      transition: 'all 0.2s ease',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <option value="L">Laki-Laki</option>
+                    <option value="P">Perempuan</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block', marginBottom: '8px', fontWeight: '700',
+                    fontSize: '14px', color: '#1e293b',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}>
+                    No. Telepon
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.noTelp}
+                    onChange={e => { setFormData({ ...formData, noTelp: e.target.value }); validateField('noTelp', e.target.value) }}
+                    placeholder="Maks 15 digit"
+                    style={{
+                      width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                      outline: 'none', backgroundColor: '#f8fafc', transition: 'all 0.2s ease',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                  />
+                  {formErrors.noTelp && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>{formErrors.noTelp}</p>}
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">No. Telepon</label>
-                    <input
-                      type="text"
-                      value={formData.noTelp}
-                      onChange={e => { setFormData({ ...formData, noTelp: e.target.value }); validateField('noTelp', e.target.value) }}
-                      placeholder="Maks 15 digit"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                    />
-                    {formErrors.noTelp && <p className="text-red-500 text-[10px] mt-1">{formErrors.noTelp}</p>}
-                  </div>
+              {/* Konsentrasi Keahlian */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{
+                  display: 'block', marginBottom: '10px', fontWeight: '700',
+                  fontSize: '14px', color: '#1e293b',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  Konsentrasi Keahlian<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
+                </label>
+                <select
+                  value={formData.jurusanId}
+                  onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', kelasLabel: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }}
+                  style={{
+                    width: '100%', padding: '12px 14px', border: '2px solid #e2e8f0',
+                    borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                    outline: 'none', cursor: 'pointer', backgroundColor: '#f8fafc',
+                    transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                >
+                  <option value="">Pilih Konsentrasi Keahlian</option>
+                  {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {formErrors.jurusanId && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>{formErrors.jurusanId}</p>}
+              </div>
 
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Konsentrasi Keahlian <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.jurusanId}
-                      onChange={e => { setFormData({ ...formData, jurusanId: e.target.value, kelasId: '', kelasLabel: '', tingkatan: '' }); validateField('jurusanId', e.target.value) }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                    >
-                      <option value="">Pilih Konsentrasi Keahlian</option>
-                      {jurusanOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    {formErrors.jurusanId && <p className="text-red-500 text-[10px] mt-1">{formErrors.jurusanId}</p>}
-                  </div>
+              {/* 2-col: Tingkatan + Kelas */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
+                <div>
+                  <label style={{
+                    display: 'block', marginBottom: '10px', fontWeight: '700',
+                    fontSize: '14px', color: '#1e293b',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}>
+                    Tingkatan<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
+                  </label>
+                  <select
+                    value={formData.tingkatan}
+                    onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '', kelasLabel: '' }); validateField('tingkatan', e.target.value) }}
+                    style={{
+                      width: '100%', padding: '12px 14px', border: '2px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                      outline: 'none', cursor: 'pointer', backgroundColor: '#f8fafc',
+                      transition: 'all 0.2s ease',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <option value="">Pilih</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                  </select>
+                  {formErrors.tingkatan && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>{formErrors.tingkatan}</p>}
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block', marginBottom: '10px', fontWeight: '700',
+                    fontSize: '14px', color: '#1e293b',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}>
+                    Kelas<span style={{ color: '#ef4444', marginLeft: '6px', fontWeight: '700' }}>*</span>
+                  </label>
+                  <select
+                    value={formData.kelasLabel}
+                    onChange={(e) => {
+                      const label = e.target.value;
+                      const classId = resolveClassIdByLabel(label, formData.jurusanId, formData.tingkatan);
+                      setFormData({ ...formData, kelasLabel: label, kelasId: classId });
+                      validateField('kelasId', classId);
+                    }}
+                    style={{
+                      width: '100%', padding: '12px 14px', border: '2px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                      outline: 'none', cursor: 'pointer', backgroundColor: '#f8fafc',
+                      transition: 'all 0.2s ease',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <option value="">Pilih Kelas</option>
+                    {filterClassLabels(
+                      getMajorCode(jurusanOptions.find(j => j.value === formData.jurusanId)?.rawName),
+                      formData.tingkatan
+                    ).map((label) => (
+                      <option key={label} value={label}>{label}</option>
+                    ))}
+                  </select>
+                  {formErrors.kelasId && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', marginBottom: 0 }}>{formErrors.kelasId}</p>}
+                </div>
+              </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Tingkatan <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.tingkatan}
-                      onChange={e => { setFormData({ ...formData, tingkatan: e.target.value, kelasId: '', kelasLabel: '' }); validateField('tingkatan', e.target.value) }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                    >
-                      <option value="">Pilih</option>
-                      <option value="10">10</option>
-                      <option value="11">11</option>
-                      <option value="12">12</option>
-                    </select>
-                    {formErrors.tingkatan && <p className="text-red-500 text-[10px] mt-1">{formErrors.tingkatan}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Kelas <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.kelasLabel}
-                      onChange={(e) => {
-                        const label = e.target.value;
-                        const classId = resolveClassIdByLabel(label, formData.jurusanId, formData.tingkatan);
-                        setFormData({ ...formData, kelasLabel: label, kelasId: classId });
-                        validateField('kelasId', classId);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all text-sm text-gray-900 bg-white"
-                    >
-                      <option value="">Pilih Kelas</option>
-                      {filterClassLabels(
-                        getMajorCode(jurusanOptions.find(j => j.value === formData.jurusanId)?.rawName),
-                        formData.tingkatan
-                      ).map((label) => (
-                        <option key={label} value={label}>{label}</option>
-                      ))}
-                    </select>
-                    {formErrors.kelasId && <p className="text-red-500 text-[10px] mt-1">{formErrors.kelasId}</p>}
-                  </div>
-
-                  {/* Year Stepper (Tahun Angkatan) */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Mulai Angkatan</label>
-                    <div className="relative group">
-                      <input
-                        type="text"
-                        readOnly
-                        value={formData.tahunMulai}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-default text-sm text-gray-900 bg-gray-50 group-hover:border-blue-400 transition-colors"
-                      />
-                      <div className="absolute right-1 top-1 bottom-1 flex flex-col justify-between p-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(p => ({ ...p, tahunMulai: (parseInt(p.tahunMulai) + 1).toString(), tahunAkhir: (parseInt(p.tahunAkhir) + 1).toString() }))}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pb-0.5 flex items-center justify-center transition-colors h-[12px]"
-                        >
-                          <ChevronUp size={12} strokeWidth={3} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(p => ({ ...p, tahunMulai: (parseInt(p.tahunMulai) - 1).toString(), tahunAkhir: (parseInt(p.tahunAkhir) - 1).toString() }))}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pt-0.5 flex items-center justify-center transition-colors h-[12px]"
-                        >
-                          <ChevronDown size={12} strokeWidth={3} />
-                        </button>
-                      </div>
+              {/* 2-col: Angkatan */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <label style={{
+                    display: 'block', marginBottom: '8px', fontWeight: '700',
+                    fontSize: '14px', color: '#1e293b',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}>Mulai Angkatan</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="text" readOnly value={formData.tahunMulai} style={{
+                      width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                      outline: 'none', backgroundColor: '#f1f5f9',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    }} />
+                    <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column' }}>
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, tahunMulai: (parseInt(p.tahunMulai) + 1).toString(), tahunAkhir: (parseInt(p.tahunAkhir) + 1).toString() }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#3b82f6' }}><ChevronUp size={14} strokeWidth={3} /></button>
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, tahunMulai: (parseInt(p.tahunMulai) - 1).toString(), tahunAkhir: (parseInt(p.tahunAkhir) - 1).toString() }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#3b82f6' }}><ChevronDown size={14} strokeWidth={3} /></button>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Akhir Angkatan</label>
-                    <div className="relative group">
-                      <input
-                        type="text"
-                        readOnly
-                        value={formData.tahunAkhir}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-default text-sm text-gray-900 bg-gray-50 group-hover:border-blue-400 transition-colors"
-                      />
-                      <div className="absolute right-1 top-1 bottom-1 flex flex-col justify-between p-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setFormData(p => ({ ...p, tahunAkhir: (parseInt(p.tahunAkhir) + 1).toString() }))}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pb-0.5 flex items-center justify-center transition-colors h-[12px]"
-                        >
-                          <ChevronUp size={12} strokeWidth={3} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(p => ({ ...p, tahunAkhir: (parseInt(p.tahunAkhir) - 1).toString() }))}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded px-1.5 pt-0.5 flex items-center justify-center transition-colors h-[12px]"
-                        >
-                          <ChevronDown size={12} strokeWidth={3} />
-                        </button>
-                      </div>
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block', marginBottom: '8px', fontWeight: '700',
+                    fontSize: '14px', color: '#1e293b',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}>Akhir Angkatan</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="text" readOnly value={formData.tahunAkhir} style={{
+                      width: '100%', padding: '10px 12px', border: '2px solid #e2e8f0',
+                      borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box',
+                      outline: 'none', backgroundColor: '#f1f5f9',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                    }} />
+                    <div style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column' }}>
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, tahunAkhir: (parseInt(p.tahunAkhir) + 1).toString() }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#3b82f6' }}><ChevronUp size={14} strokeWidth={3} /></button>
+                      <button type="button" onClick={() => setFormData(p => ({ ...p, tahunAkhir: (parseInt(p.tahunAkhir) - 1).toString() }))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: '#3b82f6' }}><ChevronDown size={14} strokeWidth={3} /></button>
                     </div>
                   </div>
-
                 </div>
+              </div>
 
-                <div className="mt-8 flex gap-3 justify-end border-t border-gray-100 pt-5">
-                  <button type="button" onClick={handleCloseModal} className="px-5 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold cursor-pointer transition-colors focus:ring-2 focus:ring-gray-200 outline-none">Batal</button>
-                  <button type="submit" className="px-5 py-2 rounded-lg border-none bg-blue-600 hover:bg-blue-700 text-white font-semibold cursor-pointer transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 outline-none">Simpan Data</button>
+              {/* Error */}
+              {(formErrors.submit || formErrors.jenisKelamin) && (
+                <div style={{
+                  backgroundColor: '#fef2f2', color: '#dc2626', padding: '10px 12px',
+                  borderRadius: '6px', fontSize: '12px', marginBottom: '18px',
+                  border: '1px solid #fecaca', fontWeight: '500',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                }}>
+                  {formErrors.submit || formErrors.jenisKelamin}
                 </div>
-              </form>
-            </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  style={{
+                    flex: 1, padding: '10px 20px', backgroundColor: '#f1f5f9',
+                    color: '#475569', border: '2px solid #e2e8f0', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#e2e8f0'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    flex: 1, padding: '10px 20px', backgroundColor: '#3b82f6',
+                    color: '#FFFFFF', border: 'none', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: '700', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease', opacity: isSubmitting ? 0.7 : 1,
+                    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                  }}
+                  onMouseEnter={(e) => { if (!isSubmitting) { e.currentTarget.style.backgroundColor = '#2563eb'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)'; } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)'; }}
+                >
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
       {/* IMPORT PREVIEW MODAL */}
       {isImportPreviewOpen && (
         <div style={{
@@ -1524,8 +1673,20 @@ const SiswaAdmin: React.FC<SiswaAdminProps> = ({
             </div>
           </div>
         </div>
-      )}
-    </AdminLayout>
+      )
+      }
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+    </AdminLayout >
   );
 };
 

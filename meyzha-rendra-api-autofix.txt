@@ -1,0 +1,24 @@
+Auto-fix Suggestions: mobile2/meyzha-rendra
+Source: backend/routes/api.php vs ApiService.kt
+
+A) Mobile calls without backend route (suggested fixes):
+- GET attendance/teachers/daily -> Change to GET waka/attendance/teachers/daily if this is Waka-only; otherwise remove.
+- POST me/students/follow-up -> Remove or guard this call (no backend route).
+
+B) Backend routes not used by mobile2/meyzha-rendra (optional to integrate):
+- GET available-homeroom-teachers -> (Optional) add to ApiService if needed by mobile.
+- GET classes/{id}/schedules -> (Optional) add to ApiService if needed by mobile.
+- GET classes/{id}/schedules/active -> (Optional) add to ApiService if needed by mobile.
+- GET me/dashboard/attendance-stats -> (Optional) add to ApiService if needed by mobile.
+- GET me/dashboard/schedule-today -> (Optional) add to ApiService if needed by mobile.
+- GET student/profile -> (Optional) add to ApiService if needed by mobile.
+- PATCH classes/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH majors/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH rooms/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH schedules/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH school-years/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH semesters/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH students/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH subjects/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH teachers/{id} -> (Optional) add to ApiService if needed by mobile.
+- PATCH time-slots/{id} -> (Optional) add to ApiService if needed by mobile.
