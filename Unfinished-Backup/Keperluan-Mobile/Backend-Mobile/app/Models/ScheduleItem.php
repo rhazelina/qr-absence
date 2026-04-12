@@ -1,0 +1,54 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class ScheduleItem extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'daily_schedule_id',
+        'subject_id',
+        'teacher_id',
+        'start_time',
+        'end_time',
+        'room',
+        'keterangan',
+    ];
+
+    protected $appends = ['subject_name', 'day'];
+
+    public function getSubjectNameAttribute(): string
+    {
+        return $this->subject ? $this->subject->name : ($this->keterangan ?? '-');
+    }
+
+    public function getDayAttribute(): string
+    {
+        return $this->dailySchedule?->day ?? '-';
+    }
+
+    public function getClassAttribute(): ?Classes
+    {
+        return $this->dailySchedule?->classSchedule?->class;
+    }
+
+    public function dailySchedule(): BelongsTo
+    {
+        return $this->belongsTo(DailySchedule::class);
+    }
+
+    public function subject(): BelongsTo
+    {
+        return $this->belongsTo(Subject::class);
+    }
+
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(TeacherProfile::class, 'teacher_id');
+    }
+}

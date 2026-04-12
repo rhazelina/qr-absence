@@ -1,0 +1,6 @@
+File: Kumpulan Activity, Fragment, dan Helper Lainnya (80+ file)
+Berisi: AbsensiSiswaActivity.kt, LoginAwal.kt, DashboardWaka.kt, RiwayatKehadiran... dll.
+
+Berfungsi untuk:
+"Seluruh Halaman Antarmuka (*Screens*)".
+File-file Kotlin ini mencakup semesta keseluruhan jendela (Layar) yang akan ditatap dan dipencet oleh pengguna di aplikasi. Ada `Activity` yang mengisi 1 layar penuh (contoh: Layar Tampil QR Kelas), ada juga `Fragment` yang merupakan sepotong layar yang diselipkan di dalam *Bottom Navigation* (contoh: Tab Beranda Tinjauan Wali Kelas). Setiap file menangani interaksi pengguna spesifik untuk satu fitur pelaporan/pengisian formulir presensi.

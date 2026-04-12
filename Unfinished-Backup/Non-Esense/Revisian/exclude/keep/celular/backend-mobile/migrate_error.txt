@@ -1,0 +1,107 @@
+
+   INFO  Running migrations.  
+
+  2026_02_09_151842_fix_student_uniqueness_and_cascades  1.32ms FAIL
+[2026-02-09 15:26:20] local.ERROR: SQLSTATE[HY000]: General error: 1 index student_profiles_nisn_unique already exists (Connection: sqlite, Database: /home/dexwip/projects/haris/qr-absence/backend/database/database.sqlite, SQL: create unique index "student_profiles_nisn_unique" on "student_profiles" ("nisn")) {"exception":"[object] (Illuminate\\Database\\QueryException(code: HY000): SQLSTATE[HY000]: General error: 1 index student_profiles_nisn_unique already exists (Connection: sqlite, Database: /home/dexwip/projects/haris/qr-absence/backend/database/database.sqlite, SQL: create unique index \"student_profiles_nisn_unique\" on \"student_profiles\" (\"nisn\")) at /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php:838)
+[stacktrace]
+#0 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php(794): Illuminate\\Database\\Connection->runQueryCallback('create unique i...', Array, Object(Closure))
+#1 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php(573): Illuminate\\Database\\Connection->run('create unique i...', Array, Object(Closure))
+#2 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php(121): Illuminate\\Database\\Connection->statement('create unique i...')
+#3 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(686): Illuminate\\Database\\Schema\\Blueprint->build()
+#4 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(494): Illuminate\\Database\\Schema\\Builder->build(Object(Illuminate\\Database\\Schema\\Blueprint))
+#5 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php(363): Illuminate\\Database\\Schema\\Builder->table('student_profile...', Object(Closure))
+#6 /home/dexwip/projects/haris/qr-absence/backend/database/migrations/2026_02_09_151842_fix_student_uniqueness_and_cascades.php(15): Illuminate\\Support\\Facades\\Facade::__callStatic('table', Array)
+#7 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(517): Illuminate\\Database\\Migrations\\Migration@anonymous->up()
+#8 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(442): Illuminate\\Database\\Migrations\\Migrator->runMethod(Object(Illuminate\\Database\\SQLiteConnection), Object(Illuminate\\Database\\Migrations\\Migration@anonymous), 'up')
+#9 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(451): Illuminate\\Database\\Migrations\\Migrator->{closure:Illuminate\\Database\\Migrations\\Migrator::runMigration():438}()
+#10 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(253): Illuminate\\Database\\Migrations\\Migrator->runMigration(Object(Illuminate\\Database\\Migrations\\Migration@anonymous), 'up')
+#11 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php(41): Illuminate\\Database\\Migrations\\Migrator->{closure:Illuminate\\Database\\Migrations\\Migrator::runUp():253}()
+#12 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(814): Illuminate\\Console\\View\\Components\\Task->render('2026_02_09_1518...', Object(Closure))
+#13 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(253): Illuminate\\Database\\Migrations\\Migrator->write('Illuminate\\\\Cons...', '2026_02_09_1518...', Object(Closure))
+#14 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(211): Illuminate\\Database\\Migrations\\Migrator->runUp('/home/dexwip/pr...', 2, false)
+#15 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(138): Illuminate\\Database\\Migrations\\Migrator->runPending(Array, Array)
+#16 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(116): Illuminate\\Database\\Migrations\\Migrator->run(Array, Array)
+#17 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(671): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->{closure:Illuminate\\Database\\Console\\Migrations\\MigrateCommand::runMigrations():109}()
+#18 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(109): Illuminate\\Database\\Migrations\\Migrator->usingConnection(NULL, Object(Closure))
+#19 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(88): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->runMigrations()
+#20 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->handle()
+#21 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\\Container\\BoundMethod::{closure:Illuminate\\Container\\BoundMethod::call():35}()
+#22 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))
+#23 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))
+#24 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/Container.php(799): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)
+#25 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Console/Command.php(211): Illuminate\\Container\\Container->call(Array)
+#26 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Command/Command.php(341): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#27 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#28 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Application.php(1102): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#29 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Application.php(356): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Database\\Console\\Migrations\\MigrateCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#30 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Application.php(195): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#31 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#32 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#33 /home/dexwip/projects/haris/qr-absence/backend/artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))
+#34 {main}
+
+[previous exception] [object] (PDOException(code: HY000): SQLSTATE[HY000]: General error: 1 index student_profiles_nisn_unique already exists at /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php:578)
+[stacktrace]
+#0 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php(578): PDO->prepare('create unique i...')
+#1 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php(827): Illuminate\\Database\\Connection->{closure:Illuminate\\Database\\Connection::statement():573}('create unique i...', Array)
+#2 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php(794): Illuminate\\Database\\Connection->runQueryCallback('create unique i...', Array, Object(Closure))
+#3 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Connection.php(573): Illuminate\\Database\\Connection->run('create unique i...', Array, Object(Closure))
+#4 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Schema/Blueprint.php(121): Illuminate\\Database\\Connection->statement('create unique i...')
+#5 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(686): Illuminate\\Database\\Schema\\Blueprint->build()
+#6 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Schema/Builder.php(494): Illuminate\\Database\\Schema\\Builder->build(Object(Illuminate\\Database\\Schema\\Blueprint))
+#7 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php(363): Illuminate\\Database\\Schema\\Builder->table('student_profile...', Object(Closure))
+#8 /home/dexwip/projects/haris/qr-absence/backend/database/migrations/2026_02_09_151842_fix_student_uniqueness_and_cascades.php(15): Illuminate\\Support\\Facades\\Facade::__callStatic('table', Array)
+#9 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(517): Illuminate\\Database\\Migrations\\Migration@anonymous->up()
+#10 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(442): Illuminate\\Database\\Migrations\\Migrator->runMethod(Object(Illuminate\\Database\\SQLiteConnection), Object(Illuminate\\Database\\Migrations\\Migration@anonymous), 'up')
+#11 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(451): Illuminate\\Database\\Migrations\\Migrator->{closure:Illuminate\\Database\\Migrations\\Migrator::runMigration():438}()
+#12 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(253): Illuminate\\Database\\Migrations\\Migrator->runMigration(Object(Illuminate\\Database\\Migrations\\Migration@anonymous), 'up')
+#13 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Console/View/Components/Task.php(41): Illuminate\\Database\\Migrations\\Migrator->{closure:Illuminate\\Database\\Migrations\\Migrator::runUp():253}()
+#14 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(814): Illuminate\\Console\\View\\Components\\Task->render('2026_02_09_1518...', Object(Closure))
+#15 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(253): Illuminate\\Database\\Migrations\\Migrator->write('Illuminate\\\\Cons...', '2026_02_09_1518...', Object(Closure))
+#16 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(211): Illuminate\\Database\\Migrations\\Migrator->runUp('/home/dexwip/pr...', 2, false)
+#17 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(138): Illuminate\\Database\\Migrations\\Migrator->runPending(Array, Array)
+#18 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(116): Illuminate\\Database\\Migrations\\Migrator->run(Array, Array)
+#19 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Migrations/Migrator.php(671): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->{closure:Illuminate\\Database\\Console\\Migrations\\MigrateCommand::runMigrations():109}()
+#20 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(109): Illuminate\\Database\\Migrations\\Migrator->usingConnection(NULL, Object(Closure))
+#21 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Database/Console/Migrations/MigrateCommand.php(88): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->runMigrations()
+#22 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Illuminate\\Database\\Console\\Migrations\\MigrateCommand->handle()
+#23 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate\\Container\\BoundMethod::{closure:Illuminate\\Container\\BoundMethod::call():35}()
+#24 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(96): Illuminate\\Container\\Util::unwrapIfClosure(Object(Closure))
+#25 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate\\Container\\BoundMethod::callBoundMethod(Object(Illuminate\\Foundation\\Application), Array, Object(Closure))
+#26 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Container/Container.php(799): Illuminate\\Container\\BoundMethod::call(Object(Illuminate\\Foundation\\Application), Array, Array, NULL)
+#27 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Console/Command.php(211): Illuminate\\Container\\Container->call(Array)
+#28 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Command/Command.php(341): Illuminate\\Console\\Command->execute(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#29 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\\Component\\Console\\Command\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Illuminate\\Console\\OutputStyle))
+#30 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Application.php(1102): Illuminate\\Console\\Command->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#31 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Application.php(356): Symfony\\Component\\Console\\Application->doRunCommand(Object(Illuminate\\Database\\Console\\Migrations\\MigrateCommand), Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#32 /home/dexwip/projects/haris/qr-absence/backend/vendor/symfony/console/Application.php(195): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#33 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#34 /home/dexwip/projects/haris/qr-absence/backend/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#35 /home/dexwip/projects/haris/qr-absence/backend/artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))
+#36 {main}
+"} 
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[HY000]: General error: 1 index student_profiles_nisn_unique already exists (Connection: sqlite, Database: /home/dexwip/projects/haris/qr-absence/backend/database/database.sqlite, SQL: create unique index "student_profiles_nisn_unique" on "student_profiles" ("nisn"))
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:838
+    834▕             $exceptionType = $this->isUniqueConstraintError($e)
+    835▕                 ? UniqueConstraintViolationException::class
+    836▕                 : QueryException::class;
+    837▕ 
+  ➜ 838▕             throw new $exceptionType(
+    839▕                 $this->getNameWithReadWriteType(),
+    840▕                 $query,
+    841▕                 $this->prepareBindings($bindings),
+    842▕                 $e,
+
+      [2m+9 vendor frames [22m
+
+  10  database/migrations/2026_02_09_151842_fix_student_uniqueness_and_cascades.php:15
+      Illuminate\Support\Facades\Facade::__callStatic("table")
+      [2m+26 vendor frames [22m
+
+  37  artisan:16
+      Illuminate\Foundation\Application::handleCommand(Object(Symfony\Component\Console\Input\ArgvInput))
+

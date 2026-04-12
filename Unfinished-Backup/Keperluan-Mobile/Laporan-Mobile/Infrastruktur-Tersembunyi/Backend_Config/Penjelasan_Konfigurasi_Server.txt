@@ -1,0 +1,5 @@
+File: Konfigurasi Keamanan (sanctum.php & .env.example)
+
+Berfungsi untuk:
+Menjaga rahasia server (Konfigurasi Lanjut). 
+Laravel mengelola kunci (Environment Keys) dan masa berlaku tiket JWT Login di dalam Sanctum. Jika tiket limit Login murid habis (Expired), Android akan merespon Logout diri otomatis. File konfigurasi ini membuktikan pada dosen/penguji bahwa Anda mengatur kedaluwarsa waktu token keamanan secara sadar di server webnya.

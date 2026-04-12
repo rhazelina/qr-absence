@@ -1,0 +1,6 @@
+File: DetailJadwalGuruActivity.kt & CameraQRActivity.kt
+
+Berfungsi untuk:
+"Pintu Eksekusi Presensi". 
+1. `CameraQRActivity.kt`: Adalah antarmuka pemindai (Kamera Layar) yang menembak QR di proyektor saat murid masuk kelas.
+2. `DetailJadwalGuruActivity.kt`: Tempat bersemayamnya wewenang guru (Manual Attendance). Di layar ini guru dapat menyentuh nama siswa untuk mengubahnya menjadi Alpa, Hadir, Izin, atau Sakit secara manual jika siswa tidak membawa HP. Guru juga bisa menekan tombol penutupan jadwal di sini.

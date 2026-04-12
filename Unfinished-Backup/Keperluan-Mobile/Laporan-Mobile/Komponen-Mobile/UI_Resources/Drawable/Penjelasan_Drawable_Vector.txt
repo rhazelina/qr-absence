@@ -1,0 +1,5 @@
+File: Ikon, Gambar, Pola Kotak (.xml & .png/.webp)
+
+Berfungsi untuk:
+"Aset Seni (*Graphic Assets*)".
+Tempat menyimpan logo sekolah, ikon garis (*vector drawables*) seperti ikon lonceng, ikon rumah, dan pengaturan lengkungan pembulat kotak dialog (*rounded corner shapes*). Folder ini merupakan elemen riil yang mempercantik tampilan UI yang kaku menjadi hidup.

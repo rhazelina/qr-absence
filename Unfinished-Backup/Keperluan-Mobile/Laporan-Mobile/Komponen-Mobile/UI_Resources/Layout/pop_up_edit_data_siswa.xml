@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_gravity="center"
+    android:background="@drawable/bg_tambah_data"
+    android:padding="20dp">
+
+    <!-- Judul -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="20dp"
+        android:text="Perbarui Data"
+        android:textColor="#F2F2F2"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <!-- Nama -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:text="Nama"
+        android:textColor="#303030"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/btn_dropdown_keterangan_nama"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rectangle_75"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:layout_marginBottom="5dp">
+
+        <EditText
+            android:id="@+id/et_nama_siswa"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="Masukkan Nama Siswa"
+            android:imeOptions="actionDone"
+            android:paddingEnd="8dp"
+            android:singleLine="true"
+            android:textColor="#000000"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif" />
+    </LinearLayout>
+
+    <!-- Jenis Kelamin -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:text="Jenis Kelamin"
+        android:textColor="#303030"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/btn_dropdown_keterangan_jenis_kelamin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rectangle_75"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:layout_marginBottom="5dp">
+
+        <EditText
+            android:id="@+id/et_jenis_kelamin"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:fontFamily="sans-serif"
+            android:hint="Pilih"
+            android:imeOptions="actionDone"
+            android:paddingEnd="8dp"
+            android:singleLine="true"
+            android:textColor="#000000"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:focusable="false"
+            android:clickable="true" />
+
+        <ImageButton
+            android:id="@+id/arrow_jenis_kelamin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#00FFFFFF"
+            app:srcCompat="@drawable/drop_down_circle" />
+    </LinearLayout>
+
+    <!-- NISN -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="NISN"
+        android:textSize="16sp"
+        android:textColor="#303030"
+        android:textStyle="bold"
+        android:layout_marginBottom="5dp"/>
+
+    <LinearLayout
+        android:id="@+id/btn_dropdown_keterangan_nisn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rectangle_75"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:layout_marginBottom="5dp">
+
+        <EditText
+            android:id="@+id/et_nisn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="NISN Siswa"
+            android:imeOptions="actionDone"
+            android:paddingEnd="8dp"
+            android:singleLine="true"
+            android:textColor="#000000"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif"
+            android:inputType="number" />
+    </LinearLayout>
+
+    <!-- Konsentrasi Keahlian / Jurusan -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:text="Konsentrasi Keahlian"
+        android:textColor="#303030"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/btn_dropdown_keterangan_jurusan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rectangle_75"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:layout_marginBottom="5dp">
+
+        <EditText
+            android:id="@+id/et_jurusan"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:fontFamily="sans-serif"
+            android:hint="Pilih"
+            android:imeOptions="actionDone"
+            android:paddingEnd="8dp"
+            android:singleLine="true"
+            android:textColor="#000000"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:focusable="false"
+            android:clickable="true" />
+
+        <ImageButton
+            android:id="@+id/arrow_jurusan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#00FFFFFF"
+            app:srcCompat="@drawable/drop_down_circle" />
+    </LinearLayout>
+
+    <!-- Kelas -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:text="Kelas"
+        android:textColor="#303030"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/btn_dropdown_keterangan_kelas"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rectangle_75"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:layout_marginBottom="5dp">
+
+        <EditText
+            android:id="@+id/et_kelas"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:fontFamily="sans-serif"
+            android:hint="Pilih"
+            android:imeOptions="actionDone"
+            android:paddingEnd="8dp"
+            android:singleLine="true"
+            android:textColor="#000000"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:focusable="false"
+            android:clickable="true" />
+
+        <ImageButton
+            android:id="@+id/arrow_kelas"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#00FFFFFF"
+            app:srcCompat="@drawable/drop_down_circle" />
+    </LinearLayout>
+
+    <!-- No. Telepon Orang Tua -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:text="No. Telepon Orang Tua"
+        android:textColor="#303030"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/layout_nomor_orang_tua"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/rectangle_75"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="10dp"
+        android:layout_marginBottom="5dp">
+
+        <EditText
+            android:id="@+id/et_no_telp_ortu"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="Masukkan Nomor Telepon Orang Tua"
+            android:imeOptions="actionDone"
+            android:paddingEnd="8dp"
+            android:singleLine="true"
+            android:textColor="#000000"
+            android:textColorHint="#808080"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif"
+            android:inputType="phone" />
+    </LinearLayout>
+
+    <!-- Tombol Batal dan Simpan -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btn_batal"
+            android:layout_width="308dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#031B35"
+            android:minWidth="100dp"
+            android:padding="12dp"
+            android:text="Batal"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/btn_simpan"
+            android:layout_width="308dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:backgroundTint="#042240"
+            android:minWidth="100dp"
+            android:padding="12dp"
+            android:text="Simpan"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
+</LinearLayout>

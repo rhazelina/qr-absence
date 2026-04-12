@@ -1,0 +1,8 @@
+File: Komponen Dashboard (Siswa, Guru, Wakel, Waka)
+
+Berfungsi untuk:
+Halaman utama yang menampakkan diri paling pertama saat masing-masing Aktor berhasil *Login*.
+1. `DashboardSiswaActivity.kt`: Menampilkan presentase kehadiran personal dan jadwal kelas anak tersebut di hari H.
+2. `GuruDashboardFragment.kt`: Menampilkan jadwal harian apa saja yang harus diampu oleh Pak Guru hari itu.
+3. `WaliKelasDashboardFragment.kt`: Memuat laporan khusus perwalian (daftar anak izin dan jumlah alpa satu kelas).
+4. `WakaDashboard.kt`: Menampilkan statistik sekolah dalam format global (skala institusi).

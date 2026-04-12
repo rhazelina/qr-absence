@@ -5,6 +5,7 @@ use App\Models\ClassSchedule;
 use App\Models\DailySchedule;
 use App\Models\ScheduleItem;
 use App\Models\StudentProfile;
+use App\Models\Subject;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -245,4 +246,123 @@ it('allows homeroom teacher (wali kelas) to record bulk attendance for their cla
         'schedule_id' => $schedule->id,
         'status' => 'absent', // 'alfa' is normalized to 'absent'
     ]);
+});
+
+it('supports legacy and mobile date query aliases on me teaching history', function () {
+    $teacher = User::factory()->teacher()->create();
+    $classRoom = \App\Models\Classes::factory()->create();
+    $classSchedule = ClassSchedule::factory()->create([
+        'class_id' => $classRoom->id,
+        'is_active' => true,
+    ]);
+    $dailySchedule = DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
+        'day' => now()->format('l'),
+    ]);
+    $subject = Subject::factory()->create(['name' => 'Matematika']);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
+        'teacher_id' => $teacher->teacherProfile->id,
+        'subject_id' => $subject->id,
+    ]);
+
+    Attendance::create([
+        'attendee_type' => 'teacher',
+        'teacher_id' => $teacher->teacherProfile->id,
+        'schedule_id' => $schedule->id,
+        'status' => 'present',
+        'date' => now()->toDateString(),
+        'checked_in_at' => now()->setTime(7, 5),
+        'source' => 'manual',
+    ]);
+
+    $legacyResponse = $this->actingAs($teacher)
+        ->getJson('/api/me/attendance/teaching?from='.now()->toDateString().'&to='.now()->toDateString());
+
+    $legacyResponse->assertOk()
+        ->assertJsonPath('history.0.schedule.subject.name', 'Matematika');
+
+    $mobileResponse = $this->actingAs($teacher)
+        ->getJson('/api/me/attendance/teaching?start_date='.now()->toDateString().'&end_date='.now()->toDateString());
+
+    $mobileResponse->assertOk()
+        ->assertJsonPath('history.0.schedule.daily_schedule.class_schedule.class.id', $classRoom->id);
+});
+
+it('returns localized student name and status on class attendance by date', function () {
+    $classRoom = \App\Models\Classes::factory()->create();
+
+    $waliKelas = User::factory()->teacher()->create();
+    $waliKelas->teacherProfile->update(['homeroom_class_id' => $classRoom->id]);
+
+    $subjectTeacher = User::factory()->teacher()->create();
+
+    $classSchedule = ClassSchedule::factory()->create(['class_id' => $classRoom->id]);
+    $dailySchedule = DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
+        'day' => 'Monday',
+    ]);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
+        'teacher_id' => $subjectTeacher->teacherProfile->id,
+    ]);
+
+    $studentUser = User::factory()->student()->create(['name' => 'Budi Santoso']);
+    $studentUser->studentProfile->update(['class_id' => $classRoom->id]);
+
+    Attendance::create([
+        'attendee_type' => 'student',
+        'student_id' => $studentUser->studentProfile->id,
+        'schedule_id' => $schedule->id,
+        'status' => 'excused',
+        'date' => '2026-02-23',
+        'checked_in_at' => Carbon::parse('2026-02-23 07:05:00'),
+    ]);
+
+    $response = $this->actingAs($waliKelas)
+        ->getJson("/api/classes/{$classRoom->id}/attendance?date=2026-02-23");
+
+    $response->assertOk()
+        ->assertJsonPath('items.0.attendances.0.student.name', 'Budi Santoso')
+        ->assertJsonPath('items.0.attendances.0.status', 'Izin')
+        ->assertJsonPath('items.0.attendances.0.status_code', 'excused');
+});
+
+it('returns class attendance by date with indonesian day label', function () {
+    $classRoom = \App\Models\Classes::factory()->create();
+
+    $waliKelas = User::factory()->teacher()->create();
+    $waliKelas->teacherProfile->update(['homeroom_class_id' => $classRoom->id]);
+
+    $subjectTeacher = User::factory()->teacher()->create();
+
+    $classSchedule = ClassSchedule::factory()->create(['class_id' => $classRoom->id]);
+    $dailySchedule = DailySchedule::factory()->create([
+        'class_schedule_id' => $classSchedule->id,
+        'day' => 'Monday',
+    ]);
+    $schedule = ScheduleItem::factory()->create([
+        'daily_schedule_id' => $dailySchedule->id,
+        'teacher_id' => $subjectTeacher->teacherProfile->id,
+    ]);
+
+    $studentUser = User::factory()->student()->create(['name' => 'Citra Dewi']);
+    $studentUser->studentProfile->update(['class_id' => $classRoom->id]);
+
+    Attendance::create([
+        'attendee_type' => 'student',
+        'student_id' => $studentUser->studentProfile->id,
+        'schedule_id' => $schedule->id,
+        'status' => 'present',
+        'date' => '2026-02-23',
+        'checked_in_at' => Carbon::parse('2026-02-23 07:10:00'),
+    ]);
+
+    $response = $this->actingAs($waliKelas)
+        ->getJson("/api/classes/{$classRoom->id}/attendance?date=2026-02-23");
+
+    $response->assertOk()
+        ->assertJsonPath('day', 'Senin')
+        ->assertJsonPath('items.0.schedule.id', $schedule->id)
+        ->assertJsonPath('items.0.attendances.0.student.name', 'Citra Dewi');
 });

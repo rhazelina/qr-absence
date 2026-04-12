@@ -1,0 +1,5 @@
+File: File Konfigurasi Menu Bawah/Samping (.xml)
+
+Berfungsi untuk:
+"Daftar Isi Navigasi (*Navigation Maps*)".
+Digunakan khusus untuk mendefinisikan tombol-tombol yang terjejer di `BottomNavigationBar` (Navigasi Kaki) atau `Side MenuDrawer`. Berisi deklarasi lambang ikon apa yang terikat dengan teks judul apa pada setiap perpindahan menu utama (Home, Profil, Riwayat, Notifikasi).

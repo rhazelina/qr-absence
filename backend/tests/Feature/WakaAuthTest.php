@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AdminProfile;
+use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -19,13 +20,20 @@ it('determines waka role correctly for admin user with waka profile', function (
         'type' => 'waka',
     ]);
 
+    TeacherProfile::factory()->create([
+        'user_id' => $user->id,
+        'jabatan' => ['Waka Kurikulum'],
+    ]);
+
     $response = $this->postJson('/api/auth/login', [
         'login' => 'waka_test',
         'password' => 'password123',
     ]);
 
     $response->assertSuccessful()
-        ->assertJsonPath('user.role', 'waka');
+        ->assertJsonPath('user.role', 'waka')
+        ->assertJsonPath('user.teacherProfile.jabatan.0', 'Waka Kurikulum')
+        ->assertJsonPath('user.profile.jabatan', 'Waka Kurikulum');
 });
 
 it('determines admin role correctly for admin user with admin profile', function () {

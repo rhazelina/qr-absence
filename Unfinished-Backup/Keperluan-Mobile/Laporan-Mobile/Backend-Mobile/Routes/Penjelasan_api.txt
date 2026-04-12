@@ -1,0 +1,4 @@
+File: routes/api.php
+
+Berfungsi untuk:
+Daftar Nomor Telepon (Routing). Inilah satu-satunya portal di mana Aplikasi Android bisa memanggil komponen fungsi di dalam Controller. Di file ini, kita mengatur URL seperti `POST /attendance/scan` atau `GET /me`. Setiap kali Retrofit di HP mengirim data, maka akan mendarat di file ini untuk dicocokkan ke fungsi mana ia dipanggil (Menerapkan Role-based Access Control supaya yang bukan murid tidak bisa ikut-ikutan ngabsen).

@@ -1,0 +1,5 @@
+File: ApiService.kt
+
+Berfungsi untuk:
+"Urat Nadi" komunikasi antara Handphone Android dengan Mesin Induk Laravel (Backend).
+Di sinilah letak perpustakaan fungsi Retrofit yang berisi ratusan titik Endpoint (misal: `@POST("attendance/scan")`). Jika URL atau data yang dikirim (*body JSON*) di sini salah, maka aplikasi Android dipastikan tidak bisa melakukan tugas absensi atau menarik jadwal.

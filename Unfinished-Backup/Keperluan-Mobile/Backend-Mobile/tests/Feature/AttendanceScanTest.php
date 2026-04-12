@@ -1,0 +1,166 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Qrcode;
+use App\Models\ScheduleItem;
+use App\Models\Setting;
+use App\Models\StudentProfile;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+class AttendanceScanTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected $student;
+
+    protected $schedule;
+
+    protected $qr;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 2, 20, 10, 0, 0, 'UTC')); // This is a Friday
+
+        $classSchedule = \App\Models\ClassSchedule::factory()->create([
+            'is_active' => true,
+        ]);
+
+        $dailySchedule = \App\Models\DailySchedule::factory()->create([
+            'class_schedule_id' => $classSchedule->id,
+            'day' => 'Friday',
+        ]);
+
+        $this->schedule = ScheduleItem::factory()->create([
+            'daily_schedule_id' => $dailySchedule->id,
+            'start_time' => now()->subMinutes(5)->format('H:i:s'),
+            'end_time' => now()->addHour()->format('H:i:s'),
+        ]);
+
+        $this->student = User::factory()->create(['user_type' => 'student']);
+        StudentProfile::factory()->create([
+            'user_id' => $this->student->id,
+            'class_id' => $this->schedule->dailySchedule->classSchedule->class_id,
+        ]);
+
+        $uuid = Str::uuid()->toString();
+        $signature = hash_hmac('sha256', $uuid, config('app.key'));
+        $signedToken = $uuid.'.'.$signature;
+
+        $this->qr = Qrcode::create([
+            'token' => $signedToken,
+            'type' => 'student',
+            'schedule_id' => $this->schedule->id,
+            'issued_by' => User::factory()->create(['user_type' => 'teacher'])->id,
+            'status' => 'available',
+            'expires_at' => now()->addMinutes(30),
+            'is_active' => true,
+        ]);
+
+        // Clear settings for basic tests
+        Setting::where('key', 'school_lat')->delete();
+        Setting::where('key', 'school_long')->delete();
+        Setting::where('key', 'attendance_radius_meters')->delete();
+        \Illuminate\Support\Facades\Cache::forget('app.settings.all');
+    }
+
+    public function test_scan_success_basic()
+    {
+        $response = $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', [
+                'token' => $this->qr->token,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['id', 'status', 'date']);
+
+        $this->assertDatabaseHas('attendances', [
+            'student_id' => $this->student->studentProfile->id,
+            'schedule_id' => $this->schedule->id,
+            'status' => 'present', // default if on time
+        ]);
+    }
+
+    public function test_scan_duplicate_returns_existing()
+    {
+        $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', ['token' => $this->qr->token]);
+
+        $response = $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', ['token' => $this->qr->token]);
+
+        $response->assertStatus(200)
+            ->assertJsonFragment(['message' => 'Presensi sudah tercatat']);
+    }
+
+    public function test_scan_expired_qr()
+    {
+        $this->qr->update(['expires_at' => now()->subMinute(), 'status' => 'expired', 'is_active' => false]);
+
+        $response = $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', ['token' => $this->qr->token]);
+
+        $response->assertStatus(422)
+            ->assertJsonFragment(['message' => 'QR tidak aktif atau sudah kadaluarsa']);
+    }
+
+    public function test_scan_geolocation_success()
+    {
+        // Set geolocation settings
+        Setting::create(['key' => 'school_lat', 'value' => '-7.900833']);
+        Setting::create(['key' => 'school_long', 'value' => '112.636667']);
+        Setting::create(['key' => 'attendance_radius_meters', 'value' => '100']);
+
+        // Test with location INSIDE radius
+        $response = $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', [
+                'token' => $this->qr->token,
+                'lat' => -7.900833,
+                'long' => 112.636667,
+            ]);
+
+        $response->assertStatus(200);
+    }
+
+    public function test_scan_geolocation_failure()
+    {
+        // Set geolocation settings
+        Setting::create(['key' => 'school_lat', 'value' => '-7.900833']);
+        Setting::create(['key' => 'school_long', 'value' => '112.636667']);
+        Setting::create(['key' => 'attendance_radius_meters', 'value' => '100']);
+
+        // Test with location FAR AWAY (e.g., Jakarta)
+        $response = $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', [
+                'token' => $this->qr->token,
+                'lat' => -6.2088,
+                'long' => 106.8456,
+            ]);
+
+        $response->assertStatus(422);
+        // Do not assert day specific message because it is checked earlier in the controller lifecycle
+        $this->assertStringContainsString('di luar radius', strtolower($response->json('message')));
+    }
+
+    public function test_scan_geolocation_missing_params()
+    {
+        // Set geolocation settings
+        Setting::create(['key' => 'school_lat', 'value' => '-7.900833']);
+        Setting::create(['key' => 'school_long', 'value' => '112.636667']);
+        Setting::create(['key' => 'attendance_radius_meters', 'value' => '100']);
+
+        // Test without lat/long
+        $response = $this->actingAs($this->student)
+            ->postJson('/api/attendance/scan', [
+                'token' => $this->qr->token,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Lokasi diperlukan untuk presensi']);
+    }
+}

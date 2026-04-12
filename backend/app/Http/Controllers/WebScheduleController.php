@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ScheduleItem;
+use App\Support\ScheduleDay;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class WebScheduleController extends Controller
@@ -27,9 +27,9 @@ class WebScheduleController extends Controller
         }
 
         if ($request->filled('date')) {
-            $day = Carbon::parse($request->string('date'))->format('l');
-            $query->whereHas('dailySchedule', function ($q) use ($day) {
-                $q->where('day', $day);
+            $dayVariants = ScheduleDay::variants((string) $request->string('date'));
+            $query->whereHas('dailySchedule', function ($q) use ($dayVariants) {
+                $q->whereIn('day', $dayVariants);
             });
         }
 

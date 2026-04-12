@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up()
+    {
+        Schema::create('student_follow_ups', function (Blueprint $table) {
+            $table->id();
+            // Menghubungkan ke tabel users (untuk Siswa)
+            $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+            // Menghubungkan ke tabel users (untuk Guru)
+            $table->foreignId('teacher_id')->constrained('users')->onDelete('cascade');
+            $table->text('note'); // Catatan tindak lanjut
+            $table->string('action')->nullable(); // Tindakan yang diambil
+            $table->date('date'); // Tanggal tindak lanjut
+            $table->timestamps();
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('student_follow_ups');
+    }
+};

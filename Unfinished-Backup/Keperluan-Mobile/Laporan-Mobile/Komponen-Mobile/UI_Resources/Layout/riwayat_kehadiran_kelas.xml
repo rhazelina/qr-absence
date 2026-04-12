@@ -1,0 +1,691 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/mobile_container"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:background="@android:color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_max="480dp">
+
+        <ImageView
+            android:id="@+id/bg_layout"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bg_riwayat_guru"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/navigationBar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <LinearLayout
+            android:id="@+id/top_content"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="12dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <LinearLayout
+                android:id="@+id/header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="50dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/title_total_guru_top"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Riwayat"
+                    android:textColor="@android:color/white"
+                    android:textSize="45sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/title_total_guru_bottom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="-5dp"
+                    android:text="Kehadiran Kelas"
+                    android:textColor="@android:color/white"
+                    android:textSize="28sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="30dp"
+                android:background="@drawable/banner_jumlah_siswa"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <TextView
+                    android:id="@+id/text_jumlah_siswa"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="60dp"
+                    android:text="Total Jumlah Siswa : __"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/status_kehadiran_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="25dp"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="1dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <FrameLayout
+                        android:layout_width="120dp"
+                        android:layout_height="70dp"
+                        android:layout_marginEnd="16dp">
+
+                        <ImageButton
+                            android:id="@+id/button_izin"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_button_status"
+                            android:contentDescription="Izin"
+                            android:padding="4dp"
+                            android:src="@drawable/btn_guru_izin" />
+
+                        <TextView
+                            android:id="@+id/txt_izin_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="10dp"
+                            android:text="0"
+                            android:textColor="@color/material_dynamic_primary10"
+                            android:textSize="30sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:layout_width="120dp"
+                        android:layout_height="70dp"
+                        android:layout_marginEnd="16dp">
+
+                        <ImageButton
+                            android:id="@+id/button_sakit"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_button_status"
+                            android:contentDescription="Sakit"
+                            android:padding="4dp"
+                            android:src="@drawable/btn_guru_sakit" />
+
+                        <TextView
+                            android:id="@+id/txt_sakit_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="10dp"
+                            android:text="0"
+                            android:textColor="@color/material_dynamic_primary10"
+                            android:textSize="30sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:layout_width="120dp"
+                        android:layout_height="70dp">
+
+                        <ImageButton
+                            android:id="@+id/button_alpha"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_button_status"
+                            android:contentDescription="Alpha"
+                            android:padding="4dp"
+                            android:src="@drawable/group_317" />
+
+                        <TextView
+                            android:id="@+id/txt_alpha_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="10dp"
+                            android:text="0"
+                            android:textColor="@color/material_dynamic_primary10"
+                            android:textSize="30sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <FrameLayout
+                        android:layout_width="120dp"
+                        android:layout_height="70dp"
+                        android:layout_marginStart="10dp">
+
+                        <ImageButton
+                            android:id="@+id/button_hadir"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_button_status"
+                            android:contentDescription="Hadir"
+                            android:padding="4dp"
+                            android:src="@drawable/btn_guru_hadir" />
+
+                        <TextView
+                            android:id="@+id/txt_hadir_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:layout_marginTop="10dp"
+                            android:text="0"
+                            android:textColor="@color/material_dynamic_primary10"
+                            android:textSize="30sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <RelativeLayout
+                        android:layout_width="250dp"
+                        android:layout_height="70dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:background="@drawable/bg_board_tanggal"
+                        android:gravity="center_vertical"
+                        android:padding="8dp">
+
+                        <ImageView
+                            android:id="@+id/icon_calendar"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            android:layout_marginEnd="5dp"
+                            android:contentDescription="Calendar Icon"
+                            android:src="@drawable/calendar_month" />
+
+                        <TextView
+                            android:id="@+id/text_filter_tanggal"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentStart="true"
+                            android:layout_centerVertical="true"
+                            android:layout_toStartOf="@id/icon_calendar"
+                            android:text="Minggu, 01 Januari 2025"
+                            android:textColor="@color/black"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                    </RelativeLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_riwayat"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="12dp"
+            android:clipToPadding="false"
+            android:padding="8dp"
+            android:scrollbars="vertical"
+            app:layout_constraintTop_toBottomOf="@id/top_content"
+            app:layout_constraintBottom_toTopOf="@id/navigationBar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <LinearLayout
+            android:id="@+id/navigationBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/footer_universal"
+            android:elevation="7dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <ImageButton
+                android:id="@+id/btnHome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="11dp"
+                android:background="@null"
+                android:contentDescription="Home"
+                android:scaleType="fitCenter"
+                android:src="@drawable/home" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <ImageButton
+                    android:id="@+id/btnAssigment"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginHorizontal="11dp"
+                    android:background="@null"
+                    android:contentDescription="Jadwal"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/content_paste_active" />
+
+                <View
+                    android:layout_width="50dp"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="7dp"
+                    android:background="@drawable/penanda_halaman_universal" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnChart"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="11dp"
+                android:background="@null"
+                android:contentDescription="Chart"
+                android:scaleType="fitCenter"
+                android:src="@drawable/bar_chart" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+
+    <!--<?xml version="1.0" encoding="utf-8"?>-->
+<!--<androidx.constraintlayout.widget.ConstraintLayout-->
+<!--    xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    xmlns:app="http://schemas.android.com/apk/res-auto"-->
+<!--    android:layout_width="match_parent"-->
+<!--    android:layout_height="match_parent"-->
+<!--    android:background="#000000">-->
+
+<!--    &lt;!&ndash; Container untuk membatasi lebar maksimal seperti mobile phone &ndash;&gt;-->
+<!--    <androidx.constraintlayout.widget.ConstraintLayout-->
+<!--        android:id="@+id/mobile_container"-->
+<!--        android:layout_width="0dp"-->
+<!--        android:layout_height="match_parent"-->
+<!--        android:background="@android:color/white"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintWidth_max="480dp">-->
+
+<!--        &lt;!&ndash; ScrollView untuk konten &ndash;&gt;-->
+<!--        <ScrollView-->
+<!--            android:id="@+id/scrollContent"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="0dp"-->
+<!--            android:fillViewport="true"-->
+<!--            app:layout_constraintTop_toTopOf="parent"-->
+<!--            app:layout_constraintBottom_toTopOf="@+id/navigationBar"-->
+<!--            app:layout_constraintStart_toStartOf="parent"-->
+<!--            app:layout_constraintEnd_toEndOf="parent">-->
+
+<!--            <FrameLayout-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content">-->
+
+<!--                &lt;!&ndash; Background &ndash;&gt;-->
+<!--                <ImageView-->
+<!--                    android:id="@+id/bg_layout"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:adjustViewBounds="true"-->
+<!--                    android:scaleType="centerCrop"-->
+<!--                    android:src="@drawable/bg_riwayat_guru" />-->
+
+<!--                &lt;!&ndash; Konten &ndash;&gt;-->
+<!--                <LinearLayout-->
+<!--                    android:id="@+id/content_layout"-->
+<!--                    android:layout_width="match_parent"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:orientation="vertical"-->
+<!--                    android:paddingBottom="20dp">-->
+
+<!--                    &lt;!&ndash; Header &ndash;&gt;-->
+<!--                    <LinearLayout-->
+<!--                        android:id="@+id/header"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:layout_marginTop="50dp"-->
+<!--                        android:orientation="vertical"-->
+<!--                        android:padding="16dp">-->
+
+<!--                        <TextView-->
+<!--                            android:id="@+id/title_total_guru_top"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="Riwayat"-->
+<!--                            android:textColor="@android:color/white"-->
+<!--                            android:textSize="45sp"-->
+<!--                            android:textStyle="bold" />-->
+
+<!--                        <TextView-->
+<!--                            android:id="@+id/title_total_guru_bottom"-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="Kehadiran Kelas"-->
+<!--                            android:layout_marginTop="-5dp"-->
+<!--                            android:textStyle="bold"-->
+<!--                            android:textColor="@android:color/white"-->
+<!--                            android:textSize="28sp" />-->
+<!--                    </LinearLayout>-->
+
+<!--                    &lt;!&ndash; Banner Jumlah Siswa &ndash;&gt;-->
+<!--                    <LinearLayout-->
+<!--                        android:layout_width="wrap_content"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:orientation="horizontal"-->
+<!--                        android:layout_marginTop="30dp"-->
+<!--                        android:layout_gravity="center_horizontal"-->
+<!--                        android:background="@drawable/banner_jumlah_siswa"-->
+<!--                        android:padding="8dp">-->
+
+<!--                        <TextView-->
+<!--                            android:id="@+id/text_jumlah_siswa"-->
+<!--                            android:layout_width="match_parent"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:text="Total Jumlah Siswa : __"-->
+<!--                            android:textColor="@color/white"-->
+<!--                            android:layout_marginStart="60dp"-->
+<!--                            android:textSize="16sp"-->
+<!--                            android:textStyle="bold" />-->
+<!--                    </LinearLayout>-->
+
+<!--                    &lt;!&ndash; Status Kehadiran Layout &ndash;&gt;-->
+<!--                    <LinearLayout-->
+<!--                        android:id="@+id/status_kehadiran_layout"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:orientation="vertical"-->
+<!--                        android:gravity="center"-->
+<!--                        android:layout_marginTop="25dp"-->
+<!--                        android:padding="8dp">-->
+
+<!--                        &lt;!&ndash; Baris 1: Izin, Sakit, Alpha &ndash;&gt;-->
+<!--                        <LinearLayout-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:orientation="horizontal"-->
+<!--                            android:gravity="center"-->
+<!--                            android:layout_marginBottom="1dp">-->
+
+<!--                            &lt;!&ndash; Tombol Izin dengan Nomor &ndash;&gt;-->
+<!--                            <FrameLayout-->
+<!--                                android:layout_width="120dp"-->
+<!--                                android:layout_height="70dp"-->
+<!--                                android:layout_marginEnd="16dp">-->
+
+<!--                                <ImageButton-->
+<!--                                    android:id="@+id/button_izin"-->
+<!--                                    android:layout_width="match_parent"-->
+<!--                                    android:layout_height="match_parent"-->
+<!--                                    android:src="@drawable/btn_guru_izin"-->
+<!--                                    android:background="@drawable/bg_button_status"-->
+<!--                                    android:contentDescription="Izin"-->
+<!--                                    android:padding="4dp" />-->
+
+<!--                                <TextView-->
+<!--                                    android:id="@+id/txt_izin_count"-->
+<!--                                    android:layout_width="wrap_content"-->
+<!--                                    android:layout_height="wrap_content"-->
+<!--                                    android:text="0"-->
+<!--                                    android:textColor="@color/material_dynamic_primary10"-->
+<!--                                    android:textStyle="bold"-->
+<!--                                    android:textSize="30sp"-->
+<!--                                    android:layout_marginTop="10dp"-->
+<!--                                    android:layout_gravity="center" />-->
+<!--                            </FrameLayout>-->
+
+<!--                            &lt;!&ndash; Tombol Sakit dengan Nomor &ndash;&gt;-->
+<!--                            <FrameLayout-->
+<!--                                android:layout_width="120dp"-->
+<!--                                android:layout_height="70dp"-->
+<!--                                android:layout_marginEnd="16dp">-->
+
+<!--                                <ImageButton-->
+<!--                                    android:id="@+id/button_sakit"-->
+<!--                                    android:layout_width="match_parent"-->
+<!--                                    android:layout_height="match_parent"-->
+<!--                                    android:src="@drawable/btn_guru_sakit"-->
+<!--                                    android:background="@drawable/bg_button_status"-->
+<!--                                    android:contentDescription="Sakit"-->
+<!--                                    android:padding="4dp" />-->
+
+<!--                                <TextView-->
+<!--                                    android:id="@+id/txt_sakit_count"-->
+<!--                                    android:layout_width="wrap_content"-->
+<!--                                    android:layout_height="wrap_content"-->
+<!--                                    android:text="0"-->
+<!--                                    android:textColor="@color/material_dynamic_primary10"-->
+<!--                                    android:textStyle="bold"-->
+<!--                                    android:textSize="30sp"-->
+<!--                                    android:layout_marginTop="10dp"-->
+<!--                                    android:layout_gravity="center" />-->
+<!--                            </FrameLayout>-->
+
+<!--                            &lt;!&ndash; Tombol Alpha dengan Nomor &ndash;&gt;-->
+<!--                            <FrameLayout-->
+<!--                                android:layout_width="120dp"-->
+<!--                                android:layout_height="70dp">-->
+
+<!--                                <ImageButton-->
+<!--                                    android:id="@+id/button_alpha"-->
+<!--                                    android:layout_width="match_parent"-->
+<!--                                    android:layout_height="match_parent"-->
+<!--                                    android:src="@drawable/group_317"-->
+<!--                                    android:background="@drawable/bg_button_status"-->
+<!--                                    android:contentDescription="Alpha"-->
+<!--                                    android:padding="4dp" />-->
+
+<!--                                <TextView-->
+<!--                                    android:id="@+id/txt_alpha_count"-->
+<!--                                    android:layout_width="wrap_content"-->
+<!--                                    android:layout_height="wrap_content"-->
+<!--                                    android:text="0"-->
+<!--                                    android:textColor="@color/material_dynamic_primary10"-->
+<!--                                    android:textStyle="bold"-->
+<!--                                    android:textSize="30sp"-->
+<!--                                    android:layout_marginTop="10dp"-->
+<!--                                    android:layout_gravity="center" />-->
+<!--                            </FrameLayout>-->
+
+<!--                        </LinearLayout>-->
+
+<!--                        &lt;!&ndash; Baris 2: Hadir + Board Tanggal Guru &ndash;&gt;-->
+<!--                        <LinearLayout-->
+<!--                            android:layout_width="wrap_content"-->
+<!--                            android:layout_height="wrap_content"-->
+<!--                            android:orientation="horizontal"-->
+<!--                            android:layout_marginTop="5dp"-->
+<!--                            android:gravity="center">-->
+
+<!--                            <FrameLayout-->
+<!--                                android:layout_width="120dp"-->
+<!--                                android:layout_height="70dp"-->
+<!--                                android:layout_marginStart="10dp">-->
+
+<!--                                <ImageButton-->
+<!--                                    android:id="@+id/button_hadir"-->
+<!--                                    android:layout_width="match_parent"-->
+<!--                                    android:layout_height="match_parent"-->
+<!--                                    android:src="@drawable/btn_guru_hadir"-->
+<!--                                    android:background="@drawable/bg_button_status"-->
+<!--                                    android:contentDescription="Hadir"-->
+<!--                                    android:padding="4dp" />-->
+
+<!--                                <TextView-->
+<!--                                    android:id="@+id/txt_hadir_count"-->
+<!--                                    android:layout_width="wrap_content"-->
+<!--                                    android:layout_height="wrap_content"-->
+<!--                                    android:text="0"-->
+<!--                                    android:textColor="@color/material_dynamic_primary10"-->
+<!--                                    android:textStyle="bold"-->
+<!--                                    android:textSize="30sp"-->
+<!--                                    android:layout_marginTop="10dp"-->
+<!--                                    android:layout_gravity="center" />-->
+<!--                            </FrameLayout>-->
+
+<!--                            <RelativeLayout-->
+<!--                                android:layout_width="250dp"-->
+<!--                                android:layout_height="70dp"-->
+<!--                                android:background="@drawable/bg_board_tanggal"-->
+<!--                                android:layout_marginStart="16dp"-->
+<!--                                android:layout_marginEnd="16dp"-->
+<!--                                android:gravity="center_vertical"-->
+<!--                                android:padding="8dp">-->
+
+<!--                                &lt;!&ndash; Icon di end &ndash;&gt;-->
+<!--                                <ImageView-->
+<!--                                    android:id="@+id/icon_calendar"-->
+<!--                                    android:layout_width="wrap_content"-->
+<!--                                    android:layout_height="wrap_content"-->
+<!--                                    android:src="@drawable/calendar_month"-->
+<!--                                    android:layout_marginEnd="5dp"-->
+<!--                                    android:contentDescription="Calendar Icon"-->
+<!--                                    android:layout_alignParentEnd="true"-->
+<!--                                    android:layout_centerVertical="true" />-->
+
+<!--                                &lt;!&ndash; Text di start (mengambil ruang sampai sebelum icon) &ndash;&gt;-->
+<!--                                <TextView-->
+<!--                                    android:id="@+id/text_filter_tanggal"-->
+<!--                                    android:layout_width="wrap_content"-->
+<!--                                    android:layout_height="wrap_content"-->
+<!--                                    android:layout_alignParentStart="true"-->
+<!--                                    android:layout_centerVertical="true"-->
+<!--                                    android:layout_toStartOf="@id/icon_calendar"-->
+<!--                                    android:text="Minggu, 01 Januari 2025"-->
+<!--                                    android:textColor="@color/black"-->
+<!--                                    android:textSize="20sp"-->
+<!--                                    android:textStyle="bold" />-->
+
+<!--                            </RelativeLayout>-->
+<!--                        </LinearLayout>-->
+<!--                    </LinearLayout>-->
+
+<!--                    &lt;!&ndash; RecyclerView untuk daftar riwayat &ndash;&gt;-->
+<!--                    <androidx.recyclerview.widget.RecyclerView-->
+<!--                        android:id="@+id/recycler_riwayat"-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="600dp"-->
+<!--                        android:layout_marginTop="20dp"-->
+<!--                        android:layout_marginHorizontal="16dp"-->
+<!--                        android:padding="8dp"-->
+<!--                        android:scrollbars="vertical" />-->
+
+<!--                </LinearLayout>-->
+<!--            </FrameLayout>-->
+<!--        </ScrollView>-->
+
+<!--        &lt;!&ndash; FOOTER FIXED &ndash;&gt;-->
+<!--        <LinearLayout-->
+<!--            android:id="@+id/navigationBar"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:background="@drawable/footer_universal"-->
+<!--            android:elevation="7dp"-->
+<!--            android:gravity="center"-->
+<!--            android:orientation="horizontal"-->
+<!--            android:paddingBottom="8dp"-->
+<!--            app:layout_constraintBottom_toBottomOf="parent"-->
+<!--            app:layout_constraintEnd_toEndOf="parent"-->
+<!--            app:layout_constraintStart_toStartOf="parent">-->
+
+<!--            &lt;!&ndash; Konten footer &ndash;&gt;-->
+<!--            <ImageButton-->
+<!--                android:id="@+id/btnHome"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginHorizontal="11dp"-->
+<!--                android:src="@drawable/home"-->
+<!--                android:scaleType="fitCenter"-->
+<!--                android:background="@null"-->
+<!--                android:contentDescription="Home" />-->
+
+<!--            <LinearLayout-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginTop="10dp"-->
+<!--                android:gravity="center"-->
+<!--                android:orientation="vertical">-->
+
+<!--                <ImageButton-->
+<!--                    android:id="@+id/btnAssigment"-->
+<!--                    android:layout_width="36dp"-->
+<!--                    android:layout_height="36dp"-->
+<!--                    android:layout_marginHorizontal="11dp"-->
+<!--                    android:background="@null"-->
+<!--                    android:contentDescription="Jadwal"-->
+<!--                    android:scaleType="fitCenter"-->
+<!--                    android:src="@drawable/content_paste_active" />-->
+
+<!--                <View-->
+<!--                    android:layout_width="50dp"-->
+<!--                    android:layout_height="8dp"-->
+<!--                    android:layout_marginTop="7dp"-->
+<!--                    android:background="@drawable/penanda_halaman_universal" />-->
+<!--            </LinearLayout>-->
+
+<!--            <ImageButton-->
+<!--                android:id="@+id/btnChart"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginHorizontal="11dp"-->
+<!--                android:background="@null"-->
+<!--                android:contentDescription="Chart"-->
+<!--                android:scaleType="fitCenter"-->
+<!--                android:src="@drawable/bar_chart" />-->
+
+<!--            <ImageButton-->
+<!--                android:id="@+id/btnNotif"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginHorizontal="11dp"-->
+<!--                android:background="@null"-->
+<!--                android:contentDescription="Notification"-->
+<!--                android:scaleType="fitCenter"-->
+<!--                android:src="@drawable/notifications" />-->
+<!--        </LinearLayout>-->
+
+<!--    </androidx.constraintlayout.widget.ConstraintLayout>-->
+
+<!--</androidx.constraintlayout.widget.ConstraintLayout>-->

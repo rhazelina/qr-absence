@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFFFFF">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tambah Tindak Lanjut"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#303030"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Label Pilih Siswa -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pilih Siswa"
+        android:textSize="14sp"
+        android:textColor="#606060"
+        android:layout_marginBottom="6dp" />
+
+    <!-- Spinner untuk memilih siswa -->
+    <Spinner
+        android:id="@+id/spinner_siswa"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bar_pencarian_border"
+        android:padding="10dp"
+        android:spinnerMode="dropdown"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Label Catatan/Note -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Catatan"
+        android:textSize="14sp"
+        android:textColor="#606060"
+        android:layout_marginBottom="6dp" />
+
+    <!-- EditText untuk catatan -->
+    <EditText
+        android:id="@+id/et_catatan_follow_up"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="80dp"
+        android:gravity="top|start"
+        android:hint="Masukkan catatan tindak lanjut..."
+        android:textSize="14sp"
+        android:textColor="#303030"
+        android:textColorHint="#AAAAAA"
+        android:background="@drawable/bar_pencarian_border"
+        android:padding="10dp"
+        android:inputType="textMultiLine"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Label Tindakan (opsional) -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tindakan (opsional)"
+        android:textSize="14sp"
+        android:textColor="#606060"
+        android:layout_marginBottom="6dp" />
+
+    <!-- EditText untuk aksi/tindakan -->
+    <EditText
+        android:id="@+id/et_aksi_follow_up"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Misal: Hubungi orang tua, Panggil BK..."
+        android:textSize="14sp"
+        android:textColor="#303030"
+        android:textColorHint="#AAAAAA"
+        android:background="@drawable/bar_pencarian_border"
+        android:padding="10dp"
+        android:inputType="textShortMessage"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Baris tombol -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btn_batal_follow_up"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Batal"
+            android:textSize="14sp"
+            android:backgroundTint="#EEEEEE"
+            android:textColor="#606060"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_simpan_follow_up"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Simpan"
+            android:textSize="14sp"
+            android:backgroundTint="#2196F3"
+            android:textColor="#FFFFFF" />
+
+    </LinearLayout>
+
+</LinearLayout>

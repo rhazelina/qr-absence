@@ -1,0 +1,4 @@
+File: AuthController.php
+
+Berfungsi untuk:
+Sebagai pos satpam keamanan aplikasi (Gerbang Utama). Mengurus fungsi login email & kata sandi dari aplikasi Android. File ini menerbitkan `JWT/Sanctum Token` yang akan disimpan di dalam Handphone pengguna, serta menarik biodata (profil) pengakses melalui *endpoint* `/me`.

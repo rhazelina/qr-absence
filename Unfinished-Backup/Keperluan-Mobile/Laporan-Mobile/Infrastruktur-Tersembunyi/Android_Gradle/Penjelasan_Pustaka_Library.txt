@@ -1,0 +1,5 @@
+File: app_build.gradle.kts & project_build.gradle.kts
+
+Berfungsi untuk:
+"Surat Permintaan Senjata (Library) ke Internet". 
+Sangat vital dilampirkan laporannya karena ini mendaftarkan modul-modul apa yang menyusun aplikasi absensi: `Retrofit` (Pengolah API), `CameraX` (Mengubah Lensa HP jadi Scanner), `Firebase` (Menerima sinyal bergetar notifikasi absen). Tanpa barisan teks ini, aplikasi Kotlin hanya kosong melompong tidak bisa menarik data dari server. Menarik untuk dibahas pada sub-bab "Persiapan Lingkungan Pengembangan".

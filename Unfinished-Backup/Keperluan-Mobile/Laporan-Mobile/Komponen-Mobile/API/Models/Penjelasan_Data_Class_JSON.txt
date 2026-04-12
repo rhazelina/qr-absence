@@ -1,0 +1,6 @@
+Kumpulan File Data Class (Models Kotlin)
+Berisi: AttendanceModels.kt, AuthModels.kt, ClassScheduleModels.kt, dll.
+
+Berfungsi untuk:
+"Cetakan Data" (Data Transfer Object). 
+Ketika backend Laravel membalas pesan ke aplikasi Android, balasannya berupa teks JSON murni. Kotlin tidak bisa membaca JSON secara langsung. File-file Model ini berisi kerangka (Data Class dengan penjelasan `@SerializedName`) yang secara otomatis mengubah teks JSON dari server menjadi objek yang bisa dipakai untuk menggambar UI di layar HP (seperti memunculkan nama, kelas, jam, dan daftar izin siswa).

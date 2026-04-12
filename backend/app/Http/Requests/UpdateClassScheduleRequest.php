@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\WakaCapability;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateClassScheduleRequest extends FormRequest
@@ -11,7 +12,7 @@ class UpdateClassScheduleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return WakaCapability::canManageAcademicSchedule($this->user());
     }
 
     /**
@@ -29,7 +30,7 @@ class UpdateClassScheduleRequest extends FormRequest
             'days' => ['sometimes', 'array'],
             'days.*.day' => ['required_with:days', 'string', 'in:Monday,Tuesday,Wednesday,Thursday,Friday'],
             'days.*.items' => ['array'],
-            'days.*.items.*.subject_id' => ['nullable', 'exists:subjects,id'],
+            'days.*.items.*.subject_id' => ['required_with:days.*.items', 'exists:subjects,id'],
             'days.*.items.*.teacher_id' => ['required_with:days.*.items', 'exists:teacher_profiles,id'],
             'days.*.items.*.start_time' => ['required_with:days.*.items', 'date_format:H:i'],
             'days.*.items.*.end_time' => ['required_with:days.*.items', 'date_format:H:i', 'after:days.*.items.*.start_time'],

@@ -1,0 +1,5 @@
+File: Middleware Hak Akses (EnsureUserTypedll)
+
+Berfungsi untuk:
+"Penjaga Pintu (*Bouncer*) Akses Data".
+Saat tombol presensi dipencet di Android, data menuju Controller, tapi SEBELUM masuk ke Controller, ia ditahan dulu di Middleware ini. Middleware mengecek identitas (*Role*), contohnya `EnsureClassOfficer` mengecek apakah siswa ini benar-benar ketua kelas sebelum diizinkan mengakses menu kelas. File-file ini memberikan keamanan tingkat tinggi (Security Access Right), fitur yang sangat bernilai untuk dibahas di laporan sistem keamanan absensi.

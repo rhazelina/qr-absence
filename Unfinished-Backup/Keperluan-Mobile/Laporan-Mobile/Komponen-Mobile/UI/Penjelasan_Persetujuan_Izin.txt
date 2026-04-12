@@ -1,0 +1,4 @@
+File: PersetujuanIzinWakelActivity.kt
+
+Berfungsi untuk:
+Layar persetujuan (Approval) yang dipakai khusus oleh "Wali Kelas". Ketika siswa mengirimkan proposal izin (sakit, cuti, dll), usulan tersebut masuk ke antrean di layar ini. Wali Kelas bisa mengecek foto bukti dan memutuskan apakah menekan tombol "Terima" atau "Tolak".

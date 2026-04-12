@@ -1,0 +1,7 @@
+Kumpulan File Arsitektur Repository (MVVM/Repository Pattern)
+Berisi: Result.kt, AttendanceRepository.kt, AuthRepository.kt, dll.
+
+Berfungsi untuk:
+"Makelar / Jembatan Pengelola Data". 
+File-file Kotlin ini bertugas di tengah-tengah antara Layar Aplikasi (Activity) dan `ApiService.kt`. Ketika layar ingin meminta data absensi hari ini, ia tidak langsung menembak API, melainkan menyuruh `AttendanceRepository` untuk mengurusnya. Class `Result.kt` dipakai di sini untuk membungkus jawaban jaringan menjadi 3 status: "Loading" (Loading muter-muter), "Success" (Berhasil tampilkan data), atau "Error" (Gagal sinyal/token mati). 
+Keberadaan file ini menunjukkan bahwa program menggunakan arsitektur bersih (Clean Architecture) sehingga penulisan kodenya profesional untuk dilaporkan.

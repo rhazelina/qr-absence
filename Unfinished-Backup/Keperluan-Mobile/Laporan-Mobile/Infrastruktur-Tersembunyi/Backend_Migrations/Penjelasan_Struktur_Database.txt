@@ -1,0 +1,4 @@
+File: Migrations (.php files)
+
+Berfungsi untuk:
+"Tukang Bangunan Database". File `db_mobile.sql` memang ada, tapi di industri modern Laravel, database tidak pernah dibuat paksa manual dari MySQL. Ia diukir (di-coding) lalu dijalankan lewat perintah migrasi (otomatis berubah jadi Tabel di database). Arsip file ini (`xxxx_create_users_table.php`, dll) adalah sekuens murni penciptaan tulang punggung Database yang sangat berkelas untuk dijelaskan di laporan (Entity Relationship Building Process).

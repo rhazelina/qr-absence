@@ -1,0 +1,4 @@
+File: AttendanceController.php
+
+Berfungsi untuk:
+Mengatur seluruh logika bisnis terkait "Pencatatan Kehadiran". Di dalam controller inilah proses validasi scan QRCode dari Handphone siswa diproses. Selain itu, file ini juga mengatur absensi massal (manual) yang dilakukan oleh guru saat membuka kelas, sampai dengan penutupan jadwal dan rekap harian kehadiran kelas.

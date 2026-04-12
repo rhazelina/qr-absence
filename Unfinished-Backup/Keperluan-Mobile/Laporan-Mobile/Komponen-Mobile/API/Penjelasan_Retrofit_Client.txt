@@ -1,0 +1,5 @@
+File: ApiClient.kt & ApiUtils.kt
+
+Berfungsi untuk:
+"Mesin Pabrik" Retrofit. File ini bertugas merakit koneksi HTTP dari Android ke server Backend. 
+`ApiClient.kt` menyimpan `BASE_URL` (alamat server backend), menempelkan `AuthInterceptor` (menyelipkan Token Login di setiap request agar server tahu siapa yang me-request data), dan mengatur *Timeout* (batas waktu tunggu loading internet). Tanpa mesin ini, `ApiService.kt` hanyalah daftar rute kosong yang tidak bisa dijalankan.

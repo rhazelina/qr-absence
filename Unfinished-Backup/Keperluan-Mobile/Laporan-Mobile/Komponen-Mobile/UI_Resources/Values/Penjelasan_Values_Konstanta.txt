@@ -1,0 +1,5 @@
+File: `colors.xml`, `strings.xml`, `themes.xml`
+
+Berfungsi untuk:
+"Kamus Konstanta Aplikasi".
+Menyimpan daftar seluruh Standar Identitas Visual. Daripada mengetik warna Biru `#0000FF` atau teks bahasa "Selamat Datang" berulang-ulang di puluhan file layout secara *hardcode*, Android mengumpulkannya di sini. Jadi kalau Sekolah ingin ganti warna tema dari Biru ke Merah, programmer cukup mengganti 1 baris kode di `colors.xml` dan otomatis seluruh layar ter-update. Ini menonjolkan penerapan gaya pemrograman yang rapi (*Clean Code*).

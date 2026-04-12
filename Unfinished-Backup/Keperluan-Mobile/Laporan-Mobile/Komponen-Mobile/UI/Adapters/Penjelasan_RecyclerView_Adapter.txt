@@ -1,0 +1,6 @@
+Kumpulan File Adapter (RecyclerView)
+Berisi: JadwalAdapter.kt, SimpleSiswaAdapter.kt, NotifikasiAdapter.kt dll.
+
+Berfungsi untuk:
+"Perajut List Daftar Tampilan Berulang". 
+Di Android, ketika kita punya 30 daftar murid atau 10 daftar jadwal harian, Android tidak menampilkan semuanya paksa ke layar (karena bikin memori HP penuh). Komponen *Adapter* inilah yang mengatur mekanisme "Daur Ulang" (*RecyclerView*). Adapter bertugas menyisipkan satu nama siswa ke dalam satu baris desain kotak *(CardView)* seketika ketika baris tersebut di-scroll pengguna, memastikan UI tetap enteng dan aplikasinya tidak nge-lag saat memproses JSON daftar siswa dari server.

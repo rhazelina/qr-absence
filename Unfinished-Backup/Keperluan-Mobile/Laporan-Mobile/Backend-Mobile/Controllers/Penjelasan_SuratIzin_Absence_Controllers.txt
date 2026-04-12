@@ -1,0 +1,7 @@
+File: AbsenceRequestController.php & StudentLeavePermissionController.php
+
+Berfungsi untuk:
+Memproses dua tipe "Tidak Hadir" siswa secara utuh.
+1. `AbsenceRequest`: Permohonan Cuti/Sakit surat dokter untuk satu hari/berhari-hari.
+2. `LeavePermission`: Surat Izin Keluar Kelas untuk sementara waktu saja.
+Keduanya bekerja sama menangkap file foto bukti dari Handphone siswa dan menampilkannya kepada Wali Kelas/Admin untuk disetujui (Approve) atau ditolak (Reject).

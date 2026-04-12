@@ -1,0 +1,4 @@
+File: DashboardController.php
+
+Berfungsi untuk:
+Sebagai penyedia data analitik (statistik) untuk layar Beranda (Home) semua jenis aktor. File inilah yang menghitung berapa total masuk, sakit, dan alpa pada hari ini. Fiturnya dipisah per peran, misalnya `studentDashboard()` untuk siswa, dan `teacherDashboard()` untuk guru.

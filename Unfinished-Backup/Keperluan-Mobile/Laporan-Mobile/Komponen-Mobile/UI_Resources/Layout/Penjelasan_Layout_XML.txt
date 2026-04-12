@@ -1,0 +1,5 @@
+File: Berbagai file berakhiran .xml (`activity_main.xml`, `fragment_dashboard.xml`, dll)
+
+Berfungsi untuk:
+"Kerangka Wajah Aplikasi (*Front-End Markup*)".
+Jika file Kotlin (seperti `LoginActivity.kt`) adalah otak yang memproses data, maka file XML di folder **Layout** inilah wajahnya. File ini menentukan tata letak tombol, ukuran huruf, warna *background*, letak gambar profil, dan jarak margin antar kotak (*CardView*). Tanpa file Layout XML ini, secanggih apapun *source code* Android Anda, layarnya hanya akan berwarna putih kosong saat dibuka. Ini sangat wajib dibahas di bab Perancangan Antarmuka (UI/UX).

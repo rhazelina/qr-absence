@@ -1,0 +1,5 @@
+File: AndroidManifest.xml
+
+Berfungsi untuk:
+"Surat Izin Mengemudi" Aplikasi Mobile.
+Sistem Android sangat ketat. Walau kita buat koding kamera super canggih, kalau tidak lapor (deklarasi izin) di dalam XML ini, aplikasinya akan force-close karena dianggap virus oleh sistem HP. File ini bertugas mendaftarkan komponen `Camera`, `Internet Activity`, `Firebase Messaging` (Notifikasi), serta menentukan halaman mana yang pertama terbangun (Activity *launcher*). Ini menjelaskan secara harafiah "Bagaimana aplikasi ini berinteraksi dengan piranti keras (Hardware)".

@@ -1,0 +1,8 @@
+Folder Models berisi Struktur Database Utama (Blueprint)
+
+Berfungsi untuk:
+Pondasi tipe data tabel database yang saling berelasi:
+1. `Attendance.php` -> Berelasi dengan Jadwal (ClassSchedule) untuk catatan Hadir/Alpa.
+2. `User.php`, `StudentProfile.php`, `TeacherProfile.php` -> Pengguna sistem (Siapa yang sedang membuka aplikasi).
+3. `Qrcode.php` -> Mesin waktu validasi masa hidup QR.
+4. `StudentLeavePermission.php` & `AbsenceRequest.php` -> Tabel khusus tempat menyimpan data alasan dan gambar surat sakit / izin buang air dari siswa.

@@ -10,6 +10,7 @@ use App\Models\ScheduleItem;
 use App\Models\StudentLeavePermission;
 use App\Models\StudentProfile;
 use App\Models\User;
+use App\Support\ScheduleDay;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -40,8 +41,8 @@ class AttendanceService
         // 2. Resolve QR Token
         $qr = Qrcode::with('schedule.dailySchedule.classSchedule.class')->where('token', $data['token'])->firstOrFail();
 
-        if (! $qr->is_active || $qr->isExpired()) {
-            throw new \Exception('QR tidak aktif atau sudah kadaluarsa', 422);
+        if (! $qr->is_active) {
+            throw new \Exception('QR tidak aktif', 422);
         }
 
         if ($qr->type === 'student' && ! in_array($user->user_type, ['student', 'teacher'], true)) {
@@ -79,13 +80,17 @@ class AttendanceService
 
         // Schedule Day Validation
         $scheduleDay = $qr->schedule->dailySchedule->day;
-        $today = $now->format('l');
+        $todayVariants = ScheduleDay::variants($now->toDateString());
         $demoMode = config('app.demo_mode', env('APP_DEMO_MODE', false));
 
         if (! $demoMode) {
-            if (strcasecmp($scheduleDay, $today) !== 0) {
+            if (! in_array($scheduleDay, $todayVariants, true)) {
                 throw new \Exception("QR hanya valid pada hari {$scheduleDay}", 422);
             }
+        }
+
+        if (! $demoMode && ! $this->isWithinScheduleWindow($qr->schedule, $now)) {
+            throw new \Exception('Sesi absensi sudah berakhir untuk jadwal ini', 422);
         }
 
         // 3. Check if Schedule is Open (skip in demo mode)
@@ -151,6 +156,8 @@ class AttendanceService
                     'status' => $this->determineStatus($qr->schedule, $now),
                     'checked_in_at' => $now,
                     'source' => 'qrcode',
+                    'is_draft' => false,
+                    'finalized_at' => $now,
                 ]);
 
                 AttendanceRecorded::dispatch($attendance);
@@ -186,7 +193,7 @@ class AttendanceService
         }
 
         $now = now();
-        $day = $now->format('l');
+        $dayVariants = ScheduleDay::variants($now->toDateString());
         $time = $now->format('H:i:s');
         $demoMode = config('app.demo_mode', env('APP_DEMO_MODE', false));
 
@@ -200,8 +207,8 @@ class AttendanceService
         } else {
             $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')
                 ->where('teacher_id', $teacher->teacherProfile->id)
-                ->whereHas('dailySchedule', function ($query) use ($day) {
-                    $query->where('day', $day);
+                ->whereHas('dailySchedule', function ($query) use ($dayVariants) {
+                    $query->whereIn('day', $dayVariants);
                 })
                 ->whereHas('dailySchedule.classSchedule', function ($query) {
                     $query->where('is_active', true);
@@ -213,6 +220,10 @@ class AttendanceService
 
         if (! $schedule) {
             throw new \Exception('Tidak ada jadwal mengajar aktif saat ini.', 422);
+        }
+
+        if (! $demoMode && ! $this->isWithinScheduleWindow($schedule, $now)) {
+            throw new \Exception('Sesi absensi sudah berakhir untuk jadwal ini.', 422);
         }
 
         $classId = $schedule->dailySchedule->classSchedule->class_id;
@@ -273,6 +284,8 @@ class AttendanceService
                     'status' => AttendanceStatus::PRESENT->value,
                     'checked_in_at' => $now,
                     'source' => 'teacher_scan',
+                    'is_draft' => false,
+                    'finalized_at' => $now,
                 ]);
 
                 AttendanceRecorded::dispatch($attendance);
@@ -346,18 +359,430 @@ class AttendanceService
             'schedule_id' => $data['schedule_id'],
         ];
 
-        return Attendance::updateOrCreate(
-            [
-                ...$attributes,
-                'date' => $now->toDateString(),
-            ],
-            [
+        $attendance = Attendance::where($attributes)
+            ->whereBetween('date', [$now->toDateString() . ' 00:00:00', $now->toDateString() . ' 23:59:59'])
+            ->first();
+
+        if ($attendance) {
+            $attendance->update([
                 'status' => $status,
                 'checked_in_at' => $now,
                 'source' => 'manual',
                 'reason' => $data['reason'] ?? null,
-            ]
+                'is_draft' => false,
+                'draft_saved_at' => null,
+                'finalized_at' => $now,
+                'manual_session_started_at' => null,
+            ]);
+            $attendance = $attendance->fresh();
+        } else {
+            $attendance = Attendance::create([
+                ...$attributes,
+                'date' => $now->toDateString(),
+                'status' => $status,
+                'checked_in_at' => $now,
+                'source' => 'manual',
+                'reason' => $data['reason'] ?? null,
+                'is_draft' => false,
+                'draft_saved_at' => null,
+                'finalized_at' => $now,
+                'manual_session_started_at' => null,
+            ]);
+        }
+
+        // Skenario 2: Otomatis buat StudentLeavePermission jika status izin atau sakit
+        $this->createLeavePermissionIfNeeded(
+            studentId: (int) $data['student_id'],
+            scheduleId: (int) $data['schedule_id'],
+            date: $now->toDateString(),
+            status: $status,
+            reason: $data['reason'] ?? null,
+            grantedByUserId: $user->id
         );
+
+        return $attendance;
+    }
+
+    public function saveBulkManual(array $data, User $user): array
+    {
+        $schedule = ScheduleItem::with('dailySchedule.classSchedule.class')->findOrFail($data['schedule_id']);
+        $this->authorizeManualSchedule($schedule, $user);
+
+        $date = Carbon::parse($data['date'])->toDateString();
+        $mode = $data['mode'] ?? 'draft';
+
+        return match ($mode) {
+            'final' => $this->saveBulkManualFinal($schedule, $date, $data['items'], $user),
+            'draft' => $this->saveBulkManualDraft($schedule, $date, $data['items'], $user),
+            default => throw new \Exception('Mode absensi manual tidak valid.', 422),
+        };
+    }
+
+    public function saveBulkManualDraft(ScheduleItem $schedule, string $date, array $items, User $user): array
+    {
+        $existingSession = $this->getManualSessionState($schedule->id, $date);
+        if ($existingSession['is_finalized']) {
+            throw new \Exception('Sesi absensi manual sudah difinalisasi', 409);
+        }
+
+        $now = now();
+        $sessionStartedAt = $existingSession['session_started_at'] ? Carbon::parse($existingSession['session_started_at']) : $now->copy();
+        $sessionAlreadyStarted = $existingSession['session_started_at'] !== null;
+        $autoLateStudentIds = [];
+        $results = [];
+
+        DB::transaction(function () use ($schedule, $date, $items, $now, $sessionStartedAt, $sessionAlreadyStarted, $user, &$autoLateStudentIds, &$results) {
+            foreach ($items as $item) {
+                if (empty($item['status'])) {
+                    continue;
+                }
+
+                // resolveManualStatusForDraft kini return array ['status', 'auto_reason']
+                $resolved = $this->resolveManualStatusForDraft(
+                    schedule: $schedule,
+                    date: $date,
+                    studentId: (int) $item['student_id'],
+                    requestedStatus: $item['status'],
+                    sessionAlreadyStarted: $sessionAlreadyStarted,
+                    autoLateStudentIds: $autoLateStudentIds
+                );
+                $status = $resolved['status'];
+                // Jika auto-late: pakai auto_reason. Jika user sudah isi reason, user reason tetap dipakai.
+                $reason = ($item['reason'] ?? null) ?: $resolved['auto_reason'];
+
+                $attendance = Attendance::where('student_id', (int) $item['student_id'])
+                    ->where('schedule_id', $schedule->id)
+                    ->where('attendee_type', 'student')
+                    ->whereBetween('date', [$date . ' 00:00:00', $date . ' 23:59:59'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($attendance) {
+                    $attendance->update([
+                        'status' => $status,
+                        'checked_in_at' => $now,
+                        'source' => 'manual_draft',
+                        'reason' => $reason,
+                        'is_draft' => true,
+                        'draft_saved_at' => $now,
+                        'finalized_at' => null,
+                        'manual_session_started_at' => $sessionStartedAt,
+                    ]);
+                } else {
+                    $attendance = Attendance::create([
+                        'student_id' => (int) $item['student_id'],
+                        'schedule_id' => $schedule->id,
+                        'attendee_type' => 'student',
+                        'date' => $date,
+                        'status' => $status,
+                        'checked_in_at' => $now,
+                        'source' => 'manual_draft',
+                        'reason' => $reason,
+                        'is_draft' => true,
+                        'draft_saved_at' => $now,
+                        'finalized_at' => null,
+                        'manual_session_started_at' => $sessionStartedAt,
+                    ]);
+                }
+
+                // Skenario 2: Otomatis buat StudentLeavePermission jika status izin atau sakit
+                $this->createLeavePermissionIfNeeded(
+                    studentId: (int) $item['student_id'],
+                    scheduleId: $schedule->id,
+                    date: $date,
+                    status: $status,
+                    reason: $reason,
+                    grantedByUserId: $user->id
+                );
+
+                $results[] = [
+                    'id'         => $attendance->id,
+                    'student_id' => (int) $item['student_id'],
+                    'status'     => $attendance->status,
+                    'date'       => $attendance->date,
+                    'source'     => $attendance->source,
+                    'is_draft'   => $attendance->is_draft,
+                    'checked_in_at' => optional($attendance->checked_in_at)->toIso8601String(),
+                ];
+            }
+        });
+
+        return [
+            'message' => count($results).' data kehadiran draft berhasil disimpan',
+            'mode' => 'draft',
+            'session_started_at' => $sessionStartedAt->toIso8601String(),
+            'saved_count' => count($results),
+            'draft_count' => count($results),
+            'final_count' => 0,
+            'auto_late_student_ids' => $autoLateStudentIds,
+            'data' => $results,
+        ];
+    }
+
+    public function saveBulkManualFinal(ScheduleItem $schedule, string $date, array $items, User $user): array
+    {
+        $existingSession = $this->getManualSessionState($schedule->id, $date);
+        $now = now();
+        $sessionStartedAt = $existingSession['session_started_at']
+            ? Carbon::parse($existingSession['session_started_at'])
+            : null;
+        $autoLateStudentIds = [];
+        $results = [];
+        $wasPreviouslyFinalized = $existingSession['is_finalized'];
+
+        DB::transaction(function () use ($schedule, $date, $items, $now, $sessionStartedAt, $user, &$autoLateStudentIds, &$results) {
+            foreach ($items as $item) {
+                if (empty($item['status'])) {
+                    continue;
+                }
+
+                $normalizedStatus = Attendance::normalizeStatus($item['status']);
+                $existing = Attendance::where('schedule_id', $schedule->id)
+                    ->where('attendee_type', 'student')
+                    ->where('student_id', (int) $item['student_id'])
+                    ->whereBetween('date', [$date . ' 00:00:00', $date . ' 23:59:59'])
+                    ->lockForUpdate()
+                    ->first();
+
+                // Jika siswa baru pertama kali diinput saat finalisasi (tidak ada draft sebelumnya)
+                // dan session sudah pernah dimulai → status hadir otomatis jadi terlambat + isi reason
+                $autoReason = null;
+                if (! $existing && $sessionStartedAt instanceof Carbon && $normalizedStatus === AttendanceStatus::PRESENT->value) {
+                    $normalizedStatus = AttendanceStatus::LATE->value;
+                    $autoReason = 'Terlambat: siswa baru diinput setelah sesi absensi dimulai';
+                    $autoLateStudentIds[] = (int) $item['student_id'];
+                }
+
+                // Prioritas reason: user input > auto reason (untuk late)
+                $reason = ($item['reason'] ?? null) ?: $autoReason;
+
+                if ($existing) {
+                    $existing->update([
+                        'status' => $normalizedStatus,
+                        'checked_in_at' => $now,
+                        'source' => 'manual',
+                        'reason' => $reason,
+                        'is_draft' => false,
+                        'draft_saved_at' => $existing->draft_saved_at,
+                        'finalized_at' => $now,
+                        'manual_session_started_at' => $sessionStartedAt,
+                    ]);
+                    $attendance = $existing->fresh();
+                } else {
+                    $attendance = Attendance::create([
+                        'student_id' => (int) $item['student_id'],
+                        'schedule_id' => $schedule->id,
+                        'attendee_type' => 'student',
+                        'date' => $date,
+                        'status' => $normalizedStatus,
+                        'checked_in_at' => $now,
+                        'source' => 'manual',
+                        'reason' => $reason,
+                        'is_draft' => false,
+                        'draft_saved_at' => null,
+                        'finalized_at' => $now,
+                        'manual_session_started_at' => $sessionStartedAt,
+                    ]);
+                }
+
+                // Skenario 2: Otomatis buat StudentLeavePermission jika status izin atau sakit
+                $this->createLeavePermissionIfNeeded(
+                    studentId: (int) $item['student_id'],
+                    scheduleId: $schedule->id,
+                    date: $date,
+                    status: $normalizedStatus,
+                    reason: $reason,
+                    grantedByUserId: $user->id
+                );
+
+                $results[] = [
+                    'id'         => $attendance->id,
+                    'student_id' => (int) $item['student_id'],
+                    'status'     => $attendance->status,
+                    'date'       => $attendance->date,
+                    'source'     => $attendance->source,
+                    'is_draft'   => $attendance->is_draft,
+                    'checked_in_at' => optional($attendance->checked_in_at)->toIso8601String(),
+                ];
+            }
+        });
+
+        return [
+            'message' => count($results).' data kehadiran final berhasil disimpan',
+            'mode' => 'final',
+            'already_finalized' => $wasPreviouslyFinalized,
+            'session_started_at' => $sessionStartedAt?->toIso8601String(),
+            'saved_count' => count($results),
+            'draft_count' => 0,
+            'final_count' => count($results),
+            'auto_late_student_ids' => $autoLateStudentIds,
+            'data' => $results,
+        ];
+    }
+
+    public function finalizeManualSession(ScheduleItem $schedule, string $date, string $finalizeEmptyAs, User $user): array
+    {
+        $this->authorizeManualSchedule($schedule, $user);
+
+        $state = $this->getManualSessionState($schedule->id, $date);
+        if ($state['is_finalized']) {
+            return [
+                'message' => 'Sesi absensi manual sudah difinalisasi',
+                'schedule_id' => $schedule->id,
+                'date' => $date,
+                'finalized_at' => $state['finalized_at'],
+                'finalized_count' => 0,
+                'auto_absent_count' => 0,
+                'already_recorded_count' => $state['saved_count'],
+                'already_finalized' => true,
+            ];
+        }
+
+        $now = now();
+        $eligibleStudents = $this->eligibleStudentsForManualSession($schedule, $date);
+        $eligibleStudentIds = $eligibleStudents->pluck('id')->all();
+        $existingAttendances = Attendance::forManualSession($schedule->id, $date)
+            ->whereIn('student_id', $eligibleStudentIds)
+            ->get()
+            ->keyBy('student_id');
+        $sessionStartedAt = $state['session_started_at'] ? Carbon::parse($state['session_started_at']) : null;
+
+        $finalizedCount = 0;
+        $autoAbsentCount = 0;
+
+        DB::transaction(function () use ($existingAttendances, $eligibleStudentIds, $schedule, $date, $finalizeEmptyAs, $now, $sessionStartedAt, &$finalizedCount, &$autoAbsentCount) {
+            foreach ($existingAttendances as $attendance) {
+                $attendance->update([
+                    'is_draft' => false,
+                    'source' => 'manual',
+                    'finalized_at' => $now,
+                ]);
+                $finalizedCount++;
+            }
+
+            if ($finalizeEmptyAs !== 'absent') {
+                return;
+            }
+
+            foreach ($eligibleStudentIds as $studentId) {
+                if ($existingAttendances->has($studentId)) {
+                    continue;
+                }
+
+                Attendance::create([
+                    'attendee_type' => 'student',
+                    'student_id' => $studentId,
+                    'schedule_id' => $schedule->id,
+                    'date' => $date,
+                    'status' => AttendanceStatus::ABSENT->value,
+                    'checked_in_at' => $now,
+                    'source' => 'manual',
+                    'reason' => 'Tidak diisi saat finalisasi absensi manual',
+                    'is_draft' => false,
+                    'finalized_at' => $now,
+                    'manual_session_started_at' => $sessionStartedAt,
+                ]);
+                $autoAbsentCount++;
+            }
+        });
+
+        return [
+            'message' => 'Sesi absensi manual berhasil difinalisasi',
+            'schedule_id' => $schedule->id,
+            'date' => $date,
+            'finalized_at' => $now->toIso8601String(),
+            'finalized_count' => $finalizedCount,
+            'auto_absent_count' => $autoAbsentCount,
+            'already_recorded_count' => $existingAttendances->count(),
+            'already_finalized' => false,
+        ];
+    }
+
+    public function getManualSessionState(int $scheduleId, string $date): array
+    {
+        $rows = Attendance::forManualSession($scheduleId, $date)
+            ->whereIn('source', ['manual_draft', 'manual'])
+            ->get();
+
+        $sessionStartedAt = $rows->pluck('manual_session_started_at')->filter()->sort()->first();
+        if (! $sessionStartedAt && $rows->isNotEmpty()) {
+            // Fallback untuk draft lama yang belum menyimpan manual_session_started_at.
+            $sessionStartedAt = $rows
+                ->pluck('draft_saved_at')
+                ->filter()
+                ->sort()
+                ->first()
+                ?? $rows->pluck('created_at')->filter()->sort()->first();
+        }
+        $finalizedAt = $rows->pluck('finalized_at')->filter()->sortDesc()->first();
+
+        return [
+            'has_draft' => $rows->contains(fn (Attendance $attendance) => $attendance->is_draft),
+            'is_finalized' => $finalizedAt !== null && $rows->every(fn (Attendance $attendance) => ! $attendance->is_draft),
+            'session_started_at' => $sessionStartedAt?->toIso8601String(),
+            'finalized_at' => $finalizedAt?->toIso8601String(),
+            'saved_count' => $rows->count(),
+            'draft_saved_count' => $rows->where('is_draft', true)->count(),
+        ];
+    }
+
+    public function eligibleStudentsForManualSession(ScheduleItem $schedule, string $date)
+    {
+        $classId = $schedule->dailySchedule->classSchedule->class_id;
+        $students = StudentProfile::where('class_id', $classId)->get();
+        $dateCarbon = Carbon::parse($date);
+        $scheduleStart = Carbon::parse($schedule->start_time);
+        $scheduleEnd = Carbon::parse($schedule->end_time);
+
+        $activeLeavePermissions = StudentLeavePermission::where('class_id', $classId)
+            ->where('date', $dateCarbon->toDateString())
+            ->where('status', 'active')
+            ->get()
+            ->keyBy('student_id');
+
+        return $students->filter(function (StudentProfile $student) use ($activeLeavePermissions, $scheduleStart, $scheduleEnd) {
+            $leavePermission = $activeLeavePermissions->get($student->id);
+            if (! $leavePermission) {
+                return true;
+            }
+
+            if ($leavePermission->is_full_day) {
+                return false;
+            }
+
+            return ! $leavePermission->shouldHideFromAttendanceOptimized($scheduleStart, $scheduleEnd);
+        })->values();
+    }
+
+    /**
+     * Resolve status absen manual untuk draft.
+     * Return: ['status' => string, 'auto_reason' => string|null]
+     *
+     * Jika siswa belum pernah di-absen dan session sudah dimulai sebelumnya,
+     * input "hadir" otomatis diubah ke "terlambat" + reason otomatis diisi.
+     */
+    public function resolveManualStatusForDraft(
+        ScheduleItem $schedule,
+        string $date,
+        int $studentId,
+        string $requestedStatus,
+        bool $sessionAlreadyStarted,
+        array &$autoLateStudentIds
+    ): array {
+        $normalizedStatus = Attendance::normalizeStatus($requestedStatus);
+        $autoReason = null;
+
+        $existing = Attendance::forManualSession($schedule->id, $date)
+            ->where('student_id', $studentId)
+            ->first();
+
+        if (! $existing && $sessionAlreadyStarted && $normalizedStatus === AttendanceStatus::PRESENT->value) {
+            $normalizedStatus = AttendanceStatus::LATE->value;
+            $autoReason = 'Terlambat: siswa baru diinput setelah sesi absensi dimulai';
+            $autoLateStudentIds[] = $studentId;
+        }
+
+        return ['status' => $normalizedStatus, 'auto_reason' => $autoReason];
     }
 
     /**
@@ -390,6 +815,8 @@ class AttendanceService
                     'reason' => $reason,
                     'reason_file' => $reasonFile,
                     'source' => 'manual',
+                    'is_draft' => false,
+                    'finalized_at' => now(),
                 ]
             );
         }
@@ -426,6 +853,8 @@ class AttendanceService
                     'reason' => $reason,
                     'reason_file' => $reasonFile,
                     'source' => 'manual',
+                    'is_draft' => false,
+                    'finalized_at' => now(),
                 ]
             );
         }
@@ -493,6 +922,8 @@ class AttendanceService
                     'status' => $status,
                     'source' => 'system_close',
                     'reason' => $reason,
+                    'is_draft' => false,
+                    'finalized_at' => $now,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
@@ -587,6 +1018,105 @@ class AttendanceService
         return AttendanceStatus::PRESENT->value;
     }
 
+    public function autoMarkAbsentForEndedSchedules(string $date, ?int $scheduleId = null, bool $force = false): array
+    {
+        $targetDate = Carbon::parse($date)->toDateString();
+        $targetDay = Carbon::parse($targetDate)->format('l');
+        $now = now();
+
+        $query = ScheduleItem::query()
+            ->with(['dailySchedule.classSchedule'])
+            ->whereHas('dailySchedule.classSchedule', function ($q): void {
+                $q->where('is_active', true);
+            })
+            ->whereHas('dailySchedule', function ($q) use ($targetDay): void {
+                $q->where('day', $targetDay);
+            });
+
+        if ($scheduleId !== null) {
+            $query->whereKey($scheduleId);
+        }
+
+        $schedules = $query->get()->filter(function (ScheduleItem $schedule) use ($targetDate, $now, $force): bool {
+            if ($force) {
+                return true;
+            }
+
+            if ($targetDate < $now->toDateString()) {
+                return true;
+            }
+
+            return Carbon::parse($targetDate.' '.$schedule->end_time)->lte($now);
+        })->values();
+
+        $processedSchedules = 0;
+        $createdAttendances = 0;
+
+        foreach ($schedules as $schedule) {
+            $processedSchedules++;
+            
+            $classId = $schedule->dailySchedule->classSchedule->class_id;
+            $allStudents = StudentProfile::where('class_id', $classId)->get();
+
+            $activeLeavePermissions = StudentLeavePermission::where('class_id', $classId)
+                ->where('date', $targetDate)
+                ->where('status', 'active')
+                ->get()
+                ->keyBy('student_id');
+
+            $existingStudentIds = Attendance::query()
+                ->where('attendee_type', 'student')
+                ->where('schedule_id', $schedule->id)
+                ->whereDate('date', $targetDate)
+                ->pluck('student_id')
+                ->all();
+
+            foreach ($allStudents as $student) {
+                if (in_array($student->id, $existingStudentIds, true)) {
+                    continue;
+                }
+
+                $status = AttendanceStatus::ABSENT->value;
+                $reason = 'Otomatis alpha setelah jam pelajaran berakhir';
+
+                $leavePermission = $activeLeavePermissions->get($student->id);
+                if ($leavePermission && $leavePermission->shouldHideFromAttendance($schedule)) {
+                    $status = match ($leavePermission->type) {
+                        'sakit' => AttendanceStatus::SICK->value,
+                        'izin', 'izin_pulang', 'dispensasi' => AttendanceStatus::EXCUSED->value,
+                        default => AttendanceStatus::EXCUSED->value,
+                    };
+                    $reason = $leavePermission->reason ?? ('Otomatis: ' . $this->getLeaveTypeLabel($leavePermission->type));
+                }
+
+                Attendance::updateOrCreate(
+                    [
+                        'attendee_type' => 'student',
+                        'student_id' => $student->id,
+                        'schedule_id' => $schedule->id,
+                        'date' => $targetDate,
+                    ],
+                    [
+                        'status' => $status,
+                        'reason' => $reason,
+                        'checked_in_at' => null,
+                        'source' => 'system_close',
+                        'is_draft' => false,
+                        'finalized_at' => $now,
+                    ]
+                );
+
+                $createdAttendances++;
+            }
+        }
+
+        return [
+            'date' => $targetDate,
+            'processed_schedules' => $processedSchedules,
+            'created_absent_attendances' => $createdAttendances,
+        ];
+    }
+
     /**
      * Load all settings from cache. Refreshes every 5 minutes.
      *
@@ -608,5 +1138,91 @@ class AttendanceService
             'dispensasi' => 'Dispensasi',
             default => $type,
         };
+    }
+
+    /**
+     * Skenario 2: Otomatis buat StudentLeavePermission jika status izin atau sakit
+     * di absen manual (storeManual, saveBulkManualDraft, saveBulkManualFinal).
+     * Jika sudah ada record untuk student + date + type yang sama, tidak dibuat ulang (idempotent).
+     */
+    private function createLeavePermissionIfNeeded(
+        int $studentId,
+        int $scheduleId,
+        string $date,
+        string $status,
+        ?string $reason,
+        ?int $grantedByUserId
+    ): void {
+        $leaveStatuses = [
+            AttendanceStatus::EXCUSED->value,  // 'excused' / izin
+            AttendanceStatus::SICK->value,     // 'sick' / sakit
+        ];
+
+        if (! in_array($status, $leaveStatuses, true)) {
+            return;
+        }
+
+        // Resolve class_id dari schedule
+        $schedule = ScheduleItem::with('dailySchedule.classSchedule')->find($scheduleId);
+        $classId = $schedule?->dailySchedule?->classSchedule?->class_id;
+
+        if (! $classId || ! $schedule?->start_time || ! $grantedByUserId) {
+            return;
+        }
+
+        $type = $status === AttendanceStatus::SICK->value ? 'sakit' : 'izin';
+
+        // Cek apakah sudah ada leave permission aktif untuk siswa + tanggal + tipe ini
+        $alreadyExists = StudentLeavePermission::where('student_id', $studentId)
+            ->where('date', $date)
+            ->where('type', $type)
+            ->whereIn('status', ['active', 'pending'])
+            ->exists();
+
+        if ($alreadyExists) {
+            return;
+        }
+
+        StudentLeavePermission::create([
+            'student_id'  => $studentId,
+            'class_id'    => $classId,
+            'granted_by'  => $grantedByUserId,
+            'schedule_id' => $scheduleId,
+            'type'        => $type,
+            'date'        => $date,
+            'start_time'  => $schedule->start_time,
+            'end_time'    => null,
+            'reason'      => $reason ?? ('Dibuat otomatis dari absensi manual: ' . ($type === 'sakit' ? 'Sakit' : 'Izin')),
+            'status'      => 'active',
+            'is_full_day' => true,
+        ]);
+    }
+
+    private function authorizeManualSchedule(ScheduleItem $schedule, User $user): void
+    {
+        if ($user->user_type !== 'teacher') {
+            return;
+        }
+
+        $teacherProfile = $user->teacherProfile;
+        $classId = $schedule->dailySchedule->classSchedule->class_id;
+        $isScheduleTeacher = $schedule->teacher_id === $teacherProfile?->id;
+        $isHomeroom = $teacherProfile?->homeroom_class_id === $classId;
+
+        if (! $isScheduleTeacher && ! $isHomeroom) {
+            throw new \Exception('Anda tidak memiliki akses untuk mengubah absensi ini.', 403);
+        }
+    }
+
+    private function isWithinScheduleWindow(ScheduleItem $schedule, Carbon $now): bool
+    {
+        if (! $schedule->start_time || ! $schedule->end_time) {
+            return true;
+        }
+
+        $start = Carbon::parse($now->toDateString().' '.$schedule->start_time);
+        $end = Carbon::parse($now->toDateString().' '.$schedule->end_time);
+
+        return $now->betweenIncluded($start, $end);
     }
 }

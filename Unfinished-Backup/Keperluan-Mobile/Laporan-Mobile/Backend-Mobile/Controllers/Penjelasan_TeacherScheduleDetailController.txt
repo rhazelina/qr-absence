@@ -1,0 +1,4 @@
+File: TeacherScheduleDetailController.php
+
+Berfungsi untuk:
+Menangani wewenang khusus seorang Guru Besar saat mengajar di kelas. Apabila siswa izin ke UKS, guru menekan tombol izin yang tercatat oleh fungsi di dalam controller ini. Jika waktu batas izin UKS-nya habis dan anak tidak kembali, siswa tersebut otomatis dialpakan. Controller ini sangat vital bagi sirkulasi "Izin Jam Pelajaran".

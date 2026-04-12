@@ -1,0 +1,5 @@
+File: Kumpulan Model Tambahan (Siswa1.kt, CreateGuruRequest.kt, Dispensasi.kt)
+
+Berfungsi untuk:
+"Kerangka Data Pendukung Form".
+Berbeda dengan `api/models/` yang bertugas memetakan JSON langsung dari respon server, file-file di folder ini (`model/`) lebih spesifik digunakan untuk membungkus data "Request" sebelum dikirim ke server (contohnya saat Admin/Waka mengisi form Tambah Guru Baru: datanya dibungkus ke dalam obyek `CreateGuruRequest.kt`). File ini sangat bagus untuk dicantumkan jika Anda membahas skenario pengujian input data ke sistem (CRUD Forms).

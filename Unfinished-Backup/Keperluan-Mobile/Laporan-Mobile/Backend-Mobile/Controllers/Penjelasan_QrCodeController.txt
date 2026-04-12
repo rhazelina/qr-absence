@@ -1,0 +1,4 @@
+File: QrCodeController.php
+
+Berfungsi untuk:
+Mengendalikan mesin pembentuk pola (Generate) Kode Presensi. Saat guru menekan tombol "Buka Kelas", controller ini yang menyediakan data teks terenkripsi (token jadwal berserta waktu kadaluwarsa). File ini juga memastikan jika jam habis, kode QR tidak bisa discan lagi oleh murid dari aplikasi Android.
